@@ -1,0 +1,12 @@
+Layout = Canonical
+IndentWidth = 4
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+LambdaBodiesLayout = Preserve
+LambdaSpaceBeforeParameters = Space
+ParametersBreak = Always
+ParametersPacking = VerticalWhenBroken
+ParametersFirstItem = NextLine
+ParametersAlignment = Block
+IndentCaseLabels = Indent
+ColumnLimit = 120

@@ -1476,6 +1476,7 @@ std::vector<FormatCase> FormatCases()
     cases
         .push_back({BODY_INDENT_TESTDATA_DIR, "lambda-comments-profile", "lambda-leading-comments.input.cpp", profile});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-trailing-return", "lambda-trailing-return.input.cpp"});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-wrapped-parameters", "lambda-wrapped-parameters.input.cpp"});
     addProfileCase("../lambda-captures", "profile");
     for (const auto* name : {"generic-header", "generic-header-fitting", "generic-header-forced"}) {
         addProfileCase("../lambda-captures", name);
@@ -1665,7 +1666,6 @@ std::vector<FormatCase> FormatCases()
         style.LambdaBodiesLayout = CategoryLayout::Canonical;
         cases.push_back({directory, "member-pointers-canonical", "member-pointers.input.cpp"});
         cases.back().Style = style;
-        cases.back().Expected = "member-pointers.output.cpp";
     }
     cases.push_back({data / "lambda-body", "visual-scopes", "visual-scopes.input.cpp", {}, {}, true, {}});
     AddCases(cases, data / "control-header-clauses", {"preserve", "split", "indent-width"});

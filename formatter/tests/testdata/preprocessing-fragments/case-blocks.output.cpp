@@ -6,9 +6,12 @@ int SelectPlatform(int value)
             return 0;
         }
 #endif
-        case 1: {
+        case 1:
+        case 2: {
             return 1;
         }
+        case 3:
+        case 4: { }
         default:
             return -1;
     }
@@ -19,6 +22,7 @@ void SelectFeature(int value)
     switch (value) {
 #if OUTER_FEATURE
 #if INNER_FEATURE
+        case 4:
         case 0: {
             Handle();
         } // The block is the entire case body.
@@ -43,4 +47,23 @@ void SelectFeature(int value)
             Done();
         }
     }
+}
+
+void SelectInLambda()
+{
+    Dispatch([] (int value) {
+        switch (value) {
+            case 0:
+            case 1: {
+                Handle();
+                break;
+            }
+            case 2:
+            case 3: { }
+            case 4:
+            default: {
+                Reset();
+            }
+        }
+    });
 }

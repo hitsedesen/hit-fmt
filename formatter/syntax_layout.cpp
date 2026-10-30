@@ -3011,14 +3011,17 @@ private:
             offset,
             LayoutIndentation{ContinuationAlignment::Block, uint32_t(offset), uint32_t(offset)});
         Groups_[group].Spec.StructuralBase = true;
-        // Calls containing uncertain children preserve their argument gaps and
-        // may have no continuation frame. Lambda bodies still use the actual
-        // opening line, independent of the caller's enclosing block level.
+        // Canonical lambda headers can end on a parameter continuation line.
+        // Preserved bodies retain the enclosing structural level in that case.
+        // Other lambda bodies follow their opening line, including opaque calls
+        // without a continuation frame.
         const auto parent = Region(Syntax_[id]).Parent;
         Groups_[group].Spec.FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
         Groups_[group].Spec.LineBase = contentIndent == None &&
             !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
-                HasPositionedConstraint(parent)) &&
+                (HasPositionedConstraint(parent) ||
+                    (Policies_.DeclarationHeaders == LayoutMode::Canonical &&
+                        policy.Layout == LayoutMode::Preserve))) &&
             (Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification ||
                 Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
