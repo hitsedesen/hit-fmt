@@ -622,6 +622,116 @@
           (init-declarator-list
             (init-declarator
               (declarator
+                (declarator-name "owned")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (identifier-expression "std")
+                    "::"
+                    (template-id-expression
+                      (identifier-expression "unique_ptr")
+                      (template-argument-list
+                        "<"
+                        (template-argument "char" "[" "]")
+                        ">"
+                      )
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (new-expression
+                        "new"
+                        (new-type-id "char" "[" "count" "]")
+                      )
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "bounded")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (identifier-expression "helpers")
+                    "::"
+                    (template-id-expression
+                      (identifier-expression "Build")
+                      (template-argument-list
+                        "<"
+                        (template-argument "const" "Type" "*" "[" "extent" "(" "1" "," "2" ")" "]" "[" "3" "]")
+                        ">"
+                      )
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "source")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "later_array")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (member-expression
+                    (identifier-expression "object")
+                    "."
+                    (template-id-expression
+                      (identifier-expression "Build")
+                      (template-argument-list
+                        "<"
+                        (template-argument "value")
+                        (list-separator ",")
+                        (template-argument "char" "[" "4" "]")
+                        ">"
+                      )
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "source")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator-list
+            (init-declarator
+              (declarator
                 (declarator-name "dependent")
               )
               (initializer

@@ -1032,6 +1032,7 @@ std::vector<FormatCase> FormatCases()
         "namespace-preserved-indent",
     });
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "reindented-call", "reindented-call.input.cpp"});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "namespace-preserved-lambda", "namespace-preserved-lambda.input.cpp"});
     const auto nullStatements = data / "null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});
     for (const auto name :
