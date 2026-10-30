@@ -34,8 +34,8 @@ const Block *Document::find(std::size_t Id) const noexcept {
 
 std::string Converter::render(const Content &Payload) const {
   return std::visit([this]<class T>(const T &Item) -> std::string {
-    if constexpr (
-                  std::same_as<T, Text>) {
+    if constexpr (std::same_as<T,
+                               Text>) {
       if (Item.Role == TextRole::Footer && Settings.DropFooters)return {};
       auto Body = escape(Item.Value);
       if (Body.empty())return {};
@@ -48,8 +48,8 @@ std::string Converter::render(const Content &Payload) const {
       case TextRole::Caption:return "> " + Body + "\n\n";
       default:return Body + "\n\n";
       }
-    } else if constexpr (
-                         std::same_as<T, Image>) {
+    } else if constexpr (std::same_as<T,
+                                      Image>) {
       if (!Settings.KeepImages)return {};
       auto RenderedImage = "![" + escape(Item.Description) + "](" +
           Settings.AssetDirectory + "/" + Item.Asset + ")";

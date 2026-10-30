@@ -1599,16 +1599,20 @@ private:
         return node;
     }
 
-    void RegisterTemplateTypeParameters(size_t begin, size_t end)
+    void RegisterTemplateTypeParameters(const Node& parameters)
     {
-        for (auto i = begin; i < end; ++i) {
+        for (auto* parameter = parameters.FirstChild; parameter; parameter = parameter->NextSibling) {
+            if (parameter->Kind != NodeKind::TemplateParameter) {
+                continue;
+            }
+            auto i = NextSignificant(parameter->Tokens.Begin);
+            const auto end = parameter->Tokens.End;
             if (Kind(i) == TK::Keyword_template) {
                 const auto opening = NextSignificant(i + 1);
                 if (Kind(opening) == TK::Operator_Less) {
                     // A nested template's parameters do not belong to this
                     // scope; only its following parameter name does.
-                    i = SkipTemplateArguments(opening, end) - 1;
-                    continue;
+                    i = NextSignificant(SkipTemplateArguments(opening, end));
                 }
             }
             if (Kind(i) != TK::Keyword_typename && Kind(i) != TK::Keyword_class) {
@@ -1618,7 +1622,10 @@ private:
             if (Kind(name) == TK::Operator_Ellipsis) {
                 name = NextSignificant(name + 1);
             }
-            if (name < end && Kind(name) == TK::Identifier) {
+            const auto afterName = NextSignificant(name + 1);
+            if (name < end && Kind(name) == TK::Identifier &&
+                (afterName >= end || Kind(afterName) == TK::Operator_Assign))
+            {
                 AddName(Text(name), NameKind::Type);
             }
         }
@@ -1661,18 +1668,21 @@ private:
         }
 
         auto parametersEnd = Cursor_;
+        Node* parameters = nullptr;
         if (parametersBegin < parametersEnd && Kind(parametersBegin) == TK::Operator_Less) {
             if (closedHeader) {
-                Append(*node, *MakeTemplateParameterList(parametersBegin, parametersEnd));
+                parameters = MakeTemplateParameterList(parametersBegin, parametersEnd);
             } else {
-                auto* parameters = MakeNode(NodeKind::TemplateParameterList, parametersBegin);
+                parameters = MakeNode(NodeKind::TemplateParameterList, parametersBegin);
                 parameters->Tokens.End = parametersEnd;
                 AddUnparsedSyntax(*parameters, parametersBegin + 1, parametersEnd);
-                Append(*node, *parameters);
             }
+            Append(*node, *parameters);
         }
         PushScope();
-        RegisterTemplateTypeParameters(parametersBegin, parametersEnd);
+        if (parameters) {
+            RegisterTemplateTypeParameters(*parameters);
+        }
         ParseTriviaBeforeChild(*node);
         if (CurrentKind() == TK::Keyword_requires) {
             Append(*node, *ParseRequiresClause());
@@ -6520,11 +6530,15 @@ private:
         cursor = ArgumentSignificant(captureEnd, end);
 
         size_t suffixWork = 4096;
+        Node* templateParameters = nullptr;
         if (Kind(cursor) == TK::Operator_Less) {
             auto templateAfter = ArgumentTemplateEnd(cursor, end, suffixWork);
             auto templateEnd = templateAfter.value_or(cursor);
             if (templateEnd > cursor) {
-                Append(*lambda, *MakeTemplateParameterList(cursor, templateEnd));
+                templateParameters = MakeTemplateParameterList(cursor, templateEnd);
+                Append(*lambda, *templateParameters);
+                PushScope();
+                RegisterTemplateTypeParameters(*templateParameters);
                 cursor = ArgumentSignificant(templateEnd, end);
             }
         }
@@ -6565,6 +6579,9 @@ private:
                 Append(*lambda, *body);
                 cursor = bodyEnd;
                 lambda->Tokens.End = bodyEnd;
+                if (templateParameters) {
+                    PopScope();
+                }
                 return lambda;
             }
             if (kind == TK::Keyword_mutable || kind == TK::Keyword_constexpr || kind == TK::Keyword_consteval ||
@@ -6777,6 +6794,9 @@ private:
         }
         cursor = end;
         lambda->Tokens.End = cursor;
+        if (templateParameters) {
+            PopScope();
+        }
         return lambda;
     }
 

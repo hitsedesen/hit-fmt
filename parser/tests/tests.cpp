@@ -1067,6 +1067,68 @@ TEST(Parser, ExplicitTemplateLambdaDefaultsKeepNonfinalOuterParameters)
     }
 }
 
+TEST(Parser, TemplateLambdaTypesHaveLocalScope)
+{
+    using enum parser::NodeKind;
+    for (const auto parameters : {"class Type", "typename Type", "class... Type", "typename... Type"}) {
+        for (const bool recovered : {false, true}) {
+            SCOPED_TRACE(parameters);
+            SCOPED_TRACE(recovered);
+            const auto argument = std::string_view(parameters).find("...") == std::string_view::npos
+                ? "Type"
+                : "Type...";
+            const auto suffix = recovered ? "marker" : "";
+            PaddedInput input("void inspect() { int Type; auto fn = []<" + std::string(parameters) + ">(auto value) " +
+                suffix + " { return [] { return ready<" + argument + ">; }(); }; Type * after; }");
+            size_t errors = 0;
+            auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError) {
+                    ++errors;
+                });
+            EXPECT_EQ(errors != 0, recovered);
+            const auto bodies = LambdaOwnershipNodes(tree.Root(), CompoundStatement);
+            ASSERT_EQ(bodies.size(), 1u);
+            ASSERT_NE(bodies[0]->LastChild, nullptr);
+            EXPECT_EQ(bodies[0]->LastChild->Kind, ExpressionStatement);
+            EXPECT_EQ(tree.SourceText(bodies[0]->LastChild->Tokens), "Type * after;");
+            if (!recovered) {
+                EXPECT_EQ(LambdaOwnershipNodes(tree.Root(), TemplateIdExpression).size(), 1u);
+                EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).empty());
+            }
+        }
+    }
+}
+
+TEST(Parser, TemplateDefaultsDoNotBindNestedNames)
+{
+    using enum parser::NodeKind;
+    for (const auto defaultType :
+        {"decltype([]<class Hidden>(Hidden value) { return value; })", "decltype([]<typename... Hidden>() {})"})
+    {
+        for (const bool lambda : {false, true}) {
+            SCOPED_TRACE(defaultType);
+            SCOPED_TRACE(lambda);
+            const auto prefix = lambda
+                ? "void inspect() { int Hidden; auto fn = [&]<class Type = "
+                : "int Hidden; template<class Type = ";
+            const auto suffix = lambda ? ">(int x) { Hidden * x; }; }" : "> void fn(int x) { Hidden * x; }";
+            PaddedInput input(std::string(prefix) + defaultType + suffix);
+            size_t errors = 0;
+            auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError) {
+                    ++errors;
+                });
+            EXPECT_EQ(errors, 0u);
+            const auto expressions =
+                LambdaOwnershipNodes(tree.Root(), lambda ? ExpressionStatement : AmbiguousStatement);
+            ASSERT_EQ(expressions.size(), 1u);
+            EXPECT_EQ(tree.SourceText(expressions[0]->Tokens), "Hidden * x;");
+        }
+    }
+}
+
 TEST(Parser, MalformedExplicitTemplatePrefixesStayLocallyUncertain)
 {
     using enum parser::NodeKind;

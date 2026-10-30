@@ -1,0 +1,3 @@
+IndentationKind = Spaces
+IndentNamespaces = Indent
+NamespaceComments = Fix
