@@ -1100,6 +1100,35 @@ TEST(Parser, TemplateLambdaTypesHaveLocalScope)
     }
 }
 
+TEST(Parser, TemplateDefaultsDoNotBindNestedNames)
+{
+    using enum parser::NodeKind;
+    for (const auto defaultType :
+        {"decltype([]<class Hidden>(Hidden value) { return value; })", "decltype([]<typename... Hidden>() {})"})
+    {
+        for (const bool lambda : {false, true}) {
+            SCOPED_TRACE(defaultType);
+            SCOPED_TRACE(lambda);
+            const auto prefix = lambda
+                ? "void inspect() { int Hidden; auto fn = [&]<class Type = "
+                : "int Hidden; template<class Type = ";
+            const auto suffix = lambda ? ">(int x) { Hidden * x; }; }" : "> void fn(int x) { Hidden * x; }";
+            PaddedInput input(std::string(prefix) + defaultType + suffix);
+            size_t errors = 0;
+            auto tree = parser::Parse(
+                input.View(),
+                [&] (parser::ParseError) {
+                    ++errors;
+                });
+            EXPECT_EQ(errors, 0u);
+            const auto expressions =
+                LambdaOwnershipNodes(tree.Root(), lambda ? ExpressionStatement : AmbiguousStatement);
+            ASSERT_EQ(expressions.size(), 1u);
+            EXPECT_EQ(tree.SourceText(expressions[0]->Tokens), "Hidden * x;");
+        }
+    }
+}
+
 TEST(Parser, MalformedExplicitTemplatePrefixesStayLocallyUncertain)
 {
     using enum parser::NodeKind;
