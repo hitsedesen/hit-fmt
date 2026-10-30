@@ -193,7 +193,7 @@ void Receive()
 
 void Schedule()
 {
-    return BIND([=, this, self = Hold(this), task = std::forward<Task>(task), ...items = std::move(items)] {
+    return BIND([=, this, self = Hold(this), task = std::forward<Task>(task), ... items = std::move(items)] {
         return Dispatch(std::move(task), std::forward<Items>(items)...);
     })
         .AsyncVia(executor)

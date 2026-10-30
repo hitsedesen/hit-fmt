@@ -4768,12 +4768,22 @@ private:
             (gap.Shape == Boundary::Conditional && gap.Broken != document::GapKind::Flat);
     }
 
-    bool KeepsFlatSpacing(Index i) const
+    bool PreservesBoundarySpacing(Index i) const
     {
         const auto& spacing = Spacing_.Gaps()[i];
-        return Gaps_[i].KeepFlatSpacing ||
-            ((spacing.Field == SpacingField::DeclarationSpecifierSpacing ||
-                spacing.Field == SpacingField::DeclarationNameSpacing) && spacing.Policy == GapPolicy::Preserve);
+        switch (spacing.Field) {
+#define PRESERVED_BOUNDARY(type, name, initial) case SpacingField::name:
+            FORMATTER_SYNTAX_BOUNDARY_GAP_OPTIONS(PRESERVED_BOUNDARY)
+#undef PRESERVED_BOUNDARY
+                return spacing.Policy == GapPolicy::Preserve;
+            default:
+                return false;
+        }
+    }
+
+    bool KeepsFlatSpacing(Index i) const
+    {
+        return Gaps_[i].KeepFlatSpacing || PreservesBoundarySpacing(i);
     }
 
     std::optional<bool> SpacePreference(
@@ -4832,9 +4842,6 @@ private:
         if (RetainsBareCR(i)) {
             return HorizontalColumns(Safety_.Original(i), Options_.TabWidth);
         }
-        if (Gaps_[i].ControlSeparator) {
-            return 1;
-        }
         if (const auto count = TrailingCommentCount(i)) {
             return *count;
         }
@@ -4842,7 +4849,7 @@ private:
         if (preference) {
             return *preference ? 1 : 0;
         }
-        if (Gaps_[i].SpaceFallback) {
+        if ((Gaps_[i].SpaceFallback || Gaps_[i].ControlSeparator) && !PreservesBoundarySpacing(i)) {
             return 1;
         }
         const auto& source = Safety_.Gaps()[i];

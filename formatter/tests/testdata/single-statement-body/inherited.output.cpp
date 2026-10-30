@@ -18,7 +18,7 @@ struct Worker {
 int Recover() try { return Read(); } catch (...) { return 0; }
 void Branch(bool ready) {
     if (ready) { Clear(); } else { Notify(); }
-    if (ready)Clear();
+    if (ready) Clear();
     else Notify();
     if (ready) {
         Clear();
@@ -29,13 +29,13 @@ void Branch(bool ready) {
     }
     if (ready) [[likely]] { Clear(); }
     for (int i = 0; i < 2; ++i) { Tick(); }
-    for (auto item : items)Use(item);
+    for (auto item : items) Use(item);
     while (ready) { Tick(); }
     do { Tick(); } while (ready);
     do Tick();
     while (ready);
     if (ready)
-        while (ready)Tick();
+        while (ready) Tick();
     switch (value) {
         case 1: { Tick(); }
         default:

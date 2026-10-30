@@ -16,7 +16,7 @@ void h() {
 }
 
 void i() {
-  if (ready)first();
+  if (ready) first();
   else
   { second(); }
 }

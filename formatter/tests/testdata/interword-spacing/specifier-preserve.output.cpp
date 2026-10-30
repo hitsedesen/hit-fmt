@@ -2,7 +2,7 @@
 
 template<class T> struct Box {
 };
-template<class... Items> void Pack(Items...   items);
+template<class... Items> void Pack(Items... items);
 Box<int> boxed;
 decltype(new   Widget) pointer;
 int* const   volatile qualified = nullptr;
@@ -17,7 +17,7 @@ Widget object;
 const	volatile	int flags = 0;
 
 const   Widget Convert(const   Widget input) {
-    return input;
+    return   input;
 }
 
 void Literals() {

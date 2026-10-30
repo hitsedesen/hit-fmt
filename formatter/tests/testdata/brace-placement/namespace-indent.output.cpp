@@ -1,19 +1,19 @@
 namespace /* note
-  continued */Small
+  continued */ Small
 {
   void Work();
 }
 namespace /* note
- continued */Shallow {
+ continued */ Shallow {
   void Work();
 }
 namespace /* note
-    continued */Preserved
+    continued */ Preserved
 {
   void Work();
 }
 namespace /* note
-    continued */Deep
+    continued */ Deep
 {
   void Work();
 }

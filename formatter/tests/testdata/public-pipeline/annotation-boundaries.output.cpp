@@ -29,7 +29,7 @@ struct C {
   }
   int g(int n) [[maybe_unused]];
 };
-int(grouped)(int n) {
+int (grouped)(int n) {
   return n;
 }
 int (*pointer(int n))(int);

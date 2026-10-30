@@ -40,12 +40,12 @@ void Loop(bool ready) {
     }
 }
 void Unbraced(bool ready) {
-    if (ready)Clear();
+    if (ready) Clear();
     else Notify();
 }
 void NestedControl(bool ready) {
     if (ready)
-        while (ready)Clear();
+        while (ready) Clear();
 }
 void Labeled() {
     done:

@@ -17,7 +17,7 @@ Widget   object;
 const	volatile	int	flags = 0;
 
 const   Widget   Convert(const   Widget   input) {
-    return input;
+    return   input;
 }
 
 void Literals() {
