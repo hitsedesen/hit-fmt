@@ -59,3 +59,17 @@ void value_packs()
     auto undecided = Check<Values...> && true;
     auto comparisons = ((lower < Values) && ...);
 }
+
+template<class T, class... Types>
+void qualified_arguments()
+{
+    auto reference = Ready<const T&>;
+    auto pointer = Ready<T* const>;
+    auto rvalue = Ready<volatile T&&>;
+    auto second = Ready<0, const T&>;
+    auto pack = Ready<Types&...>;
+    auto nested = Ready<const Box<T>&>;
+    auto fundamental = Ready<const int*>;
+    auto comparison = lower < value & mask > upper;
+    auto shadow = [] (int First) { return lower < First & mask > upper; };
+}
