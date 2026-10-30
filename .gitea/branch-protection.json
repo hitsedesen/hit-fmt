@@ -1,0 +1,7 @@
+{
+  "rule_name": "main",
+  "enable_push": false,
+  "enable_force_push": false,
+  "required_approvals": 0,
+  "block_on_codeowner_reviews": true
+}
