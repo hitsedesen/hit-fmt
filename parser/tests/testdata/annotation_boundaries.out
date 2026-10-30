@@ -216,7 +216,11 @@
               (function-qualifier "const")
               (function-qualifier "volatile")
               (function-qualifier "&")
-              (exception-specification "noexcept" "(" "true" ")")
+              (exception-specification
+                "noexcept" "("
+                (literal-expression "true")
+                ")"
+              )
               (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
               (function-qualifier "override")
             )

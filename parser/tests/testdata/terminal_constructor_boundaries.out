@@ -123,7 +123,20 @@
                   )
                   ")"
                 )
-                (exception-specification "noexcept" "(" "check" "(" "p" ")" ")")
+                (exception-specification
+                  "noexcept" "("
+                  (call-expression
+                    (identifier-expression "check")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "p")
+                      )
+                      ")"
+                    )
+                  )
+                  ")"
+                )
                 "(" ")"
               )
             )
@@ -274,7 +287,20 @@
                   )
                   ")"
                 )
-                (exception-specification "noexcept" "(" "check" "(" "p" ")" ")")
+                (exception-specification
+                  "noexcept" "("
+                  (call-expression
+                    (identifier-expression "check")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "p")
+                      )
+                      ")"
+                    )
+                  )
+                  ")"
+                )
               )
             )
           )

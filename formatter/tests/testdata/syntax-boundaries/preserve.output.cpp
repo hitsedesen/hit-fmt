@@ -13,6 +13,17 @@ struct Derived final: public   virtual   Base<int>, virtual   protected   Other 
 enum class E : unsigned { A };
 template<typename T, class ...   Rest> struct Pack {
 };
+template<class T> concept Constraint = true;
+template<Constraint   T> void Constrained(T value) {
+}
+template< ::Names::Constraint<Box<int>>   T /* default */ = int> struct Qualified {
+};
+template<Constraint...   Ts> struct ConstrainedPack {
+};
+template<Constraint   T = Box<const int>> struct Defaulted {
+};
+template<Constraint T> requires Constraint<const   T&> void Required(T value) {
+}
 template<template<class> class C, typename... Ts> void F(Ts ...   args) {
     auto fn = [args...]() {
         return 1;

@@ -325,7 +325,34 @@
             (declarator-name "QualifiedCallback")
             (function-declarator
               (parameter-list "(" ")")
-              (exception-specification "noexcept" "(" "noexcept" "(" "[" "]" "{" "return" "1" ";" "}" "(" ")" ")" ")")
+              (exception-specification
+                "noexcept" "("
+                (call-expression
+                  (expression "noexcept")
+                  (argument-list
+                    "("
+                    (argument
+                      (call-expression
+                        (lambda-expression
+                          (lambda-capture-list "[" "]")
+                          (lambda-body
+                            "{"
+                            (return-statement
+                              "return"
+                              (literal-expression "1")
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                        (argument-list "(" ")")
+                      )
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
               (constructor-initializer-list
                 ":"
                 (constructor-initializer
@@ -1130,7 +1157,35 @@
           (declarator-name "query")
           (function-declarator
             (parameter-list "(" ")")
-            (exception-specification "noexcept" "(" "noexcept" "(" "check" "(" "1" "?" "2" ":" "3" ")" ")" ")")
+            (exception-specification
+              "noexcept" "("
+              (call-expression
+                (expression "noexcept")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (identifier-expression "check")
+                      (argument-list
+                        "("
+                        (argument
+                          (conditional-expression
+                            (literal-expression "1")
+                            "?"
+                            (literal-expression "2")
+                            ":"
+                            (literal-expression "3")
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
             (trailing-return-type "->" "int")
           )
         )

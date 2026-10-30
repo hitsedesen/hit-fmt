@@ -1046,7 +1046,9 @@
                   (identifier-expression "Ready")
                   (template-argument-list
                     "<"
-                    (template-argument "const" "T" "&")
+                    (template-argument
+                      (type-id "const" "T" "&")
+                    )
                     ">"
                   )
                 )
@@ -1090,7 +1092,9 @@
                   (identifier-expression "Ready")
                   (template-argument-list
                     "<"
-                    (template-argument "volatile" "T" "&&")
+                    (template-argument
+                      (type-id "volatile" "T" "&&")
+                    )
                     ">"
                   )
                 )
@@ -1114,7 +1118,9 @@
                     "<"
                     (template-argument "0")
                     (list-separator ",")
-                    (template-argument "const" "T" "&")
+                    (template-argument
+                      (type-id "const" "T" "&")
+                    )
                     ">"
                   )
                 )
@@ -1159,13 +1165,15 @@
                   (template-argument-list
                     "<"
                     (template-argument
-                      "const" "Box"
-                      (template-argument-list
-                        "<"
-                        (template-argument "T")
-                        ">"
+                      (type-id
+                        "const" "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "T")
+                          ">"
+                        )
+                        "&"
                       )
-                      "&"
                     )
                     ">"
                   )
@@ -1188,7 +1196,9 @@
                   (identifier-expression "Ready")
                   (template-argument-list
                     "<"
-                    (template-argument "const" "int" "*")
+                    (template-argument
+                      (type-id "const" "int" "*")
+                    )
                     ">"
                   )
                 )
