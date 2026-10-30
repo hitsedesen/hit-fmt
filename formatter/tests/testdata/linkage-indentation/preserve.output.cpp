@@ -15,11 +15,11 @@ namespace Bridge {
     }
     }
 }
-        extern "C" {
+extern "C" {
 #if ENABLED
-        void Conditional();
+void Conditional();
 #endif
-        }
+}
 extern "C" {} // Empty linkage.
 extern "C" { void Inline(); }
 extern "C" void Single();

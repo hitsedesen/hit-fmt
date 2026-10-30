@@ -3036,21 +3036,18 @@ private:
             }
             if (!Syntax_[child].Safe) {
                 const auto last = LastChild_[child];
-                if (Syntax_[child].ItemSequence ||
-                    (last != None && Syntax_[last].ItemSequence &&
+                if (!Syntax_[child].ItemSequence &&
+                    !(last != None && Syntax_[last].ItemSequence &&
                         Region(Syntax_[last]).Kind == NodeKind::CompoundStatement))
                 {
-                    // Recovery inside a bounded declaration body does not
-                    // change the root level of its following declarations.
-                    continue;
+                    // An opaque top-level run may generate a scope. Without
+                    // its grammar, later declarations have no known root level.
+                    return;
                 }
-                // An opaque top-level run may generate a scope. Without its
-                // grammar, later declarations cannot establish a root level.
-                return;
             }
-            if (DeclarationItem(part.Kind)) {
-                // All proven root declarations share the zero structural
-                // base, not just the first declaration in the file.
+            if (DeclarationItem(part.Kind) && Syntax_[child].IndentSafe) {
+                // Recovery inside a bounded body does not change the root
+                // level of its declaration or the declarations following it.
                 Reindent(part.Tokens.Begin, None);
             }
         }
