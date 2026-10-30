@@ -672,7 +672,9 @@
                       (identifier-expression "Build")
                       (template-argument-list
                         "<"
-                        (template-argument "const" "Type" "*" "[" "extent" "(" "1" "," "2" ")" "]" "[" "3" "]")
+                        (template-argument
+                          (type-id "const" "Type" "*" "[" "extent" "(" "1" "," "2" ")" "]" "[" "3" "]")
+                        )
                         ">"
                       )
                     )

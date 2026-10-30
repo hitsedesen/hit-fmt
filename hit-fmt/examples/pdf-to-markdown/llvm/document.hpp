@@ -75,8 +75,8 @@ concept TextSink = requires(T &Sink,
 template<TextSink SinkType, class... PartTypes>
     requires (std::convertible_to<const PartTypes&, std::string_view> && ...)
 void appendParts(SinkType &Sink,
-                 const PartTypes &... Parts)
-noexcept ((noexcept(Sink.append(Parts)) && ...)) { (Sink.append(Parts), ...); }
+                 const PartTypes &... Parts) noexcept ((noexcept(Sink.append(
+                     Parts)) && ...)) { (Sink.append(Parts), ...); }
 
 class Converter {
 public:

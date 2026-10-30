@@ -1155,7 +1155,24 @@
                               )
                               ")"
                             )
-                            (exception-specification "noexcept" "(" "noexcept" "(" "n" "," "n" ")" ")")
+                            (exception-specification
+                              "noexcept" "("
+                              (call-expression
+                                (expression "noexcept")
+                                (argument-list
+                                  "("
+                                  (argument
+                                    (identifier-expression "n")
+                                  )
+                                  (list-separator ",")
+                                  (argument
+                                    (identifier-expression "n")
+                                  )
+                                  ")"
+                                )
+                              )
+                              ")"
+                            )
                           )
                         )
                       )

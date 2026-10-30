@@ -203,7 +203,11 @@
               ")"
             )
             (function-qualifier "mutable")
-            (exception-specification "noexcept" "(" "true" ")")
+            (exception-specification
+              "noexcept" "("
+              (literal-expression "true")
+              ")"
+            )
             (trailing-return-type "->" "int")
             (lambda-body
               "{"
@@ -238,7 +242,25 @@
           (lambda-expression
             (lambda-capture-list "[" "]")
             (parameter-list "(" ")")
-            (exception-specification "noexcept" "(" "noexcept" "(" "Item" "{" "}" ")" ")")
+            (exception-specification
+              "noexcept" "("
+              (call-expression
+                (expression "noexcept")
+                (argument-list
+                  "("
+                  (argument
+                    (type-construction-expression
+                      (identifier-expression "Item")
+                      (braced-initializer
+                        (initializer-list "{" "}")
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
             (trailing-return-type
               "->"
               (type-id

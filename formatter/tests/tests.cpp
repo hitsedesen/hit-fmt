@@ -1329,7 +1329,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({closings, "trailing-removed", "trailing-removed.input.cpp"});
     cases.push_back({closings, "trailing-only", "trailing-layout.input.cpp"});
     cases.push_back({closings, "trailing-new-line", "trailing-layout.input.cpp"});
-    AddCases(cases, data / "fold-spacing", {"yt-like", "inherited", "group-space"});
+    AddCases(cases, data / "fold-spacing", {"yt-like", "inherited", "group-space", "no-space", "preserve"});
     const auto profile = (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
     auto addProfileCase = [&] (const char* directory, const char* name) {
         cases.push_back({

@@ -25,3 +25,11 @@ void Literals() {
     const   char* joined = "left" "right";
     const /* keep   this */ int value = 1;
 }
+
+template<class T> concept Constraint = true;
+template<class T> requires Constraint<const   T&> void Required(T value);
+template<class T> void Trailing(T value) requires Constraint<volatile   T*>;
+template<class T> concept Checked = requires {
+    requires Constraint<const   volatile   T&>;
+};
+template<class T> requires Constraint<decltype(new   T)> void Expression(T value);

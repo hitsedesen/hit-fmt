@@ -1371,7 +1371,20 @@ private:
             return;
         }
         if (kind == NodeKind::TemplateArgument || kind == NodeKind::TemplateParameter) {
-            AddTypeSyntaxChildren(element, begin, end);
+            const auto first = NextSignificant(begin);
+            const auto second = NextSignificant(first + 1);
+            // Multiword type prefixes need an owner for specifier spacing.
+            // Nested type syntax already contributes its own nodes.
+            if (kind == NodeKind::TemplateArgument && second < end && IsWordToken(Kind(first)) &&
+                IsWordToken(Kind(second)) && LooksLikeTypeId(begin, end))
+            {
+                auto* type = MakeNode(NodeKind::TypeId, begin);
+                type->Tokens.End = end;
+                AddTypeSyntaxChildren(*type, begin, end);
+                Append(element, *type);
+            } else {
+                AddTypeSyntaxChildren(element, begin, end);
+            }
             return;
         }
         if (kind != NodeKind::Enumerator) {
@@ -3650,6 +3663,9 @@ private:
                 }
                 auto* exception = MakeNode(NodeKind::ExceptionSpecification, index);
                 exception->Tokens.End = exceptionEnd;
+                if (exceptionEnd > opening + 1) {
+                    AddExpressionRange(*exception, opening + 1, exceptionEnd - 1);
+                }
                 Append(function, *exception);
                 index = NextSignificant(exceptionEnd);
                 continue;
@@ -6605,6 +6621,9 @@ private:
                 }
                 auto* specification = MakeNode(NodeKind::ExceptionSpecification, cursor);
                 specification->Tokens.End = specificationEnd;
+                if (specificationEnd > opening + 1) {
+                    AddExpressionRange(*specification, opening + 1, specificationEnd - 1);
+                }
                 Append(*lambda, *specification);
                 cursor = ArgumentSignificant(specificationEnd, end);
                 continue;

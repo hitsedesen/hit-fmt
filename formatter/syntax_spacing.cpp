@@ -1188,10 +1188,24 @@ public:
                     C::DeclarationHeaders,
                     1);
             }
-            if (node.Kind == NK::TemplateParameter && i > node.Tokens.Begin && kind == TK::Identifier &&
-                (Tree_.Kind(i - 1) == TK::Keyword_class || Tree_.Kind(i - 1) == TK::Keyword_typename))
-            {
-                Mark(i, F::TemplateParameterNameSpacing, owner, C::TemplateParameters, 1, true);
+            if (node.Kind == NK::TemplateParameter && i > node.Tokens.Begin && kind == TK::Identifier) {
+                auto before = i;
+                while (before > node.Tokens.Begin && Tree_.Kind(before - 1) == TK::Comment) {
+                    --before;
+                }
+                auto after = i + 1;
+                while (after < node.Tokens.End && Tree_.Kind(after) == TK::Comment) {
+                    ++after;
+                }
+                const auto previous = before > node.Tokens.Begin ? Tree_.Kind(before - 1) : TK::EndOfFile;
+                const bool constrained = (Tree_.Kind(node.Tokens.Begin) == TK::Identifier ||
+                    Tree_.Kind(node.Tokens.Begin) == TK::Operator_ScopeResolution) &&
+                    (previous == TK::Identifier ||
+                        (before > node.Tokens.Begin && Tree_.Role(before - 1) == PR::TemplateDelimiter)) &&
+                    (after == node.Tokens.End || Tree_.Kind(after) == TK::Operator_Assign);
+                if (previous == TK::Keyword_class || previous == TK::Keyword_typename || constrained) {
+                    Mark(i, F::TemplateParameterNameSpacing, owner, C::TemplateParameters, 1, true);
+                }
             }
             if ((node.Kind == NK::IfStatement && kind == TK::Keyword_else) ||
                 (node.Kind == NK::DoWhileStatement && kind == TK::Keyword_while))

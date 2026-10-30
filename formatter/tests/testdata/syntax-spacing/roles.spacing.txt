@@ -78,6 +78,9 @@
 80 before=noexcept field=NoexceptSpaceBeforeSpecifier owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
 81 before=( field=NoexceptSpaceBeforeParentheses owner=exception-specification category=10 priority=4 fallback=1 protected=0 constraint=0
 82 before=noexcept field=NoexceptSpecifierInteriorSpacing owner=exception-specification category=10 priority=2 fallback=0 protected=0 constraint=0
+83 before=( field=NoexceptSpaceBeforeParentheses owner=call-expression category=8 priority=4 fallback=1 protected=0 constraint=0
+84 before=value field=GroupingInteriorSpacing owner=call-expression category=8 priority=3 fallback=0 protected=0 constraint=0
+85 before=) field=GroupingInteriorSpacing owner=call-expression category=8 priority=3 fallback=0 protected=0 constraint=0
 86 before=) field=NoexceptSpecifierInteriorSpacing owner=exception-specification category=10 priority=2 fallback=0 protected=0 constraint=0
 87 before=override field=FunctionSuffixSpecifierSpacing owner=function-declarator category=10 priority=3 fallback=1 protected=0 constraint=0
 88 before=; field=DeclarationSemicolonSpacing owner=function-declaration category=10 priority=3 fallback=0 protected=0 constraint=0
