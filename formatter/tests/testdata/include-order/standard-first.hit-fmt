@@ -1,0 +1,6 @@
+include = "system-regroup.hit-fmt"
+IncludeGroups = [
+    {StandardHeaders = true, Prefixes = ["stdio.h", "stdint.h"], Priority = -1},
+    {Prefix = "project/", Priority = 0},
+    {Prefix = "", Priority = 1}
+]

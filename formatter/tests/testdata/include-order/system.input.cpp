@@ -7,3 +7,8 @@
 #include <sys/types.h>
 #include "project/api.h"
 #include <vendor_api>
+#include <unknown_project/header.h>
+#include <stdio.h>
+#include <userver/example.hpp>
+#include <stdint.h>
+#include <project/detail.hpp>

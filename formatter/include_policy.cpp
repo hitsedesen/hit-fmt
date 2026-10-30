@@ -39,16 +39,12 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
             throw std::invalid_argument("IncludeGroups Depth must be an integer from 0 to 127");
         }
         if (group.StandardHeaders) {
-            if (!group.Prefixes.empty()) {
-                throw std::invalid_argument("IncludeGroups StandardHeaders cannot be combined with Prefix or Prefixes");
-            }
             if (standardHeaders) {
                 throw std::invalid_argument("IncludeGroups has duplicate StandardHeaders rule");
             }
             standardHeaders = true;
-            continue;
         }
-        if (group.Prefixes.empty()) {
+        if (group.Prefixes.empty() && !group.StandardHeaders) {
             throw std::invalid_argument("IncludeGroups requires Prefix, nonempty Prefixes or StandardHeaders = true");
         }
         for (const auto& prefix : group.Prefixes) {
@@ -57,11 +53,9 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
                     throw std::invalid_argument(
                         "IncludeGroups empty fallback prefix must be " "the group's only prefix");
                 }
-            } else if (prefix.back() != '/' || prefix.find('\\') != std::string::npos ||
-                !NormalizedRelativePath(prefix))
-            {
-                throw std::invalid_argument("IncludeGroups requires normalized relative directory "
-                    "prefixes ending in / (no empty, . or .. components " "or backslashes)");
+            } else if (prefix.find('\\') != std::string::npos || !NormalizedRelativePath(prefix)) {
+                throw std::invalid_argument("IncludeGroups requires normalized relative header names or directory "
+                    "prefixes (no empty, . or .. components or backslashes)");
             }
             prefixes.push_back(prefix);
         }
@@ -100,8 +94,10 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
             groups[group].Priority,
         });
         for (const auto& prefix : groups[group].Prefixes) {
+            const auto slash = prefix.rfind('/');
             Prefixes_.push_back({
                 prefix,
+                slash == std::string::npos ? 0 : slash + 1,
                 static_cast<std::size_t>(
                     std::count(prefix.begin(), prefix.end(), '/')),
                 group,
@@ -183,7 +179,12 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
         : GroupCount();
     auto result = [&] (std::size_t prefix) -> Match {
         const auto group = prefix < Prefixes_.size() ? Prefixes_[prefix].Group : GroupCount();
-        return standard < group ? Match{standard, Prefixes_.size(), true} : Match{group, prefix};
+        const auto selected = std::min(standard, group);
+        return {
+            selected,
+            standard < group ? Prefixes_.size() : prefix,
+            selected < GroupCount() && selected == StandardGroup_,
+        };
     };
     if (Nodes_.empty()) {
         return result(Prefixes_.size());
@@ -210,7 +211,12 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
                 break;
             }
             node = edge->Child;
-            match = std::min(match, Nodes_[node].Prefix);
+            const auto candidate = Nodes_[node].Prefix;
+            if (candidate < Prefixes_.size() &&
+                (Prefixes_[candidate].Text.ends_with('/') || Prefixes_[candidate].Text.size() == path.size()))
+            {
+                match = std::min(match, candidate);
+            }
         }
     }
     return result(match);
@@ -238,7 +244,10 @@ std::string_view PreparedIncludeGroups::Prefix(std::size_t prefix) const noexcep
 
 std::string_view PreparedIncludeGroups::CanonicalPrefix(std::size_t group) const noexcept
 {
-    return group < GroupCount() ? Prefix(Groups_[group].FirstPrefix) : std::string_view{};
+    const auto prefix = group < GroupCount() ? Groups_[group].FirstPrefix : Prefixes_.size();
+    return prefix < Prefixes_.size()
+        ? std::string_view(Prefixes_[prefix].Text).substr(0, Prefixes_[prefix].DirectoryLength)
+        : std::string_view{};
 }
 
 } // namespace formatter

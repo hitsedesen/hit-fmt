@@ -30,7 +30,7 @@ bool IsStandardInclude(std::string_view path, bool angled) noexcept;
 
 // Owns grouping metadata for read-only reuse across files. Rule order controls
 // matching and optional configured sorting within each priority tier. The
-// first prefix represents a group's ordering path for directory sorting.
+// first selector's directory represents a group's ordering path for directory sorting.
 class PreparedIncludeGroups
 {
 public:
@@ -43,9 +43,10 @@ public:
 
     explicit PreparedIncludeGroups(std::span<const IncludeGroupRule> groups);
 
-    // Explicit prefixes match normalized relative literal spelling only.
-    // An empty-prefix fallback matches any spelling. Standard rules require
-    // an angled include. First matching rule/prefix wins.
+    // Selectors ending in / match directory prefixes; other nonempty selectors
+    // match exact normalized relative header spelling, quoted or angled.
+    // An empty fallback matches any spelling. StandardHeaders adds angled names
+    // from IsStandardInclude. First matching rule/selector wins.
     [[nodiscard]] Match Classify(std::string_view path, bool angled = false) const noexcept;
 
     [[nodiscard]] std::size_t GroupCount() const noexcept
@@ -57,6 +58,7 @@ public:
     [[nodiscard]] std::int8_t Priority(std::size_t group) const noexcept;
     [[nodiscard]] std::size_t PrefixDepth(std::size_t prefix) const noexcept;
     [[nodiscard]] std::string_view Prefix(std::size_t prefix) const noexcept;
+    // Ordering directory only; exact header selectors omit their filename.
     [[nodiscard]] std::string_view CanonicalPrefix(std::size_t group) const noexcept;
 
 private:
@@ -70,6 +72,7 @@ private:
     struct PrefixEntry
     {
         std::string Text;
+        std::size_t DirectoryLength;
         std::size_t Depth;
         std::size_t Group;
     };

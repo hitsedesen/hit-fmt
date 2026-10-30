@@ -243,7 +243,8 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
         }
         expect('{');
         IncludeGroupRule group;
-        bool selector = false;
+        bool prefixes = false;
+        bool standard = false;
         bool depth = false;
         bool priority = false;
         while (true) {
@@ -257,24 +258,23 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
             value.remove_prefix(name.size());
             expect('=');
             const auto field = fieldValue();
-            if (name == "Prefix" || name == "Prefixes" || name == "StandardHeaders") {
-                if (selector) {
-                    ThrowConfigError(
-                        path,
-                        line,
-                        "IncludeGroups requires exactly one Prefix, Prefixes or StandardHeaders field");
+            if (name == "Prefix" || name == "Prefixes") {
+                if (prefixes) {
+                    ThrowConfigError(path, line, "IncludeGroups requires at most one Prefix or Prefixes field");
                 }
-                selector = true;
-                if (name == "StandardHeaders") {
-                    if (field != "true") {
-                        ThrowConfigError(path, line, "IncludeGroups StandardHeaders must be true");
-                    }
-                    group.StandardHeaders = true;
-                } else {
-                    group.Prefixes = name == "Prefix"
-                        ? std::vector<std::string>{ParseString(field, path, line)}
-                        : ParseStringList(field, path, line);
+                prefixes = true;
+                group.Prefixes = name == "Prefix"
+                    ? std::vector<std::string>{ParseString(field, path, line)}
+                    : ParseStringList(field, path, line);
+            } else if (name == "StandardHeaders") {
+                if (standard) {
+                    ThrowConfigError(path, line, "IncludeGroups has duplicate StandardHeaders field");
                 }
+                standard = true;
+                if (field != "true") {
+                    ThrowConfigError(path, line, "IncludeGroups StandardHeaders must be true");
+                }
+                group.StandardHeaders = true;
             } else if (name == "Depth") {
                 if (depth) {
                     ThrowConfigError(path, line, "IncludeGroups has duplicate Depth field");
@@ -302,7 +302,7 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
             }
             expect(',');
         }
-        if (!selector) {
+        if (!prefixes && !standard) {
             ThrowConfigError(path, line, "IncludeGroups requires Prefix, Prefixes or StandardHeaders = true");
         }
         result.push_back(std::move(group));

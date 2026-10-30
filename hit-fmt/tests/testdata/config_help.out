@@ -528,14 +528,18 @@ Include sorting
   Regroup merges across blanks by rule; Directory groups by directory.
   Regroup/Directory insert one blank line, conflicting with MaxEmptyLines
   = 0. Preserve ignores group rules; Regroup ignores Depth.
-- IncludeGroups uses one selector: Prefix, Prefixes or StandardHeaders = true,
+- IncludeGroups uses Prefix or Prefixes, StandardHeaders = true, or both,
   with Depth (default 127) and Priority (default 0). First matching rule wins.
-  Prefixes must be unique relative directories ending in /; a sole empty
-  Prefix is a fallback.
+  Entries ending in / match directory prefixes; other nonempty entries
+  match exact header names, quoted or angled. Entries must be unique,
+  normalized relative paths; a sole empty Prefix is a fallback.
   Depth: 0 keeps a rule together; 1..126 limits suffix directory depth;
   127 keeps full directories. Aliases merge groups without rewriting paths.
+  Exact-name aliases use their containing directories for grouping.
 - StandardHeaders = true selects angled names with neither / nor .h,
   using the same lexical heuristic as IncludeStandardHeaders = Last.
+  Prefix or Prefixes adds headers to that group, for example
+  {StandardHeaders = true, Prefixes = ["stdio.h", "stdint.h"]}.
   A matched standard group overrides Last and uses ordinary group ordering;
   it stays alphabetical and ignores Depth. At most one such rule is allowed.
   Put it before an empty-prefix fallback, which otherwise claims its headers.
@@ -553,7 +557,7 @@ Include sorting
 - IncludeStandardHeaders = Last adds a final alphabetical group for angled
   names with neither / nor .h, unless matched by a StandardHeaders rule.
   This includes extensionless vendor names; quoted names and stdio.h do not
-  qualify. Preserve applies ordinary category and group sorting.
+  qualify automatically. Preserve applies ordinary category and group sorting.
 - Comments, macros, conditionals, protection and mixed line endings stop
   blocks. Attached-comment blocks stay exact; hunks must cover a whole
   block. Check mode reports one include-order failure per file.
@@ -574,17 +578,19 @@ Group headers by directory
     ]
     # library/core/a.hpp and library/core/detail/b.hpp share a group.
 
-Put standard headers before system headers
+Put standard headers before unknown projects and system headers
     Layout = Canonical
     IncludeOrder = Sort
     IncludeGrouping = Directory
     IncludeGroups = [
         { Prefix = "project/", Priority = 0 },
-        { StandardHeaders = true, Priority = 1 },
+        { StandardHeaders = true, Prefixes = ["stdio.h", "stdint.h"],
+          Priority = 1 },
         { Prefix = "", Priority = 2 }
     ]
     # Project headers precede standard headers, then system headers.
-    # <vector> precedes <Windows.h>, with a blank line between the groups.
+    # <stdio.h> and <vector> precede <unknown_project/header.h> and <Windows.h>.
+    # To put standard headers first, give their rule Priority = -1.
 
 Order project groups first
     IncludeOrder = Sort
