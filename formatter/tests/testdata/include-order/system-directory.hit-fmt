@@ -1,0 +1,8 @@
+Layout = Canonical
+IncludeOrder = Sort
+IncludeGrouping = Directory
+IncludeStandardHeaders = Last
+IncludeGroups = [{StandardHeaders = true}]
+IncludeMatchingHeader = First
+IncludeCategoryOrder = QuotedFirst
+IncludeInGroupOrder = NearestFirst

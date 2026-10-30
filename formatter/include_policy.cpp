@@ -33,12 +33,23 @@ bool NormalizedRelativePath(std::string_view path) noexcept
 void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
 {
     std::vector<std::string_view> prefixes;
+    bool standardHeaders = false;
     for (const auto& group : groups) {
         if (group.Depth < 0) {
             throw std::invalid_argument("IncludeGroups Depth must be an integer from 0 to 127");
         }
+        if (group.StandardHeaders) {
+            if (!group.Prefixes.empty()) {
+                throw std::invalid_argument("IncludeGroups StandardHeaders cannot be combined with Prefix or Prefixes");
+            }
+            if (standardHeaders) {
+                throw std::invalid_argument("IncludeGroups has duplicate StandardHeaders rule");
+            }
+            standardHeaders = true;
+            continue;
+        }
         if (group.Prefixes.empty()) {
-            throw std::invalid_argument("IncludeGroups requires a Prefix or nonempty Prefixes array");
+            throw std::invalid_argument("IncludeGroups requires Prefix, nonempty Prefixes or StandardHeaders = true");
         }
         for (const auto& prefix : group.Prefixes) {
             if (prefix.empty()) {
@@ -61,7 +72,13 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
     }
 }
 
+bool IsStandardInclude(std::string_view path, bool angled) noexcept
+{
+    return angled && path.find('/') == std::string_view::npos && path.find(".h") == std::string_view::npos;
+}
+
 PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> groups)
+    : StandardGroup_(groups.size())
 {
     ValidateIncludeGroups(groups);
     if (groups.empty()) {
@@ -74,7 +91,14 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     Groups_.reserve(groups.size());
     Prefixes_.reserve(count);
     for (std::size_t group = 0; group < groups.size(); ++group) {
-        Groups_.push_back({Prefixes_.size(), groups[group].Depth, groups[group].Priority});
+        if (groups[group].StandardHeaders) {
+            StandardGroup_ = group;
+        }
+        Groups_.push_back({
+            groups[group].StandardHeaders ? count : Prefixes_.size(),
+            groups[group].StandardHeaders ? std::int8_t{0} : groups[group].Depth,
+            groups[group].Priority,
+        });
         for (const auto& prefix : groups[group].Prefixes) {
             Prefixes_.push_back({
                 prefix,
@@ -152,15 +176,22 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     }
 }
 
-PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view path) const noexcept
+PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view path, bool angled) const noexcept
 {
+    const auto standard = StandardGroup_ < GroupCount() && IsStandardInclude(path, angled)
+        ? StandardGroup_
+        : GroupCount();
+    auto result = [&] (std::size_t prefix) -> Match {
+        const auto group = prefix < Prefixes_.size() ? Prefixes_[prefix].Group : GroupCount();
+        return standard < group ? Match{standard, Prefixes_.size(), true} : Match{group, prefix};
+    };
     if (Nodes_.empty()) {
-        return {GroupCount(), Prefixes_.size()};
+        return result(Prefixes_.size());
     }
     auto match = Nodes_.front().Prefix; // An explicit empty-prefix fallback.
-    if (match == 0) {
-        // A first-rule fallback needs neither validation nor trie traversal.
-        return {Prefixes_.front().Group, 0};
+    if (match == 0 && !Prefixes_.empty()) {
+        // A leading prefix fallback needs neither validation nor trie traversal.
+        return result(0);
     }
     if (NormalizedRelativePath(path)) {
         std::size_t node = 0;
@@ -182,7 +213,7 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
             match = std::min(match, Nodes_[node].Prefix);
         }
     }
-    return {match < Prefixes_.size() ? Prefixes_[match].Group : GroupCount(), match};
+    return result(match);
 }
 
 std::int8_t PreparedIncludeGroups::Depth(std::size_t group) const noexcept

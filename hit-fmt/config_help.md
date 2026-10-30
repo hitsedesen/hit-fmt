@@ -401,16 +401,22 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
   Header inputs or missing source filenames disable pairing.
 - IncludeCategoryOrder: QuotedFirst (default) or AngledFirst orders quoted
   and angled headers in every grouping mode. Matching headers stay first
-  and IncludeStandardHeaders = Last keeps standard headers last.
+  and IncludeStandardHeaders = Last keeps unclaimed standard headers last.
 - IncludeGrouping: Preserve keeps adjacent blocks and blank lines;
   Regroup merges across blanks by rule; Directory groups by directory.
   Regroup/Directory insert one blank line, conflicting with MaxEmptyLines
   = 0. Preserve ignores group rules; Regroup ignores Depth.
-- IncludeGroups uses Prefix or Prefixes, Depth (default 127) and Priority
-  (default 0). First matching prefix wins. Prefixes must be unique relative
-  directories ending in /; a sole empty Prefix is a fallback.
+- IncludeGroups uses one selector: Prefix, Prefixes or StandardHeaders = true,
+  with Depth (default 127) and Priority (default 0). First matching rule wins.
+  Prefixes must be unique relative directories ending in /; a sole empty
+  Prefix is a fallback.
   Depth: 0 keeps a rule together; 1..126 limits suffix directory depth;
   127 keeps full directories. Aliases merge groups without rewriting paths.
+- StandardHeaders = true selects angled names with neither / nor .h,
+  using the same lexical heuristic as IncludeStandardHeaders = Last.
+  A matched standard group overrides Last and uses ordinary group ordering;
+  it stays alphabetical and ignores Depth. At most one such rule is allowed.
+  Put it before an empty-prefix fallback, which otherwise claims its headers.
 - Priority: -128..127, lower first within quoted/angled categories.
   IncludeGroupOrder: Directory or Configured (rule order); unmatched
   groups use priority 0 and follow matched groups in a configured tier.
@@ -418,12 +424,14 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 - IncludeDirectoryOrder and IncludeInGroupOrder choose NearestFirst or
   Alphabetical. Distance counts parent/child steps from the input directory;
   ties are alphabetical. In-group distance ignores Depth and aliases.
-  Paired and final standard-header groups stay alphabetical.
+  Paired and standard-header groups stay alphabetical.
 - IncludePathBase: SourceDirectory or ProjectRoot (working directory).
   Bare quoted names and quoted ./ or ../ paths stay source-relative;
   absolute paths stay absolute. Paths are lexical; no filesystem lookup.
 - IncludeStandardHeaders = Last adds a final alphabetical group for angled
-  names with neither / nor .h. This includes extensionless vendor names.
+  names with neither / nor .h, unless matched by a StandardHeaders rule.
+  This includes extensionless vendor names; quoted names and stdio.h do not
+  qualify. Preserve applies ordinary category and group sorting.
 - Comments, macros, conditionals, protection and mixed line endings stop
   blocks. Attached-comment blocks stay exact; hunks must cover a whole
   block. Check mode reports one include-order failure per file.
@@ -444,6 +452,20 @@ IncludeGroups = [
     { Prefix = "util/", Depth = 1 }
 ]
 # library/core/a.hpp and library/core/detail/b.hpp share a group.
+```
+
+## Put standard headers before system headers
+```config
+Layout = Canonical
+IncludeOrder = Sort
+IncludeGrouping = Directory
+IncludeGroups = [
+    { Prefix = "project/", Priority = 0 },
+    { StandardHeaders = true, Priority = 1 },
+    { Prefix = "", Priority = 2 }
+]
+# Project headers precede standard headers, then system headers.
+# <vector> precedes <Windows.h>, with a blank line between the groups.
 ```
 
 ## Order project groups first

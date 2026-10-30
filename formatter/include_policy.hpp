@@ -19,10 +19,14 @@ struct IncludeGroupRule
     std::int8_t Depth = MaxDepth;
     // Lower priorities sort first; matching precedence is unchanged.
     std::int8_t Priority = 0;
+    bool StandardHeaders = false;
     friend bool operator==(const IncludeGroupRule& lhs, const IncludeGroupRule& rhs) = default;
 };
 
 void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
+
+// Angled names with neither / nor .h; no catalog or filesystem inference.
+bool IsStandardInclude(std::string_view path, bool angled) noexcept;
 
 // Owns grouping metadata for read-only reuse across files. Rule order controls
 // matching and optional configured sorting within each priority tier. The
@@ -34,13 +38,15 @@ public:
     {
         std::size_t Group;
         std::size_t Prefix;
+        bool StandardHeaders = false;
     };
 
     explicit PreparedIncludeGroups(std::span<const IncludeGroupRule> groups);
 
     // Explicit prefixes match normalized relative literal spelling only.
-    // An empty-prefix fallback matches any spelling. First rule/prefix wins.
-    [[nodiscard]] Match Classify(std::string_view path) const noexcept;
+    // An empty-prefix fallback matches any spelling. Standard rules require
+    // an angled include. First matching rule/prefix wins.
+    [[nodiscard]] Match Classify(std::string_view path, bool angled = false) const noexcept;
 
     [[nodiscard]] std::size_t GroupCount() const noexcept
     {
@@ -85,6 +91,7 @@ private:
     std::vector<PrefixEntry> Prefixes_;
     std::vector<Node> Nodes_;
     std::vector<Edge> Edges_;
+    std::size_t StandardGroup_;
 };
 
 } // namespace formatter

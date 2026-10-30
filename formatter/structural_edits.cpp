@@ -300,6 +300,7 @@ struct IncludeKey
     std::int8_t Depth = IncludeGroupRule::MaxDepth;
     bool Matching = false;
     bool Standard = false;
+    bool RuleStandard = false;
 };
 
 bool ParseInclude(const parser::SyntaxTree& tree, TI token, Include& result)
@@ -540,16 +541,16 @@ void Includes(
             for (std::size_t i = 0; i < group.size() && !keys.empty(); ++i) {
                 const auto& atom = group[i];
                 auto& key = keys[i];
-                // Deliberately lexical: no catalog or filesystem inference.
-                key.Standard = options.StandardHeaders == IncludeStandardHeaders::Last && atom.Angled &&
-                    atom.Path.find('/') == std::string_view::npos && atom.Path.find(".h") == std::string_view::npos;
                 if (options.Grouping != IncludeGrouping::Preserve && context.Groups) {
-                    const auto match = context.Groups->Classify(atom.Path);
+                    const auto match = context.Groups->Classify(atom.Path, atom.Angled);
                     key.Rule = match.Group;
                     key.Prefix = match.Prefix;
                     key.Depth = context.Groups->Depth(match.Group);
                     key.Priority = context.Groups->Priority(match.Group);
+                    key.RuleStandard = match.StandardHeaders;
                 }
+                key.Standard = options.StandardHeaders == IncludeStandardHeaders::Last && !key.RuleStandard &&
+                    IsStandardInclude(atom.Path, atom.Angled);
                 if (!needPaths) {
                     continue;
                 }
@@ -678,10 +679,11 @@ void Includes(
                         return directory(a) < directory(b);
                     }
                     if (key(a).Rule != key(b).Rule) {
-                        // Canonical paths can collide through aliases. Break
-                        // ties by stable rule roots, not matching-list order.
-                        return context.Groups->CanonicalPrefix(key(a).Rule) <
-                            context.Groups->CanonicalPrefix(key(b).Rule);
+                        // Standard and fallback groups can share an empty root.
+                        // Keep distinct rules contiguous even when roots tie.
+                        const auto left = context.Groups->CanonicalPrefix(key(a).Rule);
+                        const auto right = context.Groups->CanonicalPrefix(key(b).Rule);
+                        return left != right ? left < right : key(a).Rule < key(b).Rule;
                     }
                     if (!nearestHeaders && options.Grouping == IncludeGrouping::Directory &&
                         key(a).Depth == IncludeGroupRule::MaxDepth && Filename(a.Path) != Filename(b.Path))
@@ -689,7 +691,9 @@ void Includes(
                         return Filename(a.Path) < Filename(b.Path);
                     }
                 }
-                if (nearestHeaders && !matching(a) && !standard(a) && key(a).HeaderDistance != key(b).HeaderDistance) {
+                if (nearestHeaders && !matching(a) && !standard(a) && !key(a).RuleStandard &&
+                    key(a).HeaderDistance != key(b).HeaderDistance)
+                {
                     return key(a).HeaderDistance < key(b).HeaderDistance;
                 }
                 return a.Path != b.Path ? a.Path < b.Path : a.Token < b.Token;

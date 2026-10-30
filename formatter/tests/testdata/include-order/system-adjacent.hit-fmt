@@ -1,0 +1,4 @@
+include = "system-directory.hit-fmt"
+IncludeGrouping = Preserve
+IncludeMatchingHeader = Off
+IncludeInGroupOrder = Alphabetical

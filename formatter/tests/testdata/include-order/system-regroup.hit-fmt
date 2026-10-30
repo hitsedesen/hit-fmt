@@ -1,0 +1,7 @@
+include = "system-directory.hit-fmt"
+IncludeGrouping = Regroup
+IncludeGroups = [
+    {Prefix = "project/", Priority = 0},
+    {StandardHeaders = true, Priority = 1},
+    {Prefix = "", Priority = 2}
+]
