@@ -52,6 +52,11 @@ requires (sizeof(T) > 0)
 {
     return value;
 };
+auto opaqueLambda = []<class T>(T value)
+requires (!Same<RemoveReference<T>, NullValue>)
+{
+    return value;
+};
 template<class T>
 requires requires(T value) {
     value.touch();

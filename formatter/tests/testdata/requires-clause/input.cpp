@@ -22,6 +22,7 @@ template<class T> struct Member {
     void run() const requires Ready<T> {}
 };
 auto lambda = []<class T>(T value) requires (sizeof(T) > 0) { return value; };
+auto opaqueLambda = []<class T>(T value) requires (!Same<RemoveReference<T>, NullValue>) { return value; };
 template<class T> requires requires(T value) { value.touch(); }
 void expression(T value) requires (Ready<T> && requires { T{}; }) {}
 template<class T> concept Check = requires(T value) { requires Ready<T>; value.touch(); };

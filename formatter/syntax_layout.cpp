@@ -2832,13 +2832,8 @@ private:
         const auto bodyWidth =
             BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
         const auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
-        // A positioned constraint can move the brace to an indented header
-        // line. Keep the lambda's original base alive through its body.
-        const bool constrainedLambda = node.Kind == NodeKind::LambdaExpression && HasPositionedConstraint(id);
-        const auto group = GroupAt(
-            TokenPosition(node.Tokens.Begin),
-            GapPosition(constrainedLambda ? node.Tokens.End : opening + 1),
-            document::GroupMode::Fill);
+        const auto group =
+            GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1), document::GroupMode::Fill);
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.FixedBase = fixedBase;
         Groups_[group].Spec.LineBase = fixedBase == None && node.Kind == NodeKind::LambdaExpression;
@@ -3020,9 +3015,7 @@ private:
         Groups_[group].Spec.FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
         Groups_[group].Spec.LineBase = contentIndent == None &&
             !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
-                (HasPositionedConstraint(parent) ||
-                    (Policies_.DeclarationHeaders == LayoutMode::Canonical &&
-                        policy.Layout == LayoutMode::Preserve))) &&
+                Policies_.DeclarationHeaders == LayoutMode::Canonical && policy.Layout == LayoutMode::Preserve) &&
             (Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification ||
                 Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
