@@ -13,8 +13,7 @@ namespace formatter {
 
 // An option identity, not a second configuration schema. PointerBinding is the
 // separately compiled scalar. None has no configurable preference; it may
-// still identify a syntax-owned Preserve boundary, including direct sequence
-// edges with a space fallback and the gap before a header semicolon.
+// identify an unclassified or uncertain boundary with a safe layout fallback.
 enum class SpacingField : uint8_t
 {
     None,
@@ -106,7 +105,8 @@ public:
 
     // O(1). nullopt delegates spelling to lowering. Canonical topology-changing
     // boundaries use safe flat fallback before fitting; preserved and flat-only
-    // gaps retain source bytes. Safety and lexical separation override policy,
+    // gaps retain source bytes. Syntax-boundary Preserve policies retain
+    // horizontal spelling even during rebuilding. Safety and lexical separation override policy,
     // except unchanged empty gaps remain valid. This does not remove newlines;
     // replacements must pass SourceAnalysis::CanReplaceGap. Adjacency selects
     // the rule after punctuation edits without changing source safety.

@@ -4788,6 +4788,24 @@ private:
             (gap.Shape == Boundary::Conditional && gap.Broken != document::GapKind::Flat);
     }
 
+    bool PreservesBoundarySpacing(Index i) const
+    {
+        const auto& spacing = Spacing_.Gaps()[i];
+        switch (spacing.Field) {
+#define PRESERVED_BOUNDARY(type, name, initial) case SpacingField::name:
+            FORMATTER_SYNTAX_BOUNDARY_GAP_OPTIONS(PRESERVED_BOUNDARY)
+#undef PRESERVED_BOUNDARY
+                return spacing.Policy == GapPolicy::Preserve;
+            default:
+                return false;
+        }
+    }
+
+    bool KeepsFlatSpacing(Index i) const
+    {
+        return Gaps_[i].KeepFlatSpacing || PreservesBoundarySpacing(i);
+    }
+
     std::optional<bool> SpacePreference(
         Index i,
         GapContext context,
@@ -4844,9 +4862,6 @@ private:
         if (RetainsBareCR(i)) {
             return HorizontalColumns(Safety_.Original(i), Options_.TabWidth);
         }
-        if (Gaps_[i].ControlSeparator) {
-            return 1;
-        }
         if (const auto count = TrailingCommentCount(i)) {
             return *count;
         }
@@ -4854,11 +4869,11 @@ private:
         if (preference) {
             return *preference ? 1 : 0;
         }
-        if (Gaps_[i].SpaceFallback) {
+        if ((Gaps_[i].SpaceFallback || Gaps_[i].ControlSeparator) && !PreservesBoundarySpacing(i)) {
             return 1;
         }
         const auto& source = Safety_.Gaps()[i];
-        if ((!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) && !source.HasLineFeed) {
+        if ((!RebuildsTopology(i) || KeepsFlatSpacing(i)) && !source.HasLineFeed) {
             return HorizontalColumns(Safety_.Original(source), Options_.TabWidth);
         }
         return Spacing_.Gaps()[i].FallbackSpace || source.Separation == GapSeparation::Required ? 1 : 0;
@@ -4988,7 +5003,7 @@ private:
             spec.LineEnding = document::GapNewline::LF;
         }
         const auto context = ContextFor(i);
-        if (sourceHorizontal && (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) && Safety_.Gaps()[i].Horizontal &&
+        if (sourceHorizontal && (!RebuildsTopology(i) || KeepsFlatSpacing(i)) && Safety_.Gaps()[i].Horizontal &&
             !TrailingCommentCount(i) && !SpacePreference(i, context, adjacency))
         {
             spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;

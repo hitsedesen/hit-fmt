@@ -1,7 +1,129 @@
 #pragma once
 
 // Lexical separation, comments and opaque spans override gap preferences.
-#define FORMATTER_GAP_OPTIONS(OPT)                                            \
+// These syntax boundaries preserve horizontal spelling independently of layout.
+#define FORMATTER_SYNTAX_BOUNDARY_GAP_OPTIONS(OPT) \
+    OPT(formatter::GapPolicy, DeclarationSpecifierSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, DeclarationNameSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, ReturnValueSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, CoReturnValueSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ThrowOperandSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, CoYieldValueSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, GotoLabelSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, CaseValueSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, NewTypeSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, DeleteOperandSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, BaseSpecifierSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, PackExpansionSpaceBeforeEllipsis, \
+        formatter::GapPolicy::GeneratedNoSpace) \
+    OPT(formatter::GapPolicy, PackExpansionSpaceAfterEllipsis, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, TemplateParameterNameSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, TemplateHeaderSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, RecordNameSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, EnumKeywordSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, EnumNameSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, NamespaceNameSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, UsingKeywordSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ImportKeywordSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ModuleKeywordSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ExportKeywordSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, LinkageLanguageSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, LinkageBraceSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, LinkageBodyInteriorSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ExportBodyInteriorSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ModulePartitionColonSpaceBefore, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ModulePartitionColonSpaceAfter, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ConceptNameSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, RequiresClauseSpaceBefore, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, RequiresClauseSpaceAfter, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, RequiresExpressionSpaceBeforeBrace, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, CompoundRequirementInteriorSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, TypeConstraintSpaceBefore, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, TypeConstraintSpaceAfter, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, FunctionTryBlockSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, RecordFinalSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, AlignasSpaceAfterSpecifier, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, LeadingScopeResolutionSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ControlHeaderSemicolonSpaceBefore, \
+        formatter::GapPolicy::GeneratedNoSpace) \
+    OPT(formatter::GapPolicy, StatementSequenceSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, BlockCommentSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ControlClauseSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, ControlBodySpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, NoexceptSpecifierInteriorSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, OperatorNameInteriorSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, DeleteArrayInteriorSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, StructuredBindingSpaceBeforeBrackets, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, MemberPointerSpaceBeforeQualifier, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, NestedDeclaratorSpaceBeforeParentheses, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, PointerQualifierSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, StringLiteralFragmentSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, AsmKeywordSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, AsmSpaceBeforeParentheses, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, AsmInteriorSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, ControlKeywordModifierSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, DependentTemplateNameSpacing, \
+        formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, DependentTypeNameSpacing, \
+        formatter::GapPolicy::Preserve)
+
+#define FORMATTER_GAP_OPTIONS(OPT) \
+    FORMATTER_SYNTAX_BOUNDARY_GAP_OPTIONS(OPT) \
     OPT(formatter::GapPolicy, TrailingCommentSpacing, \
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, ArgumentCommentSpacing, \

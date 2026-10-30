@@ -54,7 +54,7 @@ int (*MakeCallback())(
     int secondParameterWithSomeExtraContext,
     int thirdParameterWithSomeExtraContext);
 
-int(*ChooseCallback(
+int (*ChooseCallback(
     int firstSelectionParameter,
     int secondSelectionParameter,
     int thirdSelectionParameter) noexcept)(

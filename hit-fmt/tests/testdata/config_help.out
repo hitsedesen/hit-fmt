@@ -279,6 +279,16 @@ Spacing
 - Values: Preserve, Space, NoSpace, GeneratedSpace, GeneratedNoSpace.
   Generated* applies when canonical layout rebuilds the owning syntax;
   nested edits alone do not activate it. Syntax safety always wins.
+- DeclarationSpecifierSpacing controls consecutive word specifiers in
+  declarations and types, such as static const int. Balanced decltype,
+  alignas and extension operands retain their own rules.
+  DeclarationNameSpacing controls the type-to-name boundary of a parsed
+  declaration or parameter, including Box<int> value. Pointer binding,
+  packs and nested declarators retain their own rules.
+  Both default to GeneratedSpace. Preserve retains horizontal spaces/tabs
+  even with canonical layout; Space also applies with preserved layout.
+  NoSpace still keeps a separator where tokens would otherwise merge.
+  Comments and protected/opaque syntax stay intact; layout controls breaks.
 - Before/After controls each side separately.
   TemplateTypeArgumentInteriorSpacing = NoSpace permits nested >>;
   ScopeResolutionSpacing excludes leading ::. BraceInitializerSpacing
@@ -297,7 +307,159 @@ Spacing
   [[...]], __attribute__ and __declspec boundaries, not extension contents.
   AttributeInteriorSpacing covers C++ [[...]] only.
 
+Additional syntax boundaries
+- ReturnValueSpacing: Space between return and its ordinary operand.
+  Example: return value; Default: Preserve.
+- CoReturnValueSpacing: Space between co_return and its ordinary operand.
+  Example: co_return value; Default: Preserve.
+- ThrowOperandSpacing: Space between throw and its ordinary operand.
+  Example: throw value; Default: Preserve.
+- CoYieldValueSpacing: Space between co_yield and its operand.
+  Example: co_yield value; Default: Preserve.
+- GotoLabelSpacing: Space between goto and its label.
+  Example: goto done; Default: Preserve.
+- CaseValueSpacing: Space between case and its expression.
+  Example: case 1: Default: Preserve.
+- NewTypeSpacing: Space before the type of a new-expression.
+  Example: new Widget; Default: Preserve.
+- DeleteOperandSpacing: Space before a delete operand; array-specific rules
+  win.
+  Example: delete pointer; Default: Preserve.
+- BaseSpecifierSpacing: Spaces between base specifiers and the complete base
+  type.
+  Example: public virtual Base Default: Preserve.
+- PackExpansionSpaceBeforeEllipsis: Space before a confirmed pack ellipsis,
+  including sizeof....
+  Example: Types... Default: GeneratedNoSpace.
+- PackExpansionSpaceAfterEllipsis: Space after a confirmed pack ellipsis;
+  specific rules win.
+  Example: Types... values Default: GeneratedSpace.
+- TemplateParameterNameSpacing: Space before the name of a type template
+  parameter.
+  Example: class Element Default: Preserve.
+- TemplateHeaderSpacing: Space after a complete template header; layout
+  controls breaks.
+  Example: template<class T> void F(); Default: GeneratedSpace.
+- RecordNameSpacing: Space between class/struct/union and its name.
+  Example: struct Widget Default: Preserve.
+- EnumKeywordSpacing: Space between enum and class/struct.
+  Example: enum class Flag Default: Preserve.
+- EnumNameSpacing: Space before the enumeration name.
+  Example: enum class Flag Default: Preserve.
+- NamespaceNameSpacing: Space between namespace and its name.
+  Example: namespace Detail Default: Preserve.
+- UsingKeywordSpacing: Spaces after using and namespace/typename
+  introducers.
+  Example: using namespace Detail; Default: Preserve.
+- ImportKeywordSpacing: Space after import, outside header-name contents.
+  Example: import module_name; Default: Preserve.
+- ModuleKeywordSpacing: Space after module, outside partition punctuation.
+  Example: module module_name; Default: Preserve.
+- ExportKeywordSpacing: Space between export and its declaration or opening
+  brace.
+  Example: export class Widget; Default: Preserve.
+- LinkageLanguageSpacing: Space between extern and the language string.
+  Example: extern "C" Default: Preserve.
+- LinkageBraceSpacing: Space before a language-linkage opening brace.
+  Example: extern "C" { Default: Preserve.
+- LinkageBodyInteriorSpacing: Spaces inside language-linkage braces.
+  Example: extern "C" { int F(); } Default: Preserve.
+- ExportBodyInteriorSpacing: Spaces inside export-block braces.
+  Example: export { int F(); } Default: Preserve.
+- ModulePartitionColonSpaceBefore: Space before a module partition colon.
+  Example: module_name:part Default: Preserve.
+- ModulePartitionColonSpaceAfter: Space after a module partition colon.
+  Example: module_name:part Default: Preserve.
+- ConceptNameSpacing: Space between concept and its name.
+  Example: concept Predicate = true; Default: Preserve.
+- RequiresClauseSpaceBefore: Space before a parsed requires clause.
+  Example: void F() requires Predicate; Default: Preserve.
+- RequiresClauseSpaceAfter: Space after requires in clauses and nested
+  requirements.
+  Example: requires Predicate<T> Default: Preserve.
+- RequiresExpressionSpaceBeforeBrace: Space before a requires-expression
+  body.
+  Example: requires(T t) { Default: Preserve.
+- CompoundRequirementInteriorSpacing: Spaces inside compound-requirement
+  expression braces.
+  Example: { value() } noexcept; Default: GeneratedSpace.
+- TypeConstraintSpaceBefore: Space before a compound requirement's
+  constraint arrow.
+  Example: { value() } -> Concept; Default: GeneratedSpace.
+- TypeConstraintSpaceAfter: Space after a compound requirement's constraint
+  arrow.
+  Example: { value() } -> Concept; Default: GeneratedSpace.
+- FunctionTryBlockSpacing: Space before a function try-block introducer.
+  Example: void F() try {} Default: GeneratedSpace.
+- RecordFinalSpacing: Space before a parsed class final specifier.
+  Example: struct Widget final Default: GeneratedSpace.
+- AlignasSpaceAfterSpecifier: Space after a complete alignas specifier.
+  Example: alignas(16) int value; Default: GeneratedSpace.
+- LeadingScopeResolutionSpacing: Space before leading global ::, not between
+  qualifiers.
+  Example: const ::Detail::Type Default: Preserve.
+- ControlHeaderSemicolonSpaceBefore: Space before a control-header
+  semicolon.
+  Example: for (int i = 0; i < 2; ++i) Default: GeneratedNoSpace.
+- StatementSequenceSpacing: Horizontal space between complete sibling
+  statements/declarations.
+  Example: first(); second(); Default: GeneratedSpace.
+- BlockCommentSpacing: Spaces beside ordinary block comments; argument rules
+  win.
+  Example: value /* note */ Default: Preserve.
+- ControlClauseSpacing: Spaces before else/catch/do-while suffixes and in
+  else if.
+  Example: if (x) {} else if (y) {} Default: GeneratedSpace.
+- ControlBodySpacing: Space before a controlled statement; brace-specific
+  rules win.
+  Example: if (x) Use(); Default: Preserve.
+- NoexceptSpecifierInteriorSpacing: Spaces inside a noexcept specifier's
+  outer parentheses.
+  Example: noexcept(test) Default: Preserve.
+- OperatorNameInteriorSpacing: Spaces inside an operator() or operator[]
+  name.
+  Example: operator() Default: Preserve.
+- DeleteArrayInteriorSpacing: Space inside delete-array brackets.
+  Example: delete [] pointer; Default: Preserve.
+- StructuredBindingSpaceBeforeBrackets: Space before a structured binding's
+  opening bracket.
+  Example: auto [first, second] = value; Default: Preserve.
+- MemberPointerSpaceBeforeQualifier: Space before a member-pointer's owner
+  qualifier.
+  Example: int Owner::*member; Default: Preserve.
+- NestedDeclaratorSpaceBeforeParentheses: Space before nested-declarator
+  parentheses.
+  Example: int (*callback)(int); Default: Preserve.
+- PointerQualifierSpacing: Spaces between consecutive pointer cv-qualifiers.
+  Example: int* const volatile pointer; Default: Preserve.
+- StringLiteralFragmentSpacing: Space between adjacent string-literal
+  fragments.
+  Example: "left" "right" Default: GeneratedSpace.
+- AsmKeywordSpacing: Spaces between a parsed asm introducer and its
+  modifiers.
+  Example: asm volatile ("nop"); Default: Preserve.
+- AsmSpaceBeforeParentheses: Space before an asm declaration's operand
+  parentheses.
+  Example: asm ("nop"); Default: Preserve.
+- AsmInteriorSpacing: Spaces inside an asm declaration's outer parentheses.
+  Example: asm ( "nop" ); Default: Preserve.
+- ControlKeywordModifierSpacing: Spaces before constexpr/consteval/co_await
+  control modifiers.
+  Example: if constexpr (ready) {} Default: Preserve.
+- DependentTemplateNameSpacing: Space after template in a confirmed
+  dependent name.
+  Example: object.template Method<int>(); Default: Preserve.
+- DependentTypeNameSpacing: Space after typename in a confirmed dependent
+  type name.
+  Example: typename T::type value; Default: Preserve.
+  All accept the five spacing policies above. Preserve retains horizontal
+  spelling independently of layout. Specific rules, lexical separation
+  and protected/opaque syntax take priority.
+
 Common spacing
+    DeclarationSpecifierSpacing = Preserve
+    DeclarationNameSpacing = Space
+    # Keeps const   int, but normalizes int   value to int value.
     FunctionSpaceBeforeParameters = NoSpace
     ControlBlockKeywordSpacing = Space
     CommaSpaceBefore = NoSpace

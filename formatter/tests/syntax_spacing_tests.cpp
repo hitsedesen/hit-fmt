@@ -107,7 +107,7 @@ TEST(SyntaxSpacing, GlobalScopeDoesNotOwnSpecifierBoundaries)
             policies);
         for (const auto occurrence : {0u, 2u}) {
             const auto gap = analysis.Before("::", occurrence);
-            EXPECT_EQ(analysis.Spacing.Gaps()[gap].Field, F::None);
+            EXPECT_EQ(analysis.Spacing.Gaps()[gap].Field, F::LeadingScopeResolutionSpacing);
             EXPECT_TRUE(analysis.Spacing.Gaps()[gap].FallbackSpace);
             EXPECT_EQ(analysis.Spacing.SpacePreference(gap, GapContext::Rebuilt, analysis.Safety), std::nullopt);
         }
@@ -166,7 +166,8 @@ TEST(SyntaxSpacing, UnsupportedTemplateDeclarationPolicyIsRejected)
 
 TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
 {
-    const auto source = test::golden::ReadFile(FixturePath("roles.input.cpp"));
+    const auto source = test::golden::ReadFile(FixturePath("roles.input.cpp")) + "\n" +
+        test::golden::ReadFile(FixturePath("../syntax-boundaries/input.cpp"));
     for (auto policy :
         {
             GapPolicy::Space,
@@ -351,7 +352,7 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::ExpressionStatement);
     }
-    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before(";", 4)].Field, F::None);
+    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before(";", 4)].Field, F::ControlHeaderSemicolonSpaceBefore);
     EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("i", 1)].Field, F::LoopSemicolonSpacing);
     Analysis lambda("auto fn=[]{do {} while(flag)  ;};", policies);
     EXPECT_EQ(lambda.Spacing.Gaps()[lambda.Before(";")].Category, C::LambdaBodies);
@@ -483,7 +484,7 @@ TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
     }
 }
 
-TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
+TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorSpacing)
 {
     Analysis analysis("template<class T> struct Box {}; " "Box<int>make(){} Box<Box<int>>nested(){} "
         "Box<int>  flat(); int scalar(){} " "namespace types {template<class T> struct Box {}; } "
@@ -496,11 +497,14 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion) << name;
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << name;
-        EXPECT_EQ(gap.Field, F::None) << name;
+        EXPECT_EQ(gap.Field, F::DeclarationNameSpacing) << name;
         EXPECT_TRUE(gap.FallbackSpace) << name;
-        // This is a lowering fallback, not an explicit spacing demand.
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve) << name;
-        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
+        const auto policy = GapPolicy::GeneratedSpace;
+        EXPECT_EQ(gap.Policy, policy) << name;
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            GapUsesSpace(policy, GapContext::Rebuilt)) << name;
+        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Preserved, analysis.Safety), std::nullopt) << name;
     }
 
     Analysis qualified("template<class T> struct Box {}; " "Box<int> Owner<int>::method() const & {} "
@@ -509,10 +513,14 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         const auto& gap = qualified.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-        EXPECT_EQ(gap.Field, F::None);
+        EXPECT_EQ(gap.Field, F::DeclarationNameSpacing);
         EXPECT_TRUE(gap.FallbackSpace);
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-        EXPECT_EQ(qualified.Spacing.SpacePreference(id, GapContext::Rebuilt, qualified.Safety), std::nullopt);
+        const auto policy = GapPolicy::GeneratedSpace;
+        EXPECT_EQ(gap.Policy, policy);
+        EXPECT_EQ(
+            qualified.Spacing.SpacePreference(id, GapContext::Rebuilt, qualified.Safety),
+            GapUsesSpace(policy, GapContext::Rebuilt));
+        EXPECT_EQ(qualified.Spacing.SpacePreference(id, GapContext::Preserved, qualified.Safety), std::nullopt);
     }
 
     Analysis decltypeDefinition("decltype(value)  incomplete(){}");
@@ -520,12 +528,10 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
     const auto& gap = decltypeDefinition.Spacing.Gaps()[id];
     ASSERT_NE(gap.Owner, NoRegion);
     EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-    EXPECT_EQ(gap.Field, F::None);
+    EXPECT_EQ(gap.Field, F::DeclarationNameSpacing);
     EXPECT_TRUE(gap.FallbackSpace);
-    EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-    EXPECT_EQ(
-        decltypeDefinition.Spacing.SpacePreference(id, GapContext::Rebuilt, decltypeDefinition.Safety),
-        std::nullopt);
+    EXPECT_EQ(gap.Policy, GapPolicy::GeneratedSpace);
+    EXPECT_EQ(decltypeDefinition.Spacing.SpacePreference(id, GapContext::Rebuilt, decltypeDefinition.Safety), true);
 }
 
 TEST(SyntaxSpacing, DestructorSpecifierBoundary)
@@ -539,10 +545,10 @@ TEST(SyntaxSpacing, DestructorSpecifierBoundary)
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-        EXPECT_EQ(gap.Field, F::None);
+        EXPECT_EQ(gap.Field, F::DeclarationNameSpacing);
         EXPECT_TRUE(gap.FallbackSpace);
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
+        EXPECT_EQ(gap.Policy, GapPolicy::GeneratedSpace);
+        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), true);
         // A destructor name is not a unary expression and owns no unary gap.
         EXPECT_NE(analysis.Spacing.Gaps()[id + 1].Field, F::UnaryOperatorSpacing);
     }
@@ -646,10 +652,16 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
             binding == PointerReferenceDeclaratorLocation::Middle);
         EXPECT_EQ(
             analysis.Spacing.SpacePreference(analysis.Before("qualified"), GapContext::Rebuilt, analysis.Safety),
+            true);
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(analysis.Before("qualified"), GapContext::Preserved, analysis.Safety),
             std::nullopt);
         for (size_t pack = 1; pack <= 3; ++pack) {
             EXPECT_EQ(
                 analysis.Spacing.SpacePreference(analysis.Before("...", pack), GapContext::Rebuilt, analysis.Safety),
+                false);
+            EXPECT_EQ(
+                analysis.Spacing.SpacePreference(analysis.Before("...", pack), GapContext::Preserved, analysis.Safety),
                 false);
         }
     }
@@ -738,11 +750,11 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
         ASSERT_NE(gap.Owner, NoRegion) << source;
         EXPECT_EQ(functionTry.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::FunctionDefinition) << source;
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << source;
-        EXPECT_EQ(gap.Field, F::None) << source;
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve) << source;
+        EXPECT_EQ(gap.Field, F::FunctionTryBlockSpacing) << source;
+        EXPECT_EQ(gap.Policy, GapPolicy::GeneratedSpace) << source;
         EXPECT_TRUE(gap.FallbackSpace) << source;
         EXPECT_FALSE(functionTry.Spacing.SpacePreference(id, GapContext::Preserved, functionTry.Safety)) << source;
-        EXPECT_FALSE(functionTry.Spacing.SpacePreference(id, GapContext::Rebuilt, functionTry.Safety)) << source;
+        EXPECT_EQ(functionTry.Spacing.SpacePreference(id, GapContext::Rebuilt, functionTry.Safety), true) << source;
         EXPECT_TRUE(functionTry.Safety.CanReplaceGap(id, " ")) << source;
     }
     Analysis lineComment("void f() // header\ntry {}catch(...){}");
@@ -1136,7 +1148,7 @@ TEST(SyntaxSpacing, UncertainParenthesizedCalleeDoesNotBorrowCallPolicies)
     EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("(", 4)].Field, F::FunctionCallSpaceBeforeParameters);
 }
 
-TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveFlatSpaceFallback)
+TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveOwnSpacingPolicy)
 {
     struct Case
     {
@@ -1179,9 +1191,8 @@ TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveFlatSpaceFallback)
         EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, item.Owner) << item.Source;
         EXPECT_EQ(gap.Category, item.Category) << item.Source;
         EXPECT_TRUE(gap.FallbackSpace) << item.Source;
-        // nullopt is no explicit preference, not permission to borrow bytes.
-        // Canonical topology fallback before fitting is the consumer's job.
-        EXPECT_FALSE(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety));
+        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), true);
+        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Preserved, analysis.Safety), std::nullopt);
         EXPECT_TRUE(analysis.Safety.CanReplaceGap(id, " "));
     }
 }
@@ -1200,7 +1211,7 @@ TEST(SyntaxSpacing, SequenceAttachmentsRetainSpecificAndSafetyRules)
     EXPECT_TRUE(exported.Spacing.Gaps()[exportAttribute].FallbackSpace);
     EXPECT_EQ(exported.Spacing.Gaps()[exportAttribute].Category, C::DeclarationHeaders);
     Analysis unbraced("export /* note */ int first;");
-    EXPECT_FALSE(unbraced.Spacing.Gaps()[unbraced.Before("int")].FallbackSpace);
+    EXPECT_EQ(unbraced.Spacing.Gaps()[unbraced.Before("int")].Field, F::BlockCommentSpacing);
     Analysis exportedComment("export {int first; // note\nint second;}");
     const auto afterExportComment = exportedComment.Before("int", 1);
     EXPECT_TRUE(exportedComment.Spacing.Gaps()[afterExportComment].FallbackSpace);

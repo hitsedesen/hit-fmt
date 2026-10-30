@@ -26,7 +26,7 @@ auto Named() -> int (*)(int first,long second);
 auto IncludedTypes() -> Result (*)(First,Second);
 auto ConstPointer() -> int (* const)(int,long);
 auto ExpressionArgument() -> Fixed<int(left * right),7>;
-auto PointerDefined() -> int(*)(int,long) {
+auto PointerDefined() -> int (*)(int,long) {
     return nullptr;
 }
 auto DependentPointer() -> decltype(Make<int,long>()) (*)(int,long);

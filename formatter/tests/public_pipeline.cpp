@@ -587,7 +587,7 @@ TEST(PublicPipeline, FinalNamespaceWidthDiagnosticsGolden)
     fixture.Expect(diagnostics, ".diagnostics.txt");
 }
 
-TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
+TEST(PublicPipeline, DeclarationSpacingRequiresRebuiltOwnerAndEditableGap)
 {
     const std::string source = "template<class T> struct Box {};\n" "Box<int>  make(){return {};}\n"
         "Box<int>  flat();\n" "Box<int>\nOwner<int>::method(){return {};}\n";
@@ -598,7 +598,7 @@ TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
     const auto gapEnd = gapBegin + 2;
     const auto result = FormatInput(source, prepared);
     EXPECT_NE(result.Text.find("Box<int> make()"), std::string::npos);
-    EXPECT_NE(result.Text.find("Box<int>  flat()"), std::string::npos);
+    EXPECT_NE(result.Text.find("Box<int> flat()"), std::string::npos);
     EXPECT_NE(result.Text.find("Box<int> Owner<int>::method()"), std::string::npos);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 

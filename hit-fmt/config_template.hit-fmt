@@ -898,6 +898,423 @@ NamespaceCommentSpaces = 1
 # Values: 0 (no exemption) or 1..10000
 ShortNamespaceLines = 0
 
+# Between consecutive word specifiers in declarations and types.
+# Example: static   const   int becomes static const int with Space.
+# Balanced decltype/alignas/extension operands keep their own rules.
+# Preserve keeps horizontal spelling even with canonical layout;
+# Space applies even with preserved layout. Lexical safety overrides NoSpace.
+# Comments and protected/opaque syntax stay intact; layout controls breaks.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeclarationSpecifierSpacing = GeneratedSpace
+
+# Between a parsed type and its declarator name, also in parameters.
+# Examples: int   value; Box<int>   value; decltype(item)   value;
+# Pointer binding, packs and nested declarators retain their own rules.
+# Preserve keeps horizontal spelling even with canonical layout;
+# Space applies even with preserved layout. Lexical safety overrides NoSpace.
+# Comments and protected/opaque syntax stay intact; layout controls breaks.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeclarationNameSpacing = GeneratedSpace
+
+# Space between return and its ordinary operand.
+# Example: return value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ReturnValueSpacing = Preserve
+
+# Space between co_return and its ordinary operand.
+# Example: co_return value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CoReturnValueSpacing = Preserve
+
+# Space between throw and its ordinary operand.
+# Example: throw value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ThrowOperandSpacing = Preserve
+
+# Space between co_yield and its operand.
+# Example: co_yield value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CoYieldValueSpacing = Preserve
+
+# Space between goto and its label.
+# Example: goto done;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+GotoLabelSpacing = Preserve
+
+# Space between case and its expression.
+# Example: case 1:
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CaseValueSpacing = Preserve
+
+# Space before the type of a new-expression.
+# Example: new Widget;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NewTypeSpacing = Preserve
+
+# Space before a delete operand; array-specific rules win.
+# Example: delete pointer;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeleteOperandSpacing = Preserve
+
+# Spaces between base specifiers and the complete base type.
+# Example: public virtual Base
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BaseSpecifierSpacing = Preserve
+
+# Space before a confirmed pack ellipsis, including sizeof....
+# Example: Types...
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PackExpansionSpaceBeforeEllipsis = GeneratedNoSpace
+
+# Space after a confirmed pack ellipsis; specific rules win.
+# Example: Types... values
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PackExpansionSpaceAfterEllipsis = GeneratedSpace
+
+# Space before the name of a type template parameter.
+# Example: class Element
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TemplateParameterNameSpacing = Preserve
+
+# Space after a complete template header; layout controls breaks.
+# Example: template<class T> void F();
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TemplateHeaderSpacing = GeneratedSpace
+
+# Space between class/struct/union and its name.
+# Example: struct Widget
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RecordNameSpacing = Preserve
+
+# Space between enum and class/struct.
+# Example: enum class Flag
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EnumKeywordSpacing = Preserve
+
+# Space before the enumeration name.
+# Example: enum class Flag
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+EnumNameSpacing = Preserve
+
+# Space between namespace and its name.
+# Example: namespace Detail
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NamespaceNameSpacing = Preserve
+
+# Spaces after using and namespace/typename introducers.
+# Example: using namespace Detail;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+UsingKeywordSpacing = Preserve
+
+# Space after import, outside header-name contents.
+# Example: import module_name;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ImportKeywordSpacing = Preserve
+
+# Space after module, outside partition punctuation.
+# Example: module module_name;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ModuleKeywordSpacing = Preserve
+
+# Space between export and its declaration or opening brace.
+# Example: export class Widget;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ExportKeywordSpacing = Preserve
+
+# Space between extern and the language string.
+# Example: extern "C"
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LinkageLanguageSpacing = Preserve
+
+# Space before a language-linkage opening brace.
+# Example: extern "C" {
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LinkageBraceSpacing = Preserve
+
+# Spaces inside language-linkage braces.
+# Example: extern "C" { int F(); }
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LinkageBodyInteriorSpacing = Preserve
+
+# Spaces inside export-block braces.
+# Example: export { int F(); }
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ExportBodyInteriorSpacing = Preserve
+
+# Space before a module partition colon.
+# Example: module_name:part
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ModulePartitionColonSpaceBefore = Preserve
+
+# Space after a module partition colon.
+# Example: module_name:part
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ModulePartitionColonSpaceAfter = Preserve
+
+# Space between concept and its name.
+# Example: concept Predicate = true;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ConceptNameSpacing = Preserve
+
+# Space before a parsed requires clause.
+# Example: void F() requires Predicate;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RequiresClauseSpaceBefore = Preserve
+
+# Space after requires in clauses and nested requirements.
+# Example: requires Predicate<T>
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RequiresClauseSpaceAfter = Preserve
+
+# Space before a requires-expression body.
+# Example: requires(T t) {
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RequiresExpressionSpaceBeforeBrace = Preserve
+
+# Spaces inside compound-requirement expression braces.
+# Example: { value() } noexcept;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CompoundRequirementInteriorSpacing = GeneratedSpace
+
+# Space before a compound requirement's constraint arrow.
+# Example: { value() } -> Concept;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TypeConstraintSpaceBefore = GeneratedSpace
+
+# Space after a compound requirement's constraint arrow.
+# Example: { value() } -> Concept;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+TypeConstraintSpaceAfter = GeneratedSpace
+
+# Space before a function try-block introducer.
+# Example: void F() try {}
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+FunctionTryBlockSpacing = GeneratedSpace
+
+# Space before a parsed class final specifier.
+# Example: struct Widget final
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+RecordFinalSpacing = GeneratedSpace
+
+# Space after a complete alignas specifier.
+# Example: alignas(16) int value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AlignasSpaceAfterSpecifier = GeneratedSpace
+
+# Space before leading global ::, not between qualifiers.
+# Example: const ::Detail::Type
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+LeadingScopeResolutionSpacing = Preserve
+
+# Space before a control-header semicolon.
+# Example: for (int i = 0; i < 2; ++i)
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlHeaderSemicolonSpaceBefore = GeneratedNoSpace
+
+# Horizontal space between complete sibling statements/declarations.
+# Example: first(); second();
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StatementSequenceSpacing = GeneratedSpace
+
+# Spaces beside ordinary block comments; argument rules win.
+# Example: value /* note */
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+BlockCommentSpacing = Preserve
+
+# Spaces before else/catch/do-while suffixes and in else if.
+# Example: if (x) {} else if (y) {}
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlClauseSpacing = GeneratedSpace
+
+# Space before a controlled statement; brace-specific rules win.
+# Example: if (x) Use();
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlBodySpacing = Preserve
+
+# Spaces inside a noexcept specifier's outer parentheses.
+# Example: noexcept(test)
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NoexceptSpecifierInteriorSpacing = Preserve
+
+# Spaces inside an operator() or operator[] name.
+# Example: operator()
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+OperatorNameInteriorSpacing = Preserve
+
+# Space inside delete-array brackets.
+# Example: delete [] pointer;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeleteArrayInteriorSpacing = Preserve
+
+# Space before a structured binding's opening bracket.
+# Example: auto [first, second] = value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StructuredBindingSpaceBeforeBrackets = Preserve
+
+# Space before a member-pointer's owner qualifier.
+# Example: int Owner::*member;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+MemberPointerSpaceBeforeQualifier = Preserve
+
+# Space before nested-declarator parentheses.
+# Example: int (*callback)(int);
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+NestedDeclaratorSpaceBeforeParentheses = Preserve
+
+# Spaces between consecutive pointer cv-qualifiers.
+# Example: int* const volatile pointer;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+PointerQualifierSpacing = Preserve
+
+# Space between adjacent string-literal fragments.
+# Example: "left" "right"
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+StringLiteralFragmentSpacing = GeneratedSpace
+
+# Spaces between a parsed asm introducer and its modifiers.
+# Example: asm volatile ("nop");
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AsmKeywordSpacing = Preserve
+
+# Space before an asm declaration's operand parentheses.
+# Example: asm ("nop");
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AsmSpaceBeforeParentheses = Preserve
+
+# Spaces inside an asm declaration's outer parentheses.
+# Example: asm ( "nop" );
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+AsmInteriorSpacing = Preserve
+
+# Spaces before constexpr/consteval/co_await control modifiers.
+# Example: if constexpr (ready) {}
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+ControlKeywordModifierSpacing = Preserve
+
+# Space after template in a confirmed dependent name.
+# Example: object.template Method<int>();
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DependentTemplateNameSpacing = Preserve
+
+# Space after typename in a confirmed dependent type name.
+# Example: typename T::type value;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DependentTypeNameSpacing = Preserve
+
 # Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
 TrailingCommentSpacing = Preserve
 
