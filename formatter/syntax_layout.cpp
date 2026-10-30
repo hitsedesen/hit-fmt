@@ -1024,6 +1024,7 @@ private:
             case NodeKind::ConditionalExpression:
             case NodeKind::ParenthesizedExpression:
             case NodeKind::RequirementExpression:
+            case NodeKind::RequiresClause:
                 break;
             case NodeKind::CastExpression: {
                 const auto opening = NamedCastOpening(id);

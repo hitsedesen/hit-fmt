@@ -2530,6 +2530,8 @@ std::vector<FormatCase> FormatCases()
             "brace-next-line",
         });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
+    cases.push_back({data / "requires-lambdas", "continuation", "continuation.input.cpp"});
+    cases.push_back({data / "requires-lambdas", "continuation-own-line", "continuation.input.cpp"});
     {
         const auto directory = data / "requires-lambdas";
         const auto parserData = std::filesystem::path(PARSER_TESTDATA_DIR);
