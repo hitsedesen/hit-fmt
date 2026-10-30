@@ -6520,11 +6520,15 @@ private:
         cursor = ArgumentSignificant(captureEnd, end);
 
         size_t suffixWork = 4096;
+        Node* templateParameters = nullptr;
         if (Kind(cursor) == TK::Operator_Less) {
             auto templateAfter = ArgumentTemplateEnd(cursor, end, suffixWork);
             auto templateEnd = templateAfter.value_or(cursor);
             if (templateEnd > cursor) {
-                Append(*lambda, *MakeTemplateParameterList(cursor, templateEnd));
+                templateParameters = MakeTemplateParameterList(cursor, templateEnd);
+                Append(*lambda, *templateParameters);
+                PushScope();
+                RegisterTemplateTypeParameters(cursor, templateEnd);
                 cursor = ArgumentSignificant(templateEnd, end);
             }
         }
@@ -6565,6 +6569,9 @@ private:
                 Append(*lambda, *body);
                 cursor = bodyEnd;
                 lambda->Tokens.End = bodyEnd;
+                if (templateParameters) {
+                    PopScope();
+                }
                 return lambda;
             }
             if (kind == TK::Keyword_mutable || kind == TK::Keyword_constexpr || kind == TK::Keyword_consteval ||
@@ -6777,6 +6784,9 @@ private:
         }
         cursor = end;
         lambda->Tokens.End = cursor;
+        if (templateParameters) {
+            PopScope();
+        }
         return lambda;
     }
 

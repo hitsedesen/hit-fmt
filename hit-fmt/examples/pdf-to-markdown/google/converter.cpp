@@ -33,8 +33,8 @@ const Block* Document::Find(std::size_t id) const noexcept {
 
 std::string Converter::Render(const Content& content) const {
   return std::visit([this] <class T>(const T& item) -> std::string {
-    if constexpr (
-                  std::same_as<T, Text>) {
+    if constexpr (std::same_as<T,
+                               Text>) {
       if (item.role == TextRole::kFooter && options_.drop_footers)return {};
       auto body = Escape(item.value);
       if (body.empty())return {};
@@ -47,8 +47,8 @@ std::string Converter::Render(const Content& content) const {
         case TextRole::kCaption: return "> " + body + "\n\n";
         default: return body + "\n\n";
       }
-    } else if constexpr (
-                         std::same_as<T, Image>) {
+    } else if constexpr (std::same_as<T,
+                                      Image>) {
       if (!options_.keep_images)return {};
       auto image = "![" + Escape(item.description) + "](" +
           options_.asset_directory + "/" + item.asset + ")";
