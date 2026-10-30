@@ -1638,8 +1638,7 @@ SyntaxSpacing BuildSyntaxSpacing(
     }
     if (spacing.AmbiguousTemplateDeclarationSpacing != GapPolicy::Preserve) {
         throw std::invalid_argument(
-            "AmbiguousTemplateDeclarationSpacing is unsupported: "
-            "ambiguous syntax is preserved");
+            "AmbiguousTemplateDeclarationSpacing is unsupported: " "ambiguous syntax is preserved");
     }
     SyntaxSpacing result(fileMemory);
     result.CommaSpaceAfter_ = spacing.CommaSpaceAfter;

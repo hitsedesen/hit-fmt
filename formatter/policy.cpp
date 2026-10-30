@@ -328,6 +328,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             {style.IndentNamespaces, static_cast<std::uint8_t>(
                 ResolveOffset(style.NamespaceIndentWidth, style.IndentWidth))}},
         .Calls = Calls,
+        .StringLiteralFragmentsAsArguments = style.StringLiteralFragmentsAsArguments,
         .CallsSoleArgumentFirstItem =
             style.CallsSoleArgumentFirstItem.value_or(Calls.FirstItem),
         .Parameters = Parameters,

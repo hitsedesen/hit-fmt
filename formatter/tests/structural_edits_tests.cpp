@@ -162,8 +162,7 @@ TEST(StructuralEdits, NullBodyIsNotRemovedAndEmptyBlockIsIndependent)
 TEST(StructuralEdits, LabelsAttributesAndAttachedCommentsAreLocalSkips)
 {
     File file(
-        "void f(){label: ; switch(a){case 1: ; ;} if(a) [[likely]] x(); "
-        "if(b) y(); // attached\nwhile(c) z();}");
+        "void f(){label: ; switch(a){case 1: ; ;} if(a) [[likely]] x(); " "if(b) y(); // attached\nwhile(c) z();}");
     auto plan = file.Plan(All);
     auto result = file.Apply(plan);
     EXPECT_NE(result.Text.find("label: ;"), std::string::npos);
@@ -229,8 +228,7 @@ TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
     std::array names{std::string_view("KEEP")};
     File file(
         "void f(){if(a) KEEP(x);\n// clang-format off\nwhile(b) x();\n// "
-        "clang-format on\nif(c)\n#if FLAG\nx();\n#endif\nwhile(d) z(); "
-        "if( ) ;}",
+        "clang-format on\nif(c)\n#if FLAG\nx();\n#endif\nwhile(d) z(); " "if( ) ;}",
         {.HonorClangFormatDirectives = true, .WhitespaceSensitiveMacros = names});
     auto plan = file.Plan(All);
     auto result = file.Apply(plan);
@@ -248,10 +246,8 @@ TEST(StructuralEdits, ProtectedMacroDisabledRecoveryAndDirectiveBoundaries)
 
 TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
 {
-    File file(
-        "#include <z.h>\r\n#include \"a.h\"\r\n#if FLAG\r\n#include "
-        "<d.h>\r\n#include <c.h>\r\n#endif\r\n// belongs to "
-        "b\r\n#include <b.h>\r\n#include <a.h>\r\n");
+    File file("#include <z.h>\r\n#include \"a.h\"\r\n#if FLAG\r\n#include "
+        "<d.h>\r\n#include <c.h>\r\n#endif\r\n// belongs to " "b\r\n#include <b.h>\r\n#include <a.h>\r\n");
     auto groups = DiscoverIncludeGroups(file.Tree, file.Safety, file.Memory, file.Scratch);
     ASSERT_EQ(groups.size(), 2u);
     auto plan = file.Plan({.SortIncludes = true});
@@ -267,8 +263,7 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
     auto result = file.Apply(plan);
     EXPECT_EQ(
         result.Text,
-        "#include \"a.h\"\r\n#include <z.h>\r\n#if "
-        "FLAG\r\n#include <c.h>\r\n#include <d.h>\r\n#endif\r\n// "
+        "#include \"a.h\"\r\n#include <z.h>\r\n#if " "FLAG\r\n#include <c.h>\r\n#include <d.h>\r\n#endif\r\n// "
         "belongs to b\r\n#include <b.h>\r\n#include <a.h>\r\n");
     for (const auto& edit : plan.Edits) {
         EXPECT_EQ(plan.Operations[edit.Operation].Kind, StructuralAction::IncludeOrder);
@@ -594,8 +589,7 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
     auto resolved = ResolveNamespaceComments(file.Tree, plan, output, map, {}, file.Memory, file.Scratch);
     EXPECT_EQ(
         MaterializeNamespaceComments(output, resolved, file.Memory),
-        "namespace a {\nnamespace b::c {} // namespace b::c\n} // namespace "
-        "a\n");
+        "namespace a {\nnamespace b::c {} // namespace b::c\n} // namespace " "a\n");
     // The parser classifies inline namespace as a generic declaration:
     // a typed keyword only authorizes a diagnostic, never a fabricated
     // identity.
@@ -671,8 +665,7 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
         correct.Memory,
         correct.Scratch).Edits.empty());
     File disabled(
-        "// clang-format off\nnamespace n {} // "
-        "keep\n// clang-format on\n",
+        "// clang-format off\nnamespace n {} // " "keep\n// clang-format on\n",
         {.HonorClangFormatDirectives = true});
     auto blocked = PlanNamespaceComments(
         disabled.Tree,
@@ -803,8 +796,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         EXPECT_EQ(stale.Skipped.front().Tokens.Begin, identities.Namespaces.front().Owner.Begin);
         EXPECT_EQ(
             MaterializeNamespaceComments(braces.Tree.Source(), stale, braces.Memory),
-            "namespace n {\nvoid inside() {}\n}\n"
-            "void after() {}\nnamespace safe {} // namespace safe\n");
+            "namespace n {\nvoid inside() {}\n}\n" "void after() {}\nnamespace safe {} // namespace safe\n");
     }
     File normalized("namespace n {\n#include <z.h>\n#include <a.h>\n;\n" "void f() {;}\n}\n;\nnamespace safe {}\n");
     auto originalNames = PlanNamespaceComments(

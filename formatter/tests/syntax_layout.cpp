@@ -112,8 +112,7 @@ TEST(SyntaxLayout, ControlSeparatorsWideFiniteRenderingOwnsOnlyDirectBoundaries)
     style.BodyShape = formatter::BodyShape::CompactIfFits;
     style.ControlBlockKeywordSpacing = formatter::GapPolicy::Space;
     const std::string source =
-        "void f(){if(a)if(b)left();else right();else last();"
-        "do tick();while(a);while(b)other();}\n";
+        "void f(){if(a)if(b)left();else right();else last();" "do tick();while(a);while(b)other();}\n";
     const auto output = Lower(source, style);
     EXPECT_NE(output.Text.find("left(); else right(); else last();"), std::string::npos);
     EXPECT_NE(output.Text.find("tick(); while (a); while (b)"), std::string::npos);
@@ -584,8 +583,7 @@ TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Preserve;
     const std::string tryInput = "void f() { try { work(); } catch (...) { recover(); } }\n";
     const std::string tryExpected =
-        "void f() {\n  try\n  {\n    work();\n  } catch (...)\n"
-        "  {\n    recover();\n  }\n}\n";
+        "void f() {\n  try\n  {\n    work();\n  } catch (...)\n" "  {\n    recover();\n  }\n}\n";
     EXPECT_EQ(Lower(tryInput, style).Text, tryExpected);
     EXPECT_EQ(Lower(tryExpected, style).Text, tryExpected);
     style.ControlHeadersLayout = formatter::CategoryLayout::Preserve;
@@ -776,14 +774,12 @@ TEST(SyntaxLayout, ChainStructuralBaseRespectsPoliciesAndRealizedRhsLines)
     style.Layout = formatter::LayoutMode::Preserve;
     style.ChainsLayout = formatter::CategoryLayout::Preserve;
     const std::string authored =
-        "void f() {\n    auto value = engine()\n"
-        "            .Open()\n            .Finish();\n}\n";
+        "void f() {\n    auto value = engine()\n" "            .Open()\n            .Finish();\n}\n";
     EXPECT_EQ(Lower(authored, style).Text, authored);
     style.ChainsLayout = formatter::CategoryLayout::Canonical;
     style.ChainsBreak = formatter::BreakRequirement::Always;
     const std::string realized =
-        "void f() {\n    auto value =\n        engine()\n"
-        "            .Open()\n            .Finish();\n}\n";
+        "void f() {\n    auto value =\n        engine()\n" "            .Open()\n            .Finish();\n}\n";
     EXPECT_EQ(Lower(realized, style).Text, realized);
     style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
@@ -806,8 +802,7 @@ TEST(SyntaxLayout, MessagePinAcceptsOnlyCompleteStringLiteralSequence)
     style.ListFirstItem = formatter::FirstItemPlacement::NextLine;
     style.ListPacking = formatter::ListPacking::VerticalWhenBroken;
     const auto output = Lower("void f(){ message(\"left\" \"right\", " "alpha, beta, gamma); }\n", style).Text;
-    EXPECT_NE(output.find("message(\"left\"\n"), std::string::npos) << output;
-    EXPECT_NE(output.find("\"right\","), std::string::npos) << output;
+    EXPECT_NE(output.find("message(\"left\" \"right\","), std::string::npos);
     const auto nonliteral = Lower("void f(){ message(\"text\" + value, alpha, beta); }\n", style).Text;
     EXPECT_EQ(nonliteral.find("message(\"text\""), std::string::npos);
     style.ColumnLimit = 12;
@@ -969,16 +964,10 @@ TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
     style.ClassBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
     style.LambdaBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
     style.ControlBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
-    const std::string input =
-        "struct Base {}; struct Extra {};\n"
-        "struct Derived : Base, Extra { int value; "
-        "Derived(int alpha, int "
-        "beta):value(alpha+beta){} "
-        "int method(int first, int second){ for(int "
-        "index=0;index<first;++index) { "
-        "auto fn=[first,second](int extra){return first?second+extra:0;}; "
-        "consume(first,fn(second),factory()(first).fi"
-        "nish()); } return value; } };\n";
+    const std::string input = "struct Base {}; struct Extra {};\n" "struct Derived : Base, Extra { int value; "
+        "Derived(int alpha, int " "beta):value(alpha+beta){} " "int method(int first, int second){ for(int "
+        "index=0;index<first;++index) { " "auto fn=[first,second](int extra){return first?second+extra:0;}; "
+        "consume(first,fn(second),factory()(first).fi" "nish()); } return value; } };\n";
     const auto output = Lower(input, style).Text;
     EXPECT_EQ(Lower(output, style).Text, output) << output;
     EXPECT_NE(output.find("for ("), std::string::npos);
@@ -1453,17 +1442,14 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     // following unbraced statement adds just one body level.
     EXPECT_NE(
         nested.find(
-            "case 1:\n        while (value) {\n"
-            "        case 2:\n            third();\n"
-            "        }\n        break;"),
+            "case 1:\n        while (value) {\n" "        case 2:\n            third();\n" "        }\n        break;"),
         std::string::npos) << nested;
     EXPECT_EQ(Lower(nested, style).Text, nested);
 
     // This parser bounds an unbraced controlled label at its colon. It does
     // not own the following statement/else as that arm: do not project it.
     const auto incompleteArm = Lower(
-        "void f(int value){ switch(value){ if(value) case 0: first(); "
-        "else second(); default: break; } }\n",
+        "void f(int value){ switch(value){ if(value) case 0: first(); " "else second(); default: break; } }\n",
         style).Text;
     EXPECT_NE(incompleteArm.find("if(value) case 0:\n" "        first(); else second();"), std::string::npos)
         << incompleteArm;
@@ -1475,8 +1461,7 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     style.IndentWidth = 4;
     style.IndentCaseLabels = formatter::BodyIndentation::Preserve;
     const std::string input =
-        "void f(){\n switch(value){\ncase 0: first();\n  case 1: second();\n"
-        "\tdefault: break;\n }\n}\n";
+        "void f(){\n switch(value){\ncase 0: first();\n  case 1: second();\n" "\tdefault: break;\n }\n}\n";
     const auto output = Lower(input, style);
     EXPECT_NE(output.Text.find("\ncase 0:\n            first();"), std::string::npos) << output.Text;
     EXPECT_NE(output.Text.find("\n  case 1:\n            second();"), std::string::npos) << output.Text;
@@ -1517,10 +1502,8 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     }
 
     // Independent immutable and disabled bytes still veto the new indentation.
-    const std::string protectedInput =
-        "void f(){ switch(value){\n  case 0: first();\n"
-        "// clang-format off\n case 1:   second();\n// clang-format on\n"
-        "default: break; } }\n";
+    const std::string protectedInput = "void f(){ switch(value){\n  case 0: first();\n"
+        "// clang-format off\n case 1:   second();\n// clang-format on\n" "default: break; } }\n";
     const auto begin = parser::SourceOffset(protectedInput.find("  case 0"));
     const auto end = parser::SourceOffset(protectedInput.find("\n", begin));
     const parser::SourceRange ranges[] = {{begin, end}};
@@ -1543,23 +1526,15 @@ TEST(SyntaxLayout, AlwaysRequiresOwnedBoundariesButPreserveAndEmptyWin)
     style.CallLineFirstStringNames = {"message"};
     style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
     const auto output = Lower(
-        "void f(){ call(item); empty(); "
-        "message(\"literal\"); factory()(item)(other); "
-        "x=first+second; }\n",
+        "void f(){ call(item); empty(); " "message(\"literal\"); factory()(item)(other); " "x=first+second; }\n",
         style).Text;
     EXPECT_NE(output.find("call(\n"), std::string::npos) << output;
     EXPECT_NE(output.find("empty()"), std::string::npos);
     EXPECT_NE(output.find("message(\n"), std::string::npos);
     const auto literalChild = Lower("void f(){ message(\"left\" \"right\"); }\n", style).Text;
     EXPECT_NE(literalChild.find("message(\n"), std::string::npos) << literalChild;
-    EXPECT_NE(literalChild.find("\"left\" \"right\""), std::string::npos);
+    EXPECT_EQ(literalChild.find("\"left\" \"right\""), std::string::npos);
     EXPECT_EQ(Lower(literalChild, style).Text, literalChild);
-    style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
-    const auto verticalLiteralChild = Lower("void f(){ message(\"left\" \"right\"); }\n", style).Text;
-    EXPECT_NE(verticalLiteralChild.find("message(\n"), std::string::npos) << verticalLiteralChild;
-    EXPECT_EQ(verticalLiteralChild.find("\"left\" \"right\""), std::string::npos);
-    EXPECT_EQ(Lower(verticalLiteralChild, style).Text, verticalLiteralChild);
-    style.CallsPacking = formatter::ListPacking::Fill;
     EXPECT_NE(output.find("factory()\n"), std::string::npos);
     EXPECT_NE(output.find("first +\n"), std::string::npos);
     EXPECT_EQ(Lower(output, style).Text, output);
@@ -1580,9 +1555,7 @@ TEST(SyntaxLayout, EmptyShapeNamespaceIndentAndEnumListAreIndependent)
     style.EnumeratorsCloser = formatter::CloserPlacement::OwnLine;
     style.EnumBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
     const auto output = Lower(
-        "namespace Demo { void empty(){} auto "
-        "fn=[](){}; enum State { First, Second, }; "
-        "enum Empty {}; }\n",
+        "namespace Demo { void empty(){} auto " "fn=[](){}; enum State { First, Second, }; " "enum Empty {}; }\n",
         style).Text;
     EXPECT_NE(output.find("\nvoid empty() {}"), std::string::npos) << output;
     EXPECT_NE(output.find("[]() {}"), std::string::npos);
@@ -1646,11 +1619,8 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
     style.AccessSectionBlankLinesAfterLabel = {formatter::BlankLineMode::Exact, 1};
     style.MaxEmptyLines = 1;
     style.IndentAccessModifiers = formatter::BodyIndentation::NoIndent;
-    const std::string source =
-        "namespace Demo {\r\n\tint first;\r\n\r\n\r\n\r\n\tvoid f(){}\r\n"
-        "\t/// documented\r\n\t/// "
-        "complete\r\n\t[[nodiscard]] int g(){return "
-        "0;}\r\n}\r\n";
+    const std::string source = "namespace Demo {\r\n\tint first;\r\n\r\n\r\n\r\n\tvoid f(){}\r\n"
+        "\t/// documented\r\n\t/// " "complete\r\n\t[[nodiscard]] int g(){return " "0;}\r\n}\r\n";
     formatter::SyntaxLayoutOptions options;
     options.LineEnding = document::Newline::CRLF;
     const auto mapped = Lower(source, style, options);
@@ -1748,9 +1718,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
     auto style = Canonical(80);
     style.IndentedCallScopePairs = {"Begin:End"};
     const auto flatNested = Lower(
-        "void f(){\n  flow.Begin();\n    "
-        "flow.Begin();\n    work();\n    "
-        "flow.End();\n  flow.End();\n}\n",
+        "void f(){\n  flow.Begin();\n    " "flow.Begin();\n    work();\n    " "flow.End();\n  flow.End();\n}\n",
         style).Text;
     EXPECT_NE(flatNested.find("\n    work();"), std::string::npos);
     EXPECT_EQ(flatNested.find("\n      work();"), std::string::npos);
@@ -1804,10 +1772,8 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         EXPECT_NE(excluded.find("\n  work();"), std::string::npos) << excluded;
     }
     const auto nestedWrappers = Lower(
-        "void f(){\n  wrap(outer, flow.Begin());\n   "
-        " wrap(inner, flow.Begin());\n      "
-        "work();\n    wrap(inner, flow.End());\n  "
-        "wrap(outer, flow.End());\n}\n",
+        "void f(){\n  wrap(outer, flow.Begin());\n   " " wrap(inner, flow.Begin());\n      "
+        "work();\n    wrap(inner, flow.End());\n  " "wrap(outer, flow.End());\n}\n",
         style).Text;
     EXPECT_NE(nestedWrappers.find("\n      work();"), std::string::npos) << nestedWrappers;
     EXPECT_EQ(Lower(nestedWrappers, style).Text, nestedWrappers);
@@ -1821,11 +1787,8 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         Lower("void f(){\n flow.Begin();\n     work(  item " ");\n#define VALUE 1\n flow.End();\n}\n", style).Text;
     EXPECT_NE(barrier.find("\n      work(  item );"), std::string::npos);
     EXPECT_EQ(Lower(wrapper, style).Text, wrapper);
-    const std::string protectedInput =
-        "void f(){\n  wrap(tag, flow.Begin());\n    "
-        "before();\n    blocked();\n    after();\n  "
-        "wrap(tag, flow.End());\n}\nvoid later(){ "
-        "task(); }\n";
+    const std::string protectedInput = "void f(){\n  wrap(tag, flow.Begin());\n    "
+        "before();\n    blocked();\n    after();\n  " "wrap(tag, flow.End());\n}\nvoid later(){ " "task(); }\n";
     const auto blocked = protectedInput.find("blocked()");
     const parser::SourceRange immutable[] = {{uint32_t(blocked), uint32_t(blocked + 9)}};
     formatter::SourceAnalysisOptions safety;
@@ -1835,8 +1798,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
     EXPECT_NE(protectedScope.find("\n    after();"), std::string::npos);
     EXPECT_NE(protectedScope.find("void later() {\n  task();\n}"), std::string::npos);
     const auto afterDirective = Lower(
-        "void f(){\n  wrap(tag, flow.Begin());\n    "
-        "before();\n#define VALUE 1\n    after();\n  "
+        "void f(){\n  wrap(tag, flow.Begin());\n    " "before();\n#define VALUE 1\n    after();\n  "
         "wrap(tag, flow.End());\n}\n",
         style).Text;
     EXPECT_NE(afterDirective.find("\n    after();"), std::string::npos) << afterDirective;
@@ -1890,8 +1852,7 @@ TEST(SyntaxLayout, MacroProtectionWinsOverBreakSpacingAndCommaActions)
     calls.CallsLayout = formatter::CategoryLayout::Canonical;
     calls.FunctionCallSpaceBeforeParameters = formatter::GapPolicy::GeneratedNoSpace;
     const std::string input =
-        "void demo(){ outer  (  child(  a , b  ) , VERBATIM(x,  y) ,\n"
-        "    right  ); side  (  c , d  ); }\n";
+        "void demo(){ outer  (  child(  a , b  ) , VERBATIM(x,  y) ,\n" "    right  ); side  (  c , d  ); }\n";
     const auto mapped = Lower(input, calls, {}, protection);
     EXPECT_NE(mapped.Text.find("outer(  child(a, b) , VERBATIM(x,  y) ,\n    right  )"), std::string::npos)
         << mapped.Text;
@@ -1942,9 +1903,7 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     formatter::SyntaxLayoutOptions options;
     options.LineEnding = document::Newline::CRLF;
     const std::string source =
-        "void first(){} // note\r\nvoid "
-        "second(){}\r\n#define RAW(x) x ## x\r\nvoid "
-        "third(){}\r\n";
+        "void first(){} // note\r\nvoid " "second(){}\r\n#define RAW(x) x ## x\r\nvoid " "third(){}\r\n";
     const auto mapped = Lower(source, style, options);
     const auto& output = mapped.Text;
     const auto second = source.find("void second");
@@ -2215,14 +2174,11 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
 
     protection = {};
     protection.WhitespaceSensitiveMacros = macros;
-    const std::string comparisonMacro =
-        "template<auto, class> struct Wrap;\n"
-        "template<class, auto> struct Pair;\n"
+    const std::string comparisonMacro = "template<auto, class> struct Wrap;\n" "template<class, auto> struct Pair;\n"
         "template<> struct Pair<Wrap<(OPAQUE(1>0)),int>,0> {};\n";
     EXPECT_EQ(
         Lower(comparisonMacro, style, {}, protection).Text,
-        "template<auto, class> struct Wrap;\n"
-        "template<class, auto> struct Pair;\n"
+        "template<auto, class> struct Wrap;\n" "template<class, auto> struct Pair;\n"
         "template<> struct Pair<Wrap<(OPAQUE(1>0)), int>, 0> {};\n");
 
     protection = {};

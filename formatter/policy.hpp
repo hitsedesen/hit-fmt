@@ -213,8 +213,9 @@ struct CompiledPolicies
         PointerReferenceDeclaratorLocation;
     const IndentationControls Indentation;
     const ListPolicy Calls;
+    const bool StringLiteralFragmentsAsArguments;
     // Resolved from Calls.FirstItem unless explicitly overridden. Applies to
-    // exactly one parsed argument, independently of its expression kind.
+    // exactly one parsed argument unless fragment-as-arguments layout applies.
     const FirstItemPlacement CallsSoleArgumentFirstItem;
     const ListPolicy Parameters;
     const ListPolicy TemplateParameters;

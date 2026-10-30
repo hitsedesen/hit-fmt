@@ -6,3 +6,4 @@ CallsSoleArgumentFirstItem = InlineIfFits
 CallLineFirstStringNames = ["REPORT"]
 CallLineFirstStringOverflow = KeepInline
 ExpressionsPacking = Fill
+StringLiteralFragmentsAsArguments = true

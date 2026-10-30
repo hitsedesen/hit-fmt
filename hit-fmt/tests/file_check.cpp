@@ -113,9 +113,7 @@ TEST(FileCheck, IncludeOrderIsIndependentOfInputPathFormAndHunks)
     style.IncludeGrouping = formatter::IncludeGrouping::Directory;
     style.IncludePathBase = formatter::IncludePathBase::ProjectRoot;
     const hit_fmt::PreparedConfiguration prepared(raw);
-    const Input input(
-        "#include \"project/engine/widget.h\"\n\n"
-        "#include \"project/engine/detail.h\"\n\n"
+    const Input input("#include \"project/engine/widget.h\"\n\n" "#include \"project/engine/detail.h\"\n\n"
         "#include \"project/base.h\"\n");
     const formatter::Hunk selected[] = {{1, 5}};
     const auto relative = std::filesystem::path("project/engine/widget.cpp");
@@ -345,8 +343,7 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     raw.FunctionDefinitionParameterNames = formatter::FunctionDefinitionParameterNames::NameRequired;
     const hit_fmt::PreparedConfiguration prepared(raw);
     const std::string source =
-        "const char* text=\"é\"; void bad_name(int  , "
-        "void (*)(int)){}\nvoid GoodProto(int);\n";
+        "const char* text=\"é\"; void bad_name(int  , " "void (*)(int)){}\nvoid GoodProto(int);\n";
     const Input input(source);
     const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
     const auto summary =

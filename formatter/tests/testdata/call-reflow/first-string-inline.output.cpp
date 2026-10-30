@@ -2,8 +2,7 @@ void f() {
     YT_LOG_INFO("A long enough message to require wrapping",
         firstArgument,
         secondArgument);
-    YT_LOG_INFO("Failed to initialize "
-        "the storage client",
+    YT_LOG_INFO("Failed to initialize " "the storage client",
         clientId,
         retryCount);
     YT_TLOG_ERROR(error, "Failure (%v)", firstArgument);
@@ -27,6 +26,5 @@ void f() {
 }
 void g() { YT_LOG_INFO("Message", count); }
 void h() { YT_LOG_INFO("Message"); }
-void i() { YT_LOG_INFO("Failed to load "
-        "configuration",
+void i() { YT_LOG_INFO("Failed to load " "configuration",
         configPath); }

@@ -51,11 +51,13 @@ BaseListsLayout = Preserve
   Zero offsets use IndentWidth.
 - TemplateParameters includes generic lambdas; TemplateArguments includes
   named casts. Shared >> closers stay together.
-- Adjacent string fragments remain one argument, but use Calls layout,
-  break policy, packing and indentation. Direct arguments share their
-  call's broken shape.
-- CallsSoleArgumentFirstItem overrides CallsFirstItem for a sole argument,
-  except a string expression with multiple fragments.
+- StringLiteralFragmentsAsArguments = true makes adjacent literals use
+  Calls layout, break policy, packing and indentation as one expression.
+  Direct arguments share their call's broken shape. Default false keeps
+  Expressions formatting and authored layout follows those existing rules.
+- CallsSoleArgumentFirstItem overrides CallsFirstItem for a sole argument.
+  With StringLiteralFragmentsAsArguments, fragmented strings instead use
+  CallsFirstItem.
 - IfConditionsPacking = VerticalWhenBroken splits top-level &&/|| in
   wrapped if headers. Requires canonical header/expression layout;
   parentheses and other controls keep their own rules.
@@ -125,8 +127,8 @@ BinaryOperatorSide = Leading
   prefix inline; VerticalWhenBroken splits assignment boundaries.
   AssignmentRhsPlacement = NextLine puts initializers below the operator
   in canonical expressions. Always breaks still apply.
-  Broken adjacent-string initializers also start their first fragment
-  below the assignment operator.
+  With StringLiteralFragmentsAsArguments, broken string initializers also
+  start their first fragment below the assignment operator.
 - TernaryLayout = ThreePart breaks ? and : together when wrapping;
   Flexible may split them independently. TernaryOperatorIndentation
   = Indent adds a level when the condition starts on a continued line;

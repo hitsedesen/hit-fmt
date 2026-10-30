@@ -787,10 +787,8 @@ TEST(Parser, LambdaSuffixOperandsAreNotBodiesAndParametersRestore)
 {
     using enum parser::NodeKind;
     PaddedInput input(
-        "struct Item {}; using Type = int;\n"
-        "APPLY([](int Type) noexcept(noexcept(Item{})) -> decltype(Item{}) "
-        "{ Type * item; return Item{}; });\n"
-        "Type following;\n");
+        "struct Item {}; using Type = int;\n" "APPLY([](int Type) noexcept(noexcept(Item{})) -> decltype(Item{}) "
+        "{ Type * item; return Item{}; });\n" "Type following;\n");
     auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto bodies = LambdaOwnershipNodes(tree.Root(), LambdaBody);
     ASSERT_EQ(bodies.size(), 1u);
@@ -977,10 +975,8 @@ TEST(Parser, CompleteArgumentRangesExcludeOnlyTrailingCommentTrivia)
 TEST(Parser, LambdaArgumentFactsStayWithinConditionalAndMalformedLimits)
 {
     using enum parser::NodeKind;
-    PaddedInput branches(
-        "#if CHOICE\nAPPLY([](int value) -> int { return value; });\n"
-        "#else\nvoid declared(int value = [] { return 1; }());\n"
-        "#endif\nint following;");
+    PaddedInput branches("#if CHOICE\nAPPLY([](int value) -> int { return value; });\n"
+        "#else\nvoid declared(int value = [] { return 1; }());\n" "#endif\nint following;");
     auto branchTree = parser::Parse(branches.View(), [] (parser::ParseError) { });
     EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), LambdaBody).size(), 2u);
     EXPECT_EQ(LambdaOwnershipNodes(branchTree.Root(), ExpressionStatement).size(), 1u);
@@ -1097,8 +1093,7 @@ TEST(Parser, LambdaBodyBindingsUseOnlyDirectParametersNotRequiresLocals)
     for (const bool actualParameter : {false, true}) {
         const std::string signature = actualParameter ? "(int Type)" : "";
         PaddedInput input("using Type = int; using Other = int; APPLY([]<class T>" + signature +
-            " requires requires(int Other) { Other + 1; } "
-                "{ Type * item; Other * local; });\n"
+            " requires requires(int Other) { Other + 1; } " "{ Type * item; Other * local; });\n"
                 "Type following; Other followingOther;");
         auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         const auto lambdas = LambdaOwnershipNodes(tree.Root(), LambdaExpression);
@@ -1244,10 +1239,8 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
         EXPECT_EQ(declared.SourceText(declared.Root().LastChild->Tokens), "int following;");
     }
     {
-        PaddedInput input(
-            "void use() { APPLY(make<Box<object.template operator ? "
-            "<int>(value), int>, int>(), [] { return 2; }); }\n"
-            "int following;");
+        PaddedInput input("void use() { APPLY(make<Box<object.template operator ? "
+            "<int>(value), int>, int>(), [] { return 2; }); }\n" "int following;");
         auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_FALSE(LambdaOwnershipNodes(tree.Root(), UnparsedSyntax).empty());
         EXPECT_TRUE(LambdaOwnershipNodes(tree.Root(), StructuredBinding).empty());
@@ -1343,14 +1336,9 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
 
 TEST(Parser, GenuineNamedBodiesRetainDeclaratorsAndScopes)
 {
-    const std::string source =
-        "struct Type {};\n"
-        "struct Record { Record(){} operator bool() const {return true;} "
-        "int method(int value=[]{return 3;}())"
-        "{if(value){return value;}return 0;} };\n"
-        "Record::Record(){}\n"
-        "Type* function(Type* value)"
-        "{while(value){return value;}return nullptr;}\n"
+    const std::string source = "struct Type {};\n" "struct Record { Record(){} operator bool() const {return true;} "
+        "int method(int value=[]{return 3;}())" "{if(value){return value;}return 0;} };\n" "Record::Record(){}\n"
+        "Type* function(Type* value)" "{while(value){return value;}return nullptr;}\n"
         "void defaults(int value=[]{return 1;}()){}\n";
     PaddedInput input(source);
     size_t errors = 0;
@@ -1568,8 +1556,7 @@ TEST(Parser, AnnotationRecoveryKeepsTruthfulCatchDiagnostics)
         }
     }
     PaddedInput input(
-        "int f(int n) try { return n; } catch(int code) { return code; } "
-        "catch(...) { return 0; }\nint tail;");
+        "int f(int n) try { return n; } catch(int code) { return code; } " "catch(...) { return 0; }\nint tail;");
     auto tree = parser::Parse(input.View());
     const auto* function = tree.Root().FirstChild;
     ASSERT_EQ(function->Kind, parser::NodeKind::FunctionDefinition);
@@ -1668,9 +1655,7 @@ TEST(Parser, UnknownTypedAnnotationRetainsWholeCandidateRecovery)
     // A parameter shadowing an outer type must not acquire editable body
     // authority from a header whose bindings were not established.
     const std::string source =
-        "using Type = int;\n"
-        "static inline Vec NOTE(\"legacy\") load(int Type) { Type * value; }\n"
-        "int tail;\n";
+        "using Type = int;\n" "static inline Vec NOTE(\"legacy\") load(int Type) { Type * value; }\n" "int tail;\n";
     PaddedInput input(source);
     auto tree = parser::Parse(input.View());
     auto* candidate = tree.Root().FirstChild->NextSibling;
@@ -1776,8 +1761,7 @@ TEST(Parser, RecoveredRequiresSkipNeedsValidMapDespitePopulatedOuterPairs)
 TEST(Parser, RecoveredRequiresPairCannotAdvanceAcrossConditionalParseLimit)
 {
     PaddedInput input(
-        "#if PICK\nVec NOTE(0) run() requires Ready<int> && "
-        "requires(int x) { x;\n#else\n}\n#endif\nint tail;\n");
+        "#if PICK\nVec NOTE(0) run() requires Ready<int> && " "requires(int x) { x;\n#else\n}\n#endif\nint tail;\n");
     auto tree = parser::Parse(input.View(), [] (auto) { });
     std::vector<const Node*> pending{&tree.Root()};
     while (!pending.empty()) {
@@ -2201,15 +2185,13 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         {"constexpr int limits[] = {1,2};\n" "template<auto, auto> struct Pair;\n", "limits[1<2]", "0"},
         {"struct Value { int first, second; };\n" "template<Value, int> struct Pair;\n", "Value{1<2,2}", "0"},
         {
-            "struct Value { int first, second; };\n"
-                "template<Value, class> struct Wrap;\n"
+            "struct Value { int first, second; };\n" "template<Value, class> struct Wrap;\n"
                 "template<class, int> struct Pair;\n",
             "Wrap<(Value{1>0,2}),int>",
             "0",
         },
         {
-            "constexpr int limits[] = {1,2};\n"
-                "template<auto, class> struct Wrap;\n"
+            "constexpr int limits[] = {1,2};\n" "template<auto, class> struct Wrap;\n"
                 "template<class, auto> struct Pair;\n",
             "Wrap<(limits[1>0]),int>",
             "0",
@@ -2427,8 +2409,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         "struct Catalog { using Element = int; }; struct Catalog;\n"
             "void inspect() { int consume(Catalog::Element); }\n",
         "struct Catalog { using Element = int;\n" "void inspect() { int consume(Catalog::Element); } };\n",
-        "struct Host {}; struct Host::Catalog { using Element = int;\n"
-            "Catalog(int) {}\n"
+        "struct Host {}; struct Host::Catalog { using Element = int;\n" "Catalog(int) {}\n"
             "void inspect() { int consume(Catalog::Element); } };\n"
             "int Catalog; void outside() { Catalog*marker; }\n",
     };
@@ -2535,9 +2516,7 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
     // Attaching head syntax must not alter name registration for
     // forward declarations or the declaration following them.
     PaddedInput input(
-        "template<class A, class B> struct Pair;\n"
-        "template<> struct Pair<int,long>;\n"
-        "Pair<int,long> value;\n");
+        "template<class A, class B> struct Pair;\n" "template<> struct Pair<int,long>;\n" "Pair<int,long> value;\n");
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto* last = tree.Root().LastChild;
     ASSERT_EQ(last->Kind, parser::NodeKind::Declaration);
@@ -2545,10 +2524,8 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
     EXPECT_EQ(last->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
 
     // Ordinary callers retain their independent delimiter/element ownership.
-    const std::string ordinary =
-        "void sink(int first=(1<2),int second=(3>2));\n"
-        "void use(){ sink((1<2),0); int items[]={(1<2),0}; }\n"
-        "enum Values { first=(1<2), second=0 };\n";
+    const std::string ordinary = "void sink(int first=(1<2),int second=(3>2));\n"
+        "void use(){ sink((1<2),0); int items[]={(1<2),0}; }\n" "enum Values { first=(1<2), second=0 };\n";
     PaddedInput ordinaryInput(ordinary);
     std::vector<parser::ParseError> errors;
     const auto ordinaryTree = parser::Parse(
@@ -2601,8 +2578,7 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
     const std::string_view constraints[] = {
         "requires(T value) { value.touch(); }",
         "requires { typename T::value_type; }",
-        "requires(T value) { { value.touch() } noexcept; "
-            "typename T::value_type; requires requires "
+        "requires(T value) { { value.touch() } noexcept; " "typename T::value_type; requires requires "
             "{ typename T::other_type; }; }",
         "requires(T value) /* body */ { value.touch(); } && true",
         "true && requires(T value) { value.touch(); }",
@@ -3201,9 +3177,7 @@ TEST(Parser, RequiresClauseKeepsUnparsedSuffixAndDiagnosesMissingBody)
 
 TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
 {
-    PaddedInput input(
-        "template<class T> requires requires(T value) {\n"
-        "#define REQUIREMENT_VALUE 1\n"
+    PaddedInput input("template<class T> requires requires(T value) {\n" "#define REQUIREMENT_VALUE 1\n"
         "value.touch();\n}\nstruct Container {};\n");
     size_t errors = 0;
     const auto tree = parser::Parse(
@@ -3253,11 +3227,10 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         "Wrap<(1<<2),Wrap<(3>2),int>> value={}",
     };
     for (const auto firstText : firstParameters) {
-        const auto source = "constexpr int values[] = {1,2};\n"
-            "constexpr int select(int left,int right){return left+right;}\n"
-            "struct Value { int first, second; };\n"
-            "template<auto, class> struct Wrap {};\n"
-            "void sink(" + std::string(firstText) + ",int other=0) {}\n" "Value outside;\n";
+        const auto source =
+            "constexpr int values[] = {1,2};\n" "constexpr int select(int left,int right){return left+right;}\n"
+                "struct Value { int first, second; };\n" "template<auto, class> struct Wrap {};\n" "void sink(" +
+                std::string(firstText) + ",int other=0) {}\n" "Value outside;\n";
         SCOPED_TRACE(firstText);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
@@ -3680,12 +3653,9 @@ TEST(Parser, OpaqueRecordHeadsHaveOnlyLocalConstructorOwners)
     for (const auto head : heads) {
         for (const auto wrapper : {"", "template<class T> "}) {
             const auto source = std::string(wrapper) + "struct " + std::string(head) +
-                " { Parcel(Item *p, Item &r, Item &&v, "
-                    "void (*callback)(int)) {} "
-                    "void (*member)(int); int (*factory())(double); "
-                    "int (ordinary)(double); "
-                    "int explicit_return(Item *p) {} "
-                    "void local() { Parcel*inside; } }; "
+                " { Parcel(Item *p, Item &r, Item &&v, " "void (*callback)(int)) {} "
+                    "void (*member)(int); int (*factory())(double); " "int (ordinary)(double); "
+                    "int explicit_return(Item *p) {} " "void local() { Parcel*inside; } }; "
                     "void outside() { Parcel*marker; }";
             SCOPED_TRACE(source);
             PaddedInput input(source);
@@ -3799,9 +3769,7 @@ TEST(Parser, MalformedRecordOwnersRecoverOnlyConstructorInitializerHeaders)
 
 TEST(Parser, OpaqueRecordOwnersPreserveGroupedMemberDeclarators)
 {
-    const std::string_view members =
-        "void (*callback)(int); int (*factory())(double); "
-        "int (ordinary)(double); "
+    const std::string_view members = "void (*callback)(int); int (*factory())(double); " "int (ordinary)(double); "
         "int [[nodiscard]] explicit_return(Item *p);";
     std::vector<std::string> expected;
     std::vector<std::vector<parser::PunctuationRole>> expectedRoles;
@@ -3843,8 +3811,7 @@ TEST(Parser, ConstructorInitializerCapturesAreNotOuterArrayDeclarators)
     const std::string_view sources[] = {
         "struct Task { Task() : callback([this] { stop(); }, " "[this] { start(); }) {} };",
         "struct Task { Task() : first([] { return 1; }), " "second([] { return 2; }) {} };",
-        "struct Task { Task() noexcept : callback("
-            "[this]() noexcept { stop(); }, "
+        "struct Task { Task() noexcept : callback(" "[this]() noexcept { stop(); }, "
             "[this]() noexcept { start(); }) {} };",
         "struct Task { Task() : first(0), callback(wrap(bind(" "[id = 1](int* value) { consume(value, id); }))) {} };",
         "struct Task { Task() noexcept(noexcept([] { return 1; }())) "
@@ -4129,9 +4096,7 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)
 
 TEST(Parser, TerminalConstructorTemplateIdsPreserveGroupedSelfTypeDeclarators)
 {
-    PaddedInput input(
-        "template<class T> struct Owner { "
-        "Owner<T> (*callback)(int); Owner<T> (*factory())(int); "
+    PaddedInput input("template<class T> struct Owner { " "Owner<T> (*callback)(int); Owner<T> (*factory())(int); "
         "Owner<T>* plain; Owner<T>(T* value) {} };");
     size_t errors = 0;
     const auto tree = parser::Parse(
@@ -4310,8 +4275,7 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
         "template<class T> struct Owner { Owner<T>(T* p) {} " "Owner<T> (make)(); };",
         "template<class T> struct Owner { Owner<T>(T* p) try = default; "
             "Owner<T>(T* p) try : saved(p) {} catch (...) {} };",
-        "template<class T> struct Owner { "
-            "Owner<T>(T* p) try /* edge */ = /* word */ delete; "
+        "template<class T> struct Owner { " "Owner<T>(T* p) try /* edge */ = /* word */ delete; "
             "Owner<T>(T* p) {} };",
     };
     for (auto source : sources) {

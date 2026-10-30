@@ -1285,8 +1285,8 @@ private:
                             break;
                         }
                         const auto expression = Region(Syntax_[child]).FirstChild;
-                        stringSequence = expression != None && Syntax_[expression].String &&
-                            Region(Syntax_[expression]).Tokens.Size() > 1;
+                        stringSequence = Policies_.StringLiteralFragmentsAsArguments && expression != None &&
+                            Syntax_[expression].String && Region(Syntax_[expression]).Tokens.Size() > 1;
                     }
                 }
                 if (argumentCount == 1 && !stringSequence) {
@@ -1295,8 +1295,9 @@ private:
             }
             const auto* pin = PinFirst(id);
             const auto pinnedExpression = pin ? Region(Syntax_[node.FirstChild]).FirstChild : None;
-            const bool forcePinnedFragments = pinnedExpression != None && Syntax_[pinnedExpression].String &&
-                Region(Syntax_[pinnedExpression]).Tokens.Size() > 1 && policy.Break == BreakRequirement::Always;
+            const bool forcePinnedFragments = Policies_.StringLiteralFragmentsAsArguments && pinnedExpression != None &&
+                Syntax_[pinnedExpression].String && Region(Syntax_[pinnedExpression]).Tokens.Size() > 1 &&
+                policy.Break == BreakRequirement::Always;
             auto firstKind = forcePinnedFragments || (firstItem == FirstItemPlacement::NextLine && !pin)
                 ? document::GapKind::Hard
                 : document::GapKind::Soft;
@@ -1941,7 +1942,7 @@ private:
         if (node.Tokens.Size() < 2) {
             return;
         }
-        if (Syntax_[id].String) {
+        if (Syntax_[id].String && Policies_.StringLiteralFragmentsAsArguments) {
             PlanStringSequence(id);
             return;
         }
@@ -2021,7 +2022,7 @@ private:
             (kind != NodeKind::BinaryExpression || comparison) && kind != NodeKind::ConditionalExpression;
         Groups_[group].Spec.ForceBreak = canonical && policy.Break == BreakRequirement::Always &&
             (declarationAssignment || kind == NodeKind::BinaryExpression || kind == NodeKind::AssignmentExpression ||
-                kind == NodeKind::ConditionalExpression);
+                kind == NodeKind::ConditionalExpression || Syntax_[id].String);
         if (kind == NodeKind::ConditionalExpression) {
             Groups_[group].IndentTernaryOperators = policy.TernaryIndentation == TernaryOperatorIndentation::Indent;
             Groups_[group].ShareBranchContinuation = policy.TernaryIndentation == TernaryOperatorIndentation::Align;
@@ -2110,6 +2111,13 @@ private:
                     Own(t + 1, group, Boundary::Preserve);
                     Reindent(t, group);
                     Reindent(t + 1, group);
+                }
+            }
+            if (Syntax_[id].String && t > node.Tokens.Begin && Tree_.Kind(t) == TokenKind::Literal_String) {
+                if (canonical) {
+                    Own(t, group, boundary, document::GapKind::Hard);
+                } else {
+                    Reindent(t, group);
                 }
             }
         };

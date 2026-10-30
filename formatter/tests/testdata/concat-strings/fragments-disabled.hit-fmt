@@ -1,0 +1,2 @@
+include = "fragments-vertical.hit-fmt"
+StringLiteralFragmentsAsArguments = false

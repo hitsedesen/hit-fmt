@@ -73,8 +73,7 @@ void Report() {
       alpha,
       beta,
       gamma);
-  message("left"
-    " right",
+  message("left" " right",
     alpha,
     beta,
     gamma);

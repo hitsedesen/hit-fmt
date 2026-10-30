@@ -14,9 +14,7 @@ namespace {
 
 TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
 {
-    std::istringstream input(
-        "file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n"
-        "file src/file with spaces.cpp\nhunk 1:1\n"
+    std::istringstream input("file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n" "file src/file with spaces.cpp\nhunk 1:1\n"
         "file src/../src/a.cpp\nhunk 9:10\n");
     const auto base = std::filesystem::current_path() / "hunk-test";
     const auto parsed = formatter::ParseChangedHunks(input, base);

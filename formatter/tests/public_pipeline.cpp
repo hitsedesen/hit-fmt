@@ -78,8 +78,7 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
     const formatter::PreparedFormat preserveIndent(style);
     const std::string source =
-        "void f() {\n    auto value = engine()\n"
-        "            .Open()\n            .Finish();\n}\n";
+        "void f() {\n    auto value = engine()\n" "            .Open()\n            .Finish();\n}\n";
     const auto begin = parser::SourceOffset(source.find("            .Open"));
     const parser::SourceRange selected[] = {{begin, begin + 12}};
     formatter::FormatRequest request{.EditScope = selected};
@@ -128,8 +127,7 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
 TEST(PublicPipeline, StyleCheckpointKeepsIndependentGapPermissions)
 {
     const std::string source =
-        "void f() {\r\n    auto value = engine()\r\n"
-        "            .Open()\r\n            .Finish(); \t// note\n}\r\n";
+        "void f() {\r\n    auto value = engine()\r\n" "            .Open()\r\n            .Finish(); \t// note\n}\r\n";
     auto style = Canonical();
     style.Layout = formatter::LayoutMode::Preserve;
     style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
@@ -159,8 +157,7 @@ TEST(PublicPipeline, LambdaArgumentsRespectEditScope)
     for (const auto source :
         {
             "struct Registry {}; const Registry entry(7, [] { return 2; });\n" "int   following;\n",
-            "APPLY(7, ::ops::combine(::ops::make()), "
-                "[](const auto& v) -> std::string { return v; });\n"
+            "APPLY(7, ::ops::combine(::ops::make()), " "[](const auto& v) -> std::string { return v; });\n"
                 "int   following;\n",
             "APPLY([]() -> decltype(Item{}) { return Item{}; });\n" "int   following;\n",
             "void use() { consume(flag ? first, second : third, " "[] { return 2; }); }\nint   following;\n",
@@ -229,9 +226,7 @@ TEST(PublicPipeline, ControlSeparatorsRespectIndependentBodyAndHeaderPolicies)
                 style.BodyShape = shape;
                 style.ControlBracePlacement = formatter::BracePlacement::NextLine;
                 const formatter::PreparedFormat prepared(style);
-                const std::string source =
-                    "void f() {\n  if (a) {\n    left();\n  }\n"
-                    "  else {\n    right();\n  }\n"
+                const std::string source = "void f() {\n  if (a) {\n    left();\n  }\n" "  else {\n    right();\n  }\n"
                     "  do {\n    tick();\n  }\n  while (a);\n}\n";
                 const auto result = FormatInput(source, prepared);
                 if (headers == formatter::CategoryLayout::Canonical) {
@@ -272,12 +267,9 @@ TEST(PublicPipeline, ControlSeparatorsRespectProtectionAndScope)
     style.IndentWidth = 2;
     style.HonorClangFormatDirectives = true;
     const formatter::PreparedFormat prepared(style);
-    const std::string source =
-        "void f() {\n  if (a) { left(); } // keep\n  else { right(); }\n"
-        "  do { tick(); } /* barrier */\n  while (a);\n"
-        "  if (b) { left(); }\n#if FLAG\n#endif\n  else { right(); }\n"
-        "// clang-format off\n  do { tick(); }\nwhile( a );\n"
-        "// clang-format on\n}\n";
+    const std::string source = "void f() {\n  if (a) { left(); } // keep\n  else { right(); }\n"
+        "  do { tick(); } /* barrier */\n  while (a);\n" "  if (b) { left(); }\n#if FLAG\n#endif\n  else { right(); }\n"
+        "// clang-format off\n  do { tick(); }\nwhile( a );\n" "// clang-format on\n}\n";
     const auto result = FormatInput(source, prepared);
     EXPECT_NE(result.Text.find("// keep\n  else"), std::string::npos);
     EXPECT_NE(result.Text.find("/* barrier */\n  while"), std::string::npos);
@@ -301,10 +293,8 @@ TEST(PublicPipeline, UnbracedControlSeparatorCompactWidthAndMultilineSuffix)
         style.ColumnLimit = width;
         style.BodyShape = formatter::BodyShape::CompactIfFits;
         const formatter::PreparedFormat prepared(style);
-        const std::string source =
-            "void f(){if(ok)first_action();else second_action();"
-            "do third_action();while(\nvery_long_condition_name);"
-            "while(ok)fourth_action();}\n";
+        const std::string source = "void f(){if(ok)first_action();else second_action();"
+            "do third_action();while(\nvery_long_condition_name);" "while(ok)fourth_action();}\n";
         const auto result = FormatInput(source, prepared);
         if (width == 10000) {
             EXPECT_NE(result.Text.find("first_action(); else"), std::string::npos);
@@ -326,10 +316,8 @@ TEST(PublicPipeline, AmbiguousAssignmentRhsRespectsEditScope)
     style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
     style.RemoveNullStatements = true;
     const formatter::PreparedFormat prepared(style);
-    const std::string source =
-        "void f() { External  *  pointer = "
-        "Acquire(firstLongArgument, secondLongArgument, thirdLongArgument); "
-        "; int tail = 0; ; }\n";
+    const std::string source = "void f() { External  *  pointer = "
+        "Acquire(firstLongArgument, secondLongArgument, thirdLongArgument); " "; int tail = 0; ; }\n";
     const auto result = FormatInput(source, prepared);
     // Retain the null beside ambiguity, but still exercise normalization and
     // formatting of the independently known tail statement.
@@ -354,13 +342,10 @@ TEST(PublicPipeline, UnknownAnnotationsPreserveRecoveredText)
     const formatter::PreparedFormat prepared(style);
     for (const std::string_view source :
         {
-            "META(Key, const Item *, const Value *)\n"
-                "const Item *Factory::build(int n) const { return nullptr; }\n"
+            "META(Key, const Item *, const Value *)\n" "const Item *Factory::build(int n) const { return nullptr; }\n"
                 "int tail;\n",
-            "BIND(Key, const Item *) TRACK(Group, const Item *) "
-                "MAP(Key, const Item *, const Value *)\n"
-                "const Item *Factory::build(int n) const { return nullptr; }\n"
-                "int tail;\n",
+            "BIND(Key, const Item *) TRACK(Group, const Item *) " "MAP(Key, const Item *, const Value *)\n"
+                "const Item *Factory::build(int n) const { return nullptr; }\n" "int tail;\n",
             "NOTE(0) NOTE2(1) Vec load(int Type) { Type * value; }\n" "int tail;\n",
             "META(Key, const Item *, const Value *) [[maybe_unused]] "
                 "static bool check(const Item *p) { return p; }\nint tail;\n",
@@ -604,11 +589,8 @@ TEST(PublicPipeline, FinalNamespaceWidthDiagnosticsGolden)
 
 TEST(PublicPipeline, DeclarationFallbackRequiresRebuiltOwnerAndEditableGap)
 {
-    const std::string source =
-        "template<class T> struct Box {};\n"
-        "Box<int>  make(){return {};}\n"
-        "Box<int>  flat();\n"
-        "Box<int>\nOwner<int>::method(){return {};}\n";
+    const std::string source = "template<class T> struct Box {};\n" "Box<int>  make(){return {};}\n"
+        "Box<int>  flat();\n" "Box<int>\nOwner<int>::method(){return {};}\n";
     auto style = formatter::Style{};
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
     const formatter::PreparedFormat prepared(style);
@@ -757,9 +739,7 @@ TEST(
 
 TEST(PublicPipeline, ProtectedBytesSurviveBothBranchesAndCRLF)
 {
-    const std::string source =
-        "// hit-fmt off\r\nvoid locked( ){  invoke( x,y ); }\r\n// "
-        "hit-fmt on\r\n"
+    const std::string source = "// hit-fmt off\r\nvoid locked( ){  invoke( x,y ); }\r\n// " "hit-fmt on\r\n"
         "void f(){ KEEP(  x, y ); if(ok) invoke(a,b); }\r\n";
     for (bool structural : {false, true}) {
         auto style = Canonical();
@@ -1016,10 +996,8 @@ TEST(PublicPipeline, EditScopeProjectsPermutationGeneratedBytesAndReasonUnions)
     style.IncludeOrder = formatter::IncludeOrder::Sort;
     style.WhitespaceSensitiveMacros = {"KEEP"};
     const formatter::PreparedFormat prepared(style);
-    const std::string source =
-        "#include \"zzzz.h\"\n#include \"a.h\"\n;\n"
-        "void selected(){ if(ok)invoke(a,b); KEEP(  x,y ); }\n"
-        "void locked( ){  invoke( x,y ); }\n";
+    const std::string source = "#include \"zzzz.h\"\n#include \"a.h\"\n;\n"
+        "void selected(){ if(ok)invoke(a,b); KEEP(  x,y ); }\n" "void locked( ){  invoke( x,y ); }\n";
     const auto tail = uint32_t(source.find("void locked"));
     const auto sensitive = uint32_t(source.find("KEEP("));
     const std::array<parser::SourceRange, 1> scope{{{0, tail}}};
@@ -1217,10 +1195,8 @@ TEST(PublicPipeline, EditScopeCopiedIntersectionsAfterNormalization)
     style.RemoveNullDeclarations = true;
     style.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
     const formatter::PreparedFormat prepared(style);
-    const std::string source =
-        "#include \"z.h\"\r\n#include \"aaa.h\"\r\n;\r\n"
-        "void locked( ){\r\n  invoke( x,y );  \r\n\t\n}\r\n"
-        "void selected(){ invoke(a,b); }\n";
+    const std::string source = "#include \"z.h\"\r\n#include \"aaa.h\"\r\n;\r\n"
+        "void locked( ){\r\n  invoke( x,y );  \r\n\t\n}\r\n" "void selected(){ invoke(a,b); }\n";
     const auto firstFunction = uint32_t(source.find("void locked"));
     const auto horizontal = uint32_t(source.find("  \r\n"));
     const auto selectedFunction = uint32_t(source.find("void selected"));
@@ -1238,8 +1214,7 @@ TEST(PublicPipeline, EditScopeCopiedIntersectionsAfterNormalization)
 TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
 {
     const std::string source =
-        "// hit-fmt off\nvoid locked(){ if(ok)invoke(a,b); }\n"
-        "// hit-fmt on\nvoid safe(){ if(ok)invoke(x,y); }\n";
+        "// hit-fmt off\nvoid locked(){ if(ok)invoke(a,b); }\n" "// hit-fmt on\nvoid safe(){ if(ok)invoke(x,y); }\n";
     auto style = Canonical();
     style.AddMissingControlBraces = true;
     const formatter::PreparedFormat prepared(style);
@@ -1486,11 +1461,8 @@ TEST(PublicPipeline, TerminalConstructorSelfTypeStatementsRespectEditScope)
 TEST(PublicPipeline,
     TerminalConstructorBoundariesRespectStatementScope)
 {
-    const std::string source =
-        "template<class E> struct Chest { "
-        "Chest<E>(E* value) noexcept(check(value)) {} "
-        "void inspect(E seed) { Chest<E>(slot); "
-        "Chest<E>* pointer = &slot; invoke(seed,seed); } };\n";
+    const std::string source = "template<class E> struct Chest { " "Chest<E>(E* value) noexcept(check(value)) {} "
+        "void inspect(E seed) { Chest<E>(slot); " "Chest<E>* pointer = &slot; invoke(seed,seed); } };\n";
     auto style = Canonical();
     style.ColumnLimit = 10000;
     style.CommaSpaceAfter = formatter::GapPolicy::Space;
@@ -1548,12 +1520,8 @@ TEST(PublicPipeline, LineEndingWholeAtomsScopeAndExistingEOFReplacement)
 
 TEST(PublicPipeline, LineEndingTokenOwnedCRBareCRProtectionAndIncludeMovement)
 {
-    const std::string source =
-        "#define VALUE 1\r\n// note\r\n\r\n"
-        "int a;\r \n/* block\r\ntext */\n"
-        "const char* s=R\"(one\r\ntwo)\";\n"
-        "// clang-format off\r\nint   b;\r\n// clang-format on\r\n"
-        "int c;\n";
+    const std::string source = "#define VALUE 1\r\n// note\r\n\r\n" "int a;\r \n/* block\r\ntext */\n"
+        "const char* s=R\"(one\r\ntwo)\";\n" "// clang-format off\r\nint   b;\r\n// clang-format on\r\n" "int c;\n";
     for (const auto name : {"lf", "crlf"}) {
         const formatter::PreparedFormat prepared(EndingStyle(name));
         const auto result = FormatInput(source, prepared);
@@ -1737,12 +1705,9 @@ TEST(PublicPipeline, LineEndingBareCRNewNamespaceEOFDoesNotCaptureWhitespace)
 
 TEST(PublicPipeline, LineEndingCompositionControlSeparatorGeometryAndDefaults)
 {
-    const std::string source =
-        "void flow(bool ready) {\r\n  if (ready) {\r\n    left();\r\n  }\r\n"
-        "  else {\r\n    right();\r\n  }\r\n"
-        "  do {\r\n    tick();\r\n  }\r \n"
-        "  while (ready);\r\n  do {\r\n    next();\r\n  }\r\n"
-        "  while (ready);\r\n}\r\n";
+    const std::string source = "void flow(bool ready) {\r\n  if (ready) {\r\n    left();\r\n  }\r\n"
+        "  else {\r\n    right();\r\n  }\r\n" "  do {\r\n    tick();\r\n  }\r \n"
+        "  while (ready);\r\n  do {\r\n    next();\r\n  }\r\n" "  while (ready);\r\n}\r\n";
     for (const auto ending : {formatter::LineEnding::LF, formatter::LineEnding::CRLF}) {
         auto style = Canonical();
         style.LineEnding = ending;
@@ -1807,8 +1772,7 @@ TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
     using formatter::GapPolicy;
     using formatter::NamespaceComments;
     const std::string source =
-        "int amount;\t// namespace is ordinary prose\n"
-        "namespace N {\nint local;\n}\t// arbitrary closer prose\n";
+        "int amount;\t// namespace is ordinary prose\n" "namespace N {\nint local;\n}\t// arbitrary closer prose\n";
     for (const auto old :
         {
             GapPolicy::Preserve,
@@ -1850,13 +1814,9 @@ TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
 
 TEST(PublicPipeline, TrailingCommentSpacesRetainTokens)
 {
-    const std::string source =
-        "int quotient=8 / \t// divisor\n2;\n"
-        "int product=8 * \t// factor\n2;\n"
-        "int task(){ int value=1; value /= \t// divisor\n2; "
-        "return 4 \t// integer\n; }\n"
-        "const char* text(){return \"/\" \t// literal\n;}\n"
-        "/**/ \t// consecutive comments\n";
+    const std::string source = "int quotient=8 / \t// divisor\n2;\n" "int product=8 * \t// factor\n2;\n"
+        "int task(){ int value=1; value /= \t// divisor\n2; " "return 4 \t// integer\n; }\n"
+        "const char* text(){return \"/\" \t// literal\n;}\n" "/**/ \t// consecutive comments\n";
     formatter::FormatResult result;
     {
         formatter::Style style;
@@ -1945,8 +1905,7 @@ TEST(PublicPipeline,
         {
             "void work(bool ready){if(ready){tick();}\nelse{wait();}}\n",
             "using Type = int;\n" "static Vec NOTE(0) load(int Type) { Type * value; }\n",
-            "template<class T> struct Owner { Owner() {} "
-                "void inspect(T seed) { "
+            "template<class T> struct Owner { Owner() {} " "void inspect(T seed) { "
                 "Owner<T>(slot); Owner<T>* pointer = &slot; } };\n",
         })
     {
@@ -2035,9 +1994,7 @@ TEST(PublicPipeline, TextPoliciesRespectOriginalScopeAndProtection)
     style.RulerBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
     style.RulerBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
     const formatter::PreparedFormat prepared(style);
-    const std::string source =
-        "#if OUTER\n\t # if INNER\n"
-        "#define VALUE first \\\n    second    \\\n    third\n"
+    const std::string source = "#if OUTER\n\t # if INNER\n" "#define VALUE first \\\n    second    \\\n    third\n"
         "# endif\n# endif\n/////\nint item;\n";
     const auto begin = parser::SourceOffset(source.find('\t'));
     const auto end = parser::SourceOffset(source.find('\n', begin));

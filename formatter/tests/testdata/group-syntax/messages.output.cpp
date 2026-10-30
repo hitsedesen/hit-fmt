@@ -1,6 +1,5 @@
 void Report() {
-  message("left"
-    " right",
+  message("left" " right",
     alpha,
     beta,
     gamma);
@@ -13,8 +12,7 @@ void Report() {
     alpha,
     beta);
   other(
-    "left"
-    " right",
+    "left" " right",
     alpha,
     beta,
     gamma);

@@ -21,8 +21,7 @@ void Report() {
   message(/* prefix */ "first piece " "second piece", extra);
   message("first piece " "second piece" /* suffix */, extra);
   message(R"(multi
-line)"
-    "tail",
+line)" "tail",
     extra);
 // clang-format off
 message(  "first piece "    "second piece", extra);
