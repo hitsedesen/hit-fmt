@@ -1,11 +1,6 @@
 name: CI image
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .gitea/Dockerfile.ci
-      - .gitea/workflows/ci-image.yaml
   workflow_dispatch:
 
 permissions:
@@ -17,7 +12,7 @@ concurrency:
 
 jobs:
   publish:
-    runs-on: build
+    runs-on: hit-fmt
     timeout-minutes: 30
     steps:
       - uses: builtin:checkout
