@@ -51,4 +51,4 @@ struct Worker
     }
 };
 
-}
+} // namespace detail

@@ -1350,4 +1350,4 @@ TEST(SyntaxSpacing,
     RecordProperty("trailing_comment_option_bytes", int(sizeof(std::optional<TrailingCommentSpaceSetting>)));
 }
 
-}
+} // namespace

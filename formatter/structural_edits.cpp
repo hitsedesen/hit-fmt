@@ -1183,7 +1183,7 @@ NamespaceCommentPlan PlanNamespaceComments(
         original,
         &safety,
         scratchMemory,
-        [&] (const parser::Node& node, NK, NK, NK, bool, uint32_t, RegionStatus status, bool, bool) {
+        [&] (const parser::Node& node, NK, NK, NK, bool, uint32_t, RegionStatus, bool, bool) {
             if (node.Kind != NK::NamespaceDeclaration) {
                 // A keyword in opaque/generic grammar is evidence to SKIP,
                 // never permission to invent a namespace identity or
@@ -1228,7 +1228,9 @@ NamespaceCommentPlan PlanNamespaceComments(
             if (open == original.TokenCount() || !valid || (expectName && named))
                 return; // alias/non-header
             auto close = original.MatchingDelimiter(open);
-            if (status != RegionStatus::Complete || close >= node.Tokens.End ||
+            // Opaque body syntax does not change a parsed namespace identity.
+            // Its matching brace must still end this declaration exactly.
+            if (close >= node.Tokens.End || close + 1 != node.Tokens.End ||
                 original.Kind(close) != TK::Operator_CloseBrace)
             {
                 fail(StructuralSkip::Incomplete);
