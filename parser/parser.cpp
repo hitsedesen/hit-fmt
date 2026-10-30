@@ -7271,6 +7271,15 @@ private:
         {
             afterArgument = NextSignificant(afterArgument + 1);
         }
+        // Array declarators also preserve definite type evidence. Their
+        // bounds may contain expressions, including nested delimiters.
+        while (afterArgument < following && Kind(afterArgument) == TK::Operator_OpenBracket) {
+            const auto arrayEnd = FindBalancedEnd(afterArgument);
+            if (arrayEnd == std::numeric_limits<TokenIndex>::max() || arrayEnd > following) {
+                return false;
+            }
+            afterArgument = NextSignificant(arrayEnd);
+        }
         // Expanding a known type preserves its definite type evidence.
         if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Ellipsis) {
             afterArgument = NextSignificant(afterArgument + 1);
