@@ -8,8 +8,7 @@ namespace {
 std::string escape(std::string_view TextValue) {
   std::string Output;
   Output.reserve(TextValue.size());
-  for (char Ch :
-       TextValue) {
+  for (char Ch : TextValue) {
     if (Ch == '*' || Ch == '_' || Ch == '[' || Ch == ']' || Ch ==
         '|')Output += '\\';
     Output += Ch == '\n' ? ' ' : Ch;
@@ -34,22 +33,19 @@ const Block *Document::find(std::size_t Id) const noexcept {
 
 std::string Converter::render(const Content &Payload) const {
   return std::visit([this]<class T>(const T &Item) -> std::string {
-    if constexpr (std::same_as<T,
-                               Text>) {
+    if constexpr (std::same_as<T, Text>) {
       if (Item.Role == TextRole::Footer && Settings.DropFooters)return {};
       auto Body = escape(Item.Value);
       if (Body.empty())return {};
       if (Item.Italic)Body = "*" + Body + "*";
-      switch (Item
-              .Role) {
+      switch (Item.Role) {
       case TextRole::Heading:
         return std::string(std::clamp(Item.Level, 1u, 6u), '#') + " " + Body +
             "\n\n";
       case TextRole::Caption:return "> " + Body + "\n\n";
       default:return Body + "\n\n";
       }
-    } else if constexpr (std::same_as<T,
-                                      Image>) {
+    } else if constexpr (std::same_as<T, Image>) {
       if (!Settings.KeepImages)return {};
       auto RenderedImage = "![" + escape(Item.Description) + "](" +
           Settings.AssetDirectory + "/" + Item.Asset + ")";
@@ -71,13 +67,9 @@ Result Converter::convert(const Document &SourceDocument,
   Result ConversionResult{.Markdown = {}, .SourceOffsets = {}, .Skipped = 0};
   for (const Page &SourcePage : SourceDocument.Pages) {
     const auto PageStart = ConversionResult.Markdown.size();
-    for (const auto &SourceBlock :
-         SourcePage
-             .Blocks) {
+    for (const auto &SourceBlock : SourcePage.Blocks) {
       if (Mode == ExportMode::Selection && !SourceBlock.Selected)continue;
-      if (auto TextValue = render(SourceBlock.Payload);
-          !TextValue
-              .empty()) {
+      if (auto TextValue = render(SourceBlock.Payload); !TextValue.empty()) {
         ConversionResult.SourceOffsets
             .emplace_back(SourceBlock.Id, ConversionResult.Markdown.size());
         ConversionResult.Markdown += TextValue;

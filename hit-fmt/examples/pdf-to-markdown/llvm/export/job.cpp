@@ -56,22 +56,19 @@ void ExportJob::setProgress(ProgressCallback Callback, void *Context) {
 }
 
 Result ExportJob::run(ExportMode Mode) const {
-  if (SourceDocument.Pages
-      .empty()) {
+  if (SourceDocument.Pages.empty()) {
     throw std::invalid_argument("Cannot export a document without pages");
   }
   for (std::size_t PageIndex = 0; PageIndex < SourceDocument.Pages.size();
        ++PageIndex) {
-    if (
-        ProgressCallbackValue) {
+    if (ProgressCallbackValue) {
       ProgressCallbackValue({.Kind = ProgressKind::Page, .Value = {
               .Page = SourceDocument.Pages[PageIndex].Number}},
                             ProgressCallbackContext);
     }
   }
   auto ExportResult = Converter{Settings}.convert(SourceDocument, Mode);
-  if (
-      ProgressCallbackValue) {
+  if (ProgressCallbackValue) {
     ProgressCallbackValue({.Kind = ProgressKind::Fraction,
                            .Value = {.Fraction = 1.0}},
                           ProgressCallbackContext);
@@ -87,8 +84,9 @@ void revealExportOffset(PreviewObserver &Observer, RevealMethod Method,
                        [](std::size_t Position, const auto &Entry) {
                          return Position < Entry.second;
                        });
-  if (Next != ExportResult.SourceOffsets
-      .begin()) { std::invoke(Method, Observer, std::prev(Next)->first); }
+  if (Next != ExportResult.SourceOffsets.begin()) {
+    std::invoke(Method, Observer, std::prev(Next)->first);
+  }
 }
 
 std::ostream &operator<<(std::ostream &Output, const ProgressEvent &Event) {
@@ -115,8 +113,9 @@ std::string summarizeExport(const Document &InputDocument,
                                 std::min(MaximumCharacters,
                                          ExportResult.Markdown.size())};
         auto Bytes = std::unique_ptr<char[]>(new char[View.Size + 1]);
-        for (std::size_t Index = 0; Index < View.Size;
-             ++Index) { Bytes[Index] = View[Index]; }
+        for (std::size_t Index = 0; Index < View.Size; ++Index) {
+          Bytes[Index] = View[Index];
+        }
         Bytes[View.Size] = '\0';
         Output << ", preview of " << InputDocument.Title << ": " <<
             Bytes.get() << " (" << Status << ", " << ExportedBlocks <<

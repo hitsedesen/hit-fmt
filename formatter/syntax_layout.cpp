@@ -2649,6 +2649,10 @@ private:
                 braced ? GapPosition(opening + 1) : elseIf ? TokenPosition(opening) : GapPosition(opening),
                 document::GroupMode::Fill);
             Groups_[header].Spec.StructuralBase = true;
+            if (braced) {
+                // Prefer the body's independent break over splitting a fitting header.
+                Groups_[header].Spec.BreakPenalty = 1;
+            }
             if (canonical) {
                 ProjectHeaderGaps(id, begin, opening, header);
             }

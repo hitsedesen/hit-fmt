@@ -57,22 +57,19 @@ void ExportJob::SetProgress(ProgressCallback callback, void* context) {
 }
 
 Result ExportJob::Run(ExportMode mode) const {
-  if (document_.pages
-      .empty()) {
+  if (document_.pages.empty()) {
     throw std::invalid_argument("Cannot export a document without pages");
   }
   for (std::size_t page_index = 0; page_index < document_.pages.size();
        ++page_index) {
-    if (
-        callback_) {
+    if (callback_) {
       callback_({.kind = ProgressKind::kPage,
                  .value = {.page = document_.pages[page_index].number}},
                 context_);
     }
   }
   auto result = Converter{options_}.Convert(document_, mode);
-  if (
-      callback_) {
+  if (callback_) {
     callback_({.kind = ProgressKind::kFraction, .value = {.fraction = 1.0}},
               context_);
   }
@@ -87,8 +84,9 @@ void RevealExportOffset(PreviewObserver& observer, RevealMethod method,
                        [](std::size_t position, const auto& entry) {
                          return position < entry.second;
                        });
-  if (next != result.source_offsets
-      .begin()) { std::invoke(method, observer, std::prev(next)->first); }
+  if (next != result.source_offsets.begin()) {
+    std::invoke(method, observer, std::prev(next)->first);
+  }
 }
 
 std::ostream& operator<<(std::ostream& output, const ProgressEvent& event) {
@@ -114,8 +112,9 @@ std::string SummarizeExport(const Document& document, const Result& result,
         const MarkdownView view{result.markdown
                 .data(), std::min(maximum_characters, result.markdown.size())};
         auto bytes = std::unique_ptr<char[]>(new char[view.size + 1]);
-        for (std::size_t index = 0; index < view.size;
-             ++index) { bytes[index] = view[index]; }
+        for (std::size_t index = 0; index < view.size; ++index) {
+          bytes[index] = view[index];
+        }
         bytes[view.size] = '\0';
         output << ", preview of " << document.title << ": " << bytes.get() <<
             " (" << status << ", " << exported_blocks << " blocks on " <<

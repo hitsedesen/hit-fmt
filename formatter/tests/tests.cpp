@@ -3629,6 +3629,7 @@ std::vector<FormatCase> FormatCases()
     }
     AddCases(cases, consolidatedLayout, {"control-attached", "control-header-broken"}, "control-arms.input.cpp");
     AddCases(cases, consolidatedLayout, {"control-compact", "control-forced-header"}, "control-new-line.input.cpp");
+    AddCases(cases, consolidatedLayout, {"control-compact-fit"}, "control-compact-fit.input.cpp");
     AddCases(
         cases,
         consolidatedLayout,

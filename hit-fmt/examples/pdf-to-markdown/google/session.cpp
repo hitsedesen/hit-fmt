@@ -51,9 +51,7 @@ void Session::Refresh() {
 }
 
 void Session::RevealSource(std::size_t block_id) {
-  if (const auto* block = document_.Find(block_id);
-      block !=
-      nullptr) {
+  if (const auto* block = document_.Find(block_id); block != nullptr) {
     desktop_.Pdf().ScrollTo(block->bounds.top).Highlight(block->bounds);
     for (const auto& [id, offset] :
          preview_
@@ -64,8 +62,7 @@ void Session::RevealSource(std::size_t block_id) {
 
 void Session::ExportTo(std::string_view path, ExportMode mode) {
   const auto result = ExportJob{document_, options_}.Run(mode);
-  if (result.markdown
-      .empty()) {
+  if (result.markdown.empty()) {
     desktop_.Toast("Select at least one visible block before exporting.");
     return;
   }
@@ -88,10 +85,8 @@ void Session::Run() {
       .Right(desktop_.Preview().Observe(*this));
   window.Help(kWelcome);
   Refresh();
-  while (auto event = window
-         .NextEvent()) {
-    switch (event
-            ->Kind()) {
+  while (auto event = window.NextEvent()) {
+    switch (event->Kind()) {
       case EventKind::kSelection: {
         const auto selected = event->BlockIds();
         for (auto& page :
@@ -143,8 +138,7 @@ Task<void> OpenPdf(Desktop& desktop) {
     Session{desktop, std::move(document),
             {.keep_images = true, .asset_directory = path->stem() + "-assets"}}
         .Run();
-  } catch (
-           const std::exception& error) {
+  } catch (const std::exception& error) {
     desktop.Toast("Could not read PDF", error.what());
   }
   co_return;
