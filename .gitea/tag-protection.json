@@ -1,0 +1,7 @@
+{
+  "name_pattern": "v*",
+  "whitelist_usernames": [
+    "hitsedesen"
+  ],
+  "whitelist_teams": []
+}

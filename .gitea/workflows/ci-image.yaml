@@ -1,0 +1,56 @@
+name: CI image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .gitea/Dockerfile.ci
+      - .gitea/workflows/ci-image.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: build
+    timeout-minutes: 30
+    steps:
+      - uses: builtin:checkout
+        with:
+          persist-credentials: false
+      - name: Build and publish CI image
+        env:
+          REGISTRY_USER: ${{ secrets.CI_REGISTRY_USER }}
+          REGISTRY_TOKEN: ${{ secrets.CI_REGISTRY_TOKEN }}
+          BUILDER: hit-fmt-ci-${{ gitea.run_id }}-${{ gitea.run_attempt }}
+          SOURCE_REVISION: ${{ gitea.sha }}
+        run: |
+          set -eu
+          : "${REGISTRY_USER:?Set CI_REGISTRY_USER}"
+          : "${REGISTRY_TOKEN:?Set CI_REGISTRY_TOKEN with write:package permission}"
+          export DOCKER_CONFIG
+          DOCKER_CONFIG=$(mktemp -d)
+          cleanup() {
+            docker buildx rm "$BUILDER" >/dev/null 2>&1 || true
+            rm -rf -- "$DOCKER_CONFIG"
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          printf '%s' "$REGISTRY_TOKEN" |
+            docker login git.hitsedesen.me --username "$REGISTRY_USER" --password-stdin
+          unset REGISTRY_TOKEN
+          printf '[worker.oci]\n  max-parallelism = 1\n' > "$DOCKER_CONFIG/buildkit.toml"
+          docker buildx create --name "$BUILDER" --driver docker-container \
+            --driver-opt memory=768m \
+            --buildkitd-config "$DOCKER_CONFIG/buildkit.toml"
+          docker buildx build --builder "$BUILDER" --file .gitea/Dockerfile.ci \
+            --label org.opencontainers.image.source=https://git.hitsedesen.me/hitsedesen/hit-fmt \
+            --label "org.opencontainers.image.revision=$SOURCE_REVISION" \
+            --tag git.hitsedesen.me/hitsedesen/hit-fmt-ci:ubuntu24-v1 \
+            --push .gitea
