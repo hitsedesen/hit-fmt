@@ -243,7 +243,7 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
         }
         expect('{');
         IncludeGroupRule group;
-        bool prefixes = false;
+        bool selector = false;
         bool depth = false;
         bool priority = false;
         while (true) {
@@ -257,14 +257,24 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
             value.remove_prefix(name.size());
             expect('=');
             const auto field = fieldValue();
-            if (name == "Prefix" || name == "Prefixes") {
-                if (prefixes) {
-                    ThrowConfigError(path, line, "IncludeGroups requires exactly one " "Prefix or Prefixes field");
+            if (name == "Prefix" || name == "Prefixes" || name == "StandardHeaders") {
+                if (selector) {
+                    ThrowConfigError(
+                        path,
+                        line,
+                        "IncludeGroups requires exactly one Prefix, Prefixes or StandardHeaders field");
                 }
-                prefixes = true;
-                group.Prefixes = name == "Prefix"
-                    ? std::vector<std::string>{ParseString(field, path, line)}
-                    : ParseStringList(field, path, line);
+                selector = true;
+                if (name == "StandardHeaders") {
+                    if (field != "true") {
+                        ThrowConfigError(path, line, "IncludeGroups StandardHeaders must be true");
+                    }
+                    group.StandardHeaders = true;
+                } else {
+                    group.Prefixes = name == "Prefix"
+                        ? std::vector<std::string>{ParseString(field, path, line)}
+                        : ParseStringList(field, path, line);
+                }
             } else if (name == "Depth") {
                 if (depth) {
                     ThrowConfigError(path, line, "IncludeGroups has duplicate Depth field");
@@ -292,8 +302,8 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
             }
             expect(',');
         }
-        if (!prefixes) {
-            ThrowConfigError(path, line, "IncludeGroups requires Prefix or Prefixes");
+        if (!selector) {
+            ThrowConfigError(path, line, "IncludeGroups requires Prefix, Prefixes or StandardHeaders = true");
         }
         result.push_back(std::move(group));
         value = Trim(value);

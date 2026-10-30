@@ -1,0 +1,8 @@
+include = "system-regroup.hit-fmt"
+IncludeStandardHeaders = Preserve
+IncludeGroupOrder = Configured
+IncludeGroups = [
+    {Prefix = "project/"},
+    {StandardHeaders = true},
+    {Prefix = ""}
+]

@@ -9,8 +9,7 @@
 # IncludeOrder = Sort enables the following include policies.
 # IncludeCategoryOrder = QuotedFirst (default) puts quoted before angled;
 # AngledFirst reverses them. IncludeMatchingHeader = First stays first;
-# IncludeStandardHeaders = First/Last puts standard headers before/after
-# all remaining headers, overriding category and group order.
+# IncludeStandardHeaders = Last keeps unclaimed standard headers last.
 # IncludeMatchingHeader = First selects quoted same-stem headers
 # (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.
 # Pairing is disabled for header inputs or missing filenames.
@@ -18,7 +17,8 @@
 # Regroup groups by IncludeGroups rules; Directory additionally
 # subdivides each rule by its directory suffix and Depth.
 # Example: IncludeGroups = [{Prefix = "library/", Depth = 1}]
-# Each rule has Prefix or Prefixes, optional Depth and Priority.
+# Each rule has one selector: Prefix, Prefixes or StandardHeaders = true;
+# Depth and Priority are optional.
 # Depth defaults to 127; Priority defaults to 0.
 # Priority is an integer from -128 to 127.
 # Lower values sort first within each quote/angle category.
@@ -39,6 +39,17 @@
 # IncludeDirectoryOrder for subgroups within each rule.
 # Unmatched paths follow configured rules in the same tier.
 # Prefixes within one rule are aliases, not separate priorities.
+# StandardHeaders = true selects the same angled names as
+# IncludeStandardHeaders = Last, but uses ordinary group ordering.
+# A matched standard group overrides Last, ignores Depth and stays
+# alphabetical. At most one standard rule is allowed; it cannot
+# have Prefix or Prefixes. Put it before an empty-prefix fallback.
+# Example: project headers, then standard headers, then system headers:
+# IncludeGroups = [
+#     {Prefix = "project/", Priority = 0},
+#     {StandardHeaders = true, Priority = 1},
+#     {Prefix = "", Priority = 2}
+# ]
 # Example: IncludeGroupOrder = Configured with IncludeGroups =
 # [{Prefix = "library/", Depth = 1}, {Prefix = "util/", Depth = 1}]
 # puts library/ first, then util/, with nearest subgroups and
@@ -75,14 +86,12 @@
 # Absolute input filenames beneath it are rebased to that root.
 # Bare quoted names and quoted ./ or ../ paths stay source-relative.
 # Paths normalize lexically only; no file lookup or spelling edit.
-# IncludeStandardHeaders = First/Last uses a lexical heuristic: angled
-# names containing neither / nor .h go in an initial/final alphabetical group.
+# IncludeStandardHeaders = Last uses a lexical heuristic: angled
+# names containing neither / nor .h go in a final alphabetical group,
+# unless claimed by an explicit StandardHeaders = true rule.
 # It is case-sensitive, not ISO detection: extensionless vendor
 # names qualify; quoted names and stdio.h do not. Preserve keeps
-# ordinary sorting. A matching header still precedes the standard group.
-# Example: IncludeOrder = Sort, IncludeGrouping = Directory and
-# IncludeStandardHeaders = First puts <vector> before <Windows.h>,
-# with a blank line between their groups.
+# ordinary sorting. The final group follows even unmatched headers.
 # Check mode reports one include-order failure per file, not per header.
 # Other formatting, naming and width failures remain independent.
 # Rules are validated even when inactive; prefixes must be unique.
@@ -833,6 +842,7 @@ IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 
 # Values: [] or [{Prefix = "directory/", Depth = 127, Priority = 0}, ...]
+# A rule may instead use {StandardHeaders = true, Priority = 0}.
 IncludeGroups = []
 
 # Values: Directory | Configured
@@ -847,7 +857,7 @@ IncludeInGroupOrder = Alphabetical
 # Values: SourceDirectory | ProjectRoot
 IncludePathBase = SourceDirectory
 
-# Values: Preserve | Last | First
+# Values: Preserve | Last
 IncludeStandardHeaders = Preserve
 
 # Values: false | true

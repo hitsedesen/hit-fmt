@@ -1,9 +1,9 @@
-#include <algorithm>
-#include <vector>
-#include <vendor_api>
-#include <Windows.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include "project/api.h"
 #include "vector"
 #include "widget.h"
+#include <Windows.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <algorithm>
+#include <vector>
+#include <vendor_api>

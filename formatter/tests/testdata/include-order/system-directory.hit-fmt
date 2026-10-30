@@ -1,7 +1,8 @@
 Layout = Canonical
 IncludeOrder = Sort
 IncludeGrouping = Directory
-IncludeStandardHeaders = First
+IncludeStandardHeaders = Last
+IncludeGroups = [{StandardHeaders = true}]
 IncludeMatchingHeader = First
-IncludeCategoryOrder = AngledFirst
+IncludeCategoryOrder = QuotedFirst
 IncludeInGroupOrder = NearestFirst

@@ -1,3 +1,7 @@
+#include "vector"
+
+#include "library/a.h"
+
 #include <Vector>
 #include <custom.inc>
 #include <iostream>
@@ -5,10 +9,6 @@
 #include <vector>
  #include <vector>
 #include <vendor_api>
-
-#include "vector"
-
-#include "library/a.h"
 
 #include <helper.header>
 #include <implementation.hpp>
