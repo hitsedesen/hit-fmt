@@ -1,0 +1,8 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 64
+ContinuationOffset = 4
+ListAlignment = Block
+ExpressionsAlignment = Block
+BinaryOperatorSide = Trailing

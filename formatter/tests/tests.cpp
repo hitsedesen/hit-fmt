@@ -2014,11 +2014,8 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         strings,
-        {"authored", "authored-preserve", "authored-vertical", "authored-all-or-vertical"},
-        "authored.input.cpp");
-    cases.push_back({strings, "authored-crlf", "authored-crlf.input.cpp", "authored"});
-    cases.push_back({strings, "shapes", "shapes.input.cpp"});
-    AddCases(cases, strings, {"nested-tight", "nested-wide"}, "nested.input.cpp");
+        {"fragments-vertical", "fragments-fill", "fragments-all-or-vertical", "fragments-preserve", "fragments-always"},
+        "fragments.input.cpp");
     cases.push_back({strings, "crlf", "crlf.input.cpp", "overflow"});
     const auto parsedOperators = data / "parsed-operators";
     for (const auto* name : {"placement-lists", "delimiter-choice"}) {
@@ -2538,6 +2535,8 @@ std::vector<FormatCase> FormatCases()
             "brace-next-line",
         });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
+    cases.push_back({data / "requires-lambdas", "continuation", "continuation.input.cpp"});
+    cases.push_back({data / "requires-lambdas", "continuation-own-line", "continuation.input.cpp"});
     {
         const auto directory = data / "requires-lambdas";
         const auto parserData = std::filesystem::path(PARSER_TESTDATA_DIR);
@@ -3911,7 +3910,8 @@ TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
         } catch (const std::invalid_argument& error) {
             EXPECT_EQ(
                 std::string_view(error.what()),
-                "CallLikeMacroNames syntax hints are not yet supported " "by the public pipeline");
+                "CallLikeMacroNames syntax hints are not yet supported "
+                "by the public pipeline");
         }
     }
 }
@@ -3977,8 +3977,14 @@ TEST(Formatter, RequiresLambdasFitAfterBreakingHeadersAndBodies)
 
 TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
 {
-    const auto input = "int f() {\n" "    auto description = someVeryLongIdentifierName;\n" "    auto x = left\n"
-        "        + right;\n" "    return condition ?\n" "        alphaValue : betaValue;\n" "}\n";
+    const auto input =
+        "int f() {\n"
+        "    auto description = someVeryLongIdentifierName;\n"
+        "    auto x = left\n"
+        "        + right;\n"
+        "    return condition ?\n"
+        "        alphaValue : betaValue;\n"
+        "}\n";
     const Input storage(input);
     const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
     formatter::Style style;
@@ -4076,9 +4082,12 @@ TEST_P(LayoutDiagnosticTest, Golden)
 
 TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
 {
-    const std::string input = "// hit-fmt off\r\nint\tlong_name;\r\n" "\tint long_name;\n" "// é界😀é界😀é界😀é界😀é\r\n"
-        "// é界😀é界😀é界😀é界😀é界\r" "// é界😀\té界😀é界😀é界\n" "// é界😀\té界😀é界😀é界😀\n" + std::string("// ") + std::string(13, 'a') +
-        "\x80\xe2\x82é\n" + "// hit-fmt on\n";
+    const std::string input = "// hit-fmt off\r\nint\tlong_name;\r\n"
+        "\tint long_name;\n"
+        "// é界😀é界😀é界😀é界😀é\r\n"
+        "// é界😀é界😀é界😀é界😀é界\r"
+        "// é界😀\té界😀é界😀é界\n"
+        "// é界😀\té界😀é界😀é界😀\n" + std::string("// ") + std::string(13, 'a') + "\x80\xe2\x82é\n" + "// hit-fmt on\n";
     const Input source(input);
     const auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
     formatter::Style style;
@@ -4155,15 +4164,22 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
     style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
     style.ColumnLimit = 120;
-    const std::string source = "void f(int a, int b) {\n" "    auto address = (UnknownType) &a;\n"
-        "    auto pointer = (UnknownType)*b;\n" "    auto qualified = (NS::UnknownType) &a;\n" "}\n";
+    const std::string source =
+        "void f(int a, int b) {\n"
+        "    auto address = (UnknownType) &a;\n"
+        "    auto pointer = (UnknownType)*b;\n"
+        "    auto qualified = (NS::UnknownType) &a;\n"
+        "}\n";
     // Canonical Always cannot manufacture authority for ambiguous operators.
     ExpectUnchanged(source, style);
     // Certain expressions remain editable. Test their horizontal policies
     // without requiring canonical Always to retain their original topology.
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
     const std::string certain =
-        "void f(int a, int b) {\n" "    auto certain = (a + b) & b;\n" "    auto knownCast = (int)&a;\n" "}\n";
+        "void f(int a, int b) {\n"
+        "    auto certain = (a + b) & b;\n"
+        "    auto knownCast = (int)&a;\n"
+        "}\n";
     ExpectUnchanged(certain, style);
     const auto compact =
         std::string(certain).replace(certain.find("(a + b) & b"), std::string("(a + b) & b").size(), "(a + b)&b");
@@ -4230,17 +4246,29 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
         ASSERT_TRUE(output.is_open());
         output << contents;
     };
-    save("IndentWidth = 2\nColumnLimit = 40\n" "ExpressionsLayout = Canonical\nExpressionsBreak = IfNeeded\n"
-        "BinaryOperatorSide = Trailing\nAssignmentOperatorSide = Trailing\n" "StatementAttributeIndent = Block\n"
-        "AccessModifierIndentWidth = 1\nMemberIndentWidth = 3\n" "BlockBodyIndentWidth = 4\nCaseLabelIndentWidth = 1\n"
+    save(
+        "IndentWidth = 2\nColumnLimit = 40\n"
+        "ExpressionsLayout = Canonical\nExpressionsBreak = IfNeeded\n"
+        "BinaryOperatorSide = Trailing\nAssignmentOperatorSide = Trailing\n"
+        "StatementAttributeIndent = Block\n"
+        "AccessModifierIndentWidth = 1\nMemberIndentWidth = 3\n"
+        "BlockBodyIndentWidth = 4\nCaseLabelIndentWidth = 1\n"
         "StatementAttributeIndentWidth = 2\nNamespaceCommentSpaces = 2\n"
         "CommaSpaceBefore = NoSpace\nCommaSpaceAfter = Space\n"
-        "TernaryOperatorSide = Trailing\nTernaryLayout = ThreePart\n" "CallsLayout = Canonical\nCallsPacking = Fill\n"
+        "TernaryOperatorSide = Trailing\nTernaryLayout = ThreePart\n"
+        "CallsLayout = Canonical\nCallsPacking = Fill\n"
         "CallsFirstItem = NextLine\nCallsAlignment = Delimiter\n"
         "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
-        "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n" "Exclude = [ # list comment\n"
-        "  \"x\\\\]y\", # bracket in a quoted item\n" "  \"(^|/)generated(/|$)\"\n" "]\n" "ClassNamePrefixes = [\n"
-        "  \"S\", # prefix comment\n" "  \"C\"\n" "]\n" "IndentWidth = 3\n");
+        "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n"
+        "Exclude = [ # list comment\n"
+        "  \"x\\\\]y\", # bracket in a quoted item\n"
+        "  \"(^|/)generated(/|$)\"\n"
+        "]\n"
+        "ClassNamePrefixes = [\n"
+        "  \"S\", # prefix comment\n"
+        "  \"C\"\n"
+        "]\n"
+        "IndentWidth = 3\n");
     const auto config = formatter::LoadConfigFile(path);
     const auto& style = config.FormattingStyle;
     EXPECT_EQ(style.IndentWidth, 3u);
@@ -4277,7 +4305,9 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
     ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
     EXPECT_EQ(*config.Naming.Class.Prefixes, (std::vector<std::string>{"S", "C"}));
-    save("ClassNameCase = Unchecked\nClassNamePrefixes = []\n" "BaseListsContinuationOffset = 0\n"
+    save(
+        "ClassNameCase = Unchecked\nClassNamePrefixes = []\n"
+        "BaseListsContinuationOffset = 0\n"
         "ConstructorListsContinuationOffset = 0\nShortNamespaceLines = 0\n");
     const auto disabled = formatter::LoadConfigFile(path);
     EXPECT_EQ(disabled.Naming.Class.Case, formatter::NameCase::Unchecked);
@@ -4290,7 +4320,8 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
     const auto alternate = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(alternate.CallsLayout, formatter::CategoryLayout::Canonical);
     EXPECT_EQ(alternate.CallsBreak, formatter::BreakRequirement::Always);
-    save("ExpressionsLayout = Preserve\nExpressionsBreak = Always\n"
+    save(
+        "ExpressionsLayout = Preserve\nExpressionsBreak = Always\n"
         "TernaryOperatorSide = Leading\nTernaryLayout = Flexible\n");
     const auto preserving = formatter::LoadConfigFile(path).FormattingStyle;
     EXPECT_EQ(

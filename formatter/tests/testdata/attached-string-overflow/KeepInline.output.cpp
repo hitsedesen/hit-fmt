@@ -6,12 +6,14 @@ void Report() {
   message("short");
   message("123456789012345678");
   message("1234567890123456789");
-  message("left" " right",
+  message("left"
+    " right",
     alpha,
     beta,
     gamma);
   message("first piece "
-    "second piece " "third",
+    "second piece "
+    "third",
     value);
   message("an indivisible literal which exceeds the global width",
     extra);
@@ -59,7 +61,8 @@ void Report() {
     "second piece" /* suffix */,
     extra);
   message(R"(multi
-line)" "tail",
+line)"
+    "tail",
     extra);
 // clang-format off
 message(  "first piece "    "second piece", extra);

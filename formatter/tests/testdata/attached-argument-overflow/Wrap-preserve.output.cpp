@@ -27,10 +27,8 @@ void Report() {
   message(firstArgumentWithAnIntentionallyLongName);
   receiver.message(value +
     offset, alpha, beta, gamma);
-  message("left"
-    " right", alpha, beta, gamma);
-  message("first piece "
-    "second piece");
+  message("left" " right", alpha, beta, gamma);
+  message("first piece " "second piece");
   message(inner(leftArgument, middleArgument, rightArgument));
   message(/* prefix */ value +
     offset, alpha, beta);

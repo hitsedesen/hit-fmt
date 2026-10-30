@@ -189,7 +189,7 @@ struct Syntax
     Index Root = None;
     Index PreviousSibling = None;
     Index Operator = None;
-    Index IfConditionGroup = None;
+    Index ListGroup = None;
     Index PreservedIndentGroup = None;
     bool Safe = true;
     bool IndentSafe = true;
@@ -430,7 +430,7 @@ public:
                 (Tree_.Kind(entry.Operator) == TokenKind::Operator_And ||
                     Tree_.Kind(entry.Operator) == TokenKind::Operator_Or))
             {
-                entry.IfConditionGroup = Syntax_[node.Parent].IfConditionGroup;
+                entry.ListGroup = Syntax_[node.Parent].ListGroup;
             }
             switch (node.Kind) {
                 case NodeKind::TranslationUnit:
@@ -1024,6 +1024,7 @@ private:
             case NodeKind::ConditionalExpression:
             case NodeKind::ParenthesizedExpression:
             case NodeKind::RequirementExpression:
+            case NodeKind::RequiresClause:
                 break;
             case NodeKind::CastExpression: {
                 const auto opening = NamedCastOpening(id);
@@ -1255,7 +1256,7 @@ private:
             Region(Syntax_[node.Parent]).Kind == NodeKind::IfStatement &&
             Policies_.Expressions.Layout == LayoutMode::Canonical && Policies_.IfConditionsPacking != ListPacking::Fill)
         {
-            Syntax_[id].IfConditionGroup = group;
+            Syntax_[id].ListGroup = group;
         }
         const bool empty = !prefixed && node.Tokens.Size() == 2;
         Groups_[group].Spec.ForceBreak = canonical && !empty && policy.Break == BreakRequirement::Always;
@@ -1271,22 +1272,32 @@ private:
             if (node.Kind == NodeKind::ArgumentList && Policies_.CallsSoleArgumentFirstItem != firstItem) {
                 // Count syntax arguments, not commas inside their expressions
                 // or trivia. Stop as soon as the sole-argument override cannot
-                // apply; no expression-kind or callee-name exceptions.
+                // apply. A string's multiple fragments keep the ordinary
+                // first-item placement without changing semantic arity.
                 unsigned argumentCount = 0;
+                bool stringSequence = false;
                 for (auto child = Region(Syntax_[id]).FirstChild;
                     child != None;
                     child = Region(Syntax_[child]).NextSibling)
                 {
-                    if (Region(Syntax_[child]).Kind == NodeKind::Argument && ++argumentCount == 2) {
-                        break;
+                    if (Region(Syntax_[child]).Kind == NodeKind::Argument) {
+                        if (++argumentCount == 2) {
+                            break;
+                        }
+                        const auto expression = Region(Syntax_[child]).FirstChild;
+                        stringSequence = expression != None && Syntax_[expression].String &&
+                            Region(Syntax_[expression]).Tokens.Size() > 1;
                     }
                 }
-                if (argumentCount == 1) {
+                if (argumentCount == 1 && !stringSequence) {
                     firstItem = Policies_.CallsSoleArgumentFirstItem;
                 }
             }
             const auto* pin = PinFirst(id);
-            auto firstKind = firstItem == FirstItemPlacement::NextLine && !pin
+            const auto pinnedExpression = pin ? Region(Syntax_[node.FirstChild]).FirstChild : None;
+            const bool forcePinnedFragments = pinnedExpression != None && Syntax_[pinnedExpression].String &&
+                Region(Syntax_[pinnedExpression]).Tokens.Size() > 1 && policy.Break == BreakRequirement::Always;
+            auto firstKind = forcePinnedFragments || (firstItem == FirstItemPlacement::NextLine && !pin)
                 ? document::GapKind::Hard
                 : document::GapKind::Soft;
             if (pin && pin->Overflow == AttachedStringOverflow::KeepInline && policy.Break != BreakRequirement::Always)
@@ -1411,6 +1422,9 @@ private:
         const auto items = canonical && !empty && policy.Packing == ListPacking::AllOrVertical
             ? PackingGroup(group, TokenPosition(begin + 1), GapPosition(closer))
             : group;
+        if (node.Kind == NodeKind::ArgumentList) {
+            Syntax_[id].ListGroup = items;
+        }
         Index lastItem = None;
         Index lastSeparator = None;
         for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
@@ -1833,6 +1847,64 @@ private:
             child == (outer.RightAssociative ? LastChild_[parent] : Region(a).FirstChild);
     }
 
+    void PlanStringSequence(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        const auto& policy = Policies_.Calls;
+        const bool canonical = policy.Layout == LayoutMode::Canonical;
+        const auto parent = node.Parent;
+        const bool argument = parent != None && Region(Syntax_[parent]).Kind == NodeKind::Argument;
+        const bool initializer = parent != None && Region(Syntax_[parent]).Kind == NodeKind::Initializer;
+        const auto enclosing = argument && Region(Syntax_[parent]).Parent != None
+            ? Syntax_[Region(Syntax_[parent]).Parent].ListGroup
+            : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
+        if (canonical && enclosing != None) {
+            if (initializer) {
+                Groups_[enclosing].Spec.ForceBreak |= policy.Break == BreakRequirement::Always;
+                Own(node.Tokens.Begin, enclosing, Boundary::Conditional, document::GapKind::Hard);
+            }
+            DirectTokens(
+                id,
+                [&] (Index token) {
+                    if (token > node.Tokens.Begin && Tree_.Kind(token) == TokenKind::Literal_String) {
+                        Own(
+                            token,
+                            enclosing,
+                            policy.Packing == ListPacking::Fill ? Boundary::Soft : Boundary::Conditional,
+                            document::GapKind::Hard);
+                    }
+                });
+            return;
+        }
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            canonical && policy.Packing == ListPacking::AllOrVertical
+            ? document::GroupMode::Consistent
+            : document::GroupMode::Fill,
+            int32_t(policy.Indent.ContinuationOffset),
+            policy.Indent);
+        Groups_[group].Spec.Continuation = true;
+        Groups_[group].Spec.ForceBreak = canonical && policy.Break == BreakRequirement::Always;
+        DirectTokens(
+            id,
+            [&] (Index token) {
+                if (token == node.Tokens.Begin || Tree_.Kind(token) != TokenKind::Literal_String) {
+                    return;
+                }
+                if (canonical) {
+                    Own(
+                        token,
+                        group,
+                        policy.Packing == ListPacking::Fill ? Boundary::Soft : Boundary::Conditional,
+                        document::GapKind::Hard);
+                } else {
+                    Own(token, group, Boundary::Preserve);
+                    Reindent(token, group);
+                }
+            });
+    }
+
     void PlanExpression(Index id)
     {
         const auto& node = Region(Syntax_[id]);
@@ -1869,7 +1941,11 @@ private:
         if (node.Tokens.Size() < 2) {
             return;
         }
-        if (const auto group = Syntax_[id].IfConditionGroup; group != None) {
+        if (Syntax_[id].String) {
+            PlanStringSequence(id);
+            return;
+        }
+        if (const auto group = Syntax_[id].ListGroup; group != None) {
             Groups_[group].Spec.ForceBreak |= Policies_.Expressions.Break == BreakRequirement::Always;
             // The header owns these boundaries, not independent precedence
             // groups. Any header break therefore splits all logical operands,
@@ -1945,7 +2021,7 @@ private:
             (kind != NodeKind::BinaryExpression || comparison) && kind != NodeKind::ConditionalExpression;
         Groups_[group].Spec.ForceBreak = canonical && policy.Break == BreakRequirement::Always &&
             (declarationAssignment || kind == NodeKind::BinaryExpression || kind == NodeKind::AssignmentExpression ||
-                kind == NodeKind::ConditionalExpression || Syntax_[id].String);
+                kind == NodeKind::ConditionalExpression);
         if (kind == NodeKind::ConditionalExpression) {
             Groups_[group].IndentTernaryOperators = policy.TernaryIndentation == TernaryOperatorIndentation::Indent;
             Groups_[group].ShareBranchContinuation = policy.TernaryIndentation == TernaryOperatorIndentation::Align;
@@ -2034,18 +2110,6 @@ private:
                     Own(t + 1, group, Boundary::Preserve);
                     Reindent(t, group);
                     Reindent(t + 1, group);
-                }
-            }
-            if (Syntax_[id].String && t > node.Tokens.Begin && Tree_.Kind(t) == TokenKind::Literal_String) {
-                if (canonical) {
-                    const bool authoredBreak = Safety_.Gaps()[t].HasLineFeed;
-                    Own(
-                        t,
-                        group,
-                        authoredBreak ? Boundary::Soft : boundary,
-                        authoredBreak ? document::GapKind::RetainedLine : document::GapKind::Hard);
-                } else {
-                    Reindent(t, group);
                 }
             }
         };
@@ -2836,13 +2900,8 @@ private:
         const auto bodyWidth =
             BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
         const auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
-        // A positioned constraint can move the brace to an indented header
-        // line. Keep the lambda's original base alive through its body.
-        const bool constrainedLambda = node.Kind == NodeKind::LambdaExpression && HasPositionedConstraint(id);
-        const auto group = GroupAt(
-            TokenPosition(node.Tokens.Begin),
-            GapPosition(constrainedLambda ? node.Tokens.End : opening + 1),
-            document::GroupMode::Fill);
+        const auto group =
+            GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1), document::GroupMode::Fill);
         Groups_[group].Spec.StructuralBase = true;
         Groups_[group].Spec.FixedBase = fixedBase;
         Groups_[group].Spec.LineBase = fixedBase == None && node.Kind == NodeKind::LambdaExpression;
@@ -3024,9 +3083,7 @@ private:
         Groups_[group].Spec.FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
         Groups_[group].Spec.LineBase = contentIndent == None &&
             !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
-                (HasPositionedConstraint(parent) ||
-                    (Policies_.DeclarationHeaders == LayoutMode::Canonical &&
-                        policy.Layout == LayoutMode::Preserve))) &&
+                Policies_.DeclarationHeaders == LayoutMode::Canonical && policy.Layout == LayoutMode::Preserve) &&
             (Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification ||
                 Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
@@ -4865,9 +4922,7 @@ private:
         GapAdjacency adjacency = GapAdjacency::Source) const
     {
         document::GapSpec spec;
-        spec.Kind = kind != document::GapKind::Flat && Gaps_[i].Broken == document::GapKind::RetainedLine
-            ? document::GapKind::RetainedLine
-            : kind;
+        spec.Kind = kind;
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i, adjacency), UINT16_MAX));
         spec.RequiredWidth = Facts_[i].RequiredWidth;
         spec.FitNextSegment = Gaps_[i].FitNextSegment;

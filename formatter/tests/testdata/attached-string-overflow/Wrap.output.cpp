@@ -7,13 +7,14 @@ void Report() {
   message("123456789012345678");
   message(
     "1234567890123456789");
-  message("left" " right",
+  message("left"
+    " right",
     alpha,
     beta,
     gamma);
-  message(
-    "first piece "
-    "second piece " "third",
+  message("first piece "
+    "second piece "
+    "third",
     value);
   message(
     "an indivisible literal which exceeds the global width",
@@ -22,28 +23,25 @@ void Report() {
     "an indivisible literal which exceeds the global width"
     " tail",
     extra);
-  receiver.message(
-    "first piece "
-    "second piece",
-    extra);
+  receiver
+    .message("first piece "
+      "second piece",
+      extra);
   message("first piece "
     "second piece");
   message(
     "an indivisible literal which exceeds the global width");
-  message(
-    R"(raw first piece )"
+  message(R"(raw first piece )"
     "second piece",
     extra);
-  message(
-    u8"first piece "
+  message(u8"first piece "
     u8"second piece",
     extra);
   outer(
     message("first piece "
       "second piece"),
     extra);
-  message(
-    "first piece "
+  message("first piece "
     "second piece",
     extra);
   message(
@@ -65,12 +63,12 @@ void Report() {
     /* prefix */ "first piece "
     "second piece",
     extra);
-  message(
-    "first piece "
+  message("first piece "
     "second piece" /* suffix */,
     extra);
   message(R"(multi
-line)" "tail",
+line)"
+    "tail",
     extra);
 // clang-format off
 message(  "first piece "    "second piece", extra);

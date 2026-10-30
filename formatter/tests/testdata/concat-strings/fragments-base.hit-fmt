@@ -1,0 +1,8 @@
+Layout = Canonical
+ColumnLimit = 72
+IndentWidth = 4
+CallsFirstItem = NextLine
+CallsSoleArgumentFirstItem = InlineIfFits
+CallLineFirstStringNames = ["REPORT"]
+CallLineFirstStringOverflow = KeepInline
+ExpressionsPacking = Fill

@@ -136,8 +136,10 @@ TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
     TemporaryConfigTree tree;
     tree.Write(
         "base",
-        "ColumnLimit = 80\nIndentWidth = 2\n" "ClassNameCase = PascalCase\nExclude = [\"generated\"]\n"
-        "CallLineFirstArgumentNames = [\"Trace\"]\n" "DefinitionBlankLines = 2\nMaxEmptyLines = 1\n");
+        "ColumnLimit = 80\nIndentWidth = 2\n"
+        "ClassNameCase = PascalCase\nExclude = [\"generated\"]\n"
+        "CallLineFirstArgumentNames = [\"Trace\"]\n"
+        "DefinitionBlankLines = 2\nMaxEmptyLines = 1\n");
     tree.Write("nested/middle", "include = \"../base\"\nIndentWidth = 3\n");
     for (const auto contents :
         {"ColumnLimit = 100\ninclude = \"nested/middle\"\n", "include = \"nested/middle\"\nColumnLimit = 100\n"})
@@ -429,9 +431,14 @@ TEST(ConfigPolicy, SoleArgumentPlacementInheritsFinalCallsFirstItem)
 
 TEST(ConfigPolicy, VerticalCountsResolveZeroAndMemberOverrides)
 {
-    const TemporaryConfig config("DeclarationBlankLines = 1\n" "MemberDeclarationBlankLines = 0\n"
-        "DefinitionBlankLines = 1\n" "MemberDefinitionBlankLines = 0\n" "NamespaceBlankLinesAfterOpen = 0\n"
-        "NamespaceBlankLinesBeforeClose = Preserve\n" "MaxEmptyLines = 1\n");
+    const TemporaryConfig config(
+        "DeclarationBlankLines = 1\n"
+        "MemberDeclarationBlankLines = 0\n"
+        "DefinitionBlankLines = 1\n"
+        "MemberDefinitionBlankLines = 0\n"
+        "NamespaceBlankLinesAfterOpen = 0\n"
+        "NamespaceBlankLinesBeforeClose = Preserve\n"
+        "MaxEmptyLines = 1\n");
     const auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(policies.Layout, formatter::LayoutMode::Preserve);
@@ -525,7 +532,9 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
     const auto good = formatter::LoadConfigFile(repaired.Path);
     EXPECT_EQ(formatter::CompilePolicies(good.FormattingStyle).VerticalGaps.MemberDefinitionBlankLines.EmptyLines, 2u);
     const TemporaryConfig replaced(
-        "MemberDefinitionBlankLines = " "2\nMaxEmptyLines = 1\n" "MemberDefinitionBlankLines = Preserve\n");
+        "MemberDefinitionBlankLines = "
+        "2\nMaxEmptyLines = 1\n"
+        "MemberDefinitionBlankLines = Preserve\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(replaced.Path));
     for (const auto& setting : VerticalCountSettings) {
         const auto key = setting.first;
@@ -670,7 +679,9 @@ TEST(ConfigPolicy, CvRefQualifierSpacingSeparatesInheritanceAndPreservation)
         EXPECT_EQ(compiled.Spacing.FunctionCvRefQualifierSpacing, policy);
         EXPECT_EQ(compiled.Spacing.FunctionRefQualifierSpacing, GapPolicy::Space);
     }
-    const TemporaryConfig reset("FunctionRefQualifierSpacing = NoSpace\n" "FunctionCvRefQualifierSpacing = Space\n"
+    const TemporaryConfig reset(
+        "FunctionRefQualifierSpacing = NoSpace\n"
+        "FunctionCvRefQualifierSpacing = Space\n"
         "FunctionCvRefQualifierSpacing = Inherit\n");
     const auto resetStyle = formatter::LoadConfigFile(reset.Path).FormattingStyle;
     EXPECT_FALSE(resetStyle.FunctionCvRefQualifierSpacing);
@@ -956,13 +967,24 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
 
 TEST(ConfigPolicy, StagedOptionsResolveFinalInheritance)
 {
-    const TemporaryConfig config("FunctionBracePlacement = NextLine\n" "ConstructorBracePlacement = Inherit\n"
-        "FunctionBracePlacement = NextLineIfHeaderBroken\n" "StandaloneCommentBlankLinesBefore = 0\n"
-        "StandaloneCommentBlankLinesAfter = 2\n" "MaxEmptyLines = 2\n" "BreakAfterTemplateHeader = true\n"
-        "ExpressionsAlignment = Operand\n" "IncludeMatchingHeader = First\n" "IncludeGrouping = Regroup\n"
-        "IncludeGroups = [{Prefix = \"engine/\", Depth = 2}, " "{Prefix = \"engine/detail/\", Depth = 1}]\n"
-        "IncludeGroupOrder = Configured\n" "IncludeDirectoryOrder = Alphabetical\n"
-        "IncludeInGroupOrder = NearestFirst\n" "IncludePathBase = ProjectRoot\n" "IncludeStandardHeaders = Last\n");
+    const TemporaryConfig config(
+        "FunctionBracePlacement = NextLine\n"
+        "ConstructorBracePlacement = Inherit\n"
+        "FunctionBracePlacement = NextLineIfHeaderBroken\n"
+        "StandaloneCommentBlankLinesBefore = 0\n"
+        "StandaloneCommentBlankLinesAfter = 2\n"
+        "MaxEmptyLines = 2\n"
+        "BreakAfterTemplateHeader = true\n"
+        "ExpressionsAlignment = Operand\n"
+        "IncludeMatchingHeader = First\n"
+        "IncludeGrouping = Regroup\n"
+        "IncludeGroups = [{Prefix = \"engine/\", Depth = 2}, "
+        "{Prefix = \"engine/detail/\", Depth = 1}]\n"
+        "IncludeGroupOrder = Configured\n"
+        "IncludeDirectoryOrder = Alphabetical\n"
+        "IncludeInGroupOrder = NearestFirst\n"
+        "IncludePathBase = ProjectRoot\n"
+        "IncludeStandardHeaders = Last\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
     EXPECT_EQ(policies.Braces.Constructor, formatter::BracePlacement::NextLineIfHeaderBroken);
@@ -1251,7 +1273,9 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
     EXPECT_THROW((void)formatter::CompilePolicies(invalidDepth), std::invalid_argument);
     EXPECT_THROW((void)formatter::PreparedIncludeGroups(invalidDepth.IncludeGroups), std::invalid_argument);
     EXPECT_THROW((void)formatter::PreparedFormat(invalidDepth), std::invalid_argument);
-    const TemporaryConfig repaired("IncludeGroups = [{Prefix = \"bad\"}]\n" "IncludeGroups = [{Prefix = \"engine/\"}, "
+    const TemporaryConfig repaired(
+        "IncludeGroups = [{Prefix = \"bad\"}]\n"
+        "IncludeGroups = [{Prefix = \"engine/\"}, "
         "{Prefix = \"engine/detail/\"}]\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(repaired.Path));
     const TemporaryConfig duplicate("IncludeGroups = [{Prefix = \"engine/\"}, " "{Prefixes = [\"engine/\"]}]\n");
@@ -1281,10 +1305,16 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
 
 TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
 {
-    const TemporaryConfig nested("IncludeGroups = [\n" "  { Prefixes = [\n"
-        "      \"engine]/\", # brackets inside strings are not terminators\n" "      \"mirror#root/\"\n"
-        "    ], Depth = 2, Priority = 127 },\n" "  { Priority = -128, Depth = 0, Prefix = \"other/\" },\n"
-        "  { Depth = 127, Prefix = \"deep/\", Priority = -1 },\n" "  { Prefix = \"\" }\n" "]\n");
+    const TemporaryConfig nested(
+        "IncludeGroups = [\n"
+        "  { Prefixes = [\n"
+        "      \"engine]/\", # brackets inside strings are not terminators\n"
+        "      \"mirror#root/\"\n"
+        "    ], Depth = 2, Priority = 127 },\n"
+        "  { Priority = -128, Depth = 0, Prefix = \"other/\" },\n"
+        "  { Depth = 127, Prefix = \"deep/\", Priority = -1 },\n"
+        "  { Prefix = \"\" }\n"
+        "]\n");
     const auto style = formatter::LoadConfigFile(nested.Path).FormattingStyle;
     EXPECT_EQ(
         style.IncludeGroups,

@@ -151,12 +151,14 @@ ContinuationOffset = 0
 AlignmentFallbackOffset = 0
 
 # Values: Inherit | Preserve | Canonical
+# Also controls adjacent string fragment layout.
 CallsLayout = Inherit
 
 # Values: Inherit | IfNeeded | Always
 CallsBreak = Inherit
 
 # Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
+# Adjacent string arguments share their call's packing.
 CallsPacking = Inherit
 
 # Values: Inherit | InlineIfFits | NextLine
@@ -175,6 +177,7 @@ CallsAlignmentFallbackOffset = Inherit
 CallsCloser = Inherit
 
 # Values: Inherit | InlineIfFits | NextLine
+# Multi-fragment string arguments use CallsFirstItem instead.
 CallsSoleArgumentFirstItem = Inherit
 
 # Values: Inherit | Preserve | Canonical

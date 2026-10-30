@@ -128,7 +128,8 @@ TEST(SourceAnalysis, DiagnosticGolden)
             gap.Separation == formatter::GapSeparation::Required)
         {
             dump += std::format(
-                "gap {} [{},{}) preserve={} separation={} line={} " "lf-first={} context={}\n",
+                "gap {} [{},{}) preserve={} separation={} line={} "
+                "lf-first={} context={}\n",
                 i,
                 gap.Source.Begin,
                 gap.Source.End,
@@ -144,9 +145,13 @@ TEST(SourceAnalysis, DiagnosticGolden)
 
 TEST(SourceAnalysis, StandaloneNestedOptionalAndUnclosedMarkers)
 {
-    Input input("const char* s = \"// hit-fmt off\"; // hit-fmt off\n" "/* hit-fmt off */ int not_a_marker;\n"
-        "#define LOOK \"// hit-fmt off\"\n" "// clang-format off\nint clang_only;\n// clang-format on\n"
-        "  // hit-fmt off  \r\nint frozen;\n" " \t\r\f\v/* hit-fmt off */ \t\r\f\v\n"
+    Input input(
+        "const char* s = \"// hit-fmt off\"; // hit-fmt off\n"
+        "/* hit-fmt off */ int not_a_marker;\n"
+        "#define LOOK \"// hit-fmt off\"\n"
+        "// clang-format off\nint clang_only;\n// clang-format on\n"
+        "  // hit-fmt off  \r\nint frozen;\n"
+        " \t\r\f\v/* hit-fmt off */ \t\r\f\v\n"
         "int nested;\n// hit-fmt on\nint still_frozen;\n// hit-fmt on\n"
         "int editable;\n// hit-fmt off\nint suffix;\n");
     auto tree = Parse(input);
@@ -177,7 +182,9 @@ TEST(SourceAnalysis, StandaloneNestedOptionalAndUnclosedMarkers)
 
 TEST(SourceAnalysis, SensitiveInvocationsAreExplicitAndLocal)
 {
-    Input input("int prefix = 1;\nKEEP( a, KEEP( b ) );\n" "KEEP /* trivia */ ( commented );\n"
+    Input input(
+        "int prefix = 1;\nKEEP( a, KEEP( b ) );\n"
+        "KEEP /* trivia */ ( commented );\n"
         "LOUD( x );\nKEEP( broken, KEEP( [ mismatch ) );\n");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
@@ -197,12 +204,17 @@ TEST(SourceAnalysis, SensitiveInvocationsAreExplicitAndLocal)
 
 TEST(SourceAnalysis, CommentsDirectivesSplicesAndCrLf)
 {
-    Input input("int a = 1; // note\r\nint b = 2;\r\n" "int c /* note */ = 3;\r\n#define F(x) x + \\\r\n  1\r\n"
+    Input input(
+        "int a = 1; // note\r\nint b = 2;\r\n"
+        "int c /* note */ = 3;\r\n#define F(x) x + \\\r\n  1\r\n"
         "int d = 4;\r\nint e = \\\n  5;\nint f = 6;\n"
         "void use() { auto x = call(a, /* prefix */ b /* suffix */, c);\n"
-        "auto y = call((a, /* expression */ b), c);\n" "auto z = {a, /* trailing */};\n"
-        "auto line = call(a, // stays\n b);\n" "auto mixed = call(a, /* mixed prefix */ // stays too\n b);\n"
-        "call(/* first */ /* label */ a, b);\n" "auto first = {/* element */ a, b};\n"
+        "auto y = call((a, /* expression */ b), c);\n"
+        "auto z = {a, /* trailing */};\n"
+        "auto line = call(a, // stays\n b);\n"
+        "auto mixed = call(a, /* mixed prefix */ // stays too\n b);\n"
+        "call(/* first */ /* label */ a, b);\n"
+        "auto first = {/* element */ a, b};\n"
         "call(/* opening mixed */ // opening line\n a, b);\n"
         "call(/* empty call */); auto empty = {/* empty list */}; }\n"
         "void declared(/* parameter */ int a, int b);\n");
@@ -587,9 +599,13 @@ TEST(SourceAnalysis, AmbiguousAssignmentsProtectOnlyTheirUncertainHeads)
 
 TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
 {
-    Input input("void f() { int alpha = 1; int beta = 2; " "alpha = beta + +alpha; "
-        "alpha = beta / *ptr; bool yes = alpha > beta and not done; " "return; } // note\n"
-        "#define VALUE 1\nimport <pkg/sub.h>;\n// note\r\nint tail;\n" "#define EOF_VALUE 2");
+    Input input(
+        "void f() { int alpha = 1; int beta = 2; "
+        "alpha = beta + +alpha; "
+        "alpha = beta / *ptr; bool yes = alpha > beta and not done; "
+        "return; } // note\n"
+        "#define VALUE 1\nimport <pkg/sub.h>;\n// note\r\nint tail;\n"
+        "#define EOF_VALUE 2");
     auto tree = Parse(input);
     std::pmr::monotonic_buffer_resource memory;
     auto analysis = Analyze(tree, memory);
@@ -1438,7 +1454,8 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         }
     }
     const std::string recoverySource =
-        "template<class T> requires requires(T v) { v.touch(); } @\r\n" "int inspect(T value) { return 1; }\r\n";
+        "template<class T> requires requires(T v) { v.touch(); } @\r\n"
+        "int inspect(T value) { return 1; }\r\n";
     Input recovery(recoverySource);
     auto recoveryTree = Parse(recovery);
     auto recovered = Analyze(recoveryTree, memory);

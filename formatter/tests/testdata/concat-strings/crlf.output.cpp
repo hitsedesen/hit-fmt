@@ -1,4 +1,3 @@
 void f() {
-    consume("foo "
-        "bar");
+    consume("foo " "bar");
 }

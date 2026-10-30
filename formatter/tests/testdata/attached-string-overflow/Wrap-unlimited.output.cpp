@@ -13,9 +13,7 @@ void Report() {
   message(R"(raw first piece )" "second piece", extra);
   message(u8"first piece " u8"second piece", extra);
   outer(message("first piece " "second piece"), extra);
-  message("first piece "
-    "second piece",
-    extra);
+  message("first piece " "second piece", extra);
   message("first piece " /* join */ "second piece", extra);
   message("literal" + suffix, alpha, beta);
   other("first piece " "second piece", extra);
@@ -23,7 +21,8 @@ void Report() {
   message(/* prefix */ "first piece " "second piece", extra);
   message("first piece " "second piece" /* suffix */, extra);
   message(R"(multi
-line)" "tail",
+line)"
+    "tail",
     extra);
 // clang-format off
 message(  "first piece "    "second piece", extra);

@@ -102,8 +102,10 @@ TEST(SyntaxSpacing, GlobalScopeDoesNotOwnSpecifierBoundaries)
         GapPolicies policies;
         policies.ScopeResolutionSpacing = policy;
         Analysis analysis(
-            "void Use(const /* qualifier */ :: N :: Value* first, " "volatile :: N :: Value& second); "
-            "Box<Box<int>> :: Type* nested; " "void Compare(){auto smaller=value > :: N :: Limit;}",
+            "void Use(const /* qualifier */ :: N :: Value* first, "
+            "volatile :: N :: Value& second); "
+            "Box<Box<int>> :: Type* nested; "
+            "void Compare(){auto smaller=value > :: N :: Limit;}",
             policies);
         for (const auto occurrence : {0u, 2u}) {
             const auto gap = analysis.Before("::", occurrence);
@@ -125,7 +127,8 @@ TEST(SyntaxSpacing, GlobalScopeDoesNotOwnSpecifierBoundaries)
 TEST(SyntaxSpacing, TemplateClosersRelaxOnlyParsedLexicalSeparation)
 {
     const std::string_view source =
-        "using Alias = Box<Box<Box<int> > >; " "void Compare(){auto value = left > > right;}";
+        "using Alias = Box<Box<Box<int> > >; "
+        "void Compare(){auto value = left > > right;}";
     for (const auto policy :
         {
             GapPolicy::Preserve,
@@ -249,7 +252,8 @@ TEST(SyntaxSpacing, ControlKeywordBoundaryDoesNotOwnSkippedMacroIdentifier)
             EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
         }
         Analysis protectedHeader(
-            "// clang-format off\n" "void f(){if (flag){}}\n// clang-format on\n",
+            "// clang-format off\n"
+            "void f(){if (flag){}}\n// clang-format on\n",
             policies,
             PointerReferenceDeclaratorLocation::Preserve,
             {.HonorClangFormatDirectives = true});
@@ -333,7 +337,8 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
     policies.DeclarationSemicolonSpacing = GapPolicy::Space;
     policies.LoopSemicolonSpacing = GapPolicy::Space;
     Analysis analysis(
-        "void f(){do {step()  ;} while(flag)  ; " "do step()  ; while(flag)  ; for(int i=0; i<2; ++i){} }",
+        "void f(){do {step()  ;} while(flag)  ; "
+        "do step()  ; while(flag)  ; for(int i=0; i<2; ++i){} }",
         policies);
     for (size_t occurrence : {1u, 3u}) {
         const auto id = analysis.Before(";", occurrence);
@@ -426,7 +431,8 @@ TEST(SyntaxSpacing, GeneratedPoliciesObserveOwnerNotDescendantEdits)
     policies.ArgumentCommentSpacing = GapPolicy::GeneratedNoSpace;
     policies.ArgumentNameCommentSpacing = GapPolicy::GeneratedNoSpace;
     Analysis analysis(
-        "void f(){invoke(first + second, third, /* fourth= */ " "{first} /* other */ /* suffix */);}",
+        "void f(){invoke(first + second, third, /* fourth= */ "
+        "{first} /* other */ /* suffix */);}",
         policies);
     const auto commaAfter = analysis.Before("third");
     const auto binaryBefore = analysis.Before("+");
@@ -485,10 +491,16 @@ TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
 
 TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
 {
-    Analysis analysis("template<class T> struct Box {}; " "Box<int>make(){} Box<Box<int>>nested(){} "
-        "Box<int>  flat(); int scalar(){} " "namespace types {template<class T> struct Box {}; } "
-        "types::Box<int>qualified(){} " "NO_INLINE std::tuple<int, int> Serve(int value){} "
-        "EXPORT HOT Box<Box<int>> chained(){} " "static EXPORT Box<int> prefixed(){} " "EXPORT Box<int> declared();");
+    Analysis analysis(
+        "template<class T> struct Box {}; "
+        "Box<int>make(){} Box<Box<int>>nested(){} "
+        "Box<int>  flat(); int scalar(){} "
+        "namespace types {template<class T> struct Box {}; } "
+        "types::Box<int>qualified(){} "
+        "NO_INLINE std::tuple<int, int> Serve(int value){} "
+        "EXPORT HOT Box<Box<int>> chained(){} "
+        "static EXPORT Box<int> prefixed(){} "
+        "EXPORT Box<int> declared();");
     for (const auto name :
         {"make", "nested", "flat", "scalar", "qualified", "Serve", "chained", "prefixed", "declared"})
     {
@@ -503,8 +515,11 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
     }
 
-    Analysis qualified("template<class T> struct Box {}; " "Box<int> Owner<int>::method() const & {} "
-        "EXPORT Box<int> Owner<int>::method(); " "Value space::method(){}");
+    Analysis qualified(
+        "template<class T> struct Box {}; "
+        "Box<int> Owner<int>::method() const & {} "
+        "EXPORT Box<int> Owner<int>::method(); "
+        "Value space::method(){}");
     for (const auto id : {qualified.Before("Owner"), qualified.Before("Owner", 1), qualified.Before("space")}) {
         const auto& gap = qualified.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
@@ -531,8 +546,10 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
 TEST(SyntaxSpacing, DestructorSpecifierBoundary)
 {
     Analysis analysis(
-        "struct Virtual {virtual~Virtual() = default;}; " "struct Annotated {virtual NO_CACHE~Annotated() {}}; "
-        "struct Plain {~Plain();}; Plain::~Plain() {} " "unsigned Complement(unsigned value) {return ~value;}");
+        "struct Virtual {virtual~Virtual() = default;}; "
+        "struct Annotated {virtual NO_CACHE~Annotated() {}}; "
+        "struct Plain {~Plain();}; Plain::~Plain() {} "
+        "unsigned Complement(unsigned value) {return ~value;}");
     for (const auto occurrence : {0u, 1u}) {
         const auto id = analysis.Before("~", occurrence);
         SCOPED_TRACE(occurrence);
@@ -552,9 +569,13 @@ TEST(SyntaxSpacing, DestructorSpecifierBoundary)
 
 TEST(SyntaxSpacing, DeclarationFallbackDoesNotGuessPunctuationBoundaries)
 {
-    Analysis analysis("template<class T> struct Box {}; " "EXPORT Box<int>*pointer(){} EXPORT Box<int>&reference(){} "
-        "Box<int>(*nested)(int); Value Holder::*member; " "struct C {C(){} ~C(){} operator int(){} }; "
-        "void use(){put<int>(); value=a>b; " "auto cast=static_cast<int>(value);}");
+    Analysis analysis(
+        "template<class T> struct Box {}; "
+        "EXPORT Box<int>*pointer(){} EXPORT Box<int>&reference(){} "
+        "Box<int>(*nested)(int); Value Holder::*member; "
+        "struct C {C(){} ~C(){} operator int(){} }; "
+        "void use(){put<int>(); value=a>b; "
+        "auto cast=static_cast<int>(value);}");
     for (const auto name : {"pointer", "reference", "nested", "member"}) {
         const auto id = analysis.Before(name);
         EXPECT_FALSE(analysis.Spacing.Gaps()[id].FallbackSpace) << name;
@@ -589,8 +610,10 @@ TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
         })
     {
         Analysis analysis(
-            "int *pointer; int &reference = value; " "int (*function)(int); int Holder::*member; "
-            "template<class... Items> void pack(" "Items (*... callbacks)(int), Items Holder::*... members);",
+            "int *pointer; int &reference = value; "
+            "int (*function)(int); int Holder::*member; "
+            "template<class... Items> void pack("
+            "Items (*... callbacks)(int), Items Holder::*... members);",
             policies,
             binding);
         const auto beforePointer = analysis.Before("*");
@@ -631,8 +654,10 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
         })
     {
         Analysis analysis(
-            "int **first, **second; " "int * const qualified = value; "
-            "template<class... Items> void pack(Items*... pointers, " "Items&... refs, Items&&... values);",
+            "int **first, **second; "
+            "int * const qualified = value; "
+            "template<class... Items> void pack(Items*... pointers, "
+            "Items&... refs, Items&&... values);",
             {},
             binding);
         EXPECT_EQ(
@@ -695,7 +720,8 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
             continue;
         }
         Analysis lexical(
-            "void f(){value = alpha and not beta; " "value = left + +right; // note\n"
+            "void f(){value = alpha and not beta; "
+            "value = left + +right; // note\n"
             "value = 2;}\nimport <pkg/sub.h>;\n#define ITEM 1\n",
             policies);
         for (const auto token : {"and", "not", "beta"}) {
@@ -753,7 +779,8 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
     SourceAnalysisOptions protectedOptions;
     protectedOptions.HonorClangFormatDirectives = true;
     Analysis protectedTry(
-        "// clang-format off\n" "void f()try {}catch(...){}\n// clang-format on\n",
+        "// clang-format off\n"
+        "void f()try {}catch(...){}\n// clang-format on\n",
         headerPolicies,
         PointerReferenceDeclaratorLocation::Preserve,
         protectedOptions);
@@ -770,7 +797,9 @@ TEST(SyntaxSpacing, HeaderCastNewAndAttributeBoundariesHaveDistinctOwners)
     EXPECT_EQ(unconfirmed.Spacing.Gaps()[unconfirmed.Before("try")].Field, F::None);
     EXPECT_FALSE(unconfirmed.Spacing.Gaps()[unconfirmed.Before("try")].FallbackSpace);
 
-    Analysis analysis("void f(){ if(int value = 1; value) {} " "for(int i = 0; i < 2; ++i) {} "
+    Analysis analysis(
+        "void f(){ if(int value = 1; value) {} "
+        "for(int i = 0; i < 2; ++i) {} "
         "auto p = new (arena) Cell(value); auto c = (int) value; "
         "auto n = static_cast<int>(value); } [[a]][[b]] int declared;");
     const auto conditionAfter = analysis.Before("value", 1);
@@ -948,8 +977,11 @@ TEST(SyntaxSpacing, MalformedPrefixesKeepOnlyIndependentlyProvenLocalGaps)
     policies.NewInitializerSpaceBeforeParentheses = GapPolicy::NoSpace;
     policies.SizeofPackSpaceBeforeParentheses = GapPolicy::NoSpace;
     policies.GroupingInteriorSpacing = GapPolicy::NoSpace;
-    const std::string source = "void f(){delete []  ; delete [] pointer; " "auto p=new ( 1 ); auto q=new Cell ( 1 );} "
-        "template<class... Ts> int n=sizeof... ( ); " "template<class... Us> int m=sizeof... (Us);";
+    const std::string source =
+        "void f(){delete []  ; delete [] pointer; "
+        "auto p=new ( 1 ); auto q=new Cell ( 1 );} "
+        "template<class... Ts> int n=sizeof... ( ); "
+        "template<class... Us> int m=sizeof... (Us);";
     Analysis analysis(source, policies);
     auto check = [&] (GapId id, F field, parser::NodeKind kind, RegionStatus status) {
         const auto& gap = analysis.Spacing.Gaps()[id];
@@ -1101,7 +1133,8 @@ TEST(SyntaxSpacing, NewArrayRulesDoNotLeakIntoSizesOrUnconfirmedTypes)
 TEST(SyntaxSpacing, KeywordOperandsAndTemplatesUseTheirOwnLayoutContexts)
 {
     Analysis analysis(
-        "template<class T> void f(){ auto x = typeid(T); " "auto y = noexcept(value); auto z = sizeof...(T); "
+        "template<class T> void f(){ auto x = typeid(T); "
+        "auto y = noexcept(value); auto z = sizeof...(T); "
         "auto fold = (value + ...); auto lambda = []{return 1;}; }");
     EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("<")].Category, C::TemplateParameters);
     for (auto operand : {"T", "value"}) {
@@ -1296,8 +1329,10 @@ namespace {
 TEST(SyntaxSpacing,
     TrailingCommentSpacesUsesActualNamespaceOwnersAndScalarSafety)
 {
-    const std::string source = "namespace Outer {\nnamespace Inner {\nint local;\n} \t// arbitrary\n"
-        "} \t// arbitrary\nint item; \t// namespace Outer\n" "void task(){} \t// namespace task\n"
+    const std::string source =
+        "namespace Outer {\nnamespace Inner {\nint local;\n} \t// arbitrary\n"
+        "} \t// arbitrary\nint item; \t// namespace Outer\n"
+        "void task(){} \t// namespace task\n"
         "int quotient=8 / \t// divisor\n2;\n";
     Analysis legacy(source);
     GapPolicies policies;

@@ -45,50 +45,6 @@ void AppendRender(std::string& actual, const Document& document, std::uint32_t w
     actual += "$\n";
 }
 
-TEST(GroupLayout, RetainedLineGolden)
-{
-    std::string actual;
-    for (const auto kind : {GapKind::Soft, GapKind::RetainedLine}) {
-        for (const auto ending : {GapNewline::LF, GapNewline::CRLF}) {
-            Document document("");
-            const auto outer = document.BeginGroup({.Indent = 2});
-            document.Text("receiver");
-            document.Gap({GapKind::Soft, 0});
-            document.Text(".call(");
-            const auto inner = document.BeginGroup({.Indent = 2});
-            document.Text("first");
-            document.Gap({.Kind = kind, .Spaces = 1, .LineEnding = ending});
-            document.Text("second");
-            document.EndGroup(inner);
-            document.Text(");");
-            document.EndGroup(outer);
-            ASSERT_TRUE(document.Seal());
-            const auto label =
-                std::string(kind == GapKind::Soft ? "soft" : "retained") + (ending == GapNewline::LF ? " LF" : " CRLF");
-            for (const auto width : {20u, 80u}) {
-                AppendRender(actual, document, width, label);
-            }
-        }
-    }
-    for (const auto kind : {GapKind::Hard, GapKind::RetainedLine}) {
-        Document document("");
-        const auto outer = document.BeginGroup({.Indent = 2});
-        document.Text("{");
-        const auto inner = document.BeginGroup({.Indent = 2});
-        document.Text("first");
-        document.Gap({kind, 1});
-        document.Text("second");
-        document.EndGroup(inner);
-        document.ConditionalText(outer, "", ",");
-        document.ConditionalGap(outer, {GapKind::Flat, 0}, {GapKind::Hard, 0});
-        document.Text("}");
-        document.EndGroup(outer);
-        ASSERT_TRUE(document.Seal());
-        AppendRender(actual, document, 80, kind == GapKind::Hard ? "hard shape" : "retained shape");
-    }
-    test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "retained-line.expected", actual);
-}
-
 TEST(GroupLayout, ReindentedSourceColumnsGolden)
 {
     const std::string prefix = "\té中";

@@ -44,13 +44,16 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
             if (prefix.empty()) {
                 if (group.Prefixes.size() != 1) {
                     throw std::invalid_argument(
-                        "IncludeGroups empty fallback prefix must be " "the group's only prefix");
+                        "IncludeGroups empty fallback prefix must be "
+                        "the group's only prefix");
                 }
             } else if (prefix.back() != '/' || prefix.find('\\') != std::string::npos ||
                 !NormalizedRelativePath(prefix))
             {
-                throw std::invalid_argument("IncludeGroups requires normalized relative directory "
-                    "prefixes ending in / (no empty, . or .. components " "or backslashes)");
+                throw std::invalid_argument(
+                    "IncludeGroups requires normalized relative directory "
+                    "prefixes ending in / (no empty, . or .. components "
+                    "or backslashes)");
             }
             prefixes.push_back(prefix);
         }

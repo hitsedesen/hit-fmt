@@ -1,6 +1,0 @@
-Layout = Canonical
-ExpressionsLayout = Canonical
-InitializersTrailingComma = WhenMultiline
-InitializersCloser = OwnLine
-InitializersPacking = Fill
-ColumnLimit = 120
