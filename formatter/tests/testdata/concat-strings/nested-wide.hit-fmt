@@ -1,0 +1,2 @@
+include = "@/hit-fmt/examples/google.hit-fmt"
+ColumnLimit = 38

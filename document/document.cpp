@@ -89,6 +89,11 @@ Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
     return result;
 }
 
+bool IsSoftGap(GapKind kind)
+{
+    return kind == GapKind::Soft || kind == GapKind::RetainedLine;
+}
+
 Measure MeasureFlatGap(GapSpec gap, std::string_view source, std::uint8_t tabWidth)
 {
     if (gap.Kind == GapKind::Hard) {
@@ -97,10 +102,10 @@ Measure MeasureFlatGap(GapSpec gap, std::string_view source, std::uint8_t tabWid
     if (gap.FlatSourceBegin != InvalidId) {
         auto measured =
             MeasureText(source.substr(gap.FlatSourceBegin, gap.FlatSourceEnd - gap.FlatSourceBegin), tabWidth);
-        measured.CanBreak = gap.Kind == GapKind::Soft;
+        measured.CanBreak = IsSoftGap(gap.Kind);
         return measured;
     }
-    return {gap.Spaces, false, gap.Kind == GapKind::Soft};
+    return {gap.Spaces, false, IsSoftGap(gap.Kind)};
 }
 
 std::uint32_t SourceColumn(std::string_view text, std::uint8_t tabWidth)
@@ -726,7 +731,7 @@ void Document::Verbatim(std::string_view borrowed, Provenance origin)
 
 void Document::Gap(GapSpec spec, AnchorId anchor, Provenance origin)
 {
-    if (spec.Kind != GapKind::Flat && spec.Kind != GapKind::Soft && spec.Kind != GapKind::Hard) {
+    if (spec.Kind != GapKind::Flat && !IsSoftGap(spec.Kind) && spec.Kind != GapKind::Hard) {
         Fail(Error::InvalidPolicy);
     }
     CheckGapData(spec);
@@ -1006,6 +1011,8 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
         // First reachable break cheaper than each nonzero penalty (1..3).
         std::array<std::uint32_t, 3> TailBreakPrefixes{Infinity, Infinity, Infinity};
         bool GuaranteedLine = false;
+        // Physical shape is known without shortening flat fit demands.
+        bool RetainedLine = false;
         bool ChildLayoutAllowed = false;
         bool ShapeSensitive = false;
     };
@@ -1029,6 +1036,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
         std::uint32_t LastBreak = InvalidId;
         std::uint32_t OwnedLastBreak = InvalidId;
         bool GuaranteedLine = false;
+        bool RetainedLine = false;
         bool OwnedConditionalLine = false;
         bool OwnedShapeChoice = false;
     };
@@ -1085,12 +1093,15 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
         std::uint32_t ownedBreak = InvalidId;
         std::uint32_t expandedGapWidth = 0;
         bool guaranteedLine = false;
+        bool retainedLine = false;
         if (node.Type == Kind::Begin) {
             auto& groupEntry = groupCache[Group(node).Reference];
             flat = summary.Flat;
             groupEntry.LastBreak = summary.LastBreak;
             groupEntry.OwnedLastBreak = summary.OwnedLastBreak;
+            groupEntry.RetainedLine = summary.RetainedLine;
             groupEntry.GuaranteedLine = summary.GuaranteedLine;
+            retainedLine = summary.RetainedLine;
             groupEntry.ShapeSensitive = summary.OwnedShapeChoice;
             lastBreak = groupEntry.LastBreak;
             // A child can stay flat in its parent's broken shape. Only its
@@ -1173,13 +1184,13 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                 ? flat
                 : MeasureFlatGap(brokenSpec, Source_, policy.TabWidth);
             // Reuse each flat whitespace measurement for fill and summaries.
-            broken =
-                node.Owner != InvalidId && brokenSpec.Kind == GapKind::Soft ? Measure{0, true, true} : expandedFlat;
+            broken = node.Owner != InvalidId && IsSoftGap(brokenSpec.Kind) ? Measure{0, true, true} : expandedFlat;
             expandedGapWidth = expandedFlat.Width();
             if (node.Owner != InvalidId && brokenSpec.Kind != GapKind::Flat) {
                 ownedBreak = static_cast<std::uint32_t>(i);
             }
             guaranteedLine = brokenSpec.Kind == GapKind::Hard;
+            retainedLine = brokenSpec.Kind == GapKind::RetainedLine;
             if (node.Type == Kind::ConditionalGap) {
                 summary.OwnedConditionalLine = summary.OwnedConditionalLine || guaranteedLine;
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice || flatSpec.Spaces != brokenSpec.Spaces ||
@@ -1187,7 +1198,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                     flatSpec.FlatSourceEnd != brokenSpec.FlatSourceEnd;
             }
             if (node.Owner != InvalidId &&
-                (brokenSpec.Kind == GapKind::Soft || (node.Type == Kind::ConditionalGap && guaranteedLine)))
+                (IsSoftGap(brokenSpec.Kind) || (node.Type == Kind::ConditionalGap && guaranteedLine)))
             {
                 lastBreak = static_cast<std::uint32_t>(i);
             }
@@ -1232,6 +1243,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             summary.OwnedLastBreak = ownedBreak;
         }
         summary.GuaranteedLine = summary.GuaranteedLine || guaranteedLine;
+        summary.RetainedLine = summary.RetainedLine || retainedLine;
     }
 
     result.Broken.resize(Groups_.size(), 0);
@@ -1464,7 +1476,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                 mandatory || (!frame.Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
             const bool keepOwnedFlat = broken && childLayoutDepth && groupEntry.ChildLayoutAllowed &&
                 i <= childLayoutEnd && frames.size() - childLayoutBase < childLayoutDepth;
-            result.Broken[node.Group.Reference] = broken;
+            result.Broken[node.Group.Reference] = broken || groupEntry.RetainedLine;
             frames.push_back(frame);
             const bool forceOwned = node.Group.ForceBreak && groupEntry.OwnedLastBreak != InvalidId;
             auto base = frame.Indent;
@@ -1897,13 +1909,20 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             }
             const auto gap = GapFor(node, node.Type == Kind::ConditionalGap && broken);
             const auto& gapEntry = gapCache[entry.Gap];
-            if (frame.OwnedFlat && broken && node.Type == Kind::ConditionalGap && gap.Kind == GapKind::Hard) {
+            if (probing && frame.OwnedFlat && gap.Kind == GapKind::RetainedLine) {
+                // A child-only flat trial cannot use a retained owned line
+                // to satisfy a fit that its soft counterpart would reject.
+                return false;
+            }
+            if (frame.OwnedFlat && broken && !groupCache[node.Owner].RetainedLine &&
+                node.Type == Kind::ConditionalGap && gap.Kind == GapKind::Hard)
+            {
                 // Conditional topology belongs to the owner's broken shape;
                 // it cannot be suppressed by a child-only alternative.
                 return false;
             }
             const bool continuingIndent = frame.RealizedContinuationLine && column == frame.RealizedContinuationIndent;
-            bool line = gap.Kind == GapKind::Hard;
+            bool line = gap.Kind == GapKind::Hard || gap.Kind == GapKind::RetainedLine;
             if (gap.Kind == GapKind::Soft && ownerBroken && !frame.OwnedFlat) {
                 if (Group(Nodes_[Groups_[node.Owner]]).Mode == GroupMode::Consistent) {
                     line = true;

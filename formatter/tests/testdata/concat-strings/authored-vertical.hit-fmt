@@ -1,0 +1,3 @@
+ExpressionsLayout = Canonical
+ExpressionsPacking = VerticalWhenBroken
+ColumnLimit = 120

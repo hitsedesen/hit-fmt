@@ -40,7 +40,9 @@ enum class GapKind : std::uint8_t
 {
     Flat,
     Soft,
-    Hard
+    Hard,
+    // Retain an authored line while fitting it like an optional soft gap.
+    RetainedLine
 };
 
 enum class AnchorKind : std::uint8_t

@@ -2011,6 +2011,14 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({data / "control-braces-after-wrap", "reflow", "reflow.input.cpp"});
     const auto strings = data / "concat-strings";
     AddCases(cases, strings, {"overflow", "preserve"});
+    AddCases(
+        cases,
+        strings,
+        {"authored", "authored-preserve", "authored-vertical", "authored-all-or-vertical"},
+        "authored.input.cpp");
+    cases.push_back({strings, "authored-crlf", "authored-crlf.input.cpp", "authored"});
+    cases.push_back({strings, "shapes", "shapes.input.cpp"});
+    AddCases(cases, strings, {"nested-tight", "nested-wide"}, "nested.input.cpp");
     cases.push_back({strings, "crlf", "crlf.input.cpp", "overflow"});
     const auto parsedOperators = data / "parsed-operators";
     for (const auto* name : {"placement-lists", "delimiter-choice"}) {

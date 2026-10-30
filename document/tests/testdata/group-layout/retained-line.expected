@@ -1,0 +1,34 @@
+soft LF width=20:
+receiver
+  .call(first
+    second);$
+soft LF width=80:
+receiver.call(first second);$
+soft CRLF width=20:
+receiver
+  .call(first\r
+    second);$
+soft CRLF width=80:
+receiver.call(first second);$
+retained LF width=20:
+receiver
+  .call(first
+    second);$
+retained LF width=80:
+receiver.call(first
+    second);$
+retained CRLF width=20:
+receiver
+  .call(first\r
+    second);$
+retained CRLF width=80:
+receiver.call(first\r
+    second);$
+hard shape width=80:
+{first
+    second,
+  }$
+retained shape width=80:
+{first
+    second,
+  }$

@@ -2038,7 +2038,12 @@ private:
             }
             if (Syntax_[id].String && t > node.Tokens.Begin && Tree_.Kind(t) == TokenKind::Literal_String) {
                 if (canonical) {
-                    Own(t, group, boundary, document::GapKind::Hard);
+                    const bool authoredBreak = Safety_.Gaps()[t].HasLineFeed;
+                    Own(
+                        t,
+                        group,
+                        authoredBreak ? Boundary::Soft : boundary,
+                        authoredBreak ? document::GapKind::RetainedLine : document::GapKind::Hard);
                 } else {
                     Reindent(t, group);
                 }
@@ -4860,7 +4865,9 @@ private:
         GapAdjacency adjacency = GapAdjacency::Source) const
     {
         document::GapSpec spec;
-        spec.Kind = kind;
+        spec.Kind = kind != document::GapKind::Flat && Gaps_[i].Broken == document::GapKind::RetainedLine
+            ? document::GapKind::RetainedLine
+            : kind;
         spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i, adjacency), UINT16_MAX));
         spec.RequiredWidth = Facts_[i].RequiredWidth;
         spec.FitNextSegment = Gaps_[i].FitNextSegment;
