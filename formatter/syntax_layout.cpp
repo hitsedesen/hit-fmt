@@ -54,6 +54,7 @@ enum class Boundary : uint8_t
 struct Gap
 {
     Index Owner = None;
+    Index RelativeGroup = None;
     Index BraceIndentOffset = None;
     Boundary Shape = Boundary::Preserve;
     document::GapKind Broken = document::GapKind::Flat;
@@ -151,6 +152,7 @@ struct Group
     Index PreviousContinuation = None;
     Index IndentGroup = None;
     bool NeedsBlock = false;
+    Index PreservedSourceIndent = None;
 };
 
 struct IndentBasis
@@ -188,6 +190,7 @@ struct Syntax
     Index PreviousSibling = None;
     Index Operator = None;
     Index IfConditionGroup = None;
+    Index PreservedIndentGroup = None;
     bool Safe = true;
     bool IndentSafe = true;
     bool ChainSafe = true;
@@ -540,6 +543,7 @@ public:
         PlanVisualScopes();
         PlanVerticalGaps();
         PlanRulerGaps();
+        PlanRelativeIndentation();
         if (!State_) {
             return State_;
         }
@@ -591,6 +595,10 @@ private:
     size_t NextPermission_ = 0;
     bool GapCacheReady_ = false;
     bool NaturalBodies_ = true;
+    bool HasPreservedIndentGroups_ = false;
+    Index LastRelativeGroup_ = None;
+    int32_t LastRelativeOffset_ = 0;
+    document::AnchorId LastRelativeAnchor_ = document::InvalidId;
 
     // Scope exclusions prohibit edits, not understanding the surrounding
     // grammar. Keep real reason unions (including scope + semantic reasons)
@@ -3024,6 +3032,8 @@ private:
         Index contents = None;
         Index commentEnd = 0;
         bool commentsBeforeCase = false;
+        Index sourceLine = None;
+        Index sourceLineIndent = 0;
         for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = NextBodyItem(child, id)) {
             const auto& part = Region(Syntax_[child]);
             if (PreprocessingSequence(child) || part.Tokens.Empty() || part.Tokens.Begin <= opening ||
@@ -3075,6 +3085,28 @@ private:
                 }
             }
             const auto owner = contents == None ? group : contents;
+            if (independentIndent && Policies_.IndentationKind == IndentationKind::Preserve && Syntax_[child].Safe &&
+                part.Kind != NodeKind::PreprocessingDirective)
+            {
+                // Explicit body indentation moves complete items. Preserve
+                // retains their authored geometry relative to the new line.
+                const auto scope = GroupAt(
+                    TokenPosition(part.Tokens.Begin),
+                    GapPosition(part.Tokens.End),
+                    document::GroupMode::Fill,
+                    0,
+                    LayoutIndentation{ContinuationAlignment::Block, 0, 0});
+                Groups_[scope].Spec.StructuralBase = true;
+                Groups_[scope].Spec.LineBase = true;
+                const auto line = Tree_.TokenPosition(part.Tokens.Begin).Line;
+                if (line != sourceLine) {
+                    sourceLine = line;
+                    sourceLineIndent = SourceLineIndent(part.Tokens.Begin);
+                }
+                Groups_[scope].PreservedSourceIndent = sourceLineIndent;
+                Syntax_[child].PreservedIndentGroup = scope;
+                HasPreservedIndentGroups_ = true;
+            }
             // Hinted definitions have protected opaque delimiters, but their
             // editable leading gap still belongs to the enclosing sequence.
             if (!Syntax_[child].Safe && part.Kind != NodeKind::MacroRecordDeclaration &&
@@ -3481,6 +3513,47 @@ private:
                 break;
             }
             current = Region(Syntax_[current]).NextSibling;
+        }
+    }
+
+    void PlanRelativeIndentation()
+    {
+        if (!HasPreservedIndentGroups_) {
+            return;
+        }
+        for (Index id = 0; id < Syntax_.size(); ++id) {
+            auto& entry = Syntax_[id];
+            const auto& node = Region(entry);
+            if (entry.PreservedIndentGroup == None && node.Parent != None) {
+                entry.PreservedIndentGroup = Syntax_[node.Parent].PreservedIndentGroup;
+            }
+            const auto group = entry.PreservedIndentGroup;
+            if (group == None) {
+                continue;
+            }
+            DirectTokens(
+                id,
+                [&] (Index token) {
+                    auto& gap = Gaps_[token];
+                    if (gap.Shape != Boundary::Preserve || gap.Reindent || gap.OverrideIndent ||
+                        !CanReindentPreservedGap(token) || gap.Frozen || Uncertain(token) || RetainsBareCR(token) ||
+                        Safety_.Gaps()[token].ContextSensitive)
+                    {
+                        return;
+                    }
+                    const auto indent = SourceIndent(token);
+                    if (indent == None) {
+                        return;
+                    }
+                    const auto delta = int64_t(indent) - Groups_[group].PreservedSourceIndent;
+                    if (delta < INT32_MIN || delta > INT32_MAX) {
+                        return;
+                    }
+                    gap.Reindent = true;
+                    gap.OverrideIndent = true;
+                    gap.RelativeGroup = group;
+                    gap.ExtraIndent = int32_t(delta);
+                });
         }
     }
 
@@ -4777,7 +4850,8 @@ private:
         spec.FitNextSegmentIfOverflow = Gaps_[i].FitNextSegmentIfOverflow;
         spec.FitFlatTail = Gaps_[i].FitFlatTail;
         spec.NewlineCount = Gaps_[i].NewlineCount;
-        if (Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) {
+        const bool relative = Gaps_[i].OverrideIndent && Gaps_[i].RelativeGroup != None;
+        if ((Gaps_[i].PreserveIndent && !Gaps_[i].Reindent) || relative) {
             const auto& source = Safety_.Gaps()[i];
             const auto lf = Safety_.Original(source).rfind('\n');
             if (lf != std::string_view::npos &&
@@ -4785,6 +4859,7 @@ private:
             {
                 spec.IndentSourceBegin = source.Source.Begin + Index(lf + 1);
                 spec.IndentSourceEnd = source.Source.End;
+                spec.PreserveIndentSpelling = relative;
             }
         }
         if (Safety_.Gaps()[i].MustStartWithLineFeed) {
@@ -4963,27 +5038,20 @@ private:
                     return;
                 }
                 const auto indentBegin = source.Source.Begin + Index(lf + 1);
-                const auto anchor = Document_.MarkAnchor({
-                    .Kind = document::AnchorKind::BlockRelative,
-                    .Offset = plan.ExtraIndent,
-                    .StructuralBase = true,
-                });
+                const auto anchor = IndentAnchor(plan);
                 Document_.SourceLineIndent(
                     source.Source.Begin,
                     indentBegin,
                     indentBegin,
                     source.Source.End,
                     anchor,
-                    Facts_[i].RequiredWidth);
+                    Facts_[i].RequiredWidth,
+                    document::NoIdentity,
+                    plan.RelativeGroup != None);
                 return;
             }
             if (plan.Vertical && Allows(i, document::GapKind::Hard)) {
-                auto anchor = plan.Owner == None
-                    ? document::InvalidId
-                    : plan.Closing ? Groups_[plan.Owner].Block : Groups_[plan.Owner].Anchor;
-                if (plan.OverrideIndent) {
-                    anchor = Document_.MarkAnchor({document::AnchorKind::BlockRelative, plan.ExtraIndent});
-                }
+                const auto anchor = IndentAnchor(plan);
                 Document_.Gap(Spec(i, document::GapKind::Hard), anchor, GapOrigin(i));
             } else if (plan.Reindent && Allows(i, document::GapKind::Hard)) {
                 const bool crlf = lf > 0 && Safety_.Original(source)[lf - 1] == '\r';
@@ -5002,12 +5070,7 @@ private:
                 } else if (!source.MustStartWithLineFeed || lf != 0) {
                     spec.LineEnding = document::GapNewline::Inherit;
                 }
-                auto anchor = plan.Owner == None
-                    ? document::InvalidId
-                    : plan.Closing ? Groups_[plan.Owner].Block : Groups_[plan.Owner].Anchor;
-                if (plan.OverrideIndent) {
-                    anchor = Document_.MarkAnchor({document::AnchorKind::BlockRelative, plan.ExtraIndent});
-                }
+                const auto anchor = IndentAnchor(plan);
                 Document_.Gap(spec, anchor, {newlineBegin, source.Source.End, document::NoIdentity});
             } else {
                 PreservedSlice(
@@ -5074,16 +5137,7 @@ private:
                     cursor = permission.Source.End;
                 }
             } else if (plan.PartialIndent) {
-                auto anchor = plan.Owner == None
-                    ? document::InvalidId
-                    : plan.Closing ? Groups_[plan.Owner].Block : Groups_[plan.Owner].Anchor;
-                if (plan.OverrideIndent) {
-                    anchor = Document_.MarkAnchor({
-                        .Kind = document::AnchorKind::BlockRelative,
-                        .Offset = plan.ExtraIndent,
-                        .StructuralBase = plan.RelativeIndent,
-                    });
-                }
+                const auto anchor = IndentAnchor(plan);
                 // Any trimmed runs were before terminators. The remaining
                 // contiguous prefix still ends in the original final LF.
                 // No fixed newline becomes an editable owned boundary.
@@ -5093,7 +5147,9 @@ private:
                     permission.Source.Begin,
                     permission.Source.End,
                     anchor,
-                    Facts_[i].RequiredWidth);
+                    Facts_[i].RequiredWidth,
+                    document::NoIdentity,
+                    plan.RelativeGroup != None);
                 RecordFixedExpressionLine(i, cursor, permission.Source.Begin);
                 cursor = permission.Source.End;
             }
@@ -5101,6 +5157,28 @@ private:
         if (cursor < source.Source.End) {
             copied(cursor, source.Source.End);
         }
+    }
+
+    document::AnchorId IndentAnchor(const Gap& gap)
+    {
+        if (gap.OverrideIndent && gap.RelativeGroup != None) {
+            if (gap.ExtraIndent == 0) {
+                return Groups_[gap.RelativeGroup].Anchor;
+            }
+            if (LastRelativeGroup_ != gap.RelativeGroup || LastRelativeOffset_ != gap.ExtraIndent) {
+                LastRelativeGroup_ = gap.RelativeGroup;
+                LastRelativeOffset_ = gap.ExtraIndent;
+                LastRelativeAnchor_ =
+                    Document_.MarkAnchor({.Offset = gap.ExtraIndent, .SharedWith = Groups_[gap.RelativeGroup].Anchor});
+            }
+            return LastRelativeAnchor_;
+        }
+        if (gap.OverrideIndent) {
+            return Document_.MarkAnchor({.Offset = gap.ExtraIndent, .StructuralBase = gap.RelativeIndent});
+        }
+        return gap.Owner == None
+            ? document::InvalidId
+            : gap.Closing ? Groups_[gap.Owner].Block : Groups_[gap.Owner].Anchor;
     }
 
     void EmitGap(Index i)
@@ -5129,12 +5207,7 @@ private:
             PreserveGap(i);
             return;
         }
-        auto anchor = gap.Owner == None
-            ? document::InvalidId
-            : gap.Closing ? Groups_[gap.Owner].Block : Groups_[gap.Owner].Anchor;
-        if (gap.OverrideIndent) {
-            anchor = Document_.MarkAnchor({document::AnchorKind::BlockRelative, gap.ExtraIndent});
-        }
+        const auto anchor = IndentAnchor(gap);
         const auto flat = Spec(i, document::GapKind::Flat);
         const bool flatOK = Allows(i, document::GapKind::Flat);
         const bool lineOK = Allows(i, document::GapKind::Hard);

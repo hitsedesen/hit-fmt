@@ -1,0 +1,6 @@
+Layout = Preserve
+IndentWidth = 4
+IndentationKind = Preserve
+IndentNamespaces = Indent
+EnumeratorsLayout = Preserve
+NamespaceBlankLinesBeforeClose = 1

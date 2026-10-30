@@ -11,7 +11,7 @@ class Widget {
     struct Nested {
         public:
         int value;
-  };
+    };
 };
 struct Item {
     private:

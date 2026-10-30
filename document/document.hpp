@@ -86,6 +86,8 @@ struct GapSpec
     // Fit the flat suffix instead of a prefix shortened by child breaks.
     // Unconditional lines still terminate that suffix demand.
     bool FitFlatTail : 1 = false;
+    // Retain source indentation spelling while its width matches the anchor.
+    bool PreserveIndentSpelling : 1 = false;
     // First newline honors LineEnding; remaining newlines inherit Policy.
     std::uint16_t NewlineCount = 1;
     // Optional exact horizontal source slice used instead of Spaces when flat.
@@ -111,7 +113,8 @@ struct AnchorSpec
     bool StructuralBase = false;
     // Match the following continuation group's base and effective offset.
     bool Continuation = false;
-    // Reuse this captured anchor only while sharing the enclosing level.
+    // Continuations reuse this anchor while sharing the enclosing level.
+    // Otherwise BlockRelative derives an unconditional Offset from it.
     AnchorId SharedWith = InvalidId;
     // Capture physical leading indentation, even across preserved layout gaps.
     // Requires StructuralBase and excludes sharing an enclosing continuation.
@@ -298,9 +301,12 @@ public:
     // without adding newlines. One node keeps both in the owning group's width
     // summary; it is multiline shape, not an editable break. Valid at root too.
     // indentBegin/indentEnd identify a horizontal source span or point.
-    // Indentation maps there non-exactly with NoIdentity, even at zero width.
+    // Generated indentation maps there non-exactly with NoIdentity, even at
+    // zero width; retained spelling maps exactly.
     // The prefix retains identity. Source must outlive Render. Anchors must be
     // marked already; anchor and requiredWidth follow Gap's fit/fallback rules.
+    // preserveIndentSpelling copies the source indentation when its width
+    // already matches the anchor, retaining tabs under Preserve policies.
     void SourceLineIndent(
         std::uint32_t begin,
         std::uint32_t end,
@@ -308,7 +314,8 @@ public:
         std::uint32_t indentEnd,
         AnchorId anchor = InvalidId,
         std::uint32_t requiredWidth = 0,
-        Identity identity = NoIdentity);
+        Identity identity = NoIdentity,
+        bool preserveIndentSpelling = false);
     AnchorId MarkAnchor(AnchorSpec spec);
     // Record a source-whitespace line as realized expression continuation, not
     // an editable break. Requires preceding exact whitespace containing LF or
