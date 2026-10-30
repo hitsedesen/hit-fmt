@@ -820,6 +820,12 @@ std::vector<FormatCase> FormatCases()
         AddCases(cases, directory, {"depth-zero", "depth-default", "depth-maximum"}, "depth.input.cpp");
         ShareExpected(cases, directory, "depth-default.output.cpp", "depth-maximum.output.cpp");
         AddCases(cases, directory, {"standard", "standard-preserve", "standard-adjacent"}, "standard.input.cpp");
+        AddCases(cases, directory, {"standard-first"}, "standard.input.cpp");
+        for (const auto profile : {"system-directory", "system-regroup", "system-adjacent"}) {
+            FormatCase value{directory, profile, "system.input.cpp"};
+            value.InputFilePath = "project/widget.cpp";
+            cases.push_back(std::move(value));
+        }
         for (const auto name : {"groups", "groups-reversed", "groups-regroup", "groups-depth-one"}) {
             FormatCase value{directory, name, "groups.input.cpp"};
             value.InputFilePath = "library/unit/widget.cpp";

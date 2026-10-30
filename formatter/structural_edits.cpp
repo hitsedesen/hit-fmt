@@ -532,7 +532,7 @@ void Includes(
             directories.clear();
             pieces.clear();
             if (needPaths || options.Grouping == IncludeGrouping::Regroup ||
-                options.StandardHeaders == IncludeStandardHeaders::Last)
+                options.StandardHeaders != IncludeStandardHeaders::Preserve)
             {
                 keys.clear();
                 keys.resize(group.size());
@@ -541,7 +541,7 @@ void Includes(
                 const auto& atom = group[i];
                 auto& key = keys[i];
                 // Deliberately lexical: no catalog or filesystem inference.
-                key.Standard = options.StandardHeaders == IncludeStandardHeaders::Last && atom.Angled &&
+                key.Standard = options.StandardHeaders != IncludeStandardHeaders::Preserve && atom.Angled &&
                     atom.Path.find('/') == std::string_view::npos && atom.Path.find(".h") == std::string_view::npos;
                 if (options.Grouping != IncludeGrouping::Preserve && context.Groups) {
                     const auto match = context.Groups->Classify(atom.Path);
@@ -622,7 +622,7 @@ void Includes(
                 return needPaths && key(atom).Matching;
             };
             auto standard = [&] (const Include& atom) {
-                return options.StandardHeaders == IncludeStandardHeaders::Last && key(atom).Standard;
+                return options.StandardHeaders != IncludeStandardHeaders::Preserve && key(atom).Standard;
             };
             auto directory = [&] (const Include& atom) {
                 return std::string_view(directories).substr(key(atom).DirectoryOffset, key(atom).DirectoryLength);
@@ -648,7 +648,7 @@ void Includes(
                     return matching(a);
                 }
                 if (standard(a) != standard(b)) {
-                    return !standard(a);
+                    return options.StandardHeaders == IncludeStandardHeaders::First ? standard(a) : !standard(a);
                 }
                 if (a.Angled != b.Angled) {
                     return options.CategoryOrder == IncludeCategoryOrder::AngledFirst ? a.Angled : !a.Angled;

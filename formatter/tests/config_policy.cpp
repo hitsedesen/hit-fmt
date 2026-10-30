@@ -1067,7 +1067,7 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
     formatter::Style invalidStandard;
     invalidStandard.IncludeStandardHeaders = static_cast<formatter::IncludeStandardHeaders>(255);
     EXPECT_THROW((void)formatter::PreparedFormat(invalidStandard), std::invalid_argument);
-    const TemporaryConfig badStandard("IncludeStandardHeaders = First\n");
+    const TemporaryConfig badStandard("IncludeStandardHeaders = Middle\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(badStandard.Path), std::runtime_error);
     const TemporaryConfig finalGood("IncludeGrouping = Regroup\nMaxEmptyLines = 0\nMaxEmptyLines = 1\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(finalGood.Path));

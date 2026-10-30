@@ -400,8 +400,9 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
   source with a same-directory, same-stem .h/.hh/.hpp/.hxx/.h++ header.
   Header inputs or missing source filenames disable pairing.
 - IncludeCategoryOrder: QuotedFirst (default) or AngledFirst orders quoted
-  and angled headers in every grouping mode. Matching headers stay first
-  and IncludeStandardHeaders = Last keeps standard headers last.
+  and angled headers in every grouping mode. Matching headers stay first;
+  IncludeStandardHeaders = First/Last puts standard headers before/after
+  all remaining headers, overriding category and group order.
 - IncludeGrouping: Preserve keeps adjacent blocks and blank lines;
   Regroup merges across blanks by rule; Directory groups by directory.
   Regroup/Directory insert one blank line, conflicting with MaxEmptyLines
@@ -418,12 +419,14 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 - IncludeDirectoryOrder and IncludeInGroupOrder choose NearestFirst or
   Alphabetical. Distance counts parent/child steps from the input directory;
   ties are alphabetical. In-group distance ignores Depth and aliases.
-  Paired and final standard-header groups stay alphabetical.
+  Paired and standard-header groups stay alphabetical.
 - IncludePathBase: SourceDirectory or ProjectRoot (working directory).
   Bare quoted names and quoted ./ or ../ paths stay source-relative;
   absolute paths stay absolute. Paths are lexical; no filesystem lookup.
-- IncludeStandardHeaders = Last adds a final alphabetical group for angled
-  names with neither / nor .h. This includes extensionless vendor names.
+- IncludeStandardHeaders = First/Last adds an initial/final alphabetical
+  group for angled names with neither / nor .h. This includes extensionless
+  vendor names; quoted names and stdio.h do not qualify. Preserve applies
+  ordinary category and group sorting. A matching header still comes first.
 - Comments, macros, conditionals, protection and mixed line endings stop
   blocks. Attached-comment blocks stay exact; hunks must cover a whole
   block. Check mode reports one include-order failure per file.
@@ -444,6 +447,15 @@ IncludeGroups = [
     { Prefix = "util/", Depth = 1 }
 ]
 # library/core/a.hpp and library/core/detail/b.hpp share a group.
+```
+
+## Put standard headers before system headers
+```config
+Layout = Canonical
+IncludeOrder = Sort
+IncludeGrouping = Directory
+IncludeStandardHeaders = First
+# <vector> precedes <Windows.h>, with a blank line between the groups.
 ```
 
 ## Order project groups first

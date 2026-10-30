@@ -1,0 +1,4 @@
+include = "system-directory.hit-fmt"
+IncludeGrouping = Regroup
+IncludeCategoryOrder = QuotedFirst
+IncludeGroups = [{Prefix = "sys/", Priority = -1}]

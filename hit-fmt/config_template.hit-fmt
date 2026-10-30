@@ -8,8 +8,9 @@
 # Exact counts above an explicit MaxEmptyLines cap are invalid.
 # IncludeOrder = Sort enables the following include policies.
 # IncludeCategoryOrder = QuotedFirst (default) puts quoted before angled;
-# AngledFirst reverses them. IncludeMatchingHeader = First and
-# IncludeStandardHeaders = Last retain their first/final positions.
+# AngledFirst reverses them. IncludeMatchingHeader = First stays first;
+# IncludeStandardHeaders = First/Last puts standard headers before/after
+# all remaining headers, overriding category and group order.
 # IncludeMatchingHeader = First selects quoted same-stem headers
 # (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.
 # Pairing is disabled for header inputs or missing filenames.
@@ -68,17 +69,20 @@
 # then alphabetical include spelling, without changing groups.
 # Depth and aliases affect group keys, not in-group distance.
 # This also works within adjacent blocks under Preserve.
-# Paired and final standard-header groups remain alphabetical.
+# Paired and standard-header groups remain alphabetical.
 # IncludePathBase = SourceDirectory resolves source-relative paths.
 # ProjectRoot uses the working directory as the input path root.
 # Absolute input filenames beneath it are rebased to that root.
 # Bare quoted names and quoted ./ or ../ paths stay source-relative.
 # Paths normalize lexically only; no file lookup or spelling edit.
-# IncludeStandardHeaders = Last uses a lexical heuristic: angled
-# names containing neither / nor .h go in a final alphabetical group.
+# IncludeStandardHeaders = First/Last uses a lexical heuristic: angled
+# names containing neither / nor .h go in an initial/final alphabetical group.
 # It is case-sensitive, not ISO detection: extensionless vendor
 # names qualify; quoted names and stdio.h do not. Preserve keeps
-# ordinary sorting. The final group follows even unmatched headers.
+# ordinary sorting. A matching header still precedes the standard group.
+# Example: IncludeOrder = Sort, IncludeGrouping = Directory and
+# IncludeStandardHeaders = First puts <vector> before <Windows.h>,
+# with a blank line between their groups.
 # Check mode reports one include-order failure per file, not per header.
 # Other formatting, naming and width failures remain independent.
 # Rules are validated even when inactive; prefixes must be unique.
@@ -843,7 +847,7 @@ IncludeInGroupOrder = Alphabetical
 # Values: SourceDirectory | ProjectRoot
 IncludePathBase = SourceDirectory
 
-# Values: Preserve | Last
+# Values: Preserve | Last | First
 IncludeStandardHeaders = Preserve
 
 # Values: false | true
