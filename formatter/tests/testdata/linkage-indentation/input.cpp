@@ -30,3 +30,7 @@ extern "C" {
        }
   void Other();
 }
+extern "C++" { extern "C" {
+       void InlineNested();
+}
+}

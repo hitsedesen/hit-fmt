@@ -32,3 +32,7 @@ int F() {
 }
 void Other();
 }
+extern "C++" { extern "C" {
+void InlineNested();
+}
+}
