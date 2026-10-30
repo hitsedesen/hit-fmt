@@ -1,0 +1,10 @@
+Layout = Canonical
+ColumnLimit = 0
+IndentWidth = 4
+IndentationKind = Preserve
+IndentNamespaces = Indent
+NamespaceComments = Fix
+ExpressionsLayout = Preserve
+BodyShape = Expanded
+LambdaBodyShape = CompactIfFits
+BlockInteriorSpacing = Space

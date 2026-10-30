@@ -235,6 +235,34 @@
         )
         ";"
       )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "indexed")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "helpers")
+                  "::"
+                  (unparsed-syntax "Build" "<" "values" "[" "index" "]" ">")
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "source")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
       (expression-statement
         (call-expression
           (identifier-expression "invoke")
