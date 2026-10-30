@@ -1,0 +1,3 @@
+IndentNamespaces = Indent
+IndentLinkageBlocks = Indent
+IndentWidth = 4

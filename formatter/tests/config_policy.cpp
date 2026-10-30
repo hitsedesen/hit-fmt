@@ -553,7 +553,7 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
         "AccessModifierIndentWidth",
         "MemberIndentWidth",
         "CaseLabelIndentWidth",
-        "BlockBodyIndentWidth", "NamespaceIndentWidth",
+        "BlockBodyIndentWidth", "NamespaceIndentWidth", "LinkageIndentWidth",
         "StatementAttributeIndentWidth"
         })
     {

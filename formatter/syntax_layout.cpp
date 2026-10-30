@@ -441,8 +441,8 @@ public:
                     break;
                 case NodeKind::LinkageSpecification:
                     if (entry.ItemSequence) {
-                        // Linkage keeps its authored body shape and relative
-                        // indent while following the surrounding scope.
+                        // Linkage keeps its authored body shape; explicit
+                        // indentation controls only the contents' level.
                         auto policy = Policies_.Bodies;
                         policy.Layout = LayoutMode::Preserve;
                         PlanBody(i, entry.SequenceBody.Begin - 1, entry.SequenceBody.End, policy, false);
@@ -2978,9 +2978,9 @@ private:
     {
         const auto kind = Region(Syntax_[id]).Kind;
         if (kind == NodeKind::NamespaceDeclaration || kind == NodeKind::LinkageSpecification) {
-            const auto& control = Policies_.Indentation.Namespaces;
             const bool linkage = kind == NodeKind::LinkageSpecification;
-            if (linkage || control.Mode == BodyIndentation::Preserve) {
+            const auto& control = linkage ? Policies_.Indentation.LinkageBlocks : Policies_.Indentation.Namespaces;
+            if (control.Mode == BodyIndentation::Preserve) {
                 const auto start = Region(Syntax_[id]).Tokens.Begin;
                 const auto outer = linkage ? SourceLineIndent(start) : SourceIndent(start);
                 const auto inner = SourceIndent(opening + 1);
@@ -2989,7 +2989,7 @@ private:
                     return int32_t(inner - base);
                 }
             }
-            return linkage ? 0 : BodyOffset(control, 0);
+            return BodyOffset(control, 0);
         }
         return record
             ? BodyOffset(Policies_.Indentation.Members, int32_t(policy.IndentWidth))
@@ -3064,6 +3064,7 @@ private:
         }
         const bool canonical = policy.Layout == LayoutMode::Canonical;
         const bool namespaced = Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration;
+        const bool linkage = Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification;
         int32_t offset = BodyIndentWidth(id, opening, policy, record);
         const auto contentIndent = PreservedBodyIndent(id, opening, close);
         if (contentIndent != None) {
@@ -3090,7 +3091,8 @@ private:
         }
         const bool independentIndent = record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
-            : namespaced && Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve;
+            : (namespaced && Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve) ||
+                (linkage && Policies_.Indentation.LinkageBlocks.Mode != BodyIndentation::Preserve);
         const auto group = GroupAt(
             GapPosition(opening + 1),
             GapPosition(close + 1),

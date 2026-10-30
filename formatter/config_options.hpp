@@ -406,6 +406,9 @@
     OPT(formatter::BodyIndentation, IndentNamespaces,                         \
         formatter::BodyIndentation::Preserve)                                \
     OPT(std::size_t, NamespaceIndentWidth, 0)                                \
+    OPT(formatter::BodyIndentation, IndentLinkageBlocks,                      \
+        formatter::BodyIndentation::Preserve)                                \
+    OPT(std::size_t, LinkageIndentWidth, 0)                                   \
     OPT(formatter::StandaloneBlockBraceIndentation, \
         StandaloneBlockBraceIndentation, \
         formatter::StandaloneBlockBraceIndentation::Preserve) \

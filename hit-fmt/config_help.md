@@ -205,6 +205,10 @@ ChainsPacking = AllOrVertical
   independently of FunctionBodyShape and ControlBodyShape.
 - IndentNamespaces: Preserve, Indent or NoIndent (enclosing indent).
   NamespaceIndentWidth = 0 uses IndentWidth.
+- IndentLinkageBlocks: Preserve, Indent or NoIndent (enclosing indent)
+  inside braced extern "C" / extern "C++" blocks. LinkageIndentWidth = 0
+  uses IndentWidth. Body line breaks are preserved; single extern
+  declarations without braces are unaffected.
 - Enumerators uses list policies; EnumBracePlacement follows the header.
   Base/constructor lists use Leading/Trailing ColonSide and CommaSide.
   InitializersTrailingComma: Preserve, Never or WhenMultiline, where legal.
@@ -251,10 +255,15 @@ FunctionBracePlacement = Attached
 # void Reset() { Clear(); Notify(); } stays expanded.
 ```
 
-## Namespaces, enums and initializers
+## Namespaces, linkage, enums and initializers
 ```config
 IndentNamespaces = NoIndent
 NamespaceIndentWidth = 0
+IndentLinkageBlocks = Indent
+LinkageIndentWidth = 0
+# extern "C" {
+#     int Entry();
+# }
 EnumBracePlacement = NextLineIfHeaderBroken
 EnumeratorsLayout = Canonical
 EnumeratorsBreak = Always
