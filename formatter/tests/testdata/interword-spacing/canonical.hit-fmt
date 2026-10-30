@@ -1,0 +1,3 @@
+Layout = Canonical
+ColumnLimit = 120
+AssignmentOperatorSpacing = Space

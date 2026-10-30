@@ -1707,6 +1707,17 @@ SyntaxSpacing BuildSyntaxSpacing(
         auto& gap = result.Gaps_[i];
         const auto& source = safety.Gaps()[i];
         gap.FallbackSpace |= source.Separation == GapSeparation::Required;
+        if (i > 0 && i < tree.TokenCount() && gap.Field == F::None && gap.Owner != NoRegion && gap.Category != C::None)
+        {
+            const auto isWord = [] (TK kind) {
+                return kind == TK::Identifier || kind >= TK::Keyword_alignas;
+            };
+            // Word boundaries have no configurable spacing rule. Normalize
+            // them in canonical owners while preserving source-only layout.
+            if (isWord(tree.Kind(i - 1)) && isWord(tree.Kind(i))) {
+                gap.Policy = GapPolicy::GeneratedSpace;
+            }
+        }
         if (source.Preserve || source.ContextSensitive || source.LineBoundary == GapLineBoundary::Required ||
             source.MustStartWithLineFeed)
         {

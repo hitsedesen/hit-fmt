@@ -312,6 +312,8 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "class-body-macros", {"hinted", "preserve", "unhinted"});
     AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
     AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});
+    AddCases(cases, data / "interword-spacing", {"canonical", "preserve", "headers-preserve"});
+    ShareExpected(cases, data / "interword-spacing", "preserve.output.cpp", "input.cpp");
     AddCases(
         cases,
         data / "declaration-headers",

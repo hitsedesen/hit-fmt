@@ -498,9 +498,12 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << name;
         EXPECT_EQ(gap.Field, F::None) << name;
         EXPECT_TRUE(gap.FallbackSpace) << name;
-        // This is a lowering fallback, not an explicit spacing demand.
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve) << name;
-        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt) << name;
+        const auto policy = std::string_view(name) == "scalar" ? GapPolicy::GeneratedSpace : GapPolicy::Preserve;
+        EXPECT_EQ(gap.Policy, policy) << name;
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
+            GapUsesSpace(policy, GapContext::Rebuilt)) << name;
+        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Preserved, analysis.Safety), std::nullopt) << name;
     }
 
     Analysis qualified("template<class T> struct Box {}; " "Box<int> Owner<int>::method() const & {} "
@@ -511,8 +514,12 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
         EXPECT_EQ(gap.Field, F::None);
         EXPECT_TRUE(gap.FallbackSpace);
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-        EXPECT_EQ(qualified.Spacing.SpacePreference(id, GapContext::Rebuilt, qualified.Safety), std::nullopt);
+        const auto policy = id == qualified.Before("space") ? GapPolicy::GeneratedSpace : GapPolicy::Preserve;
+        EXPECT_EQ(gap.Policy, policy);
+        EXPECT_EQ(
+            qualified.Spacing.SpacePreference(id, GapContext::Rebuilt, qualified.Safety),
+            GapUsesSpace(policy, GapContext::Rebuilt));
+        EXPECT_EQ(qualified.Spacing.SpacePreference(id, GapContext::Preserved, qualified.Safety), std::nullopt);
     }
 
     Analysis decltypeDefinition("decltype(value)  incomplete(){}");
@@ -646,6 +653,9 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
             binding == PointerReferenceDeclaratorLocation::Middle);
         EXPECT_EQ(
             analysis.Spacing.SpacePreference(analysis.Before("qualified"), GapContext::Rebuilt, analysis.Safety),
+            true);
+        EXPECT_EQ(
+            analysis.Spacing.SpacePreference(analysis.Before("qualified"), GapContext::Preserved, analysis.Safety),
             std::nullopt);
         for (size_t pack = 1; pack <= 3; ++pack) {
             EXPECT_EQ(

@@ -1,0 +1,3 @@
+include = "canonical.hit-fmt"
+DeclarationHeadersLayout = Preserve
+ParametersLayout = Preserve
