@@ -1,6 +1,8 @@
 void f() {
     consume("short" "pair");
     consume("short" "pair");
+    consume("short" "pair");
+    consume("short", "pair");
     consume(
         "first fragment has some text "
         "second fragment has more text "

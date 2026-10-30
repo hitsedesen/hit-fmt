@@ -2023,6 +2023,7 @@ std::vector<FormatCase> FormatCases()
             "fragments-always",
             "fragments-disabled",
             "fragments-offsets",
+            "fragments-preserve-offsets",
             "fragments-next-line",
             "fragments-next-line-always",
         },

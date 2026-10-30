@@ -1859,7 +1859,7 @@ private:
         const auto enclosing = argument && Region(Syntax_[parent]).Parent != None
             ? Syntax_[Region(Syntax_[parent]).Parent].ListGroup
             : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
-        if (canonical && enclosing != None) {
+        if (enclosing != None && (canonical || argument)) {
             if (initializer) {
                 // The initializer owns the assignment boundary, but its string
                 // fragments continue with the Calls indentation policy.
@@ -1874,11 +1874,16 @@ private:
                 id,
                 [&] (Index token) {
                     if (token > node.Tokens.Begin && Tree_.Kind(token) == TokenKind::Literal_String) {
-                        Own(
-                            token,
-                            enclosing,
-                            policy.Packing == ListPacking::Fill ? Boundary::Soft : Boundary::Conditional,
-                            document::GapKind::Hard);
+                        if (canonical) {
+                            Own(
+                                token,
+                                enclosing,
+                                policy.Packing == ListPacking::Fill ? Boundary::Soft : Boundary::Conditional,
+                                document::GapKind::Hard);
+                        } else {
+                            Own(token, enclosing, Boundary::Preserve);
+                            Reindent(token, enclosing);
+                        }
                     }
                 });
             return;
