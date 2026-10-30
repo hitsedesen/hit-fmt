@@ -6,12 +6,14 @@ template <class T> struct Observer
         Observer(value).Exchange(*this);
         return *this;
     }
+
     Observer& Clear()
     {
         static_assert(Compatible<T*, T*>, "compatible types required");
         Observer().Exchange(*this);
         return *this;
     }
+
     void Inspect()
     {
         static_assert(Compatible<T*, T*>, "compatible types required");

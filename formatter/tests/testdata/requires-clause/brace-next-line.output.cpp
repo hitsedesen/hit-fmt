@@ -9,6 +9,15 @@ void prefix(T value)
 {
     consume(value);
 }
+template <class T>
+    requires Ready<const T&>
+void Process(T value);
+template<class T>
+    requires Ready<T* const> && Available<volatile T&&>
+void qualified(T value);
+template<class T, class... Types>
+void qualifiedTrailing(T value)
+    requires Ready<0, const T&> && Available<Types&...>;
 template<class T>
 void trailing(T value)
     requires Ready<T>

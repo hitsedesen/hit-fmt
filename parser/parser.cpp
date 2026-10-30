@@ -7241,8 +7241,14 @@ private:
 
     [[nodiscard]] bool IsTypeTemplateArgument(TokenIndex firstArgument, TokenIndex following) const
     {
+        while (Kind(firstArgument) == TK::Keyword_const || Kind(firstArgument) == TK::Keyword_volatile) {
+            firstArgument = NextSignificant(firstArgument + 1);
+        }
         auto afterArgument = NextSignificant(firstArgument + 1);
         const bool knownTypeArgument = IsKnownType(firstArgument);
+        if (!knownTypeArgument && !IsFundamentalTypeKeyword(Kind(firstArgument))) {
+            return false;
+        }
         bool sharedCloser = false;
         if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Less) {
             // A locally known type remains a type when specialized. Do not
@@ -7256,13 +7262,21 @@ private:
                 afterArgument = NextSignificant(nestedEnd);
             }
         }
+        // Qualifiers and pointer/reference operators preserve definite type
+        // evidence; a value name followed by the same operators does not.
+        while (afterArgument < following &&
+            (Kind(afterArgument) == TK::Keyword_const || Kind(afterArgument) == TK::Keyword_volatile ||
+                Kind(afterArgument) == TK::Operator_Star || Kind(afterArgument) == TK::Operator_Ampersand ||
+                Kind(afterArgument) == TK::Operator_And))
+        {
+            afterArgument = NextSignificant(afterArgument + 1);
+        }
         // Expanding a known type preserves its definite type evidence.
         if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Ellipsis) {
             afterArgument = NextSignificant(afterArgument + 1);
         }
-        return (knownTypeArgument || IsFundamentalTypeKeyword(Kind(firstArgument))) &&
-            (sharedCloser || Kind(afterArgument) == TK::Operator_Comma || Kind(afterArgument) == TK::Operator_Greater ||
-                Kind(afterArgument) == TK::Operator_RightShift);
+        return sharedCloser || Kind(afterArgument) == TK::Operator_Comma ||
+            Kind(afterArgument) == TK::Operator_Greater || Kind(afterArgument) == TK::Operator_RightShift;
     }
 
     [[nodiscard]] bool HasTypeTemplateArgument(TokenIndex opening, TokenIndex following) const
