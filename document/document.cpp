@@ -764,7 +764,8 @@ void Document::SourceLineIndent(
     std::uint32_t indentEnd,
     AnchorId anchor,
     std::uint32_t requiredWidth,
-    Identity identity)
+    Identity identity,
+    bool preserveIndentSpelling)
 {
     if (begin == InvalidId || end == InvalidId || indentBegin == InvalidId || indentEnd == InvalidId) {
         Fail(Error::InvalidSourceRange);
@@ -784,6 +785,7 @@ void Document::SourceLineIndent(
     node.Origin = {begin, end, identity};
     node.Gaps.Anchor = anchor;
     node.Gaps.Flat.RequiredWidth = requiredWidth;
+    node.Gaps.Flat.PreserveIndentSpelling = preserveIndentSpelling;
     node.Gaps.Flat.IndentSourceBegin = indentBegin;
     node.Gaps.Flat.IndentSourceEnd = indentEnd;
     Add(node);
@@ -799,6 +801,11 @@ AnchorId Document::MarkAnchor(AnchorSpec spec)
     node.Group.Reference = spec.SharedWith;
     if (spec.SharedWith != InvalidId && spec.SharedWith >= Anchors_) {
         Fail(Error::InvalidAnchor);
+    }
+    if (spec.SharedWith != InvalidId && !spec.Continuation &&
+        (spec.Kind != AnchorKind::BlockRelative || spec.StructuralBase || spec.LineBase || spec.FixedBase != InvalidId))
+    {
+        Fail(Error::InvalidPolicy);
     }
     node.Group.Alignment = spec.Kind;
     node.Group.Indent = spec.Offset;
@@ -1581,6 +1588,16 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
         }
         if (node.Type == Kind::Anchor) {
             const GroupNode node{Group(Nodes_[i])};
+            if (!node.Group.Continuation && node.Group.Reference != InvalidId) {
+                const auto& referenced = anchors[node.Group.Reference];
+                anchors[node.Group.Anchor] = {
+                    Offset(referenced.Column, node.Group.Indent),
+                    referenced.Block,
+                    static_cast<std::uint32_t>(i),
+                    InvalidId,
+                };
+                return true;
+            }
             const bool shared = sharesContinuation(node);
             auto base = frame.Indent;
             if (node.Group.StructuralBase) {
@@ -1858,7 +1875,16 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             }
             outputBegin = static_cast<std::uint32_t>(result.Text.size());
             emittedOrigin = {gaps.Flat.IndentSourceBegin, gaps.Flat.IndentSourceEnd, NoIdentity};
-            emitIndent(resolveIndent(gaps.Anchor, gaps.Flat.RequiredWidth));
+            const auto indent = resolveIndent(gaps.Anchor, gaps.Flat.RequiredWidth);
+            const auto original =
+                Source_.substr(gaps.Flat.IndentSourceBegin, gaps.Flat.IndentSourceEnd - gaps.Flat.IndentSourceBegin);
+            if (gaps.Flat.PreserveIndentSpelling && SourceColumn(original, policy.TabWidth) == indent) {
+                append(original);
+                advance(original);
+                exact = true;
+            } else {
+                emitIndent(indent);
+            }
             realizeContinuation();
             // Do not set frame.OwnedLine: only editable gaps satisfy
             // ForceOwned.
@@ -1925,12 +1951,19 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                     }
                     outputBegin = static_cast<std::uint32_t>(result.Text.size());
                     auto text = Source_.substr(gap.IndentSourceBegin, gap.IndentSourceEnd - gap.IndentSourceBegin);
-                    append(text);
-                    column = 0;
-                    advance(text);
                     emittedOrigin.Begin = gap.IndentSourceBegin;
                     emittedOrigin.End = gap.IndentSourceEnd;
-                    exact = true;
+                    const auto indent = resolveIndent(anchor, gap.RequiredWidth);
+                    if (gap.PreserveIndentSpelling && SourceColumn(text, policy.TabWidth) != indent) {
+                        emitIndent(indent);
+                    } else {
+                        append(text);
+                        column = 0;
+                        lineIndent = 0;
+                        linePrefix = true;
+                        advance(text);
+                        exact = true;
+                    }
                 } else {
                     emitIndent(resolveIndent(anchor, gap.RequiredWidth));
                 }

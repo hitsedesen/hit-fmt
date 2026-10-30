@@ -1014,6 +1014,22 @@ std::vector<FormatCase> FormatCases()
         }
     }
     AddCases(cases, BODY_INDENT_TESTDATA_DIR, {"preserve", "indent", "no-indent", "mixed"});
+    AddCases(
+        cases,
+        BODY_INDENT_TESTDATA_DIR,
+        {
+            "namespace-preserved-indent",
+            "namespace-preserved-no-indent",
+            "namespace-preserved-layout",
+            "namespace-preserved-vertical",
+        },
+        "namespace-preserved.input.cpp");
+    cases.push_back({
+        BODY_INDENT_TESTDATA_DIR,
+        "namespace-preserved-tabs",
+        "namespace-preserved-tabs.input.cpp",
+        "namespace-preserved-indent",
+    });
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "reindented-call", "reindented-call.input.cpp"});
     const auto nullStatements = data / "null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});

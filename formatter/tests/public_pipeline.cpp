@@ -45,6 +45,27 @@ TEST(PublicPipeline, MultilineCommentIndentationHonorsWholeTokenAuthority)
     EXPECT_NE(protectedResult.Text.find("/* note\n * body\n */"), std::string::npos);
 }
 
+TEST(PublicPipeline, PreservedNamespaceIndentationRespectsGapAuthority)
+{
+    auto style = Canonical();
+    style.IndentationKind = formatter::IndentationKind::Preserve;
+    style.IndentNamespaces = formatter::BodyIndentation::Indent;
+    style.EnumeratorsLayout = formatter::CategoryLayout::Preserve;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "namespace N {\r\nenum E {\r\n    First,\r\n    Second\r\n};\r\n}\r\n";
+    const auto begin = parser::SourceOffset(source.find("    First"));
+    const std::array indent{parser::SourceRange{begin, begin + 4}};
+    const auto immutable = FormatInput(source, prepared, {.ImmutableRanges = indent});
+    EXPECT_NE(immutable.Text.find("\r\n    First,"), std::string::npos);
+    EXPECT_NE(immutable.Text.find("\r\n        Second"), std::string::npos);
+    // A selected descendant uses the actual enclosing line. An excluded
+    // declaration header must not move merely to realize the namespace rule.
+    const auto partial = FormatInput(source, prepared, {.EditScope = indent});
+    EXPECT_EQ(partial.Text, source);
+    const std::string disabled = "// clang-format off\n" + source + "// clang-format on\n";
+    EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
+}
+
 TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
 {
     auto style = Canonical();
