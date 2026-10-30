@@ -1,0 +1,2 @@
+include = "fragments-offsets.hit-fmt"
+AssignmentRhsPlacement = NextLine

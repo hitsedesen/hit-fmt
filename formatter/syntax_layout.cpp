@@ -1861,8 +1861,14 @@ private:
             : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
         if (canonical && enclosing != None) {
             if (initializer) {
+                // The initializer owns the assignment boundary, but its string
+                // fragments continue with the Calls indentation policy.
+                Groups_[enclosing].Spec.Indent = int32_t(policy.Indent.ContinuationOffset);
+                Groups_[enclosing].Indent = policy.Indent;
                 Groups_[enclosing].Spec.ForceBreak |= policy.Break == BreakRequirement::Always;
-                Own(node.Tokens.Begin, enclosing, Boundary::Conditional, document::GapKind::Hard);
+                if (Gaps_[node.Tokens.Begin].Shape != Boundary::Hard) {
+                    Own(node.Tokens.Begin, enclosing, Boundary::Conditional, document::GapKind::Hard);
+                }
             }
             DirectTokens(
                 id,

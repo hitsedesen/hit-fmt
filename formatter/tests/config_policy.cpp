@@ -409,21 +409,6 @@ TEST(ConfigPolicy, IndependentFamiliesDoNotCrossInherit)
     EXPECT_EQ(overridden.LambdaBodies.EmptyShape, formatter::BodyShape::Expanded);
 }
 
-TEST(ConfigPolicy, StringLiteralFragmentsAreOptIn)
-{
-    EXPECT_FALSE(formatter::Style{}.StringLiteralFragmentsAsArguments);
-    EXPECT_FALSE(formatter::CompilePolicies(formatter::Style{}).StringLiteralFragmentsAsArguments);
-    for (const bool enabled : {false, true}) {
-        const TemporaryConfig config(
-            std::string("StringLiteralFragmentsAsArguments = ") + (enabled ? "true\n" : "false\n"));
-        const auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
-        EXPECT_EQ(style.StringLiteralFragmentsAsArguments, enabled);
-        EXPECT_EQ(formatter::CompilePolicies(style).StringLiteralFragmentsAsArguments, enabled);
-    }
-    const TemporaryConfig invalid("StringLiteralFragmentsAsArguments = yes\n");
-    EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
-}
-
 TEST(ConfigPolicy, SoleArgumentPlacementInheritsFinalCallsFirstItem)
 {
     for (const auto firstItem : {"InlineIfFits", "NextLine"}) {

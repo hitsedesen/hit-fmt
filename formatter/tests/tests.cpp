@@ -2022,6 +2022,9 @@ std::vector<FormatCase> FormatCases()
             "fragments-preserve",
             "fragments-always",
             "fragments-disabled",
+            "fragments-offsets",
+            "fragments-next-line",
+            "fragments-next-line-always",
         },
         "fragments.input.cpp");
     cases.push_back({strings, "crlf", "crlf.input.cpp", "overflow"});

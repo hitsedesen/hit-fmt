@@ -21,6 +21,9 @@ void f() {
     const auto shortMessage =
         "short"
         "pair";
+    const auto single = "short";
+    consume(
+        "short");
     outer(
         other,
         "first fragment has some text "
