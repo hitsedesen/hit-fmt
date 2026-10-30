@@ -441,8 +441,8 @@ public:
                     break;
                 case NodeKind::LinkageSpecification:
                     if (entry.ItemSequence) {
-                        // Linkage keeps its authored body shape and relative
-                        // indent while following the surrounding scope.
+                        // Linkage keeps its authored body shape; explicit
+                        // indentation controls only the contents' level.
                         auto policy = Policies_.Bodies;
                         policy.Layout = LayoutMode::Preserve;
                         PlanBody(i, entry.SequenceBody.Begin - 1, entry.SequenceBody.End, policy, false);
@@ -2978,9 +2978,9 @@ private:
     {
         const auto kind = Region(Syntax_[id]).Kind;
         if (kind == NodeKind::NamespaceDeclaration || kind == NodeKind::LinkageSpecification) {
-            const auto& control = Policies_.Indentation.Namespaces;
             const bool linkage = kind == NodeKind::LinkageSpecification;
-            if (linkage || control.Mode == BodyIndentation::Preserve) {
+            const auto& control = linkage ? Policies_.Indentation.LinkageBlocks : Policies_.Indentation.Namespaces;
+            if (control.Mode == BodyIndentation::Preserve) {
                 const auto start = Region(Syntax_[id]).Tokens.Begin;
                 const auto outer = linkage ? SourceLineIndent(start) : SourceIndent(start);
                 const auto inner = SourceIndent(opening + 1);
@@ -2989,7 +2989,7 @@ private:
                     return int32_t(inner - base);
                 }
             }
-            return linkage ? 0 : BodyOffset(control, 0);
+            return BodyOffset(control, 0);
         }
         return record
             ? BodyOffset(Policies_.Indentation.Members, int32_t(policy.IndentWidth))
@@ -3064,6 +3064,7 @@ private:
         }
         const bool canonical = policy.Layout == LayoutMode::Canonical;
         const bool namespaced = Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration;
+        const bool linkage = Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification;
         int32_t offset = BodyIndentWidth(id, opening, policy, record);
         const auto contentIndent = PreservedBodyIndent(id, opening, close);
         if (contentIndent != None) {
@@ -3090,7 +3091,8 @@ private:
         }
         const bool independentIndent = record
             ? Policies_.Indentation.Members.Mode != BodyIndentation::Preserve
-            : namespaced && Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve;
+            : (namespaced && Policies_.Indentation.Namespaces.Mode != BodyIndentation::Preserve) ||
+                (linkage && Policies_.Indentation.LinkageBlocks.Mode != BodyIndentation::Preserve);
         const auto group = GroupAt(
             GapPosition(opening + 1),
             GapPosition(close + 1),
@@ -3104,11 +3106,14 @@ private:
         // without a continuation frame.
         const auto parent = Region(Syntax_[id]).Parent;
         Groups_[group].Spec.FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
+        // Inline linkage headers inherit their enclosing structural level
+        // when indentation is explicit; own-line headers keep their line base.
+        const bool linkageLineBase =
+            linkage && (!independentIndent || StartsSourceLine(Region(Syntax_[id]).Tokens.Begin));
         Groups_[group].Spec.LineBase = contentIndent == None &&
             !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
                 Policies_.DeclarationHeaders == LayoutMode::Canonical && policy.Layout == LayoutMode::Preserve) &&
-            (Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification ||
-                Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
+            (linkageLineBase || Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
                 (parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression));
         BlockOf_[id] = group;
@@ -3128,7 +3133,7 @@ private:
             Own(opening + 1, group, Boundary::Preserve);
             Own(close, group, Boundary::Preserve, document::GapKind::Flat, true);
             Reindent(opening + 1, group, false, independentIndent);
-            Reindent(close, group, true);
+            Reindent(close, group, true, linkage && independentIndent);
         }
         bool inCase = false;
         Index contents = None;
@@ -3199,7 +3204,9 @@ private:
                     0,
                     LayoutIndentation{ContinuationAlignment::Block, 0, 0});
                 Groups_[scope].Spec.StructuralBase = true;
-                Groups_[scope].Spec.LineBase = true;
+                // Inline items already inherit their body's logical level,
+                // even before any physical line break realizes that indent.
+                Groups_[scope].Spec.LineBase = StartsSourceLine(part.Tokens.Begin);
                 const auto line = Tree_.TokenPosition(part.Tokens.Begin).Line;
                 if (line != sourceLine) {
                     sourceLine = line;
@@ -3518,6 +3525,13 @@ private:
                 : document::GapKind::Soft);
         }
         return true;
+    }
+
+    bool StartsSourceLine(Index token) const
+    {
+        const auto prefix = Tree_.Source().substr(0, Tree_.Token(token).Text.Begin);
+        const auto previous = prefix.find_last_not_of(" \t");
+        return previous == std::string_view::npos || prefix[previous] == '\n';
     }
 
     Index SourceLineIndent(Index token) const

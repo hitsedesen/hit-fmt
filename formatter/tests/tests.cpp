@@ -366,7 +366,10 @@ std::vector<FormatCase> FormatCases()
         {"categories", "categories-preserve", "categories-overrides"},
         "categories.input.cpp");
     AddCases(cases, data / "vertical-grouping", {"linkage", "linkage-zero", "linkage-preserve"}, "linkage.input.cpp");
-    AddCases(cases, data / "linkage-indentation", {"canonical", "preserve"});
+    AddCases(
+        cases,
+        data / "linkage-indentation",
+        {"canonical", "preserve", "indent", "no-indent", "width", "indent-preserve"});
     {
         const auto directory = data / "vertical-grouping";
         {

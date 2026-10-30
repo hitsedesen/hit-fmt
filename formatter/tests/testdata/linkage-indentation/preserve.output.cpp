@@ -24,3 +24,13 @@ extern "C" {} // Empty linkage.
 extern "C" { void Inline(); }
 extern "C" void Single();
 void Neighbor();
+extern "C" {
+       int F() {
+           return 1;
+       }
+       void Other();
+}
+extern "C++" { extern "C" {
+       void InlineNested();
+}
+}

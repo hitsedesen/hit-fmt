@@ -136,6 +136,7 @@ struct IndentationControls
     StandaloneBraceIndentControl StandaloneBraces;
     AttributeIndentControl StatementAttributes;
     BodyIndentControl Namespaces;
+    BodyIndentControl LinkageBlocks;
 };
 
 struct BracePolicy

@@ -641,6 +641,14 @@ IndentNamespaces = Preserve
 # Values: 0 (use IndentWidth) or 1..32
 NamespaceIndentWidth = 0
 
+# Applies to contents of braced extern "C" / extern "C++" blocks.
+# Preserves body line breaks; single declarations without braces are unaffected.
+# Values: Preserve | Indent | NoIndent
+IndentLinkageBlocks = Preserve
+
+# Values: 0 (use IndentWidth) or 1..32
+LinkageIndentWidth = 0
+
 # Values: Preserve | Indent
 StandaloneBlockBraceIndentation = Preserve
 

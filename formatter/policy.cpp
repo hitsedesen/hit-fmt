@@ -145,6 +145,7 @@ void ValidatePolicyStyle(const Style& style)
     CheckOffset(style.CaseLabelIndentWidth, "CaseLabelIndentWidth");
     CheckOffset(style.BlockBodyIndentWidth, "BlockBodyIndentWidth");
     CheckOffset(style.NamespaceIndentWidth, "NamespaceIndentWidth");
+    CheckOffset(style.LinkageIndentWidth, "LinkageIndentWidth");
     CheckOffset(style.StatementAttributeIndentWidth, "StatementAttributeIndentWidth");
     CheckBlankSetting(style.NamespaceBlankLinesAfterOpen, "NamespaceBlankLinesAfterOpen");
     CheckBlankSetting(style.NamespaceBlankLinesBeforeClose, "NamespaceBlankLinesBeforeClose");
@@ -326,7 +327,9 @@ CompiledPolicies CompilePolicies(const Style& style)
                 ResolveOffset(style.StatementAttributeIndentWidth,
                     style.IndentWidth))},
             {style.IndentNamespaces, static_cast<std::uint8_t>(
-                ResolveOffset(style.NamespaceIndentWidth, style.IndentWidth))}},
+                ResolveOffset(style.NamespaceIndentWidth, style.IndentWidth))},
+            {style.IndentLinkageBlocks, static_cast<std::uint8_t>(
+                ResolveOffset(style.LinkageIndentWidth, style.IndentWidth))}},
         .Calls = Calls,
         .StringLiteralFragmentsAsArguments = style.StringLiteralFragmentsAsArguments,
         .CallsSoleArgumentFirstItem =
