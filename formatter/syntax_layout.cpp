@@ -1891,6 +1891,10 @@ private:
             : document::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
+        // Like call arguments, fragments continue from their opening line
+        // independently of the enclosing expression's continuation offset.
+        Groups_[group].Spec.StructuralBase = true;
+        Groups_[group].Spec.LineBase = true;
         Groups_[group].Spec.Continuation = true;
         Groups_[group].Spec.ForceBreak = canonical && policy.Break == BreakRequirement::Always;
         DirectTokens(

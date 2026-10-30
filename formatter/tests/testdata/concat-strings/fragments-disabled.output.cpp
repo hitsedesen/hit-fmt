@@ -14,6 +14,14 @@ void f() {
     const auto shortMessage = "short" "pair";
     const auto single = "short";
     consume("short");
+    text = "short" "pair";
+    text =
+        "first fragment has some text " "second fragment has more text "
+            "third fragment has the last text";
+    text = consume(
+        "first fragment has some text ",
+        "second fragment has more text ",
+        "third fragment has the last text");
     outer(
         other,
         "first fragment has some text " "second fragment has more text "
@@ -40,4 +48,11 @@ const char*GetText() {
 
 const char*GetShortText() {
     return "short" "pair";
+}
+
+const char*GetCallText() {
+    return consume(
+        "first fragment has some text ",
+        "second fragment has more text ",
+        "third fragment has the last text");
 }

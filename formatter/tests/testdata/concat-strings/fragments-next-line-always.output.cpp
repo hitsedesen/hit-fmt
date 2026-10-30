@@ -25,6 +25,18 @@ void f() {
             "short";
     consume(
       "short");
+    text =
+            "short"
+              "pair";
+    text =
+            "first fragment has some text "
+              "second fragment has more text "
+              "third fragment has the last text";
+    text =
+            consume(
+              "first fragment has some text ",
+              "second fragment has more text ",
+              "third fragment has the last text");
     outer(
       other,
       "first fragment has some text "
@@ -51,11 +63,18 @@ raw line)tag"
 }
 const char*GetText() {
     return "first fragment has some text "
-            "second fragment has more text "
-            "third fragment has the last text";
+      "second fragment has more text "
+      "third fragment has the last text";
 }
 
 const char*GetShortText() {
     return "short"
-            "pair";
+      "pair";
+}
+
+const char*GetCallText() {
+    return consume(
+      "first fragment has some text ",
+      "second fragment has more text ",
+      "third fragment has the last text");
 }
