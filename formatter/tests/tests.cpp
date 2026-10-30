@@ -363,6 +363,16 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         data / "vertical-grouping",
+        {"access-sections", "access-sections-zero", "access-sections-preserve"},
+        "access-sections.input.cpp");
+    ShareExpected(
+        cases,
+        data / "vertical-grouping",
+        "access-sections-preserve.output.cpp",
+        "access-sections.input.cpp");
+    AddCases(
+        cases,
+        data / "vertical-grouping",
         {"categories", "categories-preserve", "categories-overrides"},
         "categories.input.cpp");
     AddCases(cases, data / "vertical-grouping", {"linkage", "linkage-zero", "linkage-preserve"}, "linkage.input.cpp");

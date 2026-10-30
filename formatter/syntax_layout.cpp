@@ -4506,7 +4506,7 @@ private:
                 const auto close = body ? Syntax_[id].SequenceBody.End : None;
                 Index previous = None;
                 Index access = None;
-                bool seenAccess = false;
+                bool seenSection = false;
                 bool content = false;
                 for (size_t p = 0; p < children.size(); ++p) {
                     const auto child = children[p];
@@ -4548,10 +4548,10 @@ private:
                     if (part.Kind == NodeKind::AccessSpecifier &&
                         (node.Kind == NodeKind::RecordDeclaration || node.Kind == NodeKind::MacroRecordDeclaration))
                     {
-                        if (seenAccess) {
+                        if (seenSection) {
                             ExactVertical(Region(entry).Attached.Begin, policy.AccessSectionBlankLinesBefore);
                         }
-                        seenAccess = true;
+                        seenSection = true;
                         access = child;
                         previous = None;
                         continue;
@@ -4560,6 +4560,8 @@ private:
                         previous = access = None;
                         continue;
                     }
+                    // Initial members form an implicit access section.
+                    seenSection = true;
                     if (entry.NamespaceSuffix) {
                         previous = child;
                         continue;

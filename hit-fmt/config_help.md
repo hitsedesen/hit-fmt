@@ -277,8 +277,10 @@ InitializersTrailingComma = WhenMultiline
 - Counts accept Preserve or 0..10000. Positive counts force a break;
   zero adds no break. Existing blank lines stay unless overridden.
 - NamespaceBlankLines* and LinkageBlankLines* apply inside nonempty
-  blocks, outside attached comments. AccessSectionBlankLinesBefore skips
-  the first section; AfterLabel needs following content.
+  blocks, outside attached comments.
+- AccessSectionBlankLinesBefore separates access sections, including
+  unlabeled initial members. It skips a label at the start of a record;
+  AfterLabel needs following content.
 - DeclarationBlankLines separates declarations. DefinitionBlankLines wins
   beside function, record or enum definitions, not lambdas/namespaces.
   DeclarationCategoryBlankLines overrides both between types, functions

@@ -689,6 +689,9 @@ LinkageBlankLinesAfterOpen = Preserve
 # Values: Preserve | 0..10000
 LinkageBlankLinesBeforeClose = Preserve
 
+# Between access sections, including unlabeled initial members.
+# Skips a label at the start of a record; outside attached comments.
+# Example: 1 inserts a blank line between int Value; and private:.
 # Values: Preserve | 0..10000
 AccessSectionBlankLinesBefore = Preserve
 
