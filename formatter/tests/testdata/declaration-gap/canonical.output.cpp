@@ -1,7 +1,7 @@
 template<class T> struct Box {};
 Box<int> make(){return {};}
 Box<Box<int>> nested(){return {};}
-Box<int>  flat();
+Box<int> flat();
 int scalar(){return 0;}
 NO_INLINE std::tuple<int, int> Serve(int value){return {};}
 EXPORT HOT Box<Box<int>> chained(){return {};}

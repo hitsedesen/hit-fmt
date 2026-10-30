@@ -300,6 +300,16 @@ MaxEmptyLines = 1
 - Values: Preserve, Space, NoSpace, GeneratedSpace, GeneratedNoSpace.
   Generated* applies when canonical layout rebuilds the owning syntax;
   nested edits alone do not activate it. Syntax safety always wins.
+- DeclarationSpecifierSpacing controls consecutive word specifiers in
+  declarations and types, such as static const int. Balanced decltype,
+  alignas and extension operands retain their own rules.
+  DeclarationNameSpacing controls the type-to-name boundary of a parsed
+  declaration or parameter, including Box<int> value. Pointer binding,
+  packs and nested declarators retain their own rules.
+  Both default to GeneratedSpace. Preserve retains horizontal spaces/tabs
+  even with canonical layout; Space also applies with preserved layout.
+  NoSpace still keeps a separator where tokens would otherwise merge.
+  Comments and protected/opaque syntax stay intact; layout controls breaks.
 - Before/After controls each side separately.
   TemplateTypeArgumentInteriorSpacing = NoSpace permits nested >>;
   ScopeResolutionSpacing excludes leading ::. BraceInitializerSpacing
@@ -320,6 +330,9 @@ MaxEmptyLines = 1
 
 ## Common spacing
 ```config
+DeclarationSpecifierSpacing = Preserve
+DeclarationNameSpacing = Space
+# Keeps const   int, but normalizes int   value to int value.
 FunctionSpaceBeforeParameters = NoSpace
 ControlBlockKeywordSpacing = Space
 CommaSpaceBefore = NoSpace

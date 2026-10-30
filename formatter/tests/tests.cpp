@@ -316,6 +316,18 @@ std::vector<FormatCase> FormatCases()
     ShareExpected(cases, data / "interword-spacing", "preserve.output.cpp", "input.cpp");
     AddCases(
         cases,
+        data / "interword-spacing",
+        {
+            "spacing-preserve",
+            "specifier-preserve",
+            "name-preserve",
+            "space",
+            "no-space",
+            "generated-no-space",
+            "reflow-preserve",
+        });
+    AddCases(
+        cases,
         data / "declaration-headers",
         {"qualified", "qualified-always", "qualified-preserve"},
         "qualified.input.cpp");

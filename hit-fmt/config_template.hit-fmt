@@ -873,6 +873,24 @@ NamespaceCommentSpaces = 1
 # Values: 0 (no exemption) or 1..10000
 ShortNamespaceLines = 0
 
+# Between consecutive word specifiers in declarations and types.
+# Example: static   const   int becomes static const int with Space.
+# Balanced decltype/alignas/extension operands keep their own rules.
+# Preserve keeps horizontal spelling even with canonical layout;
+# Space applies even with preserved layout. Lexical safety overrides NoSpace.
+# Comments and protected/opaque syntax stay intact; layout controls breaks.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeclarationSpecifierSpacing = GeneratedSpace
+
+# Between a parsed type and its declarator name, also in parameters.
+# Examples: int   value; Box<int>   value; decltype(item)   value;
+# Pointer binding, packs and nested declarators retain their own rules.
+# Preserve keeps horizontal spelling even with canonical layout;
+# Space applies even with preserved layout. Lexical safety overrides NoSpace.
+# Comments and protected/opaque syntax stay intact; layout controls breaks.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+DeclarationNameSpacing = GeneratedSpace
+
 # Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
 TrailingCommentSpacing = Preserve
 

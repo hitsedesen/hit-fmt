@@ -483,7 +483,7 @@ TEST(SyntaxSpacing, TrailingDeclarationCommentsBelongToHeaderNotOuterBody)
     }
 }
 
-TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
+TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorSpacing)
 {
     Analysis analysis("template<class T> struct Box {}; " "Box<int>make(){} Box<Box<int>>nested(){} "
         "Box<int>  flat(); int scalar(){} " "namespace types {template<class T> struct Box {}; } "
@@ -496,9 +496,9 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion) << name;
         EXPECT_EQ(gap.Category, C::DeclarationHeaders) << name;
-        EXPECT_EQ(gap.Field, F::None) << name;
+        EXPECT_EQ(gap.Field, F::DeclarationNameSpacing) << name;
         EXPECT_TRUE(gap.FallbackSpace) << name;
-        const auto policy = std::string_view(name) == "scalar" ? GapPolicy::GeneratedSpace : GapPolicy::Preserve;
+        const auto policy = GapPolicy::GeneratedSpace;
         EXPECT_EQ(gap.Policy, policy) << name;
         EXPECT_EQ(
             analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety),
@@ -512,9 +512,9 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
         const auto& gap = qualified.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-        EXPECT_EQ(gap.Field, F::None);
+        EXPECT_EQ(gap.Field, F::DeclarationNameSpacing);
         EXPECT_TRUE(gap.FallbackSpace);
-        const auto policy = id == qualified.Before("space") ? GapPolicy::GeneratedSpace : GapPolicy::Preserve;
+        const auto policy = GapPolicy::GeneratedSpace;
         EXPECT_EQ(gap.Policy, policy);
         EXPECT_EQ(
             qualified.Spacing.SpacePreference(id, GapContext::Rebuilt, qualified.Safety),
@@ -527,12 +527,10 @@ TEST(SyntaxSpacing, CompleteSpecifierToDirectNamedDeclaratorFallback)
     const auto& gap = decltypeDefinition.Spacing.Gaps()[id];
     ASSERT_NE(gap.Owner, NoRegion);
     EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-    EXPECT_EQ(gap.Field, F::None);
+    EXPECT_EQ(gap.Field, F::DeclarationNameSpacing);
     EXPECT_TRUE(gap.FallbackSpace);
-    EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-    EXPECT_EQ(
-        decltypeDefinition.Spacing.SpacePreference(id, GapContext::Rebuilt, decltypeDefinition.Safety),
-        std::nullopt);
+    EXPECT_EQ(gap.Policy, GapPolicy::GeneratedSpace);
+    EXPECT_EQ(decltypeDefinition.Spacing.SpacePreference(id, GapContext::Rebuilt, decltypeDefinition.Safety), true);
 }
 
 TEST(SyntaxSpacing, DestructorSpecifierBoundary)
@@ -546,10 +544,10 @@ TEST(SyntaxSpacing, DestructorSpecifierBoundary)
         const auto& gap = analysis.Spacing.Gaps()[id];
         ASSERT_NE(gap.Owner, NoRegion);
         EXPECT_EQ(gap.Category, C::DeclarationHeaders);
-        EXPECT_EQ(gap.Field, F::None);
+        EXPECT_EQ(gap.Field, F::DeclarationNameSpacing);
         EXPECT_TRUE(gap.FallbackSpace);
-        EXPECT_EQ(gap.Policy, GapPolicy::Preserve);
-        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
+        EXPECT_EQ(gap.Policy, GapPolicy::GeneratedSpace);
+        EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), true);
         // A destructor name is not a unary expression and owns no unary gap.
         EXPECT_NE(analysis.Spacing.Gaps()[id + 1].Field, F::UnaryOperatorSpacing);
     }

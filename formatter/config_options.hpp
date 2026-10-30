@@ -2,6 +2,10 @@
 
 // Lexical separation, comments and opaque spans override gap preferences.
 #define FORMATTER_GAP_OPTIONS(OPT)                                            \
+    OPT(formatter::GapPolicy, DeclarationSpecifierSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
+    OPT(formatter::GapPolicy, DeclarationNameSpacing, \
+        formatter::GapPolicy::GeneratedSpace) \
     OPT(formatter::GapPolicy, TrailingCommentSpacing, \
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, ArgumentCommentSpacing, \

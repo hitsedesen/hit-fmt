@@ -23,6 +23,17 @@ using C = SpacingOwner;
 
 constexpr TI NoToken = UINT32_MAX;
 
+bool IsWord(TK kind)
+{
+    return kind == TK::Identifier || kind >= TK::Keyword_alignas;
+}
+
+bool IsSpecifierContainer(NK kind)
+{
+    return kind == NK::DeclarationSpecifiers || kind == NK::TypeId || kind == NK::NewTypeId ||
+        kind == NK::TrailingReturnType;
+}
+
 bool IsArgumentNameComment(std::string_view text)
 {
     if (!text.starts_with("/*") || !text.ends_with("*/")) {
@@ -111,6 +122,7 @@ struct Context
     RegionId ListOwner = NoRegion;
     C ListCategory = C::None;
     TI NewTypeSkip = 0;
+    TI TypeOperandEnd = 0;
     bool NestedDeclarator = false;
     bool SeparatedDeclarator = false;
     bool KeywordOperands = false;
@@ -319,6 +331,9 @@ public:
         }
         if (kind == NK::NewTypeId) {
             state.NewTypeSkip = 0;
+        }
+        if (IsSpecifierContainer(kind)) {
+            state.TypeOperandEnd = 0;
         }
         if (kind == NK::NestedDeclarator) {
             state.NestedDeclarator = true;
@@ -882,6 +897,24 @@ public:
             }
             const auto kind = Tree_.Kind(i);
             const auto role = Tree_.Role(i);
+            if (IsSpecifierContainer(node.Kind)) {
+                if (kind == TK::Operator_OpenParenthesis || kind == TK::Operator_OpenBracket) {
+                    const auto close = Tree_.MatchingDelimiter(i);
+                    if (close != NoToken && close < node.Tokens.End) {
+                        // Type operands can contain raw expression tokens.
+                        state.TypeOperandEnd = close + 1;
+                    }
+                }
+                if (i > node.Tokens.Begin && i >= state.TypeOperandEnd && IsWord(Tree_.Kind(i - 1)) && IsWord(kind)) {
+                    Mark(i, F::DeclarationSpecifierSpacing, owner, state.Category, 0, true);
+                }
+            }
+            if (node.Kind == NK::DeclaratorName && i == node.Tokens.Begin && node.Parent != NoRegion &&
+                Regions_[node.Parent].Kind == NK::Declarator && i > Regions_[node.Parent].Tokens.Begin &&
+                IsWord(Tree_.Kind(i - 1)) && IsWord(kind))
+            {
+                Mark(i, F::DeclarationNameSpacing, owner, state.Category, 0, true);
+            }
             if (i != 0 && Gaps_[i].Priority == 0 && node.Kind != NK::UnparsedSyntax &&
                 node.Kind != NK::AmbiguousStatement && node.Kind != NK::UnexpectedToken && node.Kind != NK::Error &&
                 role != PR::AmbiguousOperator)
@@ -1175,9 +1208,14 @@ public:
         // A qualified declarator starts before its terminal name child.
         // Separate the complete specifiers from the whole qualified name,
         // including a destructor's '~', not merely its final identifier.
+        const auto first = Tree_.Kind(list.Tokens.Begin);
+        // A pack marker or recovered opener is not a type/name policy site.
+        const bool nameStart =
+            first == TK::Identifier || (name->Kind == NK::DestructorName && first == TK::Operator_Complement) ||
+                (name->Kind == NK::OperatorFunctionName && first == TK::Keyword_operator);
         Mark(
             list.Tokens.Begin,
-            F::None,
+            nameStart ? F::DeclarationNameSpacing : F::None,
             declaration,
             declaration.Kind == NK::ParameterDeclaration ? C::Parameters : C::DeclarationHeaders,
             1,
@@ -1707,17 +1745,6 @@ SyntaxSpacing BuildSyntaxSpacing(
         auto& gap = result.Gaps_[i];
         const auto& source = safety.Gaps()[i];
         gap.FallbackSpace |= source.Separation == GapSeparation::Required;
-        if (i > 0 && i < tree.TokenCount() && gap.Field == F::None && gap.Owner != NoRegion && gap.Category != C::None)
-        {
-            const auto isWord = [] (TK kind) {
-                return kind == TK::Identifier || kind >= TK::Keyword_alignas;
-            };
-            // Word boundaries have no configurable spacing rule. Normalize
-            // them in canonical owners while preserving source-only layout.
-            if (isWord(tree.Kind(i - 1)) && isWord(tree.Kind(i))) {
-                gap.Policy = GapPolicy::GeneratedSpace;
-            }
-        }
         if (source.Preserve || source.ContextSensitive || source.LineBoundary == GapLineBoundary::Required ||
             source.MustStartWithLineFeed)
         {

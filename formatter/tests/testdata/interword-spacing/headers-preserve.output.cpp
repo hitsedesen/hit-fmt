@@ -1,5 +1,12 @@
 #define DECLARE(name) const   int   name
 
+template<class T> struct Box {
+};
+template<class... Items> void Pack(Items...   items);
+Box<int>   boxed;
+decltype(new   Widget)   pointer;
+int* const   volatile   qualified = nullptr;
+
 void F() {
     int   value = 1;
     const   int   other = value;

@@ -4768,6 +4768,14 @@ private:
             (gap.Shape == Boundary::Conditional && gap.Broken != document::GapKind::Flat);
     }
 
+    bool KeepsFlatSpacing(Index i) const
+    {
+        const auto& spacing = Spacing_.Gaps()[i];
+        return Gaps_[i].KeepFlatSpacing ||
+            ((spacing.Field == SpacingField::DeclarationSpecifierSpacing ||
+                spacing.Field == SpacingField::DeclarationNameSpacing) && spacing.Policy == GapPolicy::Preserve);
+    }
+
     std::optional<bool> SpacePreference(
         Index i,
         GapContext context,
@@ -4838,7 +4846,7 @@ private:
             return 1;
         }
         const auto& source = Safety_.Gaps()[i];
-        if ((!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) && !source.HasLineFeed) {
+        if ((!RebuildsTopology(i) || KeepsFlatSpacing(i)) && !source.HasLineFeed) {
             return HorizontalColumns(Safety_.Original(source), Options_.TabWidth);
         }
         return Spacing_.Gaps()[i].FallbackSpace || source.Separation == GapSeparation::Required ? 1 : 0;
@@ -4968,7 +4976,7 @@ private:
             spec.LineEnding = document::GapNewline::LF;
         }
         const auto context = ContextFor(i);
-        if (sourceHorizontal && (!RebuildsTopology(i) || Gaps_[i].KeepFlatSpacing) && Safety_.Gaps()[i].Horizontal &&
+        if (sourceHorizontal && (!RebuildsTopology(i) || KeepsFlatSpacing(i)) && Safety_.Gaps()[i].Horizontal &&
             !TrailingCommentCount(i) && !SpacePreference(i, context, adjacency))
         {
             spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;
