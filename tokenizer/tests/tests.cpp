@@ -36,9 +36,11 @@ std::pair<std::string, std::vector<std::string>> TokenizeAndSerialize(const std:
                 std::format("{} error: {}", error.ErrorPosition, GetTokenizationErrorDescription(error.Kind)));
         });
     std::string result;
+
     for (const auto& token : tokenizer) {
         result += std::format("{}: {} {}\n", token.Position, token.Kind, token.Text.View(input));
     }
+
     return {std::move(result), std::move(errors)};
 }
 
@@ -64,10 +66,12 @@ TEST_P(BadTest, Golden)
     auto [actual, errors] = TokenizeAndSerialize(fixture.InputNamed(".in"));
     EXPECT_FALSE(errors.empty()) << "should output errors";
     std::string actualErrors;
+
     for (const auto& error : errors) {
         actualErrors += error;
         actualErrors += "\n";
     }
+
     fixture.Expect(actual, ".out");
     fixture.Expect(actualErrors, ".err");
 }

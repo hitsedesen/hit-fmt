@@ -127,9 +127,11 @@ TEST(HunkScope, IndexOutlivesSourceAndScaleUsesContiguousOperationMemory)
     const auto lines = [&] {
         std::string source;
         source.reserve(count * 2);
+
         for (size_t i = 0; i < count; ++i) {
             source += "x\n";
         }
+
         return OriginalHunkLines(source, memory);
     }();
     EXPECT_LE(memory.Bytes, 4 * (count + 1) * sizeof(parser::SourceOffset));
@@ -140,20 +142,25 @@ TEST(HunkScope, IndexOutlivesSourceAndScaleUsesContiguousOperationMemory)
     for (size_t i = 0; i <= count; ++i) {
         reference.push_back(0);
     }
+
     EXPECT_LE(memory.Calls, referenceMemory.Calls);
     const auto calls = memory.Calls;
+
     for (size_t i = 1; i <= count; ++i) {
         const auto source = lines.Bytes({i, i});
         EXPECT_EQ(source.Begin, 2 * (i - 1));
         EXPECT_EQ(source.End, 2 * i);
         EXPECT_EQ(lines.Cover(source), (Hunk{i, i}));
     }
+
     EXPECT_EQ(memory.Calls, calls);
     std::pmr::vector<Hunk> reverse(&memory);
     reverse.reserve(count);
+
     for (size_t i = count; i; --i) {
         reverse.push_back({i, i});
     }
+
     const auto merged = lines.Coalesce(reverse, memory);
     ASSERT_EQ(merged.size(), 1);
     EXPECT_EQ(merged[0], (Hunk{1, count}));

@@ -52,11 +52,14 @@ public:
                 return left.second.Exclusive > right.second.Exclusive;
             });
         std::cerr << std::fixed << std::setprecision(6);
+
         for (const auto& [key, value] : phases) {
             std::cerr << "phase=" << key.first;
+
             if (key.second) {
                 std::cerr << ':' << key.second;
             }
+
             std::cerr << " calls=" << value.Calls << " inclusive="
                 << std::chrono::duration<double>(value.Inclusive).count() << " exclusive="
                 << std::chrono::duration<double>(value.Exclusive).count() << '\n';
@@ -66,6 +69,7 @@ public:
     void Merge(const std::map<Key, Summary>& phases)
     {
         std::lock_guard lock(Mutex_);
+
         for (const auto& [key, source] : phases) {
             auto& target = Phases_[key];
             target.Calls += source.Calls;
@@ -139,6 +143,7 @@ public:
         if (!Enabled()) {
             return;
         }
+
         Parent_ = Current_;
         Current_ = this;
         Start_ = Clock::now();
@@ -152,9 +157,11 @@ public:
         }
         auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - Start_);
         Current_ = Parent_;
+
         if (Parent_) {
             Parent_->Children_ += elapsed;
         }
+
         GetLocalResults().Record(Name_, Line_, elapsed, elapsed - Children_);
     }
 

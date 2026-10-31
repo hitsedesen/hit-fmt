@@ -26,24 +26,32 @@ bool AddFileToBatch(
     Flush&& flush)
 {
     auto bytes = std::min(estimatedBytes, maxBytes);
+
     if (!batch.Paths.empty() && bytes > maxBytes - batchBytes) {
         if (!flush()) {
             return false;
         }
+
         batchBytes = 0;
     }
+
     if (batch.Paths.empty()) {
         batch.FirstIndex = nextIndex;
     }
+
     batch.Paths.push_back(path);
     ++nextIndex;
     batchBytes += bytes;
+
     if (batch.Paths.size() >= maxFiles || batchBytes >= maxBytes || first) {
         first = false;
+
         if (!flush()) {
             return false;
         }
+
         batchBytes = 0;
     }
+
     return true;
 }

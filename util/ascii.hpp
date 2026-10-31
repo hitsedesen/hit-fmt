@@ -14,23 +14,30 @@ inline std::size_t PlainAsciiPrefix(std::string_view text)
     constexpr std::uint64_t low = 0x2020202020202020;
     constexpr std::uint64_t high = 0x8080808080808080;
     std::size_t size = 0;
+
     while (text.size() - size >= sizeof(std::uint64_t)) {
         std::uint64_t word;
         std::memcpy(&word, text.data() + size, sizeof(word));
+
         // If every byte is in [0x20, 0x7f], subtraction cannot borrow
         // between bytes. Otherwise a high bit rejects the entire word.
         if (((word | (word - low)) & high) != 0) {
             break;
         }
+
         size += sizeof(word);
     }
+
     while (size < text.size()) {
         const auto byte = static_cast<unsigned char>(text[size]);
+
         if (byte < 0x20 || byte >= 0x80) {
             break;
         }
+
         ++size;
     }
+
     return size;
 }
 

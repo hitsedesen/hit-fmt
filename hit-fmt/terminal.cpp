@@ -26,6 +26,7 @@ bool UseColors(FILE* stream)
     if (std::getenv("NO_COLOR") != nullptr) {
         return false;
     }
+
     if (auto* term = std::getenv("TERM"); term && std::string_view(term) == "dumb") {
         return false;
     }
@@ -59,10 +60,12 @@ size_t QueryTerminalWidth(FILE* stream)
         size_t width = 0;
         auto end = value + std::char_traits<char>::length(value);
         auto [next, error] = std::from_chars(value, end, width);
+
         if (error == std::errc{} && next == end && width >= 24 && width <= 1000) {
             return width;
         }
     }
+
     return 80;
 }
 

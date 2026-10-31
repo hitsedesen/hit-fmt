@@ -184,6 +184,7 @@ SyntaxTree& SyntaxTree::operator=(SyntaxTree&& other) noexcept
         Trivia_.MoveFrom(std::move(other.Trivia_));
         Root_ = std::exchange(other.Root_, nullptr);
     }
+
     return *this;
 }
 
@@ -238,27 +239,35 @@ public:
         , ErrorHandler_(errorHandler)
     {
         FunctionBodyMacroNames_.reserve(options.FunctionBodyMacroNames.size());
+
         for (const auto& name : options.FunctionBodyMacroNames) {
             FunctionBodyMacroNames_.push_back(name);
         }
+
         std::sort(FunctionBodyMacroNames_.begin(), FunctionBodyMacroNames_.end());
         EnumMacroNames_.reserve(options.EnumMacroNames.size());
+
         for (const auto& name : options.EnumMacroNames) {
             EnumMacroNames_.push_back(name);
         }
+
         std::sort(EnumMacroNames_.begin(), EnumMacroNames_.end());
         ClassMacroPairs_.reserve(options.ClassMacroNames.size());
         ClassEndMacroNames_.reserve(options.ClassMacroNames.size());
+
         for (std::string_view pair : options.ClassMacroNames) {
             const auto colon = pair.find(':');
+
             // Public preparation validates pairs. Do not infer a class from
             // incomplete metadata supplied directly to the parser.
             if (colon == std::string_view::npos || colon == 0 || colon + 1 == pair.size()) {
                 continue;
             }
+
             ClassMacroPairs_.push_back({pair.substr(0, colon), pair.substr(colon + 1)});
             ClassEndMacroNames_.push_back(pair.substr(colon + 1));
         }
+
         std::sort(ClassMacroPairs_.begin(), ClassMacroPairs_.end());
         std::sort(ClassEndMacroNames_.begin(), ClassEndMacroNames_.end());
     }
@@ -270,6 +279,7 @@ public:
             Tokenize();
             Tree_.Tokens_.Seal();
         }
+
         ParseLimit_ = Tree_.Tokens_.Size();
         CurrentScope_ = detail::Make<NameScope>(ScratchMemory_);
 
@@ -280,10 +290,12 @@ public:
             ParseDeclarationSequence(*root, TK::EndOfFile);
             root->Tokens.End = Cursor_;
         }
+
         {
             HIT_FMT_PROFILE_PHASE("parser.comments");
             AssociateComments(*root);
         }
+
         {
             HIT_FMT_PROFILE_PHASE("parser.blank_lines");
             AssociateBlankLines(*root);
@@ -346,6 +358,7 @@ private:
                 return binding;
             }
         }
+
         return nullptr;
     }
 
@@ -353,16 +366,20 @@ private:
     {
         if (global) {
             auto* scope = CurrentScope_;
+
             while (scope->Parent) {
                 scope = scope->Parent;
             }
+
             return FindName(*scope, name);
         }
+
         for (auto* scope = CurrentScope_; scope; scope = scope->Parent) {
             if (auto* binding = FindName(*scope, name)) {
                 return binding;
             }
         }
+
         return nullptr;
     }
 
@@ -371,6 +388,7 @@ private:
         if (auto* binding = LookupBinding(name)) {
             return binding->Kind;
         }
+
         return std::nullopt;
     }
 
@@ -378,26 +396,35 @@ private:
     {
         auto* binding = LookupBinding(Text(first));
         auto scope = NextSignificant(first + 1);
+
         if (!binding || binding->Kind != NameKind::Type) {
             return false;
         }
+
         if (Kind(scope) != TK::Operator_ScopeResolution) {
             return false;
         }
+
         do {
             auto member = NextSignificant(scope + 1);
+
             if (member >= end || Kind(member) != TK::Identifier || !binding->Members) {
                 return false;
             }
+
             binding = FindName(*binding->Members, Text(member));
+
             if (!binding || binding->Kind != NameKind::Type) {
                 return false;
             }
+
             scope = NextSignificant(member + 1);
+
             if (Kind(scope) == TK::Operator_Less) {
                 return false; // Member specializations may be in includes.
             }
         } while (scope < end && Kind(scope) == TK::Operator_ScopeResolution);
+
         return true;
     }
 
@@ -406,6 +433,7 @@ private:
         if (Kind(index) != TK::Identifier) {
             return false;
         }
+
         auto kind = LookupName(Text(index));
         return kind && *kind == NameKind::Type;
     }
@@ -455,6 +483,7 @@ private:
     [[nodiscard]] Node* MakeNode(NodeKind kind, TokenIndex begin)
     {
         constexpr size_t NodesPerBlock = 256;
+
         if (RemainingNodes_ == 0) {
             NextNode_ = static_cast<Node*>(Tree_.Memory_->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
@@ -470,6 +499,7 @@ private:
     {
         static constexpr auto Kinds = [] {
             std::array<bool, static_cast<size_t>(NodeKind::Error) + 1> result{};
+
             for (auto roleKind :
                 {
                     NodeKind::PointerOperator,
@@ -517,6 +547,7 @@ private:
             {
                 result[static_cast<size_t>(roleKind)] = true;
             }
+
             return result;
         }();
         return Kinds[static_cast<size_t>(kind)];
@@ -527,11 +558,13 @@ private:
         if (NeedsPunctuationRole(child.Kind)) {
             MarkPunctuationRoles(child);
         }
+
         if (parent.LastChild) {
             parent.LastChild->NextSibling = &child;
         } else {
             parent.FirstChild = &child;
         }
+
         parent.LastChild = &child;
     }
 
@@ -545,6 +578,7 @@ private:
         if (index >= ParseLimit_ || index >= Tree_.Tokens_.Size()) {
             return TK::EndOfFile;
         }
+
         return Tree_.Tokens_.Kind(index);
     }
 
@@ -553,6 +587,7 @@ private:
         if (index >= Tree_.Tokens_.Size()) {
             return {};
         }
+
         return Tree_.Tokens_[index].Text.View(Tree_.Input_);
     }
 
@@ -566,6 +601,7 @@ private:
         while (Kind(index) == TK::Comment) {
             ++index;
         }
+
         return index;
     }
 
@@ -589,10 +625,13 @@ private:
         if (BranchParseDepth_ != 0) {
             return;
         }
+
         util::Position position{.Line = 1, .Column = 1};
+
         if (Tree_.Tokens_.Size() != 0) {
             position = Tree_.TokenPosition(std::min(index, Tree_.Tokens_.Size() - 1));
         }
+
         OnError({.Message = std::move(message), .Position = position});
     }
 
@@ -606,9 +645,11 @@ private:
     void AddUnparsedSyntax(Node& parent, TokenIndex begin, TokenIndex end)
     {
         begin = NextSignificant(begin);
+
         if (begin >= end) {
             return;
         }
+
         auto* unparsed = MakeNode(NodeKind::UnparsedSyntax, begin);
         unparsed->Tokens.End = end;
         Append(parent, *unparsed);
@@ -646,30 +687,38 @@ private:
 
         while (!AtEnd()) {
             auto kind = CurrentKind();
+
             if (IsOpenDelimiter(kind)) {
                 if (depth == MaximumDepth) {
                     ErrorAt(Cursor_, "delimiter nesting is too deep");
                     ++Cursor_;
                     continue;
                 }
+
                 closings[depth++] = ClosingDelimiter(kind);
                 ++Cursor_;
                 continue;
             }
+
             if (depth != 0 && kind == closings[depth - 1]) {
                 ++Cursor_;
+
                 if (--depth == 0) {
                     return Cursor_;
                 }
+
                 continue;
             }
+
             if (kind == TK::Operator_CloseParenthesis || kind == TK::Operator_CloseBracket ||
                 kind == TK::Operator_CloseBrace)
             {
                 ErrorAt(Cursor_, "mismatched closing delimiter");
             }
+
             ++Cursor_;
         }
+
         ErrorAt(start, "unterminated delimiter");
         return Cursor_;
     }
@@ -686,10 +735,12 @@ private:
         const auto none = std::numeric_limits<TokenIndex>::max();
         for (auto token : {opening, Cursor_}) {
             const auto previous = Tree_.Tokens_.MatchingDelimiter(token);
+
             if (previous != none && Tree_.Tokens_.MatchingDelimiter(previous) == token) {
                 Tree_.Tokens_.SetMatchingDelimiter(previous, none);
             }
         }
+
         Tree_.Tokens_.SetMatchingDelimiter(opening, Cursor_);
         Tree_.Tokens_.SetMatchingDelimiter(Cursor_, opening);
         Tree_.Tokens_.SetRole(opening, role);
@@ -714,19 +765,24 @@ private:
                 if (closing == TK::Operator_CloseBrace && ConsumeConditionalClosingBrace(parent)) {
                     continue;
                 }
+
                 break;
             }
+
             if (ParseTrivia(parent, false)) {
                 continue;
             }
+
             auto before = Cursor_;
             Append(parent, *ParseDeclaration());
+
             if (Cursor_ == before) {
                 ErrorAt(Cursor_, "parser made no progress");
                 ++Cursor_;
             }
         }
         PopConditionalBraceScope();
+
         if (!macroRecord && closing == TK::Operator_CloseBrace && Kind(opening) == TK::Operator_OpenBrace) {
             RecordParsedBodyDelimiters(
                 opening,
@@ -734,6 +790,7 @@ private:
                 ? PunctuationRole::RecordDelimiter
                 : PunctuationRole::BlockDelimiter);
         }
+
         if (!macroRecord && closing != TK::EndOfFile && AtEnd()) {
             ErrorAt(Cursor_, "expected closing brace");
         }
@@ -753,31 +810,40 @@ private:
         if (Kind(index) != TK::PreprocessingDirective) {
             return DirectiveKind::Other;
         }
+
         auto text = Text(index);
+
         if (text.starts_with("%:")) {
             text.remove_prefix(2);
         } else if (text.starts_with('#')) {
             text.remove_prefix(1);
         }
+
         while (!text.empty() &&
             (text.front() == ' ' || text.front() == '\t' || text.front() == '\v' || text.front() == '\f'))
         {
             text.remove_prefix(1);
         }
+
         auto wordEnd = text.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_");
         auto word = text.substr(0, wordEnd);
+
         if (word == "if" || word == "ifdef" || word == "ifndef") {
             return DirectiveKind::If;
         }
+
         if (word == "elif" || word == "elifdef" || word == "elifndef") {
             return DirectiveKind::ElseIf;
         }
+
         if (word == "else") {
             return DirectiveKind::Else;
         }
+
         if (word == "endif") {
             return DirectiveKind::EndIf;
         }
+
         return DirectiveKind::Other;
     }
 
@@ -788,6 +854,7 @@ private:
 
         while (!AtEnd()) {
             auto directiveKind = GetDirectiveKind(Cursor_);
+
             if (directiveKind != DirectiveKind::If && directiveKind != DirectiveKind::ElseIf &&
                 directiveKind != DirectiveKind::Else)
             {
@@ -801,11 +868,13 @@ private:
 
             while (!AtEnd()) {
                 directiveKind = GetDirectiveKind(Cursor_);
+
                 if (directiveKind == DirectiveKind::ElseIf || directiveKind == DirectiveKind::Else ||
                     directiveKind == DirectiveKind::EndIf)
                 {
                     break;
                 }
+
                 if (directiveKind == DirectiveKind::If) {
                     Append(*branch, *ParsePreprocessingConditional(statementContext));
                 } else if (CurrentKind() == TK::PreprocessingDirective) {
@@ -815,20 +884,24 @@ private:
                 } else {
                     auto branchEnd = Cursor_;
                     int nestedDepth = 0;
+
                     while (branchEnd < ParseLimit_) {
                         auto nestedKind = GetDirectiveKind(branchEnd);
+
                         if (nestedKind == DirectiveKind::If) {
                             ++nestedDepth;
                         } else if (nestedKind == DirectiveKind::EndIf) {
                             if (nestedDepth == 0) {
                                 break;
                             }
+
                             --nestedDepth;
                         } else if (nestedDepth == 0 &&
                             (nestedKind == DirectiveKind::ElseIf || nestedKind == DirectiveKind::Else))
                         {
                             break;
                         }
+
                         ++branchEnd;
                     }
 
@@ -836,22 +909,27 @@ private:
                     ParseLimit_ = branchEnd;
                     ++BranchParseDepth_;
                     PushScope();
+
                     while (!AtEnd()) {
                         if (ParseTrivia(*branch, statementContext)) {
                             continue;
                         }
+
                         auto before = Cursor_;
                         Append(*branch, statementContext ? *ParseStatement() : *ParseDeclaration());
+
                         if (Cursor_ == before) {
                             ++Cursor_;
                         }
                     }
+
                     PopScope();
                     --BranchParseDepth_;
                     ParseLimit_ = outerLimit;
                     Cursor_ = branchEnd;
                 }
             }
+
             branch->Tokens.End = Cursor_;
             Append(*conditional, *branch);
 
@@ -873,12 +951,15 @@ private:
     {
         std::optional<int> commonDelta;
         bool hasElseBranch = false;
+
         for (auto* branch = conditional.FirstChild; branch; branch = branch->NextSibling) {
             if (branch->Kind != NodeKind::PreprocessingBranch) {
                 continue;
             }
+
             hasElseBranch |= GetDirectiveKind(branch->Tokens.Begin) == DirectiveKind::Else;
             int delta = 0;
+
             for (auto i = branch->Tokens.Begin; i < branch->Tokens.End; ++i) {
                 if (Kind(i) == TK::Operator_OpenBrace) {
                     ++delta;
@@ -886,11 +967,14 @@ private:
                     --delta;
                 }
             }
+
             if (commonDelta && *commonDelta != delta) {
                 return 0;
             }
+
             commonDelta = delta;
         }
+
         return hasElseBranch ? commonDelta.value_or(0) : 0;
     }
 
@@ -900,6 +984,7 @@ private:
             ++ConditionalBraceScopeOverflow_;
             return;
         }
+
         ConditionalOpenBraces_[ConditionalBraceScopeDepth_++] = 0;
     }
 
@@ -920,6 +1005,7 @@ private:
         {
             return false;
         }
+
         auto* delimiter = MakeNode(NodeKind::UnparsedSyntax, Cursor_);
         delimiter->Tokens.End = ++Cursor_;
         Append(parent, *delimiter);
@@ -934,20 +1020,25 @@ private:
         {
             return false;
         }
+
         // A scope opened in alternative branches has no single owning node.
         // Keep its shared continuation opaque rather than indenting its
         // statements as direct children of the surrounding body.
         auto* tail = MakeNode(NodeKind::UnparsedSyntax, Cursor_);
+
         while (!AtEnd() && ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] != 0) {
             if (ConsumeConditionalClosingBrace(*tail) || ParseTrivia(*tail, statementContext)) {
                 continue;
             }
+
             const auto before = Cursor_;
             Append(*tail, statementContext ? *ParseStatement() : *ParseDeclaration());
+
             if (Cursor_ == before) {
                 ++Cursor_;
             }
         }
+
         tail->Tokens.End = Cursor_;
         Append(parent, *tail);
         return true;
@@ -956,24 +1047,30 @@ private:
     bool ParseTrivia(Node& parent, bool statementContext)
     {
         NodeKind nodeKind;
+
         if (CurrentKind() == TK::Comment) {
             nodeKind = NodeKind::Comment;
         } else if (CurrentKind() == TK::PreprocessingDirective) {
             if (GetDirectiveKind(Cursor_) == DirectiveKind::If) {
                 auto* conditional = ParsePreprocessingConditional(statementContext);
+
                 if (BranchParseDepth_ == 0 && !HasDelimiterMap_) {
                     auto braceDelta = CommonConditionalBraceDelta(*conditional);
+
                     if (braceDelta > 0 && ConditionalBraceScopeOverflow_ == 0 && ConditionalBraceScopeDepth_ != 0) {
                         ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] += static_cast<size_t>(braceDelta);
                     }
                 }
+
                 Append(parent, *conditional);
                 return true;
             }
+
             nodeKind = NodeKind::PreprocessingDirective;
         } else {
             return false;
         }
+
         auto* node = MakeNode(nodeKind, Cursor_++);
         node->Tokens.End = Cursor_;
         Append(parent, *node);
@@ -986,19 +1083,25 @@ private:
         if (Kind(first) != TK::Identifier || Text(first) != name) {
             return none;
         }
+
         const auto arguments = NextSignificant(first + 1);
+
         if (Kind(arguments) != TK::Operator_OpenParenthesis) {
             return none;
         }
+
         const auto end = FindBalancedEnd(arguments);
+
         if (end == none || end > ParseLimit_) {
             return none;
         }
+
         for (auto token = first + 1; token < end; ++token) {
             if (Kind(token) == TK::PreprocessingDirective) {
                 return none;
             }
         }
+
         return end;
     }
 
@@ -1007,10 +1110,13 @@ private:
         if (ClassMacroPairs_.empty()) {
             return nullptr;
         }
+
         const auto first = NextSignificant(Cursor_);
+
         if (Kind(first) != TK::Identifier) {
             return nullptr;
         }
+
         const auto pair = std::lower_bound(
             ClassMacroPairs_.begin(),
             ClassMacroPairs_.end(),
@@ -1018,9 +1124,11 @@ private:
             [] (const auto& pair, std::string_view name) {
                 return pair.first < name;
             });
+
         if (pair == ClassMacroPairs_.end() || pair->first != Text(first)) {
             return nullptr;
         }
+
         const auto beginEnd = MacroInvocationEnd(first, pair->first);
         if (beginEnd == std::numeric_limits<TokenIndex>::max()) {
             return nullptr;
@@ -1033,6 +1141,7 @@ private:
             node->Tokens.End = Cursor_ = beginEnd;
             return node;
         }
+
         auto* node = MakeNode(NodeKind::MacroRecordDeclaration, Cursor_);
         auto* header = MakeNode(NodeKind::MacroRecordBegin, first);
         header->Tokens.End = beginEnd;
@@ -1054,9 +1163,11 @@ private:
         } else {
             auto* footer = MakeNode(NodeKind::MacroRecordEnd, Cursor_);
             Cursor_ = end;
+
             if (CurrentKind() == TK::Operator_Semicolon) {
                 ++Cursor_;
             }
+
             footer->Tokens.End = Cursor_;
             Append(*node, *footer);
         }
@@ -1069,8 +1180,10 @@ private:
         if (FunctionBodyMacroNames_.empty()) {
             return nullptr;
         }
+
         const auto first = NextSignificant(Cursor_);
         auto macro = first;
+
         // Function-like macros can follow storage and function specifiers.
         // The complete header remains opaque, including these prefixes.
         while (Kind(macro) == TK::Keyword_static || Kind(macro) == TK::Keyword_extern ||
@@ -1079,15 +1192,19 @@ private:
         {
             macro = NextSignificant(macro + 1);
         }
+
         if (Kind(macro) != TK::Identifier ||
             !std::binary_search(FunctionBodyMacroNames_.begin(), FunctionBodyMacroNames_.end(), Text(macro)))
         {
             return nullptr;
         }
+
         const auto arguments = NextSignificant(macro + 1);
+
         if (Kind(arguments) != TK::Operator_OpenParenthesis) {
             return nullptr;
         }
+
         const auto headerEnd = FindBalancedEnd(arguments);
         if (headerEnd == std::numeric_limits<TokenIndex>::max() || headerEnd > ParseLimit_) {
             return nullptr;
@@ -1097,10 +1214,13 @@ private:
                 return nullptr;
             }
         }
+
         const auto body = NextSignificant(headerEnd);
+
         if (Kind(body) != TK::Operator_OpenBrace) {
             return nullptr;
         }
+
         const auto bodyEnd = FindBalancedEnd(body);
         if (bodyEnd == std::numeric_limits<TokenIndex>::max() || bodyEnd > ParseLimit_) {
             return nullptr;
@@ -1123,12 +1243,15 @@ private:
         if (EnumMacroNames_.empty()) {
             return nullptr;
         }
+
         const auto first = NextSignificant(Cursor_);
+
         if (Kind(first) != TK::Identifier ||
             !std::binary_search(EnumMacroNames_.begin(), EnumMacroNames_.end(), Text(first)))
         {
             return nullptr;
         }
+
         const auto end = MacroInvocationEnd(first, Text(first));
         if (end == std::numeric_limits<TokenIndex>::max()) {
             return nullptr;
@@ -1138,26 +1261,32 @@ private:
         auto sequence = opening + 1;
         bool valid = true;
         size_t headerArguments = 0;
+
         // Locate the final macro argument without interpreting type/expression
         // tokens inside balanced delimiters as C++ declarations.
         for (auto token = opening + 1; token < close; ++token) {
             if (IsOpenDelimiter(Kind(token))) {
                 const auto next = FindBalancedEnd(token);
+
                 if (next > close) {
                     valid = false;
                     break;
                 }
+
                 token = next - 1;
             } else if (Kind(token) == TK::Operator_Comma) {
                 const auto argument = NextSignificant(sequence);
                 valid &= argument < token && Kind(argument) != TK::Operator_OpenParenthesis;
+
                 if (headerArguments == 0) {
                     valid &= Kind(argument) == TK::Identifier && NextSignificant(argument + 1) == token;
                 }
+
                 valid &= ++headerArguments <= 2;
                 sequence = token + 1;
             }
         }
+
         auto entries = NextSignificant(sequence);
         valid &= entries < close;
         for (auto token = entries; valid && token < close;) {
@@ -1168,7 +1297,9 @@ private:
                 valid = false;
                 break;
             }
+
             const auto name = token + 1;
+
             if (Kind(name) == TK::Identifier) {
                 valid = name + 2 == entryEnd;
             } else if (Kind(name) == TK::Operator_OpenParenthesis && Kind(name + 1) == TK::Identifier &&
@@ -1180,28 +1311,35 @@ private:
             } else {
                 valid = false;
             }
+
             token = NextSignificant(entryEnd);
         }
         auto* node = MakeNode(valid ? NodeKind::MacroEnumDeclaration : NodeKind::UnparsedSyntax, Cursor_);
+
         if (valid) {
             auto* prefix = MakeNode(NodeKind::MacroEnumHeader, first);
             prefix->Tokens.End = sequence;
             Append(*node, *prefix);
             Cursor_ = sequence;
+
             while (Cursor_ < close) {
                 if (ParseTrivia(*node, false)) {
                     continue;
                 }
+
                 auto* entry = MakeNode(NodeKind::MacroEnumEntry, Cursor_);
                 Cursor_ = FindBalancedEnd(Cursor_);
                 entry->Tokens.End = Cursor_;
                 Append(*node, *entry);
             }
         }
+
         Cursor_ = end;
+
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -1211,12 +1349,15 @@ private:
         if (auto* macro = TryParseEnumMacro()) {
             return macro;
         }
+
         if (auto* macro = TryParseClassMacro()) {
             return macro;
         }
+
         if (auto* macro = TryParseFunctionBodyMacro()) {
             return macro;
         }
+
         auto first = NextSignificant(Cursor_);
         switch (Kind(first)) {
             case TK::Operator_Semicolon:
@@ -1247,14 +1388,17 @@ private:
                 if (Text(first) == "module") {
                     return ParseToSemicolon(NodeKind::ModuleDeclaration);
                 }
+
                 if (Text(first) == "import") {
                     return ParseToSemicolon(NodeKind::ImportDeclaration);
                 }
+
                 break;
             case TK::Keyword_extern:
                 if (LooksLikeLinkageSpecification(first)) {
                     return ParseLinkageSpecification();
                 }
+
                 break;
             case TK::Keyword_public:
             case TK::Keyword_protected:
@@ -1262,6 +1406,7 @@ private:
                 if (SignificantKind(first + 1) == TK::Operator_Colon) {
                     return ParseAccessSpecifier();
                 }
+
                 break;
             case TK::Operator_ClassMemberAccess:
             case TK::Operator_IndirectClassMemberAccess:
@@ -1277,6 +1422,7 @@ private:
             default:
                 break;
         }
+
         return ParseGeneralDeclaration();
     }
 
@@ -1329,26 +1475,33 @@ private:
     {
         auto nameBegin = NextSignificant(begin + 1);
         auto nameEnd = end;
+
         if (nameEnd > nameBegin && Kind(nameEnd - 1) == TK::Operator_Semicolon) {
             --nameEnd;
         }
+
         if (nameBegin >= nameEnd) {
             return;
         }
+
         if (Kind(nameBegin) == TK::Literal_String) {
             auto* header = MakeNode(NodeKind::HeaderName, nameBegin);
             header->Tokens.End = nameBegin + 1;
             Append(declaration, *header);
             return;
         }
+
         if (Kind(nameBegin) == TK::Operator_Less) {
             auto close = nameBegin + 1;
+
             while (close < nameEnd && Kind(close) != TK::Operator_Greater) {
                 ++close;
             }
+
             if (close < nameEnd) {
                 ++close;
             }
+
             auto* header = MakeNode(NodeKind::HeaderName, nameBegin);
             header->Tokens.End = close;
             Append(declaration, *header);
@@ -1356,17 +1509,20 @@ private:
         }
 
         size_t colon = nameEnd;
+
         for (auto i = nameBegin; i < nameEnd; ++i) {
             if (Kind(i) == TK::Operator_Colon) {
                 colon = i;
                 break;
             }
         }
+
         if (nameBegin < colon) {
             auto* name = MakeNode(import ? NodeKind::ImportName : NodeKind::ModuleName, nameBegin);
             name->Tokens.End = colon;
             Append(declaration, *name);
         }
+
         if (colon < nameEnd) {
             auto* partition = MakeNode(NodeKind::ModulePartition, colon);
             partition->Tokens.End = nameEnd;
@@ -1377,23 +1533,31 @@ private:
     void AddConceptDeclarationSyntax(Node& declaration, size_t begin, size_t end)
     {
         auto name = NextSignificant(begin + 1);
+
         if (Kind(name) == TK::Identifier) {
             auto* conceptName = MakeNode(NodeKind::ConceptName, name);
             conceptName->Tokens.End = name + 1;
             Append(declaration, *conceptName);
         }
+
         auto equals = NextSignificant(name + 1);
+
         if (Kind(equals) != TK::Operator_Assign) {
             return;
         }
+
         auto expressionEnd = end;
+
         if (expressionEnd > equals && Kind(expressionEnd - 1) == TK::Operator_Semicolon) {
             --expressionEnd;
         }
+
         auto expressionBegin = NextSignificant(equals + 1);
+
         if (expressionBegin >= expressionEnd) {
             return;
         }
+
         auto* constraint = MakeNode(NodeKind::ConstraintExpression, expressionBegin);
         constraint->Tokens.End = expressionEnd;
         AddExpressionRange(*constraint, expressionBegin, expressionEnd);
@@ -1405,6 +1569,7 @@ private:
         auto start = Cursor_;
         auto* node = MakeNode(kind, start);
         bool terminated = false;
+
         while (!AtEnd()) {
             if (IsOpenDelimiter(CurrentKind())) {
                 ConsumeBalanced();
@@ -1419,10 +1584,13 @@ private:
                 ++Cursor_;
             }
         }
+
         node->Tokens.End = Cursor_;
+
         if (!terminated) {
             AddMissingToken(*node, Cursor_);
         }
+
         if (kind == NodeKind::ModuleDeclaration) {
             AddModuleDeclarationSyntax(*node, start, Cursor_, false);
         } else if (kind == NodeKind::ImportDeclaration) {
@@ -1434,16 +1602,20 @@ private:
         } else if (kind == NodeKind::StaticAssertDeclaration) {
             auto expressionBegin = NextSignificant(start + 1);
             auto expressionEnd = Cursor_;
+
             if (expressionEnd != 0 && Kind(expressionEnd - 1) == TK::Operator_Semicolon) {
                 --expressionEnd;
             }
+
             if (expressionBegin < expressionEnd) {
                 auto expressionCursor = expressionBegin;
+
                 if (auto* expression = ParseExpressionSyntax(expressionCursor, expressionEnd)) {
                     Append(*node, *expression);
                 }
             }
         }
+
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -1452,23 +1624,28 @@ private:
     {
         if (kind == NodeKind::BaseSpecifier) {
             auto typeBegin = begin;
+
             while (typeBegin < end &&
                 (Kind(typeBegin) == TK::Keyword_public || Kind(typeBegin) == TK::Keyword_protected ||
                     Kind(typeBegin) == TK::Keyword_private || Kind(typeBegin) == TK::Keyword_virtual))
             {
                 typeBegin = NextSignificant(typeBegin + 1);
             }
+
             if (typeBegin < end) {
                 auto* type = MakeNode(NodeKind::BaseType, typeBegin);
                 type->Tokens.End = end;
                 AddTypeSyntaxChildren(*type, typeBegin, end);
                 Append(element, *type);
             }
+
             return;
         }
+
         if (kind == NodeKind::TemplateArgument || kind == NodeKind::TemplateParameter) {
             const auto first = NextSignificant(begin);
             const auto second = NextSignificant(first + 1);
+
             // Multiword type prefixes need an owner for specifier spacing.
             // Nested type syntax already contributes its own nodes.
             if (kind == NodeKind::TemplateArgument && second < end && IsWordToken(Kind(first)) &&
@@ -1481,18 +1658,24 @@ private:
             } else {
                 AddTypeSyntaxChildren(element, begin, end);
             }
+
             return;
         }
+
         if (kind != NodeKind::Enumerator) {
             return;
         }
+
         auto name = NextSignificant(begin);
+
         if (Kind(name) == TK::Identifier) {
             auto* nameNode = MakeNode(NodeKind::EnumeratorName, name);
             nameNode->Tokens.End = name + 1;
             Append(element, *nameNode);
         }
+
         auto equals = NextSignificant(name + 1);
+
         if (Kind(equals) == TK::Operator_Assign) {
             auto valueBegin = NextSignificant(equals + 1);
             auto* value = MakeNode(NodeKind::EnumeratorValue, valueBegin);
@@ -1509,10 +1692,13 @@ private:
         int angleDepth = 0;
         unsigned conditionalMiddle = 0;
         size_t explicitMemberWork = 4096;
+
         for (auto i = begin; i <= end; ++i) {
             auto kind = Kind(i);
+
             if (i < end && delimiterDepth == 0 && kind == TK::Keyword_template) {
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, begin, end, explicitMemberWork);
+
                 if (nameEnd) {
                     // Consume only the operator name here; this list's normal
                     // angle tracking still owns the following template span.
@@ -1520,6 +1706,7 @@ private:
                     continue;
                 }
             }
+
             if (i < end) {
                 if (IsOpenDelimiter(kind)) {
                     ++delimiterDepth;
@@ -1539,15 +1726,19 @@ private:
                     }
                 }
             }
+
             if (i < end && delimiterDepth == 0 && angleDepth == 0 && !AdvanceConditionalMiddle(kind, conditionalMiddle))
             {
                 i = end;
             }
+
             bool separator = i < end && kind == TK::Operator_Comma && delimiterDepth == 0 && angleDepth == 0 &&
                 conditionalMiddle == 0;
+
             if (i != end && !separator) {
                 continue;
             }
+
             if (elementBegin < i) {
                 auto* element = MakeNode(elementKind, elementBegin);
                 // Nested template lists may share one indivisible >> token.
@@ -1559,18 +1750,22 @@ private:
                     ? i + 1
                     : i;
                 element->Tokens.End = elementEnd;
+
                 if (conditionalMiddle != 0) {
                     AddUnparsedSyntax(*element, elementBegin, i);
                 } else {
                     AddSeparatedElementSyntax(*element, elementKind, elementBegin, elementEnd);
                 }
+
                 Append(list, *element);
             }
+
             if (separator) {
                 auto* comma = MakeNode(NodeKind::ListSeparator, i);
                 comma->Tokens.End = i + 1;
                 Append(list, *comma);
             }
+
             elementBegin = i + 1;
         }
     }
@@ -1579,15 +1774,19 @@ private:
     {
         auto* arguments = MakeNode(kind, opening);
         arguments->Tokens.End = end;
+
         if (end <= opening + 1 || (Kind(end - 1) != TK::Operator_Greater && Kind(end - 1) != TK::Operator_RightShift)) {
             AddUnparsedSyntax(*arguments, opening + 1, end);
             return arguments;
         }
+
         if (TemplateListDepth_ >= 64) {
             AddUnparsedSyntax(*arguments, opening + 1, end - 1);
             return arguments;
         }
+
         ++TemplateListDepth_;
+
         if (opening + 1 < end - 1) {
             AddSeparatedElements(
                 *arguments,
@@ -1595,8 +1794,10 @@ private:
                 end - 1,
                 kind == NodeKind::TemplateParameterList ? NodeKind::TemplateParameter : NodeKind::TemplateArgument);
         }
+
         bool expectingArgument = true;
         bool malformed = false;
+
         for (auto* child = arguments->FirstChild; child; child = child->NextSibling) {
             if (child->Kind == NodeKind::ListSeparator) {
                 malformed |= expectingArgument;
@@ -1605,10 +1806,12 @@ private:
                 expectingArgument = false;
             }
         }
+
         if (malformed || (arguments->FirstChild && expectingArgument)) {
             arguments->FirstChild = arguments->LastChild = nullptr;
             AddUnparsedSyntax(*arguments, opening + 1, end - 1);
         }
+
         AddDirectiveChildrenInGap(*arguments, opening, end);
         --TemplateListDepth_;
         return arguments;
@@ -1628,6 +1831,7 @@ private:
     {
         auto start = Cursor_;
         auto* node = MakeNode(kind, start);
+
         while (!AtEnd()) {
             if (IsOpenDelimiter(CurrentKind())) {
                 ConsumeBalanced();
@@ -1641,15 +1845,20 @@ private:
                 ++Cursor_;
             }
         }
+
         node->Tokens.End = Cursor_;
         auto expressionEnd = Cursor_;
+
         if (expressionEnd > start && Kind(expressionEnd - 1) == TK::Operator_Semicolon) {
             --expressionEnd;
         }
+
         auto expressionCursor = NextSignificant(start + 1);
+
         if (auto* expression = ParseExpressionSyntax(expressionCursor, expressionEnd)) {
             Append(*node, *expression);
         }
+
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -1660,9 +1869,11 @@ private:
         auto* node = ParseToSemicolon(NodeKind::UsingDeclaration);
         auto name = NextSignificant(NextSignificant(start) + 1);
         auto assign = SkipAttributeSpecifiers(name + 1);
+
         if (Kind(name) == TK::Identifier && Kind(assign) == TK::Operator_Assign) {
             AddName(Text(name), NameKind::Type);
         }
+
         return node;
     }
 
@@ -1670,14 +1881,18 @@ private:
     {
         const auto name = NextSignificant(NextSignificant(begin) + 1);
         const auto assign = SkipAttributeSpecifiers(name + 1);
+
         if (Kind(name) != TK::Identifier || Kind(assign) != TK::Operator_Assign) {
             return;
         }
+
         Tree_.Tokens_.SetRole(assign, PunctuationRole::AssignmentOperator);
         const auto typeBegin = NextSignificant(assign + 1);
+
         if (end > typeBegin && Kind(end - 1) == TK::Operator_Semicolon) {
             --end;
         }
+
         if (typeBegin < end) {
             auto* type = MakeNode(NodeKind::TypeId, typeBegin);
             type->Tokens.End = end;
@@ -1714,24 +1929,32 @@ private:
             if (parameter->Kind != NodeKind::TemplateParameter) {
                 continue;
             }
+
             auto i = NextSignificant(parameter->Tokens.Begin);
             const auto end = parameter->Tokens.End;
+
             if (Kind(i) == TK::Keyword_template) {
                 const auto opening = NextSignificant(i + 1);
+
                 if (Kind(opening) == TK::Operator_Less) {
                     // A nested template's parameters do not belong to this
                     // scope; only its following parameter name does.
                     i = NextSignificant(SkipTemplateArguments(opening, end));
                 }
             }
+
             if (Kind(i) != TK::Keyword_typename && Kind(i) != TK::Keyword_class) {
                 continue;
             }
+
             auto name = NextSignificant(i + 1);
+
             if (Kind(name) == TK::Operator_Ellipsis) {
                 name = NextSignificant(name + 1);
             }
+
             const auto afterName = NextSignificant(name + 1);
+
             if (name < end && Kind(name) == TK::Identifier &&
                 (afterName >= end || Kind(afterName) == TK::Operator_Assign))
             {
@@ -1755,6 +1978,7 @@ private:
                     ConsumeBalanced();
                     continue;
                 }
+
                 switch (CurrentKind()) {
                     case TK::Operator_Less:
                         ++depth;
@@ -1768,9 +1992,12 @@ private:
                     default:
                         break;
                 }
+
                 ++Cursor_;
             } while (!AtEnd() && depth > 0);
+
             closedHeader = depth == 0;
+
             if (depth > 0) {
                 ErrorAt(start, "unterminated template parameter list");
             }
@@ -1786,13 +2013,18 @@ private:
                 parameters->Tokens.End = parametersEnd;
                 AddUnparsedSyntax(*parameters, parametersBegin + 1, parametersEnd);
             }
+
             Append(*node, *parameters);
         }
+
         PushScope();
+
         if (parameters) {
             RegisterTemplateTypeParameters(*parameters);
         }
+
         ParseTriviaBeforeChild(*node);
+
         if (CurrentKind() == TK::Keyword_requires) {
             Append(*node, *ParseRequiresClause());
             ParseTriviaBeforeChild(*node);
@@ -1802,13 +2034,16 @@ private:
             declaration = ParseDeclaration();
             Append(*node, *declaration);
         }
+
         PopScope();
+
         if (declaration &&
             (declaration->Kind == NodeKind::RecordDeclaration || declaration->Kind == NodeKind::EnumDeclaration))
         {
             auto name = declaration->Kind == NodeKind::RecordDeclaration
                 ? FindDeclaredRecordName(declaration->Tokens.Begin)
                 : RecordHeadName{FindDeclaredTypeName(declaration->Tokens.Begin, true), false};
+
             if (!name.IsQualified && name.Token < Tree_.Tokens_.Size() &&
                 (declaration->Kind != NodeKind::RecordDeclaration || (name.HasTerminalName && !name.HasOpaquePrefix)))
             {
@@ -1816,10 +2051,12 @@ private:
             }
         } else if (declaration && declaration->Kind == NodeKind::UsingDeclaration) {
             auto name = NextSignificant(NextSignificant(declaration->Tokens.Begin) + 1);
+
             if (Kind(name) == TK::Identifier) {
                 AddName(Text(name), NameKind::Type);
             }
         }
+
         node->Tokens.End = Cursor_;
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
@@ -1837,8 +2074,10 @@ private:
         // identifier-pair guesses.
         bool constraintMayEnd = false;
         bool recoveredBoundary = false;
+
         while (!AtEnd()) {
             auto kind = CurrentKind();
+
             if (kind == TK::Comment || kind == TK::Invalid) {
                 // Invalid bytes allow a recovery boundary but remain in the
                 // constraint. Comments do not change operand state.
@@ -1846,9 +2085,11 @@ private:
                     constraintMayEnd = false;
                     recoveredBoundary = true;
                 }
+
                 ++Cursor_;
                 continue;
             }
+
             if (kind == TK::Keyword_requires) {
                 recoveredBoundary = false;
                 // The nested requires-expression owns its optional parameters
@@ -1856,14 +2097,17 @@ private:
                 // Only scan delimiters here; AddExpressionRange builds it once.
                 auto expressionEnd = SkipRequiresExpression(Cursor_);
                 constraintMayEnd = expressionEnd > Cursor_ + 1 && expressionEnd <= ParseLimit_;
+
                 if (constraintMayEnd) {
                     Cursor_ = expressionEnd;
                 } else {
                     ErrorAt(Cursor_, "expected complete requirement body");
                     ++Cursor_;
                 }
+
                 continue;
             }
+
             auto next = NextSignificant(Cursor_ + 1);
             const bool boundaryEligible = constraintMayEnd || recoveredBoundary;
             bool startsDeclaration = angleDepth == 0 &&
@@ -1874,6 +2118,7 @@ private:
                     (constraintMayEnd && kind == TK::Identifier &&
                         (Kind(next) == TK::Identifier || Kind(next) == TK::Keyword_operator ||
                             Kind(next) == TK::Operator_OpenParenthesis)));
+
             // An adjacent return-type prefix follows a finished constraint,
             // never an operator awaiting its operand. Recovery alone retains
             // the stronger pointer/reference requirement.
@@ -1884,6 +2129,7 @@ private:
             {
                 auto declarator = FindDeclarationSpecifiersEnd(Cursor_, ParseLimit_, true);
                 bool hasPointerOrReference = false;
+
                 while (declarator < ParseLimit_ &&
                     (Kind(declarator) == TK::Operator_Star || Kind(declarator) == TK::Operator_Ampersand ||
                         Kind(declarator) == TK::Operator_And || Kind(declarator) == TK::Keyword_const ||
@@ -1893,37 +2139,47 @@ private:
                         Kind(declarator) == TK::Operator_Ampersand || Kind(declarator) == TK::Operator_And;
                     declarator = NextSignificant(declarator + 1);
                 }
+
                 startsDeclaration = Kind(declarator) == TK::Keyword_operator ||
                     (hasPointerOrReference && Kind(declarator) == TK::Identifier &&
                         Kind(NextSignificant(declarator + 1)) == TK::Operator_OpenParenthesis);
+
                 if (constraintMayEnd) {
                     // Only the declarator-id suffix is inspected here. Its
                     // parameters and body remain owned by ParseDeclaration.
                     while (Kind(declarator) == TK::Identifier) {
                         auto suffix = NextSignificant(declarator + 1);
+
                         if (Kind(suffix) == TK::Operator_Less) {
                             suffix = NextSignificant(SkipTemplateArguments(suffix, ParseLimit_, true));
                         }
+
                         if (Kind(suffix) != TK::Operator_ScopeResolution) {
                             startsDeclaration = Kind(suffix) == TK::Operator_OpenParenthesis;
                             break;
                         }
+
                         declarator = NextSignificant(suffix + 1);
                     }
+
                     startsDeclaration |= Kind(declarator) == TK::Keyword_operator;
                 }
             }
+
             if (startsDeclaration || kind == TK::Operator_Semicolon || kind == TK::Operator_OpenBrace) {
                 break;
             }
 
             recoveredBoundary = false;
+
             if (IsOpenDelimiter(kind)) {
                 ConsumeBalanced();
                 constraintMayEnd = true;
                 continue;
             }
+
             constraintMayEnd = kind == TK::Identifier || IsLiteralExpressionToken(kind);
+
             if (kind == TK::Operator_Less) {
                 ++angleDepth;
                 constraintMayEnd = false;
@@ -1934,17 +2190,20 @@ private:
                 angleDepth = std::max(0, angleDepth - 2);
                 constraintMayEnd = angleDepth == 0;
             }
+
             ++Cursor_;
         }
 
         node->Tokens.End = Cursor_;
         auto constraintBegin = NextSignificant(start + 1);
+
         if (constraintBegin < Cursor_) {
             auto* constraint = MakeNode(NodeKind::ConstraintExpression, constraintBegin);
             constraint->Tokens.End = Cursor_;
             AddExpressionRange(*constraint, constraintBegin, Cursor_);
             Append(*node, *constraint);
         }
+
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -1952,6 +2211,7 @@ private:
     [[nodiscard]] size_t FindDeclaredTypeName(size_t start, bool isEnum = false) const
     {
         auto index = NextSignificant(start) + 1;
+
         if (isEnum && (Kind(index) == TK::Keyword_class || Kind(index) == TK::Keyword_struct)) {
             index = NextSignificant(index + 1);
         }
@@ -1980,6 +2240,7 @@ private:
             if (Kind(index) == TK::Operator_OpenBrace || Kind(index) == TK::Operator_Semicolon) {
                 break;
             }
+
             index = NextSignificant(index + 1);
         }
         return Tree_.Tokens_.Size();
@@ -2001,6 +2262,7 @@ private:
         auto skipAttributes = [&] (size_t index) -> size_t {
             while (index < end) {
                 auto after = index;
+
                 if (IsExtensionAttribute(index)) {
                     after = FindExtensionAttributeEnd(index, end);
                 } else if ((Kind(index) == TK::Operator_OpenBracket && Kind(index + 1) == TK::Operator_OpenBracket) ||
@@ -2022,32 +2284,42 @@ private:
         const auto firstName = name;
         bool isQualified = false;
         bool opaquePrefix = false;
+
         if (Kind(name) == TK::Operator_ScopeResolution) {
             isQualified = true;
             name = NextSignificant(name + 1);
         }
+
         while (name < end && Kind(name) == TK::Identifier) {
             auto next = NextSignificant(name + 1);
             bool templateId = Kind(next) == TK::Operator_Less;
+
             if (templateId) {
                 next = NextSignificant(SkipTemplateArguments(next, end));
+
                 if (next >= end) {
                     break;
                 }
             }
+
             if (Kind(next) == TK::Operator_ScopeResolution) {
                 auto component = NextSignificant(next + 1);
+
                 if (Kind(component) == TK::Keyword_template) {
                     component = NextSignificant(component + 1);
                 }
+
                 if (Kind(component) != TK::Identifier) {
                     break;
                 }
+
                 isQualified = true;
                 name = component;
                 continue;
             }
+
             next = skipAttributes(next);
+
             if (!isQualified && !templateId && Kind(next) == TK::Identifier && Text(next) != "final") {
                 // Only bare prefix components can be opaque decorations.
                 // The terminal record-id must still meet a head boundary.
@@ -2055,23 +2327,31 @@ private:
                 name = next;
                 continue;
             }
+
             bool macroName = false;
+
             if (!isQualified && !templateId && Kind(next) == TK::Operator_OpenParenthesis) {
                 const auto after = FindBalancedEnd(next);
+
                 if (after <= next || after >= end) {
                     break;
                 }
+
                 next = skipAttributes(NextSignificant(after));
                 macroName = true;
             }
+
             auto finalSpecifier = end;
+
             if (Kind(next) == TK::Identifier && Text(next) == "final") {
                 finalSpecifier = next;
                 next = skipAttributes(NextSignificant(next + 1));
             }
+
             const auto kind = Kind(next);
             const bool terminal =
                 kind == TK::Operator_OpenBrace || kind == TK::Operator_Colon || kind == TK::Operator_Semicolon;
+
             if (macroName && opaquePrefix) {
                 // `struct Type function(args)` can instead be an ordinary
                 // function. For an unknown prefix, a body followed by ';'
@@ -2082,6 +2362,7 @@ private:
                     (kind == TK::Operator_Colon ||
                         (bodyEnd < end && Kind(NextSignificant(bodyEnd)) == TK::Operator_Semicolon));
             }
+
             // Before ';', final can instead name an elaborated-type variable.
             return {
                 name,
@@ -2092,6 +2373,7 @@ private:
                 terminal && macroName,
             };
         }
+
         return {end, isQualified, opaquePrefix, false};
     }
 
@@ -2099,14 +2381,17 @@ private:
     {
         auto start = Cursor_;
         auto* node = MakeNode(NodeKind::NamespaceDeclaration, start);
+
         while (!AtEnd() && CurrentKind() != TK::Operator_OpenBrace && CurrentKind() != TK::Operator_Semicolon) {
             ++Cursor_;
         }
+
         if (CurrentKind() == TK::Operator_OpenBrace) {
             ++Cursor_;
             PushScope();
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
             PopScope();
+
             if (CurrentKind() == TK::Operator_CloseBrace) {
                 ++Cursor_;
             }
@@ -2116,6 +2401,7 @@ private:
             ErrorAt(start, "unterminated namespace declaration");
             AddMissingToken(*node, Cursor_);
         }
+
         node->Tokens.End = Cursor_;
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
@@ -2124,37 +2410,49 @@ private:
     [[nodiscard]] bool HasInitializerListSeparators(size_t opening) const
     {
         const auto after = FindBalancedEnd(opening);
+
         if (after <= opening || after > ParseLimit_) {
             return false;
         }
+
         const auto closing = after - 1;
         bool sawComma = false;
         size_t conditionals = 0;
+
         for (auto cursor = NextSignificant(opening + 1); cursor < closing;) {
             const auto kind = Kind(cursor);
+
             if (kind == TK::Operator_Semicolon || kind == TK::PreprocessingDirective) {
                 return false;
             }
+
             if (IsOpenDelimiter(kind)) {
                 const auto end = FindBalancedEnd(cursor);
+
                 if (end <= cursor || end > closing) {
                     return false;
                 }
+
                 cursor = NextSignificant(end);
                 continue;
             }
+
             const auto previous = Kind(PreviousSignificant(cursor));
+
             if (kind == TK::Operator_Less && (previous == TK::Identifier || previous == TK::Keyword_template)) {
                 bool exactClosing = false;
                 const auto end = SkipTemplateArguments(cursor, closing, true, &exactClosing);
+
                 if (!exactClosing || end <= cursor || end > closing) {
                     // Unresolved angles cannot prove list separators. Stop
                     // rather than repeatedly scanning an ambiguous tail.
                     return false;
                 }
+
                 cursor = NextSignificant(end);
                 continue;
             }
+
             if (kind == TK::Operator_Conditional) {
                 ++conditionals;
             } else if (kind == TK::Operator_Colon) {
@@ -2163,12 +2461,15 @@ private:
                 if (conditionals == 0) {
                     return false;
                 }
+
                 --conditionals;
             } else if (kind == TK::Operator_Comma && conditionals == 0 && previous != TK::Keyword_operator) {
                 sawComma = true;
             }
+
             cursor = NextSignificant(cursor + 1);
         }
+
         // Member declarations need ';'; commas in parameter/template lists
         // or operator names do not make a record body an initializer list.
         return sawComma && conditionals == 0;
@@ -2177,11 +2478,14 @@ private:
     [[nodiscard]] bool IsElaboratedInitializer(size_t start, size_t opening, const RecordHeadName& recordName) const
     {
         const auto first = SkipAttributeSpecifiers(start + 1);
+
         if (Kind(first) != TK::Identifier && Kind(first) != TK::Operator_ScopeResolution) {
             return false;
         }
+
         auto cursor = SkipDeclarationTypeName(first, opening, true);
         bool declaratorEvidence = cursor != NextSignificant(first + 1);
+
         while (cursor < opening &&
             (Kind(cursor) == TK::Operator_Star || Kind(cursor) == TK::Operator_Ampersand ||
                 Kind(cursor) == TK::Operator_And || Kind(cursor) == TK::Keyword_const ||
@@ -2190,26 +2494,35 @@ private:
             declaratorEvidence = true;
             cursor = NextSignificant(cursor + 1);
         }
+
         cursor = SkipAttributeSpecifiers(cursor);
+
         if (cursor >= opening || Kind(cursor) != TK::Identifier) {
             return false;
         }
+
         const auto name = cursor;
         cursor = SkipAttributeSpecifiers(cursor + 1);
+
         while (cursor < opening && Kind(cursor) == TK::Operator_OpenBracket) {
             const auto after = FindBalancedEnd(cursor);
+
             if (after > opening || after <= cursor) {
                 return false;
             }
+
             declaratorEvidence = true;
             cursor = SkipAttributeSpecifiers(after);
         }
+
         if (cursor != opening) {
             return false;
         }
+
         if (name != recordName.FinalSpecifier && (declaratorEvidence || IsKnownType(first))) {
             return true;
         }
+
         const auto element = NextSignificant(opening + 1);
         const auto kind = Kind(element);
         const bool initializerEvidence = IsLiteralExpressionToken(kind) || kind == TK::Operator_OpenBrace ||
@@ -2233,11 +2546,13 @@ private:
         bool invalidHeadAngles = false;
         size_t baseClauseBegin = Tree_.Tokens_.Size();
         int angleDepth = 0;
+
         while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon && CurrentKind() != TK::Operator_CloseBrace) {
             if (CurrentKind() == TK::Operator_OpenBrace) {
                 if (angleDepth == 0) {
                     break;
                 }
+
                 ConsumeBalanced();
             } else if (CurrentKind() == TK::Operator_Assign && angleDepth == 0 && !sawBaseClause) {
                 // A top-level assignment cannot belong to a record head.
@@ -2270,6 +2585,7 @@ private:
                 ++Cursor_;
             } else if (CurrentKind() == TK::Operator_OpenParenthesis) {
                 auto previous = PreviousSignificant(Cursor_);
+
                 if (angleDepth == 0 && !sawBaseClause && Kind(previous) != TK::Keyword_alignas &&
                     Kind(previous) != TK::Keyword_decltype && !IsExtensionAttribute(previous) &&
                     !(recordName.HasMacroName && previous == typeName))
@@ -2277,6 +2593,7 @@ private:
                     Cursor_ = start;
                     return ParseGeneralDeclaration();
                 }
+
                 ConsumeBalanced();
             } else if (CurrentKind() == TK::Operator_OpenBracket) {
                 ConsumeBalanced();
@@ -2284,54 +2601,68 @@ private:
                 ++Cursor_;
             }
         }
+
         if (!sawBaseClause && !invalidHeadAngles && angleDepth == 0 && CurrentKind() == TK::Operator_OpenBrace &&
             IsElaboratedInitializer(start, Cursor_, recordName))
         {
             Cursor_ = start;
             return ParseGeneralDeclaration();
         }
+
         const auto headEnd = sawBaseClause ? baseClauseBegin : Cursor_;
         unknownHeader |= invalidHeadAngles || angleDepth != 0;
+
         if (ambiguousRecordForm && CurrentKind() != TK::Operator_OpenBrace) {
             Cursor_ = start;
             return ParseGeneralDeclaration();
         }
+
         if (unknownHeader) {
             AddUnparsedSyntax(*node, start + 1, Cursor_);
         }
+
         if (!unknownHeader && baseClauseBegin < Tree_.Tokens_.Size()) {
             auto* bases = MakeNode(NodeKind::BaseClause, baseClauseBegin);
             bases->Tokens.End = Cursor_;
             AddSeparatedElements(*bases, baseClauseBegin + 1, Cursor_, NodeKind::BaseSpecifier);
             Append(*node, *bases);
         }
+
         if (CurrentKind() == TK::Operator_OpenBrace) {
             // A qualified definition injects its terminal name only inside
             // the record; it does not introduce a surrounding binding.
             NameBinding* record = nullptr;
+
             if (!unknownHeader && !recordName.IsQualified && typeName < Tree_.Tokens_.Size()) {
                 record = AddName(Text(typeName), NameKind::Type);
             }
+
             ++Cursor_;
             PushScope();
+
             if (record) {
                 record->Members = CurrentScope_;
             }
+
             // Opaque decorations do not prove a type binding. A structurally
             // delimited record-id can still identify this local owner only.
             RecordNames_.push_back(
                 recordName.HasTerminalName && !invalidHeadAngles && angleDepth == 0 && typeName < Tree_.Tokens_.Size()
                 ? Text(typeName)
                 : std::string_view{});
+
             if (!unknownHeader && typeName < Tree_.Tokens_.Size()) {
                 AddName(Text(typeName), NameKind::Type)->Members = CurrentScope_;
             }
+
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
             RecordNames_.pop_back();
             PopScope();
+
             if (CurrentKind() == TK::Operator_CloseBrace) {
                 ++Cursor_;
             }
+
             while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon && CurrentKind() != TK::Operator_CloseBrace) {
                 if (IsOpenDelimiter(CurrentKind())) {
                     ConsumeBalanced();
@@ -2340,12 +2671,15 @@ private:
                 }
             }
         }
+
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
+
             if (!recordName.IsQualified && !node->FirstChild && typeName < Tree_.Tokens_.Size()) {
                 auto type = Text(typeName);
                 auto* previous = FindName(*CurrentScope_, type);
                 auto* binding = AddName(type, NameKind::Type);
+
                 if (previous && previous->Kind == NameKind::Type) {
                     binding->Members = previous->Members;
                 }
@@ -2354,9 +2688,12 @@ private:
             ErrorAt(start, "expected semicolon after record declaration");
             AddMissingToken(*node, Cursor_);
         }
+
         node->Tokens.End = Cursor_;
+
         if (!unknownHeader && angleDepth == 0) {
             Node head;
+
             for (auto i = start + 1; i < headEnd; ++i) {
                 if (i == recordName.FinalSpecifier) {
                     auto* specifier = MakeNode(NodeKind::ClassVirtSpecifier, i);
@@ -2375,9 +2712,11 @@ private:
                     i = end - 1;
                 } else if (IsOpenDelimiter(Kind(i))) {
                     auto balancedEnd = FindBalancedEnd(i);
+
                     if (balancedEnd > headEnd) {
                         break;
                     }
+
                     if (Kind(i) == TK::Operator_OpenBracket && Kind(i + 1) == TK::Operator_OpenBracket &&
                         Tree_.Tokens_.MatchingDelimiter(i + 1) == balancedEnd - 2)
                     {
@@ -2385,9 +2724,11 @@ private:
                         attribute->Tokens.End = balancedEnd;
                         Append(head, *attribute);
                     }
+
                     i = balancedEnd - 1;
                 } else if (Kind(i) == TK::Operator_Less && Kind(PreviousSignificant(i)) == TK::Identifier) {
                     auto end = SkipTemplateArguments(i, headEnd);
+
                     if (end > i + 1 && end <= headEnd &&
                         (Kind(end - 1) == TK::Operator_Greater || Kind(end - 1) == TK::Operator_RightShift))
                     {
@@ -2396,14 +2737,17 @@ private:
                     }
                 }
             }
+
             if (head.FirstChild) {
                 head.LastChild->NextSibling = node->FirstChild;
                 node->FirstChild = head.FirstChild;
+
                 if (!node->LastChild) {
                     node->LastChild = head.LastChild;
                 }
             }
         }
+
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -2413,16 +2757,21 @@ private:
         auto start = Cursor_;
         // An enum-key can instead introduce the type of a variable or function.
         const auto declarator = FindDeclarationSpecifiersEnd(start, ParseLimit_);
+
         if (declarator < ParseLimit_ && Kind(declarator) != TK::Operator_OpenBrace &&
             Kind(declarator) != TK::Operator_Colon && Kind(declarator) != TK::Operator_Semicolon)
         {
             return ParseGeneralDeclaration();
         }
+
         auto typeName = FindDeclaredTypeName(start, true);
+
         if (typeName < Tree_.Tokens_.Size()) {
             AddName(Text(typeName), NameKind::Type);
         }
+
         auto* node = MakeNode(NodeKind::EnumDeclaration, start);
+
         while (!AtEnd() && CurrentKind() != TK::Operator_OpenBrace && CurrentKind() != TK::Operator_Semicolon &&
             CurrentKind() != TK::Operator_CloseBrace)
         {
@@ -2449,9 +2798,11 @@ private:
                 ++Cursor_;
             }
         }
+
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
         }
+
         node->Tokens.End = Cursor_;
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
@@ -2460,9 +2811,11 @@ private:
     bool LooksLikeLinkageSpecification(size_t externIndex) const
     {
         auto next = NextSignificant(externIndex + 1);
+
         if (Kind(next) != TK::Literal_String) {
             return false;
         }
+
         next = NextSignificant(next + 1);
         return Kind(next) == TK::Operator_OpenBrace;
     }
@@ -2471,16 +2824,20 @@ private:
     {
         auto start = Cursor_;
         auto* node = MakeNode(NodeKind::LinkageSpecification, start);
+
         while (!AtEnd() && CurrentKind() != TK::Operator_OpenBrace) {
             ++Cursor_;
         }
+
         if (CurrentKind() == TK::Operator_OpenBrace) {
             ++Cursor_;
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
+
             if (CurrentKind() == TK::Operator_CloseBrace) {
                 ++Cursor_;
             }
         }
+
         node->Tokens.End = Cursor_;
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
@@ -2489,13 +2846,16 @@ private:
     Node* ParseAccessSpecifier()
     {
         auto* node = MakeNode(NodeKind::AccessSpecifier, Cursor_);
+
         while (!AtEnd()) {
             auto kind = CurrentKind();
             ++Cursor_;
+
             if (kind == TK::Operator_Colon) {
                 break;
             }
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -2510,6 +2870,7 @@ private:
         if (CurrentKind() == TK::Operator_OpenBrace) {
             ++Cursor_;
             ParseDeclarationSequence(*node, TK::Operator_CloseBrace);
+
             if (CurrentKind() == TK::Operator_CloseBrace) {
                 ++Cursor_;
             }
@@ -2532,6 +2893,7 @@ private:
         if (Kind(index) != TK::Identifier) {
             return false;
         }
+
         auto text = Text(index);
         return text == "__cdecl" || text == "__stdcall" || text == "__fastcall" || text == "__thiscall" ||
             text == "__vectorcall" || text == "__regcall" || text == "__clrcall";
@@ -2542,10 +2904,13 @@ private:
         if (!IsExtensionAttribute(index)) {
             return index;
         }
+
         auto opening = NextSignificant(index + 1);
+
         if (Kind(opening) != TK::Operator_OpenParenthesis) {
             return index + 1;
         }
+
         auto attributeEnd = FindBalancedEnd(opening);
         return attributeEnd == std::numeric_limits<TokenIndex>::max() || attributeEnd > end ? end : attributeEnd;
     }
@@ -2565,9 +2930,11 @@ private:
         if (exactClosing) {
             *exactClosing = false;
         }
+
         if (Kind(index) != TK::Operator_Less) {
             return index;
         }
+
         int depth = 0;
         for (; index < end; ++index) {
             if (Kind(index) == TK::Operator_Less) {
@@ -2577,14 +2944,17 @@ private:
                     if (exactClosing) {
                         *exactClosing = true;
                     }
+
                     return index + 1;
                 }
             } else if (Kind(index) == TK::Operator_RightShift) {
                 depth -= 2;
+
                 if (depth <= 0) {
                     if (exactClosing) {
                         *exactClosing = depth == 0;
                     }
+
                     return requireComplete && depth < 0 ? end : index + 1;
                 }
             } else if (IsOpenDelimiter(Kind(index))) {
@@ -2605,32 +2975,40 @@ private:
         std::optional<TokenRange> constructorParameters = std::nullopt) const
     {
         bool localOwner = Kind(index) != TK::Operator_ScopeResolution;
+
         if (!localOwner) {
             index = NextSignificant(index + 1);
         }
+
         std::string_view owner = RecordNames_.empty() ? std::string_view{} : RecordNames_.back();
         bool exactOwner = true;
         while (index < end) {
             bool destructor = Kind(index) == TK::Operator_Complement;
             auto name = destructor ? NextSignificant(index + 1) : index;
+
             if (name >= end || Kind(name) != TK::Identifier) {
                 return false;
             }
+
             auto next = NextSignificant(name + 1);
             const bool templateId = !destructor && Kind(next) == TK::Operator_Less;
+
             if (templateId) {
                 bool exactClosing = false;
                 auto after = SkipTemplateArguments(next, end, false, &exactClosing);
                 exactOwner &= exactClosing;
+
                 if (after >= end ||
                     (Kind(after - 1) != TK::Operator_Greater && Kind(after - 1) != TK::Operator_RightShift))
                 {
                     return false;
                 }
+
                 next = NextSignificant(after);
             }
             if (Kind(next) == TK::Operator_OpenParenthesis) {
                 size_t after;
+
                 if (templateId) {
                     // The declaration owner selected this delimiter-inclusive
                     // range before head classification. End is one past ')',
@@ -2641,13 +3019,16 @@ private:
                     {
                         return false;
                     }
+
                     auto closing = constructorParameters->End - 1;
+
                     if (Kind(closing) != TK::Operator_CloseParenthesis ||
                         Tree_.Tokens_.MatchingDelimiter(next) != closing ||
                         Tree_.Tokens_.MatchingDelimiter(closing) != next)
                     {
                         return false;
                     }
+
                     after = constructorParameters->End;
                 } else {
                     after = FindBalancedEnd(next);
@@ -2667,9 +3048,11 @@ private:
             if (destructor || next >= end || Kind(next) != TK::Operator_ScopeResolution) {
                 return false;
             }
+
             localOwner = false;
             owner = Text(name);
             index = NextSignificant(next + 1);
+
             if (Kind(index) == TK::Keyword_template) {
                 index = NextSignificant(index + 1);
             }
@@ -2686,41 +3069,55 @@ private:
         if (index >= end) {
             return index;
         }
+
         if (Kind(index) == TK::Operator_ScopeResolution) {
             auto component = NextSignificant(index + 1);
+
             if (component >= end || Kind(component) != TK::Identifier) {
                 return index;
             }
+
             index = component;
         }
+
         if (Kind(index) != TK::Identifier) {
             return index;
         }
+
         if (functionKind) {
             *functionKind = FunctionKind::Ordinary;
         }
+
         index = NextSignificant(index + 1);
+
         if (index < end && Kind(index) == TK::Operator_Less) {
             bool exactClosing = false;
             index = NextSignificant(SkipTemplateArguments(index, end, requireComplete, &exactClosing));
+
             if (functionKind && !exactClosing) {
                 *functionKind = FunctionKind::Unknown;
             }
         }
+
         while (index < end && Kind(index) == TK::Operator_ScopeResolution) {
             auto component = NextSignificant(index + 1);
+
             if (component >= end || Kind(component) != TK::Identifier) {
                 break;
             }
+
             index = NextSignificant(component + 1);
+
             if (index < end && Kind(index) == TK::Operator_Less) {
                 bool exactClosing = false;
                 index = NextSignificant(SkipTemplateArguments(index, end, requireComplete, &exactClosing));
+
                 if (functionKind && !exactClosing) {
                     *functionKind = FunctionKind::Unknown;
                 }
             }
         }
+
         return index;
     }
 
@@ -2761,14 +3158,17 @@ private:
                 index = NextSignificant(FindExtensionAttributeEnd(index, end));
                 continue;
             }
+
             if (IsCallingConvention(index)) {
                 index = NextSignificant(index + 1);
                 continue;
             }
+
             if (!foundType && kind == TK::Identifier) {
                 const auto next = NextSignificant(index + 1);
                 const auto typeEnd = SkipDeclarationTypeName(next, end, true);
                 const auto afterType = Kind(typeEnd);
+
                 // An opaque modifier may precede a complete type followed by
                 // a declarator. A qualified function name ends at '(' and a
                 // member-pointer qualifier at '::*'; neither proves a type.
@@ -2783,23 +3183,28 @@ private:
                     continue;
                 }
             }
+
             break;
         }
 
         if (index >= end) {
             return index;
         }
+
         if (foundType || Kind(index) == TK::Keyword_operator) {
             if (functionKind) {
                 *functionKind = FunctionKind::Ordinary;
             }
+
             return index;
         }
+
         if (LooksLikeConstructorDeclarator(index, end, functionKind, constructorParameters) ||
             Kind(index) == TK::Operator_Complement)
         {
             return index;
         }
+
         // Consume a user-defined, qualified type name and optional template
         // arguments. The following token begins the declarator.
         return SkipDeclarationTypeName(index, end, requireComplete, functionKind);
@@ -2808,26 +3213,35 @@ private:
     [[nodiscard]] size_t FindMemberPointerEnd(size_t begin, size_t end) const
     {
         auto index = NextSignificant(begin);
+
         if (Kind(index) != TK::Identifier) {
             return begin;
         }
+
         index = NextSignificant(index + 1);
+
         if (Kind(index) == TK::Operator_Less) {
             index = NextSignificant(SkipTemplateArguments(index, end));
         }
+
         while (index < end && Kind(index) == TK::Operator_ScopeResolution) {
             auto component = NextSignificant(index + 1);
+
             if (Kind(component) == TK::Operator_Star) {
                 return component + 1;
             }
+
             if (Kind(component) != TK::Identifier) {
                 return begin;
             }
+
             index = NextSignificant(component + 1);
+
             if (Kind(index) == TK::Operator_Less) {
                 index = NextSignificant(SkipTemplateArguments(index, end));
             }
         }
+
         return begin;
     }
 
@@ -2846,9 +3260,11 @@ private:
                     // Parameter names inside a grouped function declarator
                     // are not candidates for the enclosing declarator name.
                     const auto after = FindBalancedEnd(i);
+
                     if (after > parameters->Begin) {
                         break;
                     }
+
                     i = after - 1;
                 } else if (Kind(i) == TK::Keyword_operator) {
                     return i;
@@ -2859,12 +3275,15 @@ private:
             if (candidate < parameters->Begin) {
                 return candidate;
             }
+
             return end;
         }
         auto memberPointerEnd = FindMemberPointerEnd(begin, end);
+
         if (memberPointerEnd == begin && Kind(begin) == TK::Operator_OpenParenthesis) {
             memberPointerEnd = FindMemberPointerEnd(begin + 1, end);
         }
+
         if (memberPointerEnd != begin) {
             begin = memberPointerEnd;
         }
@@ -2880,6 +3299,7 @@ private:
             if (Kind(i) == TK::Identifier) {
                 return i;
             }
+
             if (Kind(i) == TK::Keyword_operator) {
                 return i;
             }
@@ -2892,12 +3312,15 @@ private:
         int parenthesisDepth = 0;
         int bracketDepth = 0;
         int braceDepth = 0;
+
         for (auto i = begin; i < end; ++i) {
             auto kind = Kind(i);
+
             if (kind == TK::Operator_OpenParenthesis) {
                 if (!functionDeclarator && i > name && parenthesisDepth == 0 && bracketDepth == 0) {
                     return i;
                 }
+
                 ++parenthesisDepth;
             } else if (kind == TK::Operator_CloseParenthesis) {
                 --parenthesisDepth;
@@ -2911,6 +3334,7 @@ private:
                 if (kind == TK::Operator_Assign && Kind(PreviousSignificant(i)) == TK::Keyword_operator) {
                     continue;
                 }
+
                 return i;
             } else if (kind == TK::Operator_OpenBrace) {
                 // Assignments in a constructor's braced member initializer
@@ -2920,6 +3344,7 @@ private:
                 --braceDepth;
             }
         }
+
         return end;
     }
 
@@ -2954,12 +3379,16 @@ private:
         if (depth == 32) {
             return false;
         }
+
         auto cursor = NextSignificant(begin);
+
         while (cursor < end) {
             if (work == 0) {
                 return false;
             }
+
             --work;
+
             if (Kind(cursor) == TK::PreprocessingDirective) {
                 if (GetDirectiveKind(cursor) == DirectiveKind::Other) {
                     auto* directive = MakeNode(NodeKind::PreprocessingDirective, cursor);
@@ -2968,9 +3397,11 @@ private:
                     cursor = NextSignificant(cursor + 1);
                     continue;
                 }
+
                 if (GetDirectiveKind(cursor) != DirectiveKind::If) {
                     return false;
                 }
+
                 auto* conditional = MakeNode(NodeKind::PreprocessingConditional, cursor);
                 const auto incoming = state;
                 auto merged = state;
@@ -2982,6 +3413,7 @@ private:
                     terminal &= branch == ListFragmentState::AfterItem || branch == ListFragmentState::Complete ||
                         (branch == ListFragmentState::Constructor && kind == ListFragmentKind::Initializers) ||
                         (branch == ListFragmentState::Empty && kind != ListFragmentKind::Initializers);
+
                     if (first) {
                         merged = branch;
                         first = false;
@@ -2995,13 +3427,16 @@ private:
                         mismatch = true;
                     }
                 };
+
                 while (cursor < end) {
                     const auto directiveKind = GetDirectiveKind(cursor);
+
                     if (directiveKind != DirectiveKind::If && directiveKind != DirectiveKind::ElseIf &&
                         directiveKind != DirectiveKind::Else)
                     {
                         return false;
                     }
+
                     hasElse |= directiveKind == DirectiveKind::Else;
                     auto* branch = MakeNode(NodeKind::PreprocessingBranch, cursor);
                     auto* directive = MakeNode(NodeKind::PreprocessingDirective, cursor);
@@ -3009,18 +3444,22 @@ private:
                     Append(*branch, *directive);
                     auto branchEnd = cursor + 1;
                     unsigned nested = 0;
+
                     for (; branchEnd < end; ++branchEnd) {
                         if (work == 0) {
                             return false;
                         }
+
                         --work;
                         const auto boundary = GetDirectiveKind(branchEnd);
+
                         if (boundary == DirectiveKind::If) {
                             ++nested;
                         } else if (boundary == DirectiveKind::EndIf) {
                             if (nested == 0) {
                                 break;
                             }
+
                             --nested;
                         } else if (nested == 0 &&
                             (boundary == DirectiveKind::ElseIf || boundary == DirectiveKind::Else))
@@ -3028,9 +3467,11 @@ private:
                             break;
                         }
                     }
+
                     if (branchEnd == end) {
                         return false;
                     }
+
                     auto branchState = incoming;
                     PushScope();
                     ++BranchParseDepth_;
@@ -3038,58 +3479,72 @@ private:
                         AddListFragments(*branch, cursor + 1, branchEnd, kind, branchState, work, depth + 1);
                     --BranchParseDepth_;
                     PopScope();
+
                     if (!parsed) {
                         return false;
                     }
+
                     merge(branchState);
                     branch->Tokens.End = branchEnd;
                     Append(*conditional, *branch);
                     cursor = branchEnd;
+
                     if (GetDirectiveKind(cursor) == DirectiveKind::EndIf) {
                         auto* closing = MakeNode(NodeKind::PreprocessingDirective, cursor);
                         closing->Tokens.End = ++cursor;
                         Append(*conditional, *closing);
                         break;
                     }
+
                     if (hasElse) {
                         return false;
                     }
                 }
+
                 if (!hasElse) {
                     merge(incoming);
                 }
+
                 conditional->Tokens.End = cursor;
                 cursor = NextSignificant(cursor);
+
                 if (mismatch) {
                     // Different arities can meet at a closer (or a constructor
                     // body), but cannot establish one continuation before it.
                     if (cursor != end || !terminal) {
                         return false;
                     }
+
                     merged = ListFragmentState::Complete;
                 }
+
                 state = merged;
                 Append(parent, *conditional);
                 continue;
             }
+
             if (kind == ListFragmentKind::Initializers && state == ListFragmentState::Constructor &&
                 Kind(cursor) == TK::Operator_Colon)
             {
                 auto* list = MakeNode(NodeKind::ConstructorInitializerList, cursor);
                 list->Tokens.End = end;
                 state = ListFragmentState::Empty;
+
                 if (!AddListFragments(*list, cursor + 1, end, kind, state, work, depth + 1) ||
                     state == ListFragmentState::Empty)
                 {
                     return false;
                 }
+
                 Append(parent, *list);
                 return true;
             }
+
             if (Kind(cursor) == TK::Operator_Comma) {
                 if (state != ListFragmentState::AfterItem) {
                     return false;
                 }
+
                 auto* comma = MakeNode(NodeKind::ListSeparator, cursor);
                 comma->Tokens.End = cursor + 1;
                 Append(parent, *comma);
@@ -3097,30 +3552,39 @@ private:
                 cursor = NextSignificant(cursor + 1);
                 continue;
             }
+
             if (state != ListFragmentState::Empty && state != ListFragmentState::Item) {
                 return false;
             }
+
             const auto itemEnd = ArgumentExpressionEnd(cursor, end, work);
+
             if (itemEnd == cursor || work == 0) {
                 return false;
             }
+
             const auto itemKind = kind == ListFragmentKind::Parameters
                 ? NodeKind::ParameterDeclaration
                 : kind == ListFragmentKind::Arguments ? NodeKind::Argument : NodeKind::ConstructorInitializer;
             auto* item = MakeNode(itemKind, cursor);
             item->Tokens.End = itemEnd;
+
             if (kind == ListFragmentKind::Parameters) {
                 AddDeclarationSyntax(*item, cursor, itemEnd);
+
                 if (!item->FirstChild) {
                     return false;
                 }
             } else {
                 auto expressionCursor = cursor;
                 auto* expression = ParseExpressionSyntax(expressionCursor, itemEnd, 2);
+
                 if (!expression || expression->Tokens.End > itemEnd) {
                     return false;
                 }
+
                 expressionCursor = NextSignificant(expressionCursor);
+
                 if (kind == ListFragmentKind::Initializers &&
                     (expression->Kind == NodeKind::IdentifierExpression ||
                         expression->Kind == NodeKind::MemberExpression ||
@@ -3140,13 +3604,16 @@ private:
                     {
                         return false;
                     }
+
                     Append(*item, *expression);
                 }
             }
+
             Append(parent, *item);
             state = ListFragmentState::AfterItem;
             cursor = NextSignificant(itemEnd);
         }
+
         return true;
     }
 
@@ -3162,11 +3629,13 @@ private:
         const auto valid =
             AddListFragments(parent, begin, end, kind, state, work) && state != ListFragmentState::Item &&
                 (kind != ListFragmentKind::Initializers || state != ListFragmentState::Empty);
+
         if (!valid) {
             parent.FirstChild = parent.LastChild = nullptr;
             AddUnparsedSyntax(parent, begin, end);
             AddDirectiveChildrenInGap(parent, begin, end);
         }
+
         return valid;
     }
 
@@ -3180,6 +3649,7 @@ private:
                 parameters.End - 1,
                 ListFragmentKind::Parameters);
         }
+
         size_t segmentBegin = parameters.Begin + 1;
         int delimiterDepth = 0;
         int angleDepth = 0;
@@ -3188,16 +3658,21 @@ private:
         bool noEmptyParameterSlots = true;
         unsigned conditionalMiddle = 0;
         size_t explicitMemberWork = 4096;
+
         for (auto i = segmentBegin; i + 1 <= parameters.End; ++i) {
             bool atEnd = i + 1 == parameters.End;
             auto kind = Kind(i);
+
             if (!atEnd && delimiterDepth == 0 && kind == TK::Keyword_template) {
                 const auto nameEnd =
                     ArgumentExplicitMemberNameEnd(i, segmentBegin, parameters.End - 1, explicitMemberWork);
+
                 if (nameEnd) {
                     const auto suffix = ArgumentSignificant(*nameEnd, parameters.End - 1);
+
                     if (suffix < parameters.End - 1 && Kind(suffix) == TK::Operator_Less) {
                         const auto after = ArgumentTemplateEnd(suffix, parameters.End - 1, explicitMemberWork);
+
                         if (after) {
                             hasParameterToken = true;
                             i = *after - 1;
@@ -3209,6 +3684,7 @@ private:
                         continue;
                     }
                 }
+
                 // No proved partition for this suffix; retain the remaining
                 // lexical payload in the current parameter, not invented slots.
                 auto* parameter = MakeNode(NodeKind::ParameterDeclaration, segmentBegin);
@@ -3217,6 +3693,7 @@ private:
                 Append(list, *parameter);
                 return false;
             }
+
             if (!atEnd) {
                 if (IsOpenDelimiter(kind)) {
                     ++delimiterDepth;
@@ -3236,11 +3713,13 @@ private:
                     }
                 }
             }
+
             if (!atEnd && delimiterDepth == 0 && angleDepth == 0 && !AdvanceConditionalMiddle(kind, conditionalMiddle))
             {
                 i = parameters.End - 1;
                 atEnd = true;
             }
+
             if (!atEnd &&
                 (kind != TK::Operator_Comma || delimiterDepth != 0 || angleDepth != 0 || conditionalMiddle != 0))
             {
@@ -3249,6 +3728,7 @@ private:
             }
 
             noEmptyParameterSlots &= hasParameterToken || (atEnd && !sawSeparator);
+
             if (segmentBegin < i) {
                 auto* parameter = MakeNode(NodeKind::ParameterDeclaration, segmentBegin);
                 parameter->Tokens.End = i;
@@ -3257,6 +3737,7 @@ private:
                 // missing type. The payload may be unexpanded macro arguments.
                 const bool missingType = firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand ||
                     firstKind == TK::Operator_And;
+
                 if (conditionalMiddle != 0 || missingType) {
                     AddUnparsedSyntax(*parameter, segmentBegin, i);
                     noEmptyParameterSlots = false;
@@ -3267,6 +3748,7 @@ private:
                         FindBalancedEnd(opening) == PreviousSignificant(i) + 1
                         ? InferParameterList(opening, i, ambiguous, false, true)
                         : std::nullopt;
+
                     if (types) {
                         auto* nested = MakeNode(NodeKind::ParameterList, opening);
                         nested->Tokens.End = types->End;
@@ -3278,17 +3760,21 @@ private:
                         AddDeclarationSyntax(*parameter, segmentBegin, i);
                     }
                 }
+
                 Append(list, *parameter);
             }
+
             if (!atEnd) {
                 auto* comma = MakeNode(NodeKind::ListSeparator, i);
                 comma->Tokens.End = i + 1;
                 Append(list, *comma);
                 sawSeparator = true;
             }
+
             segmentBegin = i + 1;
             hasParameterToken = false;
         }
+
         return noEmptyParameterSlots;
     }
 
@@ -3302,22 +3788,29 @@ private:
         for (auto i = NextSignificant(opening + 1); i + 1 < closingEnd; i = NextSignificant(i + 1)) {
             if (Kind(i) == TK::Keyword_template) {
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, opening + 1, closingEnd - 1, explicitMemberWork);
+
                 if (nameEnd) {
                     const auto suffix = ArgumentSignificant(*nameEnd, closingEnd - 1);
+
                     if (suffix < closingEnd - 1 && Kind(suffix) == TK::Operator_Less) {
                         const auto after = ArgumentTemplateEnd(suffix, closingEnd - 1, explicitMemberWork);
+
                         if (!after) {
                             return true;
                         }
+
                         i = *after - 1;
                     } else {
                         i = *nameEnd - 1;
                     }
+
                     expectingArgument = false;
                     continue;
                 }
+
                 return true; // Unknown partition requires recovered syntax.
             }
+
             if (!AdvanceConditionalMiddle(Kind(i), conditionalMiddle)) {
                 return false;
             }
@@ -3344,13 +3837,16 @@ private:
             if (Kind(i) == TK::Operator_Semicolon) {
                 return true;
             }
+
             if (IsOpenDelimiter(Kind(i))) {
                 auto nestedEnd = FindBalancedEnd(i);
+
                 if (nestedEnd <= closingEnd - 1) {
                     i = nestedEnd - 1;
                 }
             }
         }
+
         return false;
     }
 
@@ -3358,12 +3854,15 @@ private:
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = closingEnd;
+
         if (Tree_.Tokens_.FindPreprocessingDirective(opening + 1, closingEnd - 1) < closingEnd - 1) {
             AddConditionalListFragments(*arguments, opening + 1, closingEnd - 1, ListFragmentKind::Arguments);
             Append(parent, *arguments);
             return;
         }
+
         auto argumentCursor = NextSignificant(opening + 1);
+
         // Empty arguments are not expressions. A function-like macro can
         // accept them, so keep the entire list as recovered syntax instead
         // of inventing an expression for a bare separator.
@@ -3373,6 +3872,7 @@ private:
             Append(parent, *arguments);
             return;
         }
+
         size_t boundaryWork = 4096;
         while (argumentCursor + 1 < closingEnd) {
             auto before = argumentCursor;
@@ -3382,6 +3882,7 @@ private:
                 auto braceEnd = FindBalancedEnd(before);
                 if (braceEnd != std::numeric_limits<TokenIndex>::max() && braceEnd < closingEnd) {
                     auto following = NextSignificant(braceEnd);
+
                     if (Kind(following) != TK::Operator_Comma && following != closingEnd - 1) {
                         braceEnd = before;
                     }
@@ -3408,6 +3909,7 @@ private:
                 expression = ParseExpressionSyntax(argumentCursor, argumentEnd, 2);
                 ParseLimit_ = savedLimit;
             }
+
             // Parsing may consume a dangling operator without representing
             // it in the returned expression. Recover from the first token
             // not actually owned, not just the advanced parse cursor.
@@ -3419,14 +3921,18 @@ private:
                 validExpression && ArgumentSignificant(recoveryBegin, argumentEnd) == argumentEnd;
             auto* argument = MakeNode(NodeKind::Argument, before);
             argument->Tokens.End = trailingCommentsOnly ? expression->Tokens.End : argumentEnd;
+
             if (validExpression) {
                 Append(*argument, *expression);
             }
+
             if (!trailingCommentsOnly) {
                 AddUnparsedSyntax(*argument, recoveryBegin, argumentEnd);
             }
+
             Append(*arguments, *argument);
             argumentCursor = NextSignificant(argumentEnd);
+
             if (Kind(argumentCursor) == TK::Operator_Comma) {
                 auto* comma = MakeNode(NodeKind::ListSeparator, argumentCursor);
                 comma->Tokens.End = argumentCursor + 1;
@@ -3447,35 +3953,44 @@ private:
         auto* list = MakeNode(NodeKind::InitializerList, opening);
         list->Tokens.End = closingEnd;
         auto elementCursor = NextSignificant(opening + 1);
+
         while (elementCursor + 1 < closingEnd) {
             auto before = elementCursor;
             // A designated member is one list element, including its
             // designator and assignment. Parse the value as an expression
             // while keeping the complete element available to list reflow.
             TokenIndex afterDesignator = before;
+
             if (Kind(before) == TK::Operator_ClassMemberAccess && Kind(NextSignificant(before + 1)) == TK::Identifier) {
                 afterDesignator = NextSignificant(NextSignificant(before + 1) + 1);
             } else if (Kind(before) == TK::Operator_OpenBracket) {
                 auto closing = Tree_.Tokens_.MatchingDelimiter(before);
+
                 if (closing > before && closing < closingEnd - 1) {
                     afterDesignator = NextSignificant(closing + 1);
                 }
             }
+
             if (afterDesignator != before && Kind(afterDesignator) == TK::Operator_Assign) {
                 elementCursor = NextSignificant(afterDesignator + 1);
             }
+
             auto* expression = ParseExpressionSyntax(elementCursor, closingEnd - 1, 2);
+
             if (expression && expression->Kind == NodeKind::UnparsedSyntax) {
                 braced.Kind = NodeKind::UnparsedSyntax;
                 return;
             }
+
             if (expression) {
                 auto* element = MakeNode(NodeKind::InitializerElement, before);
                 element->Tokens.End = expression->Tokens.End;
                 Append(*element, *expression);
                 Append(*list, *element);
             }
+
             elementCursor = NextSignificant(elementCursor);
+
             if (Kind(elementCursor) == TK::Operator_Comma) {
                 auto* comma = MakeNode(NodeKind::ListSeparator, elementCursor);
                 comma->Tokens.End = elementCursor + 1;
@@ -3487,16 +4002,19 @@ private:
                 break;
             }
         }
+
         const auto modeledEnd = list->LastChild ? list->LastChild->Tokens.End : opening + 1;
         // A parsed prefix does not prove that these braces contain an
         // initializer. In particular, an object-like macro followed by a
         // statement block must stay wholly opaque. Directive fragments retain
         // their existing conservative representation.
         const auto tail = NextSignificant(modeledEnd);
+
         if (tail < closingEnd - 1 && Kind(tail) != TK::PreprocessingDirective) {
             braced.Kind = NodeKind::UnparsedSyntax;
             return;
         }
+
         AddUnparsedSyntax(*list, modeledEnd, closingEnd - 1);
         AddDirectiveChildrenInGap(*list, opening, closingEnd);
         Append(braced, *list);
@@ -3505,22 +4023,27 @@ private:
     void AddInitializerExpression(Node& initializer, size_t begin, size_t end)
     {
         auto expressionBegin = NextSignificant(begin);
+
         if (Kind(expressionBegin) == TK::Operator_Assign) {
             expressionBegin = NextSignificant(expressionBegin + 1);
         }
+
         if (expressionBegin >= end) {
             return;
         }
+
         if (Kind(begin) == TK::Operator_OpenParenthesis && ArgumentPairEnd(begin, end) == end) {
             AddArgumentList(initializer, begin, end);
             return;
         }
+
         // Let expression parsing bound braces by their matching closer, not
         // the declaration's end. A macro-led statement can look like a direct
         // initializer while continuing with operators after the braces.
         if (auto* expression = ParseExpressionSyntax(expressionBegin, end)) {
             Append(initializer, *expression);
         }
+
         AddUnparsedSyntax(initializer, expressionBegin, end);
     }
 
@@ -3528,13 +4051,16 @@ private:
     {
         auto bindingBegin = begin;
         bool hasReference = false;
+
         if (Kind(bindingBegin) == TK::Operator_Ampersand || Kind(bindingBegin) == TK::Operator_And) {
             hasReference = true;
             ++bindingBegin;
         }
+
         if (Kind(bindingBegin) != TK::Operator_OpenBracket) {
             return false;
         }
+
         auto bindingEnd = FindBalancedEnd(bindingBegin);
         if (bindingEnd == std::numeric_limits<TokenIndex>::max() || bindingEnd > end) {
             return false;
@@ -3543,16 +4069,20 @@ private:
         auto* declarator = MakeNode(NodeKind::Declarator, begin);
         declarator->Tokens.End = bindingEnd;
         Append(initDeclarator, *declarator);
+
         if (hasReference) {
             auto* reference = MakeNode(NodeKind::PointerOperator, begin);
             reference->Tokens.End = begin + 1;
             Append(*declarator, *reference);
         }
+
         auto* binding = MakeNode(NodeKind::StructuredBinding, bindingBegin);
         binding->Tokens.End = bindingEnd;
         int nestedDepth = 0;
+
         for (auto i = bindingBegin + 1; i + 1 < bindingEnd; ++i) {
             auto kind = Kind(i);
+
             if (IsOpenDelimiter(kind)) {
                 ++nestedDepth;
             } else if (kind == TK::Operator_CloseParenthesis || kind == TK::Operator_CloseBracket ||
@@ -3569,13 +4099,16 @@ private:
                 Append(*binding, *name);
             }
         }
+
         Append(*declarator, *binding);
+
         if (bindingEnd < end) {
             auto* initializer = MakeNode(NodeKind::Initializer, bindingEnd);
             initializer->Tokens.End = end;
             AddInitializerExpression(*initializer, bindingEnd, end);
             Append(initDeclarator, *initializer);
         }
+
         return true;
     }
 
@@ -3584,6 +4117,7 @@ private:
         auto* list = MakeNode(NodeKind::ConstructorInitializerList, begin);
         list->Tokens.End = end;
         Append(function, *list);
+
         if (Tree_.Tokens_.FindPreprocessingDirective(begin + 1, end) < end) {
             AddConditionalListFragments(*list, begin + 1, end, ListFragmentKind::Initializers);
             return;
@@ -3593,9 +4127,11 @@ private:
         int delimiterDepth = 0;
         for (auto i = initializerBegin; i <= end; ++i) {
             auto kind = Kind(i);
+
             if (i < end && delimiterDepth == 0 && kind == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(i, end);
                 auto afterTemplate = NextSignificant(templateEnd);
+
                 if (templateEnd > i + 1 && afterTemplate < end &&
                     (Kind(afterTemplate) == TK::Operator_OpenParenthesis ||
                         Kind(afterTemplate) == TK::Operator_OpenBrace ||
@@ -3605,6 +4141,7 @@ private:
                     continue;
                 }
             }
+
             if (i < end) {
                 if (IsOpenDelimiter(kind)) {
                     ++delimiterDepth;
@@ -3614,6 +4151,7 @@ private:
                     --delimiterDepth;
                 }
             }
+
             if (i != end && (kind != TK::Operator_Comma || delimiterDepth != 0)) {
                 continue;
             }
@@ -3621,15 +4159,18 @@ private:
                 auto* initializer = MakeNode(NodeKind::ConstructorInitializer, initializerBegin);
                 initializer->Tokens.End = i;
                 bool hasTemplateName = false;
+
                 for (auto cursor = initializerBegin; cursor < i; ++cursor) {
                     if (Kind(cursor) == TK::Operator_Less) {
                         hasTemplateName = true;
                         break;
                     }
+
                     if (IsOpenDelimiter(Kind(cursor))) {
                         break;
                     }
                 }
+
                 auto expressionCursor = static_cast<TokenIndex>(initializerBegin);
                 auto* expression = hasTemplateName
                     ? nullptr
@@ -3641,17 +4182,21 @@ private:
                     // comparison expression. Model its initializer separately
                     // so argument breaks can take priority over type breaks.
                     auto opening = initializerBegin;
+
                     while (opening < i && !IsOpenDelimiter(Kind(opening))) {
                         if (Kind(opening) == TK::Operator_Less) {
                             const auto templateEnd = SkipTemplateArguments(opening, i);
+
                             if (templateEnd <= opening + 1 || templateEnd > i) {
                                 break;
                             }
+
                             opening = templateEnd;
                         } else {
                             ++opening;
                         }
                     }
+
                     const auto openingKind = Kind(opening);
                     const auto closingEnd = IsOpenDelimiter(openingKind)
                         ? FindBalancedEnd(opening)
@@ -3659,6 +4204,7 @@ private:
                     const auto suffix = closingEnd <= i ? NextSignificant(closingEnd) : i;
                     const bool complete =
                         suffix >= i || (Kind(suffix) == TK::Operator_Ellipsis && NextSignificant(suffix + 1) >= i);
+
                     if ((openingKind == TK::Operator_OpenParenthesis || openingKind == TK::Operator_OpenBrace) &&
                         closingEnd <= i && complete)
                     {
@@ -3672,6 +4218,7 @@ private:
                         name->Tokens.End = opening;
                         AddTypeSyntaxChildren(*name, initializerBegin, opening);
                         Append(*construction, *name);
+
                         if (openingKind == TK::Operator_OpenParenthesis) {
                             AddArgumentList(*construction, opening, closingEnd);
                         } else {
@@ -3680,6 +4227,7 @@ private:
                             AddBracedInitializerElements(*braced, opening, closingEnd);
                             Append(*construction, *braced);
                         }
+
                         Append(*initializer, *construction);
                     } else {
                         AddTypeSyntaxChildren(*initializer, initializerBegin, opening);
@@ -3692,6 +4240,7 @@ private:
                 comma->Tokens.End = i + 1;
                 Append(*list, *comma);
             }
+
             initializerBegin = i + 1;
         }
     }
@@ -3705,11 +4254,13 @@ private:
         auto index = NextSignificant(begin);
         while (index < end) {
             auto kind = Kind(index);
+
             if (kind == TK::PreprocessingDirective) {
                 if (constructor) {
                     auto* suffix = MakeNode(NodeKind::PreprocessingBranch, index);
                     suffix->Tokens.End = end;
                     AddConditionalListFragments(*suffix, index, end, ListFragmentKind::Initializers, true);
+
                     // The wrapper is only a builder; publish its actual nodes.
                     for (auto* child = suffix->FirstChild; child;) {
                         auto* next = child->NextSibling;
@@ -3721,8 +4272,10 @@ private:
                     AddUnparsedSyntax(function, index, end);
                     AddDirectiveChildrenInGap(function, index, end);
                 }
+
                 return index;
             }
+
             if (IsExtensionAttribute(index)) {
                 auto attributeEnd = FindExtensionAttributeEnd(index, end);
                 auto* attribute = MakeNode(NodeKind::ExtensionAttributeSpecifier, index);
@@ -3731,6 +4284,7 @@ private:
                 index = NextSignificant(attributeEnd);
                 continue;
             }
+
             if (IsCallingConvention(index)) {
                 auto* convention = MakeNode(NodeKind::CallingConventionSpecifier, index);
                 convention->Tokens.End = index + 1;
@@ -3738,6 +4292,7 @@ private:
                 index = NextSignificant(index + 1);
                 continue;
             }
+
             if (kind == TK::Keyword_const || kind == TK::Keyword_volatile || kind == TK::Operator_Ampersand ||
                 kind == TK::Operator_And ||
                 (kind == TK::Identifier && (Text(index) == "final" || Text(index) == "override")))
@@ -3759,9 +4314,11 @@ private:
                 }
                 auto* exception = MakeNode(NodeKind::ExceptionSpecification, index);
                 exception->Tokens.End = exceptionEnd;
+
                 if (exceptionEnd > opening + 1) {
                     AddExpressionRange(*exception, opening + 1, exceptionEnd - 1);
                 }
+
                 Append(function, *exception);
                 index = NextSignificant(exceptionEnd);
                 continue;
@@ -3780,8 +4337,10 @@ private:
             if (kind == TK::Operator_IndirectClassMemberAccess) {
                 auto trailingEnd = index + 1;
                 int delimiterDepth = 0;
+
                 while (trailingEnd < end) {
                     auto trailingKind = Kind(trailingEnd);
+
                     if (IsOpenDelimiter(trailingKind)) {
                         ++delimiterDepth;
                     } else if (trailingKind == TK::Operator_CloseParenthesis ||
@@ -3791,8 +4350,10 @@ private:
                     } else if (delimiterDepth == 0 && trailingKind == TK::Keyword_requires) {
                         break;
                     }
+
                     ++trailingEnd;
                 }
+
                 auto* trailing = MakeNode(NodeKind::TrailingReturnType, index);
                 trailing->Tokens.End = trailingEnd;
                 AddTypeSyntaxChildren(*trailing, index + 1, trailingEnd);
@@ -3800,23 +4361,28 @@ private:
                 index = NextSignificant(trailingEnd);
                 continue;
             }
+
             if (kind == TK::Keyword_requires) {
                 auto* requiresClause = MakeNode(NodeKind::RequiresClause, index);
                 requiresClause->Tokens.End = end;
                 auto constraintBegin = NextSignificant(index + 1);
+
                 if (constraintBegin < end) {
                     auto* constraint = MakeNode(NodeKind::ConstraintExpression, constraintBegin);
                     constraint->Tokens.End = end;
                     AddExpressionRange(*constraint, constraintBegin, end);
                     Append(*requiresClause, *constraint);
                 }
+
                 Append(function, *requiresClause);
                 break;
             }
+
             if (kind == TK::Operator_Colon) {
                 AddConstructorInitializers(function, index, end);
                 return index;
             }
+
             index = NextSignificant(index + 1);
         }
         return std::nullopt;
@@ -3831,14 +4397,17 @@ private:
         if (after > end || after > ParseLimit_) {
             return nullptr;
         }
+
         auto* operand = MakeNode(NodeKind::ParenthesizedExpression, opening);
         operand->Tokens.End = after;
         const auto begin = NextSignificant(opening + 1);
         auto operandEnd = after - 1;
         const auto last = PreviousSignificant(operandEnd);
+
         if (Kind(last) == TK::Operator_Ellipsis) {
             operandEnd = last;
         }
+
         // Alignment accepts a type-id or a constant expression, optionally
         // followed by a pack ellipsis. Do not scan expression angles as types.
         if (LooksLikeTypeId(begin, operandEnd)) {
@@ -3849,6 +4418,7 @@ private:
         } else {
             AddExpressionRange(*operand, begin, operandEnd);
         }
+
         return operand;
     }
 
@@ -3857,6 +4427,7 @@ private:
         if (TypeSyntaxDepth_ >= 64) {
             return;
         }
+
         ++TypeSyntaxDepth_;
         std::optional<bool> knownType;
         for (auto i = begin; i < end; ++i) {
@@ -3874,10 +4445,12 @@ private:
                     : std::numeric_limits<TokenIndex>::max();
                 if (after <= end) {
                     const auto first = NextSignificant(opening + 1);
+
                     if (Kind(first) == TK::Keyword_auto && NextSignificant(first + 1) == after - 1) {
                         i = after - 1;
                         continue;
                     }
+
                     // The operand is an expression: let expression syntax
                     // distinguish nested template calls from comparisons.
                     auto* type = MakeNode(NodeKind::TypeId, i);
@@ -3899,8 +4472,10 @@ private:
                     knownType = node.Kind == NodeKind::TypeId || node.Kind == NodeKind::TrailingReturnType ||
                         LooksLikeTypeId(begin, end);
                 }
+
                 if (*knownType && FindDeclarationSpecifiersEnd(begin, end) == i) {
                     bool ambiguous = false;
+
                     if (auto parameters = InferParameterList(i, end, ambiguous, false, true)) {
                         auto* function = MakeNode(NodeKind::FunctionDeclarator, i);
                         function->Tokens.End = parameters->End;
@@ -3915,6 +4490,7 @@ private:
                         i = function->Tokens.End - 1;
                         continue;
                     }
+
                     // A grouped abstract pointer/reference declarator owns
                     // the following signature, not the grouping parentheses.
                     if (auto nested = InferNestedFunctionParameters(i, end)) {
@@ -3922,16 +4498,20 @@ private:
                         auto pointer = NextSignificant(i + 1);
                         pointer = FindMemberPointerEnd(pointer, close);
                         bool hasPointer = pointer > NextSignificant(i + 1);
+
                         while (pointer < close) {
                             const auto kind = Kind(pointer);
+
                             if (kind == TK::Operator_Star || kind == TK::Operator_Ampersand || kind == TK::Operator_And)
                             {
                                 hasPointer = true;
                             } else if (kind != TK::Keyword_const && kind != TK::Keyword_volatile) {
                                 break;
                             }
+
                             pointer = NextSignificant(pointer + 1);
                         }
+
                         if (hasPointer && pointer == close) {
                             (void)AddDeclaratorSyntax(node, i, end, nested, false, true, FunctionKind::Unknown, true);
                             i = end - 1;
@@ -3940,21 +4520,26 @@ private:
                     }
                 }
             }
+
             if ((node.Kind == NodeKind::TemplateArgument || node.Kind == NodeKind::TemplateParameter) &&
                 IsOpenDelimiter(Kind(i)))
             {
                 if (!knownType) {
                     knownType = node.Kind == NodeKind::TemplateArgument && LooksLikeTypeId(begin, end);
                 }
+
                 if (*knownType && Kind(i) == TK::Operator_OpenParenthesis) {
                     continue;
                 }
+
                 // Non-type argument interiors are opaque here. Comparisons
                 // and shifts in parentheses must not become nested type lists.
                 const auto closingEnd = FindBalancedEnd(i);
+
                 if (closingEnd > end) {
                     break;
                 }
+
                 i = closingEnd - 1;
                 continue;
             }
@@ -3979,31 +4564,38 @@ private:
                 Append(node, *convention);
             } else if (node.Kind == NodeKind::NewTypeId && Kind(i) == TK::Operator_OpenBracket) {
                 const auto arrayEnd = FindBalancedEnd(i);
+
                 if (arrayEnd > end) {
                     break;
                 }
+
                 // Bounds are expressions, so their operators and nested
                 // delimiters must not be scanned as type syntax.
                 AddExpressionRange(node, i + 1, arrayEnd - 1);
                 i = arrayEnd - 1;
             } else if (node.Kind == NodeKind::NewTypeId && Kind(i) == TK::Operator_Star) {
                 auto afterPointers = NextSignificant(i + 1);
+
                 while (Kind(afterPointers) == TK::Operator_Star) {
                     afterPointers = NextSignificant(afterPointers + 1);
                 }
+
                 if (afterPointers < end && Kind(afterPointers) == TK::Operator_OpenBracket) {
                     for (auto pointer = i; pointer < afterPointers; ++pointer) {
                         if (Kind(pointer) != TK::Operator_Star) {
                             continue;
                         }
+
                         auto* part = MakeNode(NodeKind::PointerOperator, pointer);
                         part->Tokens.End = pointer + 1;
                         Append(node, *part);
                     }
+
                     i = afterPointers - 1;
                 }
             } else if (Kind(i) == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(i, end);
+
                 if (templateEnd <= end && templateEnd > i &&
                     (Kind(templateEnd - 1) == TK::Operator_Greater || Kind(templateEnd - 1) == TK::Operator_RightShift))
                 {
@@ -4027,14 +4619,17 @@ private:
         if (Kind(begin) != TK::Operator_OpenParenthesis) {
             return std::nullopt;
         }
+
         auto nestedEnd = FindBalancedEnd(begin);
         if (nestedEnd == std::numeric_limits<TokenIndex>::max() || nestedEnd >= end) {
             return std::nullopt;
         }
         auto suffixBegin = NextSignificant(nestedEnd);
+
         if (Kind(suffixBegin) != TK::Operator_OpenParenthesis) {
             return std::nullopt;
         }
+
         auto suffixEnd = FindBalancedEnd(suffixBegin);
         if (suffixEnd == std::numeric_limits<TokenIndex>::max() || suffixEnd > end) {
             return std::nullopt;
@@ -4046,10 +4641,12 @@ private:
     {
         for (auto i = begin; i < end; ++i) {
             auto kind = Kind(i);
+
             if (kind == TK::Operator_Star || kind == TK::Operator_Ampersand || kind == TK::Operator_And) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -4058,32 +4655,41 @@ private:
         // Only a complete, independently proven function head reaches here.
         // A balanced angle span followed by :: is not proof in an expression.
         auto** link = &core.FirstChild;
+
         for (auto i = begin; i < name; ++i) {
             if (*link && i >= (*link)->Tokens.Begin) {
                 i = (*link)->Tokens.End - 1;
                 link = &(*link)->NextSibling;
                 continue;
             }
+
             if (Kind(i) != TK::Identifier) {
                 continue;
             }
+
             const auto opening = NextSignificant(i + 1);
+
             if (Kind(opening) != TK::Operator_Less) {
                 continue;
             }
+
             bool exactClosing = false;
             const auto after = SkipTemplateArguments(opening, name, false, &exactClosing);
             const auto next = NextSignificant(after);
+
             if (exactClosing && next < name && Kind(next) == TK::Operator_ScopeResolution) {
                 auto* arguments = MakeTemplateArgumentList(opening, after);
                 MarkPunctuationRoles(*arguments);
                 arguments->NextSibling = *link;
                 *link = arguments;
+
                 if (!arguments->NextSibling) {
                     core.LastChild = arguments;
                 }
+
                 link = &arguments->NextSibling;
             }
+
             i = after - 1;
         }
     }
@@ -4099,17 +4705,21 @@ private:
         bool abstractDeclarator = false)
     {
         const bool hasExplicitParameters = parameters.has_value();
+
         if (parameters &&
             !(begin <= parameters->Begin && parameters->Begin < parameters->End && parameters->End <= end))
         {
             parameters.reset();
         }
+
         if (inferNestedParameters && (!parameters || parameters->Begin == begin)) {
             if (auto nested = InferNestedFunctionParameters(begin, end)) {
                 parameters = nested;
             }
         }
+
         bool isFunction = parameters && !parameters->Empty();
+
         if (!isFunction && AddStructuredBindingSyntax(initDeclarator, begin, end)) {
             return FunctionKind::Unknown;
         }
@@ -4121,40 +4731,49 @@ private:
             auto name = begin;
             bool hasPointer = false;
             auto firstKind = Kind(begin);
+
             if (firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand || firstKind == TK::Operator_And)
             {
                 hasPointer = true;
                 name = begin + 1;
             }
+
             if (Kind(name) == TK::Identifier) {
                 auto afterName = name + 1;
                 auto afterNameKind = Kind(afterName);
+
                 if (afterName == end || afterNameKind == TK::Operator_Assign ||
                     afterNameKind == TK::Operator_OpenBrace || afterNameKind == TK::Operator_OpenParenthesis)
                 {
                     auto* declarator = MakeNode(NodeKind::Declarator, begin);
                     declarator->Tokens.End = afterName;
                     Append(initDeclarator, *declarator);
+
                     if (hasPointer) {
                         auto* pointer = MakeNode(NodeKind::PointerOperator, begin);
                         pointer->Tokens.End = begin + 1;
                         Append(*declarator, *pointer);
                     }
+
                     auto* nameNode = MakeNode(NodeKind::DeclaratorName, name);
                     nameNode->Tokens.End = name + 1;
                     Append(*declarator, *nameNode);
+
                     if (afterName < end) {
                         auto* initializer = MakeNode(
                             ambiguousSuffix ? NodeKind::AmbiguousDeclaratorSuffix : NodeKind::Initializer,
                             afterName);
                         initializer->Tokens.End = end;
+
                         if (ambiguousSuffix) {
                             AddDirectiveChildrenInGap(*initializer, afterName, end);
                         } else {
                             AddInitializerExpression(*initializer, afterName, end);
                         }
+
                         Append(initDeclarator, *initializer);
                     }
+
                     return FunctionKind::Unknown;
                 }
             }
@@ -4163,11 +4782,14 @@ private:
         auto name = end;
         auto nameArgumentsBegin = begin;
         auto nameArgumentsEnd = begin;
+
         if (isFunction && functionKind == FunctionKind::Constructor && Kind(begin) == TK::Identifier) {
             auto next = NextSignificant(begin + 1);
+
             if (Kind(next) == TK::Operator_Less) {
                 bool exactClosing = false;
                 auto after = SkipTemplateArguments(next, parameters->Begin, false, &exactClosing);
+
                 if (exactClosing && NextSignificant(after) == parameters->Begin) {
                     name = begin;
                     nameArgumentsBegin = next;
@@ -4175,11 +4797,14 @@ private:
                 }
             }
         }
+
         if (name == end && !abstractDeclarator) {
             name = FindDeclaratorName(begin, end, parameters);
         }
+
         auto initializerStart = FindInitializerStart(begin, end, name, isFunction);
         auto declaratorEnd = initializerStart;
+
         if (isFunction && parameters->End > declaratorEnd) {
             parameters.reset();
             isFunction = false;
@@ -4188,6 +4813,7 @@ private:
             initializerStart = FindInitializerStart(begin, end, name, isFunction);
             declaratorEnd = initializerStart;
         }
+
         auto declaratorKind = name < declaratorEnd ? NodeKind::Declarator : NodeKind::AbstractDeclarator;
         auto* declarator = MakeNode(declaratorKind, begin);
         declarator->Tokens.End = declaratorEnd;
@@ -4215,14 +4841,17 @@ private:
         if (name >= declaratorEnd) {
             auto coreEnd = nestedEnd != begin ? nestedEnd - 1 : (parameters ? parameters->Begin : declaratorEnd);
             auto memberPointerEnd = FindMemberPointerEnd(coreBegin, coreEnd);
+
             if (memberPointerEnd != coreBegin) {
                 auto* memberPointer = MakeNode(NodeKind::MemberPointerOperator, coreBegin);
                 memberPointer->Tokens.End = memberPointerEnd;
                 Append(*core, *memberPointer);
                 coreBegin = memberPointerEnd;
             }
+
             for (auto i = coreBegin; i < coreEnd; ++i) {
                 auto kind = Kind(i);
+
                 if (kind == TK::Operator_Star || kind == TK::Operator_Ampersand || kind == TK::Operator_And) {
                     auto* pointer = MakeNode(NodeKind::PointerOperator, i);
                     pointer->Tokens.End = i + 1;
@@ -4235,17 +4864,20 @@ private:
             Kind(parameters->End - 1) == TK::Operator_CloseParenthesis;
         if (name < declaratorEnd) {
             auto memberPointerEnd = FindMemberPointerEnd(coreBegin, declaratorEnd);
+
             if (memberPointerEnd != coreBegin && memberPointerEnd <= name) {
                 auto* memberPointer = MakeNode(NodeKind::MemberPointerOperator, coreBegin);
                 memberPointer->Tokens.End = memberPointerEnd;
                 Append(*core, *memberPointer);
                 coreBegin = memberPointerEnd;
             }
+
             size_t qualifiedArgumentsEnd = coreBegin;
             for (auto i = coreBegin; i < name; ++i) {
                 if (i < qualifiedArgumentsEnd) {
                     continue;
                 }
+
                 auto kind = Kind(i);
                 if (kind == TK::Operator_Star || kind == TK::Operator_Ampersand || kind == TK::Operator_And) {
                     auto* pointer = MakeNode(NodeKind::PointerOperator, i);
@@ -4273,11 +4905,13 @@ private:
                     i = attributeEnd - 1;
                 } else if (kind == TK::Identifier) {
                     auto next = NextSignificant(i + 1);
+
                     if (Kind(next) == TK::Operator_Less) {
                         bool exactClosing = false;
                         qualifiedArgumentsEnd = SkipTemplateArguments(next, name, false, &exactClosing);
                         knownHead &= exactClosing;
                         next = NextSignificant(qualifiedArgumentsEnd);
+
                         if (!exactClosing && hasExplicitParameters) {
                             // Comparisons inside template arguments can make
                             // a lexical angle scan inconclusive. Preserve the
@@ -4287,6 +4921,7 @@ private:
                             Append(*core, *uncertain);
                         }
                     }
+
                     knownHead &= next < name && Kind(next) == TK::Operator_ScopeResolution;
                 } else if (kind != TK::Operator_ScopeResolution && kind != TK::Operator_Complement &&
                     kind != TK::Keyword_template && kind != TK::Keyword_const && kind != TK::Keyword_volatile &&
@@ -4298,8 +4933,10 @@ private:
             auto nameBegin = name;
             auto nameEnd = name + 1;
             auto nameKind = NodeKind::DeclaratorName;
+
             if (Kind(name) == TK::Keyword_operator) {
                 nameKind = NodeKind::OperatorFunctionName;
+
                 if (parameters && name < parameters->Begin) {
                     nameEnd = parameters->Begin;
                 }
@@ -4307,16 +4944,20 @@ private:
                 nameKind = NodeKind::DestructorName;
                 nameBegin = PreviousSignificant(name);
             }
+
             auto* nameNode = MakeNode(nameKind, nameBegin);
             nameNode->Tokens.End = nameEnd;
             Append(*core, *nameNode);
+
             if (nameArgumentsEnd != begin) {
                 Append(*core, *MakeTemplateArgumentList(nameArgumentsBegin, nameArgumentsEnd));
             }
+
             if (isFunction && nameKind != NodeKind::OperatorFunctionName) {
                 knownHead &=
                     NextSignificant(nameArgumentsEnd != begin ? nameArgumentsEnd : name + 1) == parameters->Begin;
             }
+
             if (nameKind == NodeKind::DestructorName) {
                 knownHead &= functionKind == FunctionKind::Destructor;
             }
@@ -4325,20 +4966,24 @@ private:
         Node* function = nullptr;
         std::optional<TokenRange> nestedParameters;
         auto suffixScanEnd = declaratorEnd;
+
         if (isFunction) {
             auto outerParameters = parameters;
+
             if (nestedEnd != begin) {
                 if (parameters->End < nestedEnd) {
                     nestedParameters = parameters;
                     outerParameters = InferNestedFunctionParameters(begin, declaratorEnd);
                 } else if (name < nestedEnd) {
                     const auto opening = NextSignificant(name + 1);
+
                     if (Kind(opening) == TK::Operator_OpenParenthesis) {
                         bool ambiguous = false;
                         nestedParameters = InferParameterList(opening, nestedEnd - 1, ambiguous, false, true);
                     }
                 }
             }
+
             auto makeFunction = [&] (TokenRange list, size_t functionEnd) {
                 auto* result = MakeNode(NodeKind::FunctionDeclarator, list.Begin);
                 result->Tokens.End = functionEnd;
@@ -4347,6 +4992,7 @@ private:
                 knownHead &= AddParameterDeclarations(*parameterList, list);
                 AddDirectiveChildrenInGap(*parameterList, list.Begin, list.End);
                 Append(*result, *parameterList);
+
                 if (auto initializerColon =
                     AddFunctionSuffixSyntax(*result, list.End, functionEnd, functionKind == FunctionKind::Constructor))
                 {
@@ -4354,13 +5000,16 @@ private:
                     // its array declarator suffixes.
                     suffixScanEnd = *initializerColon;
                 }
+
                 return result;
             };
+
             if (nestedParameters) {
                 // The inner signature ends before the grouped closer. The
                 // returned function type owns an independent outer signature.
                 Append(*core, *makeFunction(*nestedParameters, nestedEnd - 1));
             }
+
             if (outerParameters) {
                 parameters = outerParameters;
                 function = makeFunction(*outerParameters, declaratorEnd);
@@ -4381,11 +5030,14 @@ private:
                     i = function ? function->Tokens.End - 1 : parameters->End - 1;
                     continue;
                 }
+
                 if (nestedParameters && i == nestedParameters->Begin) {
                     i = nestedEnd - 2;
                     continue;
                 }
+
                 auto kind = Kind(i);
+
                 if (IsExtensionAttribute(i)) {
                     auto suffixEnd = FindExtensionAttributeEnd(i, declaratorEnd);
                     auto* suffix = MakeNode(NodeKind::ExtensionAttributeSpecifier, i);
@@ -4394,6 +5046,7 @@ private:
                     i = suffixEnd - 1;
                     continue;
                 }
+
                 if (IsCallingConvention(i)) {
                     auto* convention = MakeNode(NodeKind::CallingConventionSpecifier, i);
                     convention->Tokens.End = i + 1;
@@ -4436,16 +5089,20 @@ private:
                 ambiguousSuffix ? NodeKind::AmbiguousDeclaratorSuffix : NodeKind::Initializer,
                 initializerStart);
             initializer->Tokens.End = end;
+
             if (ambiguousSuffix) {
                 AddDirectiveChildrenInGap(*initializer, initializerStart, end);
             } else {
                 AddInitializerExpression(*initializer, initializerStart, end);
             }
+
             Append(initDeclarator, *initializer);
         }
+
         if (knownHead && functionKind != FunctionKind::Unknown) {
             AddQualifiedTemplateSyntax(*core, coreBegin, name);
         }
+
         return knownHead ? functionKind : FunctionKind::Unknown;
     }
 
@@ -4459,25 +5116,31 @@ private:
     [[nodiscard]] ParameterTypeEvidence StartsStatementParameterType(TokenIndex first, TokenIndex end) const
     {
         auto type = first;
+
         while (Kind(type) == TK::Keyword_const || Kind(type) == TK::Keyword_volatile) {
             type = NextSignificant(type + 1);
         }
+
         auto typeKind = Kind(type);
         bool explicitType =
             IsFundamentalTypeKeyword(typeKind) || typeKind == TK::Keyword_typename || typeKind == TK::Keyword_struct ||
                 typeKind == TK::Keyword_class || typeKind == TK::Keyword_union || typeKind == TK::Keyword_enum;
         auto binding = typeKind == TK::Identifier ? LookupName(Text(type)) : std::nullopt;
+
         if (!explicitType && (!binding || *binding != NameKind::Type)) {
             return typeKind == TK::Identifier && !binding
                 ? ParameterTypeEvidence::Unknown
                 : ParameterTypeEvidence::Value;
         }
+
         if (binding) {
             auto afterType = NextSignificant(type + 1);
             bool templateId = Kind(afterType) == TK::Operator_Less;
+
             if (templateId) {
                 afterType = NextSignificant(SkipTemplateArguments(afterType, end));
             }
+
             if (Kind(afterType) == TK::Operator_ScopeResolution) {
                 // An included specialization can change a member's role.
                 if (templateId || !IsKnownQualifiedType(type, end)) {
@@ -4485,6 +5148,7 @@ private:
                 }
             }
         }
+
         return ParameterTypeEvidence::Type;
     }
 
@@ -4496,48 +5160,60 @@ private:
     {
         ambiguous = false;
         auto name = Kind(begin) == TK::Identifier ? begin : FindDeclaratorName(begin, end, std::nullopt);
+
         if (name >= end || Kind(name) != TK::Identifier) {
             ambiguous = proveDirectInitializer;
             return std::nullopt;
         }
+
         auto opening = NextSignificant(name + 1);
+
         if (Kind(opening) != TK::Operator_OpenParenthesis && Kind(begin) == TK::Operator_OpenParenthesis) {
             if (auto nested = InferNestedFunctionParameters(begin, end)) {
                 opening = nested->Begin;
             }
         }
+
         if (Kind(opening) != TK::Operator_OpenParenthesis) {
             ambiguous = proveDirectInitializer;
             return std::nullopt;
         }
+
         return InferParameterList(opening, end, ambiguous, proveDirectInitializer);
     }
 
     [[nodiscard]] ParameterTypeEvidence StartsFunctionTypeParameter(TokenIndex first, TokenIndex end) const
     {
         const auto evidence = StartsStatementParameterType(first, end);
+
         if (evidence != ParameterTypeEvidence::Unknown && Kind(first) != TK::Operator_ScopeResolution) {
             return evidence;
         }
+
         // Included types need not have local bindings. Adjacent type/name
         // identifiers, cv qualifiers, and trailing abstract pointer operators
         // rule out a value expression. `Unknown * value` alone does not.
         const auto afterType = FindDeclarationSpecifiersEnd(first, end);
+
         if (afterType <= first) {
             return evidence;
         }
+
         if (Kind(first) == TK::Keyword_const || Kind(first) == TK::Keyword_volatile ||
             Kind(afterType) == TK::Identifier)
         {
             return ParameterTypeEvidence::Type;
         }
+
         auto afterPointers = afterType;
+
         while (afterPointers < end &&
             (Kind(afterPointers) == TK::Operator_Star || Kind(afterPointers) == TK::Operator_Ampersand ||
                 Kind(afterPointers) == TK::Operator_And))
         {
             afterPointers = NextSignificant(afterPointers + 1);
         }
+
         return afterPointers > afterType && (afterPointers == end || Kind(afterPointers) == TK::Operator_Comma)
             ? ParameterTypeEvidence::Type
             : Kind(first) == TK::Operator_ScopeResolution ? ParameterTypeEvidence::Unknown : evidence;
@@ -4565,34 +5241,44 @@ private:
                 if (proofWork == 0) {
                     return ParameterTypeEvidence::Unknown;
                 }
+
                 --proofWork;
                 first = ArgumentSignificant(first + 1, limit);
             }
+
             if (first >= limit || proofWork == 0) {
                 return ParameterTypeEvidence::Unknown;
             }
+
             --proofWork;
+
             if (IsTypeKeyword(Kind(first))) {
                 return ParameterTypeEvidence::Type;
             }
+
             if (Kind(first) == TK::Identifier) {
                 const auto binding = LookupName(Text(first));
+
                 if (!binding) {
                     return ParameterTypeEvidence::Unknown;
                 }
+
                 return *binding == NameKind::Type ? ParameterTypeEvidence::Type : ParameterTypeEvidence::Value;
             }
+
             if (Kind(first) == TK::Operator_OpenParenthesis || Kind(first) == TK::Operator_OpenBracket ||
                 Kind(first) == TK::Operator_ScopeResolution)
             {
                 return ParameterTypeEvidence::Unknown;
             }
+
             return ParameterTypeEvidence::Value;
         };
         const auto parameterType = [&] (TokenIndex first, TokenIndex limit) {
             if (proveDirectInitializer) {
                 return proofParameterType(first, limit);
             }
+
             return functionType
                 ? StartsFunctionTypeParameter(first, limit)
                 : StartsStatementParameterType(first, limit);
@@ -4604,6 +5290,7 @@ private:
             return proveDirectInitializer ? uncertain() : std::nullopt;
         }
         auto first = NextSignificant(opening + 1);
+
         if (first == closing - 1) {
             return TokenRange{.Begin = opening, .End = closing};
         }
@@ -4611,10 +5298,13 @@ private:
             if (Kind(first) == TK::Operator_Ellipsis) {
                 return TokenRange{.Begin = opening, .End = closing};
             }
+
             auto evidence = parameterType(first, closing - 1);
+
             if (evidence == ParameterTypeEvidence::Value) {
                 return initializer();
             }
+
             ambiguous = evidence == ParameterTypeEvidence::Unknown;
             return ambiguous ? std::nullopt : std::optional<TokenRange>(TokenRange{.Begin = opening, .End = closing});
         }
@@ -4629,6 +5319,7 @@ private:
                 if (NextSignificant(first + 1) != closing - 1) {
                     return initializer();
                 }
+
                 if (functionType && hasDefiniteType) {
                     ambiguous = false;
                 }
@@ -4637,9 +5328,11 @@ private:
                     : std::optional<TokenRange>(TokenRange{.Begin = opening, .End = closing});
             }
             auto evidence = parameterType(first, closing - 1);
+
             if (evidence == ParameterTypeEvidence::Value) {
                 return initializer();
             }
+
             ambiguous |= evidence == ParameterTypeEvidence::Unknown;
             hasDefiniteType |= evidence == ParameterTypeEvidence::Type;
             // Before a parameter's default argument, a declarator cannot
@@ -4657,33 +5350,44 @@ private:
                     if (proofWork == 0) {
                         return uncertain();
                     }
+
                     --proofWork;
                 }
+
                 auto kind = Kind(cursor);
+
                 if (proveDirectInitializer && defaultArgument && depth == 0 &&
                     !AdvanceConditionalMiddle(kind, defaultConditionalMiddle))
                 {
                     return uncertain();
                 }
+
                 if (kind == TK::Operator_Comma) {
                     if (depth == 0) {
                         if (defaultConditionalMiddle == 0) {
                             break;
                         }
+
                         continue;
                     }
+
                     auto nestedEvidence = parameterType(nestedParameterStarts[depth - 1], closing - 1);
+
                     if (nestedEvidence == ParameterTypeEvidence::Value) {
                         return initializer();
                     }
+
                     ambiguous |= nestedEvidence == ParameterTypeEvidence::Unknown;
                     nestedParameterStarts[depth - 1] = NextSignificant(cursor + 1);
                 }
+
                 if (kind == TK::Operator_Assign) {
                     if (depth != 0) {
                         return initializer();
                     }
+
                     defaultArgument = true;
+
                     if (proveDirectInitializer) {
                         defaultExpressionBegin = ArgumentSignificant(cursor + 1, closing - 1);
                     }
@@ -4692,15 +5396,20 @@ private:
                     if (proveDirectInitializer && kind == TK::Keyword_template) {
                         const auto nameEnd =
                             ArgumentExplicitMemberNameEnd(cursor, defaultExpressionBegin, closing - 1, proofWork);
+
                         if (!nameEnd) {
                             return uncertain();
                         }
+
                         const auto suffix = ArgumentSignificant(*nameEnd, closing - 1);
+
                         if (suffix < closing - 1 && Kind(suffix) == TK::Operator_Less) {
                             const auto after = ArgumentTemplateEnd(suffix, closing - 1, proofWork);
+
                             if (!after) {
                                 return uncertain();
                             }
+
                             cursor = *after - 1;
                         } else {
                             cursor = *nameEnd - 1;
@@ -4709,9 +5418,11 @@ private:
                         Kind(PreviousSignificant(cursor)) == TK::Identifier)
                     {
                         const auto after = ArgumentTemplateEnd(cursor, closing - 1, proofWork);
+
                         if (!after || !ArgumentTemplateUse(ArgumentSignificant(*after, closing - 1), closing - 1)) {
                             return uncertain();
                         }
+
                         cursor = *after - 1;
                     } else if (IsOpenDelimiter(kind)) {
                         auto nested = proveDirectInitializer
@@ -4723,15 +5434,18 @@ private:
                         const auto suffix = proveDirectInitializer
                             ? ArgumentSignificant(nested, closing - 1)
                             : closing - 1;
+
                         if (proveDirectInitializer && cursor == defaultExpressionBegin &&
                             kind == TK::Operator_OpenBracket &&
                             Kind(ArgumentSignificant(cursor + 1, closing - 1)) != TK::Operator_OpenBracket &&
                             suffix < closing - 1 && Kind(suffix) == TK::Operator_Less)
                         {
                             const auto after = ArgumentTemplateEnd(suffix, closing - 1, proofWork);
+
                             if (!after) {
                                 return uncertain();
                             }
+
                             cursor = *after - 1;
                         } else {
                             cursor = nested - 1;
@@ -4766,16 +5480,21 @@ private:
                 } else if (kind == TK::Operator_Less) {
                     if (proveDirectInitializer) {
                         const auto previous = PreviousSignificant(cursor);
+
                         if (Kind(previous) != TK::Identifier || !IsKnownType(previous)) {
                             return uncertain();
                         }
+
                         const auto after = ArgumentTemplateEnd(cursor, closing - 1, proofWork);
+
                         if (!after) {
                             return uncertain();
                         }
+
                         cursor = *after - 1;
                     } else {
                         auto after = SkipTemplateArguments(cursor, closing);
+
                         if (after > cursor && after < closing) {
                             cursor = after - 1;
                         }
@@ -4818,9 +5537,11 @@ private:
                     return initializer();
                 } else if (kind == TK::Operator_OpenParenthesis) {
                     sawDeclaratorParentheses |= depth == 0;
+
                     if (depth == static_cast<int>(nestedParameterStarts.size())) {
                         return proveDirectInitializer ? uncertain() : std::nullopt;
                     }
+
                     nestedParameterStarts[depth++] = NextSignificant(cursor + 1);
                 } else if (kind == TK::Operator_CloseParenthesis) {
                     --depth;
@@ -4829,10 +5550,13 @@ private:
             if (proveDirectInitializer && defaultConditionalMiddle != 0) {
                 return uncertain();
             }
+
             first = NextSignificant(cursor + 1);
+
             if (cursor == closing - 1) {
                 break;
             }
+
             if (first == closing - 1) {
                 return initializer();
             }
@@ -4840,9 +5564,11 @@ private:
         if (functionType && hasDefiniteType) {
             ambiguous = false;
         }
+
         if (ambiguous) {
             return proveDirectInitializer ? uncertain() : std::nullopt;
         }
+
         return TokenRange{.Begin = opening, .End = closing};
     }
 
@@ -4857,24 +5583,28 @@ private:
         while (end > begin && (Kind(end - 1) == TK::Operator_Semicolon || Kind(end - 1) == TK::Operator_OpenBrace)) {
             --end;
         }
+
         FunctionKind functionKind = FunctionKind::Unknown;
         const auto constructorParameters = terminalConstructorEligible &&
             (declaration.Kind == NodeKind::FunctionDeclaration || declaration.Kind == NodeKind::FunctionDefinition)
             ? parameters
             : std::nullopt;
         auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end, false, &functionKind, constructorParameters);
+
         if (ungroupedConstructorInitializer && parameters && !RecordNames_.empty() && RecordNames_.back().empty() &&
             specifiersEnd == parameters->Begin)
         {
             AddUnparsedSyntax(declaration, begin, end);
             return;
         }
+
         if (specifiersEnd > begin) {
             auto* specifiers = MakeNode(NodeKind::DeclarationSpecifiers, begin);
             specifiers->Tokens.End = specifiersEnd;
             AddTypeSyntaxChildren(*specifiers, begin, specifiersEnd);
             Append(declaration, *specifiers);
         }
+
         if (specifiersEnd >= end) {
             return;
         }
@@ -4888,6 +5618,7 @@ private:
         int angleDepth = 0;
         for (auto i = specifiersEnd; i <= end; ++i) {
             auto kind = Kind(i);
+
             if (i < end) {
                 if (IsOpenDelimiter(kind)) {
                     ++delimiterDepth;
@@ -4903,6 +5634,7 @@ private:
                     angleDepth = std::max(0, angleDepth - 2);
                 }
             }
+
             if (i != end && (kind != TK::Operator_Comma || delimiterDepth != 0 || angleDepth != 0)) {
                 continue;
             }
@@ -4916,10 +5648,13 @@ private:
                 if (parameters && segmentBegin <= parameters->Begin && parameters->End <= segmentEnd) {
                     segmentParameters = parameters;
                 }
+
                 bool ambiguousSuffix = false;
+
                 if (!segmentParameters && declaration.Kind == NodeKind::DeclarationStatement) {
                     segmentParameters = InferStatementParameters(segmentBegin, segmentEnd, ambiguousSuffix);
                 }
+
                 auto kind = AddDeclaratorSyntax(
                     *init,
                     segmentBegin,
@@ -4928,6 +5663,7 @@ private:
                     ambiguousSuffix,
                     declaration.Kind != NodeKind::DeclarationStatement,
                     functionKind);
+
                 if (segmentBegin == specifiersEnd && i == end &&
                     (declaration.Kind == NodeKind::FunctionDeclaration ||
                         declaration.Kind == NodeKind::FunctionDefinition))
@@ -4940,6 +5676,7 @@ private:
                 comma->Tokens.End = i + 1;
                 Append(*list, *comma);
             }
+
             segmentBegin = i + 1;
         }
     }
@@ -4967,15 +5704,18 @@ private:
             AddUnparsedSyntax(declaration, begin, end);
             return;
         }
+
         if (specifiersEnd > begin) {
             auto* specifiers = MakeNode(NodeKind::DeclarationSpecifiers, begin);
             specifiers->Tokens.End = specifiersEnd;
             AddTypeSyntaxChildren(*specifiers, begin, specifiersEnd);
             Append(declaration, *specifiers);
         }
+
         if (specifiersEnd >= end) {
             return;
         }
+
         auto* list = MakeNode(NodeKind::InitDeclaratorList, specifiersEnd);
         list->Tokens.End = end;
         Append(declaration, *list);
@@ -4983,6 +5723,7 @@ private:
         init->Tokens.End = end;
         Append(*list, *init);
         auto kind = AddDeclaratorSyntax(*init, specifiersEnd, end, parameters, false, true, functionKind);
+
         if (declaration.Kind == NodeKind::FunctionDefinition) {
             declaration.FunctionKind_ = kind;
         }
@@ -4991,16 +5732,19 @@ private:
     [[nodiscard]] bool IsParenthesizedDeclarator(size_t begin, size_t end) const
     {
         auto first = NextSignificant(begin + 1);
+
         if (Kind(first) != TK::Operator_Star && Kind(first) != TK::Operator_Ampersand &&
             Kind(first) != TK::Operator_And)
         {
             return false;
         }
+
         for (auto i = first + 1; i + 1 < end; ++i) {
             if (Kind(i) == TK::Identifier) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -5017,6 +5761,7 @@ private:
         if (Kind(cursor) != TK::Operator_OpenBrace) {
             return start + 1;
         }
+
         auto bodyEnd = FindBalancedEnd(cursor);
         return bodyEnd == std::numeric_limits<TokenIndex>::max() ? start + 1 : bodyEnd;
     }
@@ -5028,6 +5773,7 @@ private:
         if (!HasDelimiterMap_) {
             return start + 1;
         }
+
         const auto limit = std::min(ParseLimit_, Tree_.Tokens_.Size());
         auto pairedEnd = [&] (TokenIndex opening, TK closing) -> TokenIndex {
             if (opening >= limit) {
@@ -5052,6 +5798,7 @@ private:
         if (Kind(cursor) != TK::Operator_OpenBrace) {
             return start + 1;
         }
+
         const auto end = pairedEnd(cursor, TK::Operator_CloseBrace);
         return end == std::numeric_limits<TokenIndex>::max() ? start + 1 : end;
     }
@@ -5059,6 +5806,7 @@ private:
     [[nodiscard]] bool IsFunctionSuffixStart(TokenIndex index) const
     {
         auto kind = Kind(index);
+
         if (kind == TK::Operator_Semicolon || kind == TK::Operator_OpenBrace || kind == TK::Operator_Colon ||
             kind == TK::Operator_Assign || kind == TK::Operator_IndirectClassMemberAccess ||
             kind == TK::Operator_Ampersand || kind == TK::Operator_And || kind == TK::Operator_OpenParenthesis ||
@@ -5068,6 +5816,7 @@ private:
         {
             return true;
         }
+
         return kind == TK::Identifier &&
             (Text(index) == "final" || Text(index) == "override" || IsExtensionAttribute(index) ||
                 IsCallingConvention(index));
@@ -5080,6 +5829,7 @@ private:
         if (middle > 256) {
             return false;
         }
+
         if (kind == TK::Operator_Conditional) {
             if (++middle > 256) {
                 return false;
@@ -5087,15 +5837,18 @@ private:
         } else if (kind == TK::Operator_Colon && middle != 0) {
             --middle;
         }
+
         return true;
     }
 
     [[nodiscard]] TokenIndex ArgumentSignificant(TokenIndex index, TokenIndex end) const
     {
         end = std::min(end, ParseLimit_);
+
         while (index < end && Kind(index) == TK::Comment) {
             ++index;
         }
+
         return std::min(index, end);
     }
 
@@ -5104,15 +5857,19 @@ private:
     [[nodiscard]] std::optional<TokenIndex> ArgumentPairEnd(TokenIndex opening, TokenIndex end) const
     {
         end = std::min(end, ParseLimit_);
+
         if (!HasDelimiterMap_ || opening >= end || !IsOpenDelimiter(Kind(opening))) {
             return std::nullopt;
         }
+
         const auto match = Tree_.Tokens_.MatchingDelimiter(opening);
+
         if (match <= opening || match >= end || Kind(match) != ClosingDelimiter(Kind(opening)) ||
             Tree_.Tokens_.MatchingDelimiter(match) != opening)
         {
             return std::nullopt;
         }
+
         return match + 1;
     }
 
@@ -5124,33 +5881,42 @@ private:
         unsigned depth = 0;
         unsigned conditionalMiddle = 0;
         TokenIndex explicitOpening = end;
+
         for (auto i = opening; i < end && work != 0; ++i) {
             --work;
             const auto kind = Kind(i);
+
             if (kind == TK::Keyword_template) {
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, opening + 1, end, work);
+
                 if (nameEnd) {
                     explicitOpening = ArgumentSignificant(*nameEnd, end);
                     i = *nameEnd - 1;
                     continue;
                 }
             }
+
             if (!AdvanceConditionalMiddle(kind, conditionalMiddle)) {
                 return std::nullopt;
             }
+
             if (kind == TK::Operator_Less) {
                 if (i != opening && i != explicitOpening && Kind(PreviousSignificant(i)) != TK::Identifier) {
                     return std::nullopt;
                 }
+
                 if (++depth > 256) {
                     return std::nullopt;
                 }
             } else if (kind == TK::Operator_Greater || kind == TK::Operator_RightShift) {
                 const unsigned count = kind == TK::Operator_RightShift ? 2 : 1;
+
                 if (count > depth) {
                     return std::nullopt;
                 }
+
                 depth -= count;
+
                 if (depth == 0) {
                     // A template argument cannot end inside a conditional
                     // middle. Such angles belong to a comparison expression.
@@ -5158,9 +5924,11 @@ private:
                 }
             } else if (IsOpenDelimiter(kind)) {
                 const auto after = ArgumentPairEnd(i, end);
+
                 if (!after) {
                     return std::nullopt;
                 }
+
                 i = *after - 1;
             } else if (kind == TK::Operator_Semicolon || kind == TK::Operator_CloseParenthesis ||
                 kind == TK::Operator_CloseBracket || kind == TK::Operator_CloseBrace)
@@ -5168,28 +5936,37 @@ private:
                 return std::nullopt;
             }
         }
+
         return std::nullopt;
     }
 
     [[nodiscard]] std::optional<TokenIndex> ArgumentOperatorNameEnd(TokenIndex name, TokenIndex end, size_t& work) const
     {
         end = std::min(end, ParseLimit_);
+
         if (name >= end || work == 0 || Kind(name) != TK::Keyword_operator) {
             return std::nullopt;
         }
+
         --work;
         const auto symbol = ArgumentSignificant(name + 1, end);
+
         if (symbol >= end) {
             return std::nullopt;
         }
+
         const auto kind = Kind(symbol);
+
         if (kind == TK::Operator_OpenParenthesis || kind == TK::Operator_OpenBracket) {
             const auto pair = ArgumentPairEnd(symbol, end);
+
             if (!pair || ArgumentSignificant(symbol + 1, *pair - 1) != *pair - 1) {
                 return std::nullopt;
             }
+
             return pair;
         }
+
         // .* is a binary operator, but unlike ->* it cannot be overloaded.
         if (kind == TK::Operator_PointerToMemberDereference ||
             (GetBinaryOperatorInfo(kind).Precedence == 0 && kind != TK::Operator_Not &&
@@ -5199,16 +5976,21 @@ private:
         {
             return std::nullopt;
         }
+
         const auto after = ArgumentSignificant(symbol + 1, end);
+
         if ((kind == TK::Keyword_new || kind == TK::Keyword_delete) && after < end &&
             Kind(after) == TK::Operator_OpenBracket)
         {
             const auto pair = ArgumentPairEnd(after, end);
+
             if (!pair || ArgumentSignificant(after + 1, *pair - 1) != *pair - 1) {
                 return std::nullopt;
             }
+
             return pair;
         }
+
         return symbol + 1;
     }
 
@@ -5219,34 +6001,45 @@ private:
         size_t& work) const
     {
         end = std::min(end, ParseLimit_);
+
         if (introducer <= begin || introducer >= end || work == 0 || Kind(introducer) != TK::Keyword_template) {
             return std::nullopt;
         }
+
         --work;
         const auto access = PreviousSignificant(introducer);
+
         if (access < begin || access >= introducer) {
             return std::nullopt;
         }
+
         const auto kind = Kind(access);
+
         if (kind != TK::Operator_ScopeResolution && kind != TK::Operator_ClassMemberAccess &&
             kind != TK::Operator_IndirectClassMemberAccess)
         {
             return std::nullopt;
         }
+
         const auto receiver = PreviousSignificant(access);
+
         if (receiver < begin || receiver >= access ||
             (Kind(receiver) != TK::Identifier &&
                 (kind == TK::Operator_ScopeResolution || Kind(receiver) != TK::Keyword_this)))
         {
             return std::nullopt;
         }
+
         const auto name = ArgumentSignificant(introducer + 1, end);
+
         if (name >= end) {
             return std::nullopt;
         }
+
         if (Kind(name) == TK::Identifier) {
             return name + 1;
         }
+
         return ArgumentOperatorNameEnd(name, end, work);
     }
 
@@ -5255,21 +6048,27 @@ private:
         if (explicitTemplate) {
             return true;
         }
+
         if (following >= end) {
             return false;
         }
+
         const auto kind = Kind(following);
+
         if (kind == TK::Operator_ClassMemberAccess || kind == TK::Operator_IndirectClassMemberAccess) {
             return true;
         }
+
         if (kind == TK::Operator_OpenBrace) {
             // A braced initializer cannot be a comparison's right operand.
             // Its cached pair proves the following argument boundary.
             return ArgumentPairEnd(following, end).has_value();
         }
+
         if (kind != TK::Operator_OpenParenthesis) {
             return false;
         }
+
         const auto pair = ArgumentPairEnd(following, end);
         return pair && ArgumentSignificant(following + 1, *pair) == *pair - 1;
     }
@@ -5277,78 +6076,103 @@ private:
     [[nodiscard]] bool HasDirectLambdaArgument(TokenIndex opening, TokenIndex closingEnd) const
     {
         const auto pair = ArgumentPairEnd(opening, closingEnd);
+
         if (!pair || *pair != closingEnd || Kind(opening) != TK::Operator_OpenParenthesis) {
             return false;
         }
+
         const auto end = closingEnd - 1;
         bool atStart = true;
         bool hasDefault = false;
         unsigned conditionalMiddle = 0;
         size_t work = 4096;
+
         for (auto i = ArgumentSignificant(opening + 1, end); i < end && work != 0; i = ArgumentSignificant(i + 1, end))
         {
             --work;
             const auto kind = Kind(i);
+
             if (kind == TK::Keyword_template) {
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, opening + 1, end, work);
+
                 if (!nameEnd) {
                     return false;
                 }
+
                 const auto suffix = ArgumentSignificant(*nameEnd, end);
+
                 if (suffix < end && Kind(suffix) == TK::Operator_Less) {
                     const auto after = ArgumentTemplateEnd(suffix, end, work);
+
                     if (!after) {
                         return false;
                     }
+
                     i = *after - 1;
                 } else {
                     i = *nameEnd - 1;
                 }
+
                 continue;
             }
+
             if (!AdvanceConditionalMiddle(kind, conditionalMiddle)) {
                 return false;
             }
+
             if (kind == TK::Operator_Comma) {
                 if (conditionalMiddle != 0) {
                     continue;
                 }
+
                 atStart = true;
                 hasDefault = false;
                 continue;
             }
+
             if (atStart && !hasDefault && kind == TK::Operator_OpenBracket &&
                 Kind(ArgumentSignificant(i + 1, end)) != TK::Operator_OpenBracket && ArgumentPairEnd(i, end))
             {
                 // Capture origin retires parameters; it proves no suffix/body.
                 return true;
             }
+
             atStart = false;
             hasDefault |= kind == TK::Operator_Assign;
+
             if (IsOpenDelimiter(kind)) {
                 const auto after = ArgumentPairEnd(i, end);
+
                 if (!after) {
                     return false;
                 }
+
                 i = *after - 1;
             } else if (kind == TK::Operator_Less) {
                 const auto previous = PreviousSignificant(i);
+
                 if (Kind(previous) != TK::Identifier) {
                     return false;
                 }
+
                 const auto after = ArgumentTemplateEnd(i, end, work);
+
                 if (!after) {
                     return false;
                 }
+
                 const auto following = ArgumentSignificant(*after, end);
+
                 // Known declaration types and unambiguous expression use
                 // certify the span; unresolved/comparison syntax cannot.
                 if (!IsKnownType(previous) && !ArgumentTemplateUse(following, end)) {
                     return false;
                 }
+
                 i = *after - 1;
             }
         }
+
         return false;
     }
 
@@ -5356,41 +6180,56 @@ private:
     {
         end = std::min(end, ParseLimit_);
         unsigned conditionalMiddle = 0;
+
         for (auto i = begin; i < end && work != 0; ++i) {
             --work;
             const auto kind = Kind(i);
+
             if (kind == TK::PreprocessingDirective) {
                 return i;
             }
+
             if (kind == TK::Keyword_template) {
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, begin, end, work);
+
                 if (!nameEnd) {
                     return end;
                 }
+
                 const auto suffix = ArgumentSignificant(*nameEnd, end);
+
                 if (suffix < end && Kind(suffix) == TK::Operator_Less) {
                     const auto after = ArgumentTemplateEnd(suffix, end, work);
+
                     if (!after) {
                         return end;
                     }
+
                     i = *after - 1;
                 } else {
                     i = *nameEnd - 1;
                 }
+
                 continue;
             }
+
             if (!AdvanceConditionalMiddle(kind, conditionalMiddle)) {
                 return end;
             }
+
             if (kind == TK::Operator_Comma && conditionalMiddle == 0) {
                 return i;
             }
+
             if (IsOpenDelimiter(kind)) {
                 const auto after = ArgumentPairEnd(i, end);
+
                 if (!after) {
                     return end;
                 }
+
                 const auto suffix = ArgumentSignificant(*after, end);
+
                 if (i == begin && kind == TK::Operator_OpenBracket &&
                     Kind(ArgumentSignificant(i + 1, end)) != TK::Operator_OpenBracket && suffix < end &&
                     Kind(suffix) == TK::Operator_Less)
@@ -5398,19 +6237,23 @@ private:
                     // Only this immediate capture context introduces a lambda
                     // template-parameter span; its commas are not arguments.
                     const auto templateEnd = ArgumentTemplateEnd(suffix, end, work);
+
                     if (!templateEnd) {
                         return end;
                     }
+
                     i = *templateEnd - 1;
                 } else {
                     i = *after - 1;
                 }
             } else if (kind == TK::Operator_Less && Kind(PreviousSignificant(i)) == TK::Identifier) {
                 const auto after = ArgumentTemplateEnd(i, end, work);
+
                 if (after) {
                     const auto following = ArgumentSignificant(*after, end);
                     const bool parenthesizedSuffix = following < end &&
                         Kind(following) == TK::Operator_OpenParenthesis && ArgumentPairEnd(following, end).has_value();
+
                     if (ArgumentTemplateUse(following, end) || parenthesizedSuffix) {
                         // A nonempty suffix can still be a comparison operand,
                         // so expression parsing retains the ambiguous angles.
@@ -5425,6 +6268,7 @@ private:
                 }
             }
         }
+
         return end;
     }
 
@@ -5437,12 +6281,15 @@ private:
         {
             return std::nullopt;
         }
+
         const auto match = Tree_.Tokens_.MatchingDelimiter(opening);
+
         if (match <= opening || match >= ParseLimit_ || match >= Tree_.Tokens_.Size() || Kind(match) != closing ||
             Tree_.Tokens_.MatchingDelimiter(match) != opening)
         {
             return std::nullopt;
         }
+
         return match + 1;
     }
 
@@ -5463,6 +6310,7 @@ private:
         if (!outerEnd || opening + 1 >= *outerEnd || Kind(opening + 1) != TK::Operator_OpenBracket) {
             return false;
         }
+
         const auto innerEnd = TerminalCachedPairEnd(opening + 1, TK::Operator_CloseBracket);
         return innerEnd && *innerEnd == *outerEnd - 1;
     }
@@ -5494,6 +6342,7 @@ private:
             DefaultDelete,
             Semicolon
         };
+
         bool terminalEligible = false;
         bool terminalDenied = false;
         auto terminalPending = TerminalPending::None;
@@ -5512,6 +6361,7 @@ private:
 
         while (!AtEnd()) {
             auto kind = CurrentKind();
+
             // Directives delimit header fragments; they are never suffix
             // operands. The suffix builder proves conditional initializer
             // lists.
@@ -5535,6 +6385,7 @@ private:
                     } else if (terminalPending == TerminalPending::RequiredOperand) {
                         terminalDenied = true;
                     }
+
                     // Optional bare noexcept cannot claim a later pair.
                     terminalPending = TerminalPending::None;
                     terminalIntroducer = std::numeric_limits<TokenIndex>::max();
@@ -5573,16 +6424,19 @@ private:
                 // The first suffix requires introduces the clause. Its
                 // parenthesized constraint must not swallow the actual body.
                 opaqueRequiresClause |= opaqueSuffix;
+
                 if (requiresExpression) {
                     const auto requiresEnd = recoveredHeader
                         ? opaqueSuffix ? SkipRecoveredRequiresExpression(Cursor_) : Cursor_ + 1
                         : SkipRequiresExpression(Cursor_);
+
                     if (requiresEnd != Cursor_ + 1) {
                         Cursor_ = requiresEnd;
                         continue;
                     }
                 }
             }
+
             // Parentheses inside a return type's template arguments (for
             // example a pointer-to-member-function type) are not the
             // function's parameter list.
@@ -5591,6 +6445,7 @@ private:
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier)
             {
                 auto after = SkipTemplateArguments(Cursor_, Tree_.Tokens_.Size());
+
                 if (after > Cursor_ && after < Tree_.Tokens_.Size() &&
                     (Kind(after - 1) == TK::Operator_Greater || Kind(after - 1) == TK::Operator_RightShift))
                 {
@@ -5598,11 +6453,14 @@ private:
                     continue;
                 }
             }
+
             if (!recoveredHeader && kind == TK::Operator_Assign && !sawTopLevelParameters) {
                 auto previous = PreviousSignificant(Cursor_);
+
                 if (Kind(previous) != TK::Keyword_operator) {
                     sawAssignmentBeforeParameters = true;
                 }
+
                 ++Cursor_;
                 continue;
             }
@@ -5611,11 +6469,13 @@ private:
                 auto previous = PreviousSignificant(Cursor_);
                 const auto cachedEnd = TerminalCachedPairEnd(begin, TK::Operator_CloseParenthesis);
                 ConsumeBalanced();
+
                 if (sawTopLevelParameters && !constructorInitializer && !terminalDenied &&
                     !TerminalImmediateOperand(immediateOperand, begin, Cursor_, cachedEnd))
                 {
                     terminalDenied = true;
                 }
+
                 if (recoveredHeader && constructorInitializer &&
                     (AtEnd() || (Cursor_ > begin && Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1)))
                 {
@@ -5634,6 +6494,7 @@ private:
                 {
                     const auto following = NextSignificant(Cursor_);
                     const auto suffix = Kind(following);
+
                     if (cachedEnd && *cachedEnd == Cursor_ && suffix != TK::Identifier &&
                         !IsFunctionSuffixStart(following))
                     {
@@ -5670,11 +6531,13 @@ private:
                             const auto followingOrigin = FindDeclarationSpecifiersEnd(following, Tree_.Tokens_.Size());
                             const auto type = PreviousSignificant(followingOrigin);
                             auto name = followingOrigin;
+
                             if (Kind(name) == TK::Operator_Star || Kind(name) == TK::Operator_Ampersand ||
                                 Kind(name) == TK::Operator_And)
                             {
                                 name = NextSignificant(name + 1);
                             }
+
                             if (followingOrigin > following &&
                                 (IsFundamentalTypeKeyword(Kind(type)) || Kind(type) == TK::Identifier) &&
                                 Kind(name) == TK::Identifier && !IsFunctionSuffixStart(name))
@@ -5685,6 +6548,7 @@ private:
                                 return node;
                             }
                         }
+
                         // A bare invocation provides no parameter bindings.
                         // Retain uncertain suffixes with it, not as functions.
                         recoveredHeader = true;
@@ -5701,6 +6565,7 @@ private:
                     // retain only their original absolute token indices.
                     continue;
                 }
+
                 // Specifier operands cannot introduce grouped declarators
                 // or function parameters, even when their syntax resembles one.
                 if (Kind(previous) == TK::Keyword_decltype || Kind(previous) == TK::Keyword_alignas) {
@@ -5718,6 +6583,7 @@ private:
                         {
                             continue;
                         }
+
                         auto nestedEnd = FindBalancedEnd(nested);
                         if (nestedEnd == std::numeric_limits<TokenIndex>::max() || nestedEnd >= Cursor_) {
                             continue;
@@ -5734,30 +6600,38 @@ private:
                 }
                 bool isOperatorName = Kind(previous) == TK::Keyword_operator;
                 bool isAttribute = Text(previous) == "__attribute__" || Text(previous) == "__declspec";
+
                 if (!sawAssignmentBeforeParameters && !sawTopLevelParameters && !isOperatorName && !isAttribute) {
                     parameterBegin = begin;
                     parameterEnd = Cursor_;
+
                     if (!sawParenthesizedDeclarator) {
                         sawTopLevelParameters = true;
                         terminalEligible = cachedEnd && *cachedEnd == Cursor_;
                         terminalDenied |= !terminalEligible;
                     }
                 }
+
                 continue;
             }
             if (kind == TK::Operator_OpenBracket) {
                 const auto cachedEnd = TerminalCachedPairEnd(Cursor_, TK::Operator_CloseBracket);
+
                 if (sawTopLevelParameters && !constructorInitializer && !terminalDenied &&
                     !TerminalBracketAttribute(Cursor_, cachedEnd))
                 {
                     terminalDenied = true;
                 }
+
                 ConsumeBalanced();
+
                 if (sawTopLevelParameters && !constructorInitializer && (!cachedEnd || *cachedEnd != Cursor_)) {
                     terminalDenied = true;
                 }
+
                 continue;
             }
+
             if (!recoveredHeader && sawTopLevelParameters && !sawTrailingReturnType &&
                 Cursor_ == NextSignificant(parameterEnd) && !IsFunctionSuffixStart(Cursor_))
             {
@@ -5772,22 +6646,28 @@ private:
                     retireParameters();
                     continue;
                 }
+
                 auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
                 node->Tokens.End = Cursor_;
                 return node;
             }
+
             if (!recoveredHeader && sawTopLevelParameters && kind == TK::Operator_IndirectClassMemberAccess) {
                 bool hasPlaceholderAuto = false;
+
                 for (auto index = start; index < parameterBegin; ++index) {
                     hasPlaceholderAuto |= Kind(index) == TK::Keyword_auto;
                 }
+
                 invalidFunctionSuffix |= !hasPlaceholderAuto;
                 sawTrailingReturnType |= hasPlaceholderAuto;
             }
+
             if (kind == TK::Keyword_try && (sawTopLevelParameters || recoveredHeader)) {
                 functionTry = Cursor_++;
                 continue;
             }
+
             if (kind == TK::Operator_Colon && (sawTopLevelParameters || (recoveredHeader && opaqueHeaderParentheses))) {
                 constructorInitializer = true;
                 ++Cursor_;
@@ -5801,6 +6681,7 @@ private:
                     // parsed or opaque body handling. Recovery must not end at
                     // a braced member initializer.
                     const auto previous = Kind(PreviousSignificant(Cursor_));
+
                     if (previous == TK::Identifier || previous == TK::Operator_Greater ||
                         previous == TK::Operator_RightShift)
                     {
@@ -5834,9 +6715,11 @@ private:
                     {
                         auto* node = MakeNode(NodeKind::Declaration, start);
                         ConsumeBalanced();
+
                         if (CurrentKind() == TK::Operator_Semicolon) {
                             ++Cursor_;
                         }
+
                         node->Tokens.End = Cursor_;
                         AddUnparsedSyntax(*node, start, Cursor_);
                         return node;
@@ -5861,19 +6744,23 @@ private:
                     terminalEligible && !terminalDenied && !invalidFunctionSuffix &&
                         (terminalPending == TerminalPending::None || terminalPending == TerminalPending::Semicolon);
                 ++Cursor_;
+
                 if (recoveredHeader) {
                     auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
                     node->Tokens.End = Cursor_;
                     AddDirectiveChildrenInGap(*node, start, Cursor_);
                     return node;
                 }
+
                 bool directInitializer = false;
                 const bool directLambda =
                     sawTopLevelParameters && HasDirectLambdaArgument(parameterBegin, parameterEnd);
+
                 if (sawTopLevelParameters && !sawParenthesizedDeclarator && !constructorInitializer &&
                     !sawAssignmentBeforeParameters && NextSignificant(parameterEnd) == Cursor_ - 1)
                 {
                     const auto name = declaratorOrigin;
+
                     if (name > start && name < parameterBegin && Kind(name) == TK::Identifier &&
                         NextSignificant(name + 1) == parameterBegin)
                     {
@@ -5882,9 +6769,11 @@ private:
                             (!InferStatementParameters(name, parameterEnd, ambiguous, true) && !ambiguous);
                     }
                 }
+
                 if (directInitializer) {
                     retireParameters();
                 }
+
                 // A top-level lambda argument or an empty argument slot
                 // cannot be a function parameter declaration. At namespace
                 // scope these are typically macro invocations: parse a call
@@ -5898,12 +6787,15 @@ private:
                         : NodeKind::UnparsedSyntax,
                         start);
                     node->Tokens.End = Cursor_;
+
                     if (node->Kind == NodeKind::ExpressionStatement) {
                         Append(*node, *expression);
                     }
+
                     AddDirectiveChildrenInGap(*node, start, Cursor_);
                     return node;
                 }
+
                 auto nodeKind = invalidFunctionSuffix
                     ? NodeKind::UnparsedSyntax
                     : sawTopLevelParameters && !sawAssignmentBeforeParameters
@@ -5931,16 +6823,20 @@ private:
                 } else {
                     ErrorAt(start, "expected semicolon after declaration");
                 }
+
                 break;
             }
+
             ++Cursor_;
         }
 
         auto* node = MakeNode(recoveredHeader ? NodeKind::UnparsedSyntax : NodeKind::Declaration, start);
         node->Tokens.End = Cursor_;
+
         if (!recoveredHeader) {
             AddDeclarationSyntax(*node, start, Cursor_);
         }
+
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         return node;
     }
@@ -5949,10 +6845,12 @@ private:
     {
         while (index != 0) {
             --index;
+
             if (Kind(index) != TK::Comment) {
                 return index;
             }
         }
+
         return 0;
     }
 
@@ -5967,6 +6865,7 @@ private:
     {
         auto* node = MakeNode(NodeKind::FunctionDefinition, start);
         auto parameters = TokenRange{.Begin = parameterBegin, .End = parameterEnd};
+
         if (constructorInitializer) {
             AddSingleDeclaratorDeclarationSyntax(
                 *node,
@@ -5978,6 +6877,7 @@ private:
         } else {
             AddDeclarationSyntax(*node, start, Cursor_, parameters, false, terminalConstructorEligible);
         }
+
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         Node* bodyParent = node;
         Node* tryBlock = nullptr;
@@ -5985,19 +6885,23 @@ private:
             tryBlock = MakeNode(NodeKind::FunctionTryBlock, functionTry);
             bodyParent = tryBlock;
         }
+
         Append(*bodyParent, *ParseCompoundStatement(node));
 
         while (SignificantKind(Cursor_) == TK::Keyword_catch) {
             Cursor_ = NextSignificant(Cursor_);
             Append(*bodyParent, *ParseCatchClause());
         }
+
         if (tryBlock) {
             tryBlock->Tokens.End = Cursor_;
             Append(*node, *tryBlock);
         }
+
         if (CurrentKind() == TK::Operator_Semicolon) {
             ++Cursor_;
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6008,6 +6912,7 @@ private:
             RegisterDeclaredValues(node);
             return;
         }
+
         for (auto* child = node.FirstChild; child; child = child->NextSibling) {
             RegisterParameterValues(*child);
         }
@@ -6017,37 +6922,48 @@ private:
     {
         auto start = Cursor_;
         auto* node = MakeNode(NodeKind::CompoundStatement, start);
+
         if (CurrentKind() != TK::Operator_OpenBrace) {
             ErrorAt(Cursor_, "expected compound statement");
             return node;
         }
+
         ++Cursor_;
         PushScope();
         PushConditionalBraceScope();
+
         if (functionDeclaration) {
             RegisterParameterValues(*functionDeclaration);
         }
+
         while (!AtEnd()) {
             if (ParseConditionalBodyTail(*node, true)) {
                 continue;
             }
+
             if (CurrentKind() == TK::Operator_CloseBrace) {
                 if (ConsumeConditionalClosingBrace(*node)) {
                     continue;
                 }
+
                 break;
             }
+
             if (ParseTrivia(*node, true)) {
                 continue;
             }
+
             auto before = Cursor_;
             Append(*node, *ParseStatement());
+
             if (Cursor_ == before) {
                 ++Cursor_;
             }
         }
+
         PopConditionalBraceScope();
         PopScope();
+
         if (CurrentKind() == TK::Operator_CloseBrace) {
             RecordParsedBodyDelimiters(start, PunctuationRole::BlockDelimiter);
             ++Cursor_;
@@ -6055,6 +6971,7 @@ private:
             ErrorAt(start, "unterminated compound statement");
             AddMissingToken(*node, Cursor_);
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6064,8 +6981,10 @@ private:
         if (auto* macro = TryParseEnumMacro()) {
             return macro;
         }
+
         auto first = NextSignificant(Cursor_);
         const auto afterAttributes = Kind(first) == TK::Operator_OpenBracket ? SkipAttributeSpecifiers(first) : first;
+
         if (afterAttributes != first && Kind(afterAttributes) != TK::PreprocessingDirective &&
             Kind(afterAttributes) != TK::Operator_CloseBrace && Kind(afterAttributes) != TK::Invalid &&
             ClassifySimpleStatement(first) == NodeKind::ExpressionStatement)
@@ -6079,6 +6998,7 @@ private:
             node->Tokens.End = Cursor_;
             return node;
         }
+
         switch (Kind(first)) {
             case TK::Operator_OpenBrace:
                 Cursor_ = first;
@@ -6130,9 +7050,11 @@ private:
             default:
                 break;
         }
+
         if (Kind(first) == TK::Identifier && SignificantKind(first + 1) == TK::Operator_Colon) {
             return ParseLabel(NodeKind::LabelStatement);
         }
+
         return ParseSimpleStatement();
     }
 
@@ -6142,9 +7064,11 @@ private:
         auto* node = MakeNode(NodeKind::IfStatement, start);
         Cursor_ = NextSignificant(Cursor_) + 1;
         ParseTriviaBeforeChild(*node);
+
         if (CurrentKind() == TK::Keyword_constexpr) {
             ++Cursor_;
         }
+
         if (CurrentKind() == TK::Keyword_consteval) {
             ++Cursor_;
         } else if (CurrentKind() == TK::Operator_Not && Kind(Cursor_ + 1) == TK::Keyword_consteval) {
@@ -6152,18 +7076,23 @@ private:
         } else {
             ParseControlHeader(*node, NodeKind::Condition);
         }
+
         bool conditionalBody = ParseTriviaBeforeChild(*node);
+
         if (!conditionalBody && !AtEnd()) {
             Append(*node, *ParseStatement());
         }
+
         // Trivia belongs to this control only when it leads to an else.
         // In particular, an independent conditional sequence after the body
         // belongs to the enclosing block, not to this completed if.
         auto next = NextSignificant(Cursor_);
         auto branchStart = next;
+
         while (branchStart < ParseLimit_ && Kind(branchStart) == TK::PreprocessingDirective) {
             branchStart = NextSignificant(branchStart + 1);
         }
+
         // A conditional can either contain the else itself or precede it.
         // Skip complete conditionals for lookahead only; independent branch
         // statements must not be adopted without a following else.
@@ -6172,29 +7101,38 @@ private:
             if (GetDirectiveKind(next) == DirectiveKind::If) {
                 int depth = 1;
                 auto directive = next;
+
                 while (depth && directive < ParseLimit_) {
                     directive = Tree_.Tokens_.FindPreprocessingDirective(directive + 1, ParseLimit_);
+
                     if (directive == ParseLimit_) {
                         break;
                     }
+
                     const auto kind = GetDirectiveKind(directive);
                     depth += kind == DirectiveKind::If;
                     depth -= kind == DirectiveKind::EndIf;
                 }
+
                 next = directive;
             }
+
             next = NextSignificant(next + 1);
         }
+
         if (Kind(branchStart) == TK::Keyword_else || Kind(next) == TK::Keyword_else) {
             ParseTriviaBeforeChild(*node, false);
         }
+
         if (CurrentKind() == TK::Keyword_else) {
             ++Cursor_;
             bool conditionalElse = ParseTriviaBeforeChild(*node);
+
             if (!conditionalElse && !AtEnd()) {
                 Append(*node, *ParseStatement());
             }
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6205,14 +7143,18 @@ private:
         auto* node = MakeNode(kind, start);
         Cursor_ = NextSignificant(Cursor_) + 1;
         ParseTriviaBeforeChild(*node);
+
         if (kind == NodeKind::ForStatement && CurrentKind() == TK::Keyword_co_await) {
             ++Cursor_;
         }
+
         ParseControlHeader(*node, kind == NodeKind::ForStatement ? NodeKind::ForHeader : NodeKind::Condition);
         bool conditionalBody = ParseTriviaBeforeChild(*node);
+
         if (!conditionalBody && !AtEnd()) {
             Append(*node, *ParseStatement());
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6220,12 +7162,15 @@ private:
     void AddExpressionRange(Node& node, size_t begin, size_t end)
     {
         auto expressionCursor = NextSignificant(begin);
+
         if (expressionCursor >= end) {
             return;
         }
+
         if (auto* expression = ParseExpressionSyntax(expressionCursor, end)) {
             Append(node, *expression);
         }
+
         AddUnparsedSyntax(node, expressionCursor, end);
     }
 
@@ -6239,8 +7184,10 @@ private:
         size_t rangeColon = Tree_.Tokens_.Size();
         int delimiterDepth = 0;
         int conditionalDepth = 0;
+
         for (auto i = begin; i < end; ++i) {
             auto kind = Kind(i);
+
             if (IsOpenDelimiter(kind)) {
                 ++delimiterDepth;
             } else if (kind == TK::Operator_CloseParenthesis || kind == TK::Operator_CloseBracket ||
@@ -6278,8 +7225,10 @@ private:
         if (semicolonCount != 2) {
             return;
         }
+
         auto* initializer = MakeNode(NodeKind::ForInitStatement, begin);
         initializer->Tokens.End = semicolons[0];
+
         if (begin < semicolons[0]) {
             if (ClassifySimpleStatement(begin) == NodeKind::DeclarationStatement) {
                 AddDeclarationSyntax(*initializer, begin, semicolons[0]);
@@ -6287,6 +7236,7 @@ private:
                 AddExpressionRange(*initializer, begin, semicolons[0]);
             }
         }
+
         Append(header, *initializer);
         auto* firstSeparator = MakeNode(NodeKind::ListSeparator, semicolons[0]);
         firstSeparator->Tokens.End = semicolons[0] + 1;
@@ -6310,8 +7260,10 @@ private:
     {
         size_t separator = end;
         unsigned depth = 0;
+
         for (auto i = begin; i < end; ++i) {
             const auto kind = Kind(i);
+
             if (IsOpenDelimiter(kind)) {
                 ++depth;
             } else if (kind == TK::Operator_CloseParenthesis || kind == TK::Operator_CloseBracket ||
@@ -6320,29 +7272,37 @@ private:
                 if (depth == 0) {
                     return false;
                 }
+
                 --depth;
             } else if (depth == 0 && kind == TK::Operator_Semicolon) {
                 if (separator != end) {
                     return false;
                 }
+
                 separator = i;
             }
         }
+
         if (separator == end || separator + 1 == end) {
             return false;
         }
+
         const auto first = NextSignificant(begin);
         const auto kind = first == separator ? NodeKind::ExpressionStatement : ClassifySimpleStatement(first);
+
         if (kind != NodeKind::DeclarationStatement && kind != NodeKind::ExpressionStatement) {
             return false;
         }
+
         auto* initializer = MakeNode(kind, begin);
         initializer->Tokens.End = separator;
+
         if (kind == NodeKind::DeclarationStatement) {
             AddDeclarationSyntax(*initializer, begin, separator);
         } else {
             AddExpressionRange(*initializer, begin, separator);
         }
+
         Append(header, *initializer);
         // The semicolon stays a direct header token, with header-owned spacing
         // and a separate list boundary before the condition expression.
@@ -6356,35 +7316,46 @@ private:
         // A type-shaped prefix is not a declaration by itself: qualified
         // constants and template-id operands also start with known types.
         unsigned nested = 0;
+
         while (cursor < end) {
             cursor = SkipAttributeSpecifiers(cursor);
             const auto memberPointerEnd = FindMemberPointerEnd(cursor, end);
+
             if (memberPointerEnd > cursor) {
                 cursor = NextSignificant(memberPointerEnd);
                 continue;
             }
+
             const auto kind = Kind(cursor);
+
             if (kind == TK::Operator_OpenParenthesis) {
                 const auto closingEnd = FindBalancedEnd(cursor);
+
                 if (closingEnd > end) {
                     return false;
                 }
+
                 ++nested;
             } else if (kind != TK::Operator_Star && kind != TK::Operator_Ampersand && kind != TK::Operator_And &&
                 kind != TK::Keyword_const && kind != TK::Keyword_volatile)
             {
                 break;
             }
+
             cursor = NextSignificant(cursor + 1);
         }
+
         if (cursor >= end || Kind(cursor) != TK::Identifier) {
             return false;
         }
+
         cursor = SkipAttributeSpecifiers(NextSignificant(cursor + 1));
+
         while (nested > 0 && Kind(cursor) == TK::Operator_CloseParenthesis) {
             --nested;
             cursor = NextSignificant(cursor + 1);
         }
+
         return nested == 0 && cursor < end &&
             (Kind(cursor) == TK::Operator_Assign || Kind(cursor) == TK::Operator_OpenBrace);
     }
@@ -6395,13 +7366,17 @@ private:
             AddExpressionRange(header, begin, end);
             return;
         }
+
         const auto kind = ClassifySimpleStatement(begin);
+
         if (kind == NodeKind::ExpressionStatement) {
             AddExpressionRange(header, begin, end);
             return;
         }
+
         auto* declaration = MakeNode(kind, begin);
         declaration->Tokens.End = end;
+
         if (kind == NodeKind::DeclarationStatement) {
             AddDeclarationSyntax(*declaration, begin, end);
             RegisterDeclaredValues(*declaration);
@@ -6411,14 +7386,17 @@ private:
             declaration->Kind = NodeKind::AmbiguousStatement;
             AddAmbiguousAssignmentRhs(*declaration, end);
         }
+
         Append(header, *declaration);
     }
 
     void ParseControlHeader(Node& parent, NodeKind kind)
     {
         ParseTriviaBeforeChild(parent);
+
         if (CurrentKind() == TK::Identifier) {
             auto next = NextSignificant(Cursor_ + 1);
+
             if (Kind(next) == TK::Operator_OpenParenthesis) {
                 // A macro-shaped header has no proven control delimiter.
                 // Retain its whole spelling as recovery, not a Condition
@@ -6430,19 +7408,23 @@ private:
                 return;
             }
         }
+
         if (CurrentKind() != TK::Operator_OpenParenthesis) {
             ErrorAt(Cursor_, "expected parenthesized control expression");
             return;
         }
+
         auto begin = Cursor_;
         ConsumeBalanced();
         auto* header = MakeNode(kind, begin);
         header->Tokens.End = Cursor_;
+
         if (parent.Kind == NodeKind::CatchClause) {
             if (Kind(NextSignificant(begin + 1)) != TK::Operator_Ellipsis) {
                 AddDeclarationSyntax(*header, begin + 1, Cursor_ - 1);
                 RegisterDeclaredValues(*header);
             }
+
             AddDirectiveChildrenInGap(*header, begin, Cursor_);
         } else if (kind == NodeKind::ForHeader) {
             AddForHeaderSyntax(*header, begin + 1, Cursor_ - 1);
@@ -6458,6 +7440,7 @@ private:
         } else {
             AddDirectiveChildren(*header, begin, Cursor_);
         }
+
         Append(parent, *header);
     }
 
@@ -6467,13 +7450,17 @@ private:
         auto* node = MakeNode(NodeKind::DoWhileStatement, start);
         Cursor_ = NextSignificant(Cursor_) + 1;
         bool conditionalBody = ParseTriviaBeforeChild(*node);
+
         if (!conditionalBody && !AtEnd()) {
             Append(*node, *ParseStatement());
         }
+
         ParseTriviaBeforeChild(*node);
+
         if (CurrentKind() == TK::Keyword_while) {
             ++Cursor_;
             ParseControlHeader(*node, NodeKind::Condition);
+
             if (CurrentKind() == TK::Operator_Semicolon) {
                 ++Cursor_;
             } else {
@@ -6482,6 +7469,7 @@ private:
         } else {
             ErrorAt(Cursor_, "expected while after do statement");
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6492,16 +7480,20 @@ private:
         auto* node = MakeNode(NodeKind::TryStatement, start);
         Cursor_ = NextSignificant(Cursor_) + 1;
         bool conditionalBody = ParseTriviaBeforeChild(*node);
+
         if (CurrentKind() == TK::Operator_OpenBrace) {
             Append(*node, *ParseCompoundStatement());
         } else if (!conditionalBody) {
             ErrorAt(Cursor_, "expected try compound statement");
         }
+
         ParseTriviaBeforeChild(*node);
+
         while (CurrentKind() == TK::Keyword_catch) {
             Append(*node, *ParseCatchClause());
             ParseTriviaBeforeChild(*node);
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6512,13 +7504,16 @@ private:
         auto* node = MakeNode(recovered ? NodeKind::UnparsedSyntax : NodeKind::CatchClause, start);
         ++Cursor_;
         bool conditionalBody = false;
+
         if (recovered) {
             Cursor_ = NextSignificant(Cursor_);
+
             if (CurrentKind() == TK::Operator_OpenParenthesis) {
                 ConsumeBalanced();
             } else {
                 ErrorAt(Cursor_, "expected catch parameter list");
             }
+
             while (CurrentKind() == TK::Comment) {
                 ParseTrivia(*node, false);
             }
@@ -6526,6 +7521,7 @@ private:
             ParseControlHeader(*node, NodeKind::Condition);
             conditionalBody = ParseTriviaBeforeChild(*node);
         }
+
         if (CurrentKind() == TK::Operator_OpenBrace) {
             if (recovered) {
                 ConsumeBalanced();
@@ -6535,6 +7531,7 @@ private:
         } else if (!conditionalBody) {
             ErrorAt(Cursor_, "expected catch compound statement");
         }
+
         node->Tokens.End = Cursor_;
         return node;
     }
@@ -6544,8 +7541,10 @@ private:
         auto start = Cursor_;
         auto* node = MakeNode(kind, start);
         int conditionalDepth = 0;
+
         while (!AtEnd()) {
             auto tokenKind = CurrentKind();
+
             if (tokenKind == TK::Operator_Conditional) {
                 ++conditionalDepth;
             } else if (tokenKind == TK::Operator_Colon) {
@@ -6553,13 +7552,16 @@ private:
                     ++Cursor_;
                     break;
                 }
+
                 --conditionalDepth;
             } else if (IsOpenDelimiter(tokenKind)) {
                 ConsumeBalanced();
                 continue;
             }
+
             ++Cursor_;
         }
+
         node->Tokens.End = Cursor_;
         AddDirectiveChildren(*node, start, Cursor_);
         return node;
@@ -6596,6 +7598,7 @@ private:
         const auto second = NextSignificant(first + 1);
         const bool trailingQualifier = second < end && Kind(first) == TK::Identifier &&
             (Kind(second) == TK::Keyword_const || Kind(second) == TK::Keyword_volatile);
+
         if (first >= end || (!IsTypeKeyword(Kind(first)) && !IsKnownType(first) && !trailingQualifier)) {
             return false;
         }
@@ -6611,6 +7614,7 @@ private:
             }
             if (kind == TK::Operator_Less) {
                 auto after = SkipTemplateArguments(i, end);
+
                 if (after > i && after <= end &&
                     (Kind(after - 1) == TK::Operator_Greater || Kind(after - 1) == TK::Operator_RightShift))
                 {
@@ -6618,6 +7622,7 @@ private:
                     continue;
                 }
             }
+
             // A known type followed by a top-level binary expression is
             // not a cast type-id: (T(1) << shift) - 1 is subtraction.
             if (GetBinaryOperatorInfo(kind).Precedence != 0 && kind != TK::Operator_Star &&
@@ -6649,9 +7654,11 @@ private:
         auto* lambda = MakeNode(NodeKind::LambdaExpression, start);
         auto* captures = MakeNode(NodeKind::LambdaCaptureList, start);
         captures->Tokens.End = captureEnd;
+
         if (start + 1 < captureEnd - 1) {
             AddSeparatedElements(*captures, start + 1, captureEnd - 1, NodeKind::LambdaCapture);
         }
+
         AddDirectiveChildrenInGap(*captures, start, captureEnd);
         Append(*lambda, *captures);
         cursor = ArgumentSignificant(captureEnd, end);
@@ -6661,6 +7668,7 @@ private:
         if (Kind(cursor) == TK::Operator_Less) {
             auto templateAfter = ArgumentTemplateEnd(cursor, end, suffixWork);
             auto templateEnd = templateAfter.value_or(cursor);
+
             if (templateEnd > cursor) {
                 templateParameters = MakeTemplateParameterList(cursor, templateEnd);
                 Append(*lambda, *templateParameters);
@@ -6672,6 +7680,7 @@ private:
         Node* actualParameters = nullptr;
         if (Kind(cursor) == TK::Operator_OpenParenthesis) {
             auto parameterEnd = ArgumentPairEnd(cursor, end).value_or(cursor);
+
             if (parameterEnd > cursor) {
                 auto* parameters = MakeNode(NodeKind::ParameterList, cursor);
                 parameters->Tokens.End = parameterEnd;
@@ -6686,11 +7695,14 @@ private:
         while (cursor < end && suffixWork != 0) {
             --suffixWork;
             auto kind = Kind(cursor);
+
             if (kind == TK::Operator_OpenBrace) {
                 auto bodyEnd = ArgumentPairEnd(cursor, end).value_or(cursor);
+
                 if (bodyEnd == cursor) {
                     break;
                 }
+
                 auto savedCursor = Cursor_;
                 auto savedLimit = ParseLimit_;
                 Cursor_ = cursor;
@@ -6706,11 +7718,14 @@ private:
                 Append(*lambda, *body);
                 cursor = bodyEnd;
                 lambda->Tokens.End = bodyEnd;
+
                 if (templateParameters) {
                     PopScope();
                 }
+
                 return lambda;
             }
+
             if (kind == TK::Keyword_mutable || kind == TK::Keyword_constexpr || kind == TK::Keyword_consteval ||
                 kind == TK::Keyword_static)
             {
@@ -6720,68 +7735,88 @@ private:
                 cursor = ArgumentSignificant(cursor + 1, end);
                 continue;
             }
+
             if (kind == TK::Keyword_noexcept) {
                 auto specificationEnd = cursor + 1;
                 auto opening = ArgumentSignificant(specificationEnd, end);
+
                 if (Kind(opening) == TK::Operator_OpenParenthesis) {
                     const auto balancedEnd = ArgumentPairEnd(opening, end);
+
                     if (!balancedEnd) {
                         break;
                     }
+
                     specificationEnd = *balancedEnd;
                 }
+
                 auto* specification = MakeNode(NodeKind::ExceptionSpecification, cursor);
                 specification->Tokens.End = specificationEnd;
+
                 if (specificationEnd > opening + 1) {
                     AddExpressionRange(*specification, opening + 1, specificationEnd - 1);
                 }
+
                 Append(*lambda, *specification);
                 cursor = ArgumentSignificant(specificationEnd, end);
                 continue;
             }
+
             if (kind == TK::Operator_IndirectClassMemberAccess) {
                 auto trailingEnd = ArgumentSignificant(cursor + 1, end);
                 bool hasType = false;
                 bool namedType = false;
                 bool needsComponent = false;
+
                 while (trailingEnd < end && suffixWork != 0) {
                     --suffixWork;
                     const auto typeKind = Kind(trailingEnd);
+
                     if (typeKind == TK::Keyword_requires || typeKind == TK::Operator_OpenBrace) {
                         break;
                     }
+
                     if (typeKind == TK::Keyword_decltype) {
                         const auto opening = ArgumentSignificant(trailingEnd + 1, end);
                         const auto after = Kind(opening) == TK::Operator_OpenParenthesis
                             ? ArgumentPairEnd(opening, end)
                             : std::nullopt;
+
                         if (!after) {
                             break;
                         }
+
                         hasType = true;
                         namedType = true;
                         needsComponent = false;
                         trailingEnd = ArgumentSignificant(*after, end);
                         continue;
                     }
+
                     if (typeKind == TK::Operator_Less && Kind(PreviousSignificant(trailingEnd)) == TK::Identifier) {
                         const auto after = ArgumentTemplateEnd(trailingEnd, end, suffixWork);
+
                         if (!after) {
                             break;
                         }
+
                         trailingEnd = ArgumentSignificant(*after, end);
                         continue;
                     }
+
                     if (typeKind == TK::Operator_ScopeResolution) {
                         const auto next = ArgumentSignificant(trailingEnd + 1, end);
+
                         if (next >= end || Kind(next) != TK::Identifier) {
                             break;
                         }
+
                         needsComponent = true;
                     } else if (typeKind == TK::Identifier) {
                         if (hasType && !needsComponent) {
                             break;
                         }
+
                         hasType = true;
                         namedType = true;
                         needsComponent = false;
@@ -6789,6 +7824,7 @@ private:
                         if (namedType || needsComponent) {
                             break;
                         }
+
                         hasType = true;
                     } else if (typeKind == TK::Keyword_typename || typeKind == TK::Keyword_struct ||
                         typeKind == TK::Keyword_class || typeKind == TK::Keyword_enum || typeKind == TK::Keyword_union)
@@ -6796,6 +7832,7 @@ private:
                         if (hasType) {
                             break;
                         }
+
                         needsComponent = true;
                     } else if (typeKind == TK::Keyword_const || typeKind == TK::Keyword_volatile) {
                         if (needsComponent) {
@@ -6810,13 +7847,16 @@ private:
                     } else {
                         break;
                     }
+
                     trailingEnd = ArgumentSignificant(trailingEnd + 1, end);
                 }
+
                 if (!hasType || needsComponent || suffixWork == 0 ||
                     (Kind(trailingEnd) != TK::Operator_OpenBrace && Kind(trailingEnd) != TK::Keyword_requires))
                 {
                     break;
                 }
+
                 auto* trailing = MakeNode(NodeKind::TrailingReturnType, cursor);
                 trailing->Tokens.End = trailingEnd;
                 AddTypeSyntaxChildren(*trailing, cursor + 1, trailingEnd);
@@ -6824,37 +7864,51 @@ private:
                 cursor = ArgumentSignificant(trailingEnd, end);
                 continue;
             }
+
             if (kind == TK::Keyword_requires) {
                 auto requiresEnd = cursor + 1;
+
                 while (requiresEnd < end && suffixWork != 0 && Kind(requiresEnd) != TK::Operator_OpenBrace) {
                     --suffixWork;
+
                     if (Kind(requiresEnd) == TK::Keyword_requires) {
                         auto operand = ArgumentSignificant(requiresEnd + 1, end);
+
                         if (operand < end && Kind(operand) == TK::Operator_OpenParenthesis) {
                             const auto after = ArgumentPairEnd(operand, end);
+
                             if (!after) {
                                 break;
                             }
+
                             operand = ArgumentSignificant(*after, end);
                         }
+
                         const auto after = operand < end && Kind(operand) == TK::Operator_OpenBrace
                             ? ArgumentPairEnd(operand, end)
                             : std::nullopt;
+
                         if (!after) {
                             break;
                         }
+
                         requiresEnd = *after;
                     } else if (Kind(requiresEnd) == TK::Keyword_template) {
                         const auto nameEnd = ArgumentExplicitMemberNameEnd(requiresEnd, cursor + 1, end, suffixWork);
+
                         if (!nameEnd) {
                             break;
                         }
+
                         const auto suffix = ArgumentSignificant(*nameEnd, end);
+
                         if (suffix < end && Kind(suffix) == TK::Operator_Less) {
                             const auto after = ArgumentTemplateEnd(suffix, end, suffixWork);
+
                             if (!after) {
                                 break;
                             }
+
                             requiresEnd = *after;
                         } else {
                             requiresEnd = *nameEnd;
@@ -6865,16 +7919,21 @@ private:
                         if (Kind(PreviousSignificant(requiresEnd)) != TK::Identifier) {
                             break;
                         }
+
                         const auto after = ArgumentTemplateEnd(requiresEnd, end, suffixWork);
+
                         if (!after) {
                             break;
                         }
+
                         requiresEnd = *after;
                     } else if (IsOpenDelimiter(Kind(requiresEnd))) {
                         const auto after = ArgumentPairEnd(requiresEnd, end);
+
                         if (!after) {
                             break;
                         }
+
                         requiresEnd = *after;
                     } else if (Kind(requiresEnd) == TK::Operator_Comma || Kind(requiresEnd) == TK::Operator_Semicolon) {
                         break;
@@ -6882,51 +7941,64 @@ private:
                         ++requiresEnd;
                     }
                 }
+
                 if (suffixWork == 0 || requiresEnd >= end || ArgumentSignificant(cursor + 1, end) == requiresEnd ||
                     Kind(requiresEnd) != TK::Operator_OpenBrace)
                 {
                     break;
                 }
+
                 auto* requiresClause = MakeNode(NodeKind::RequiresClause, cursor);
                 requiresClause->Tokens.End = requiresEnd;
                 auto constraintBegin = ArgumentSignificant(cursor + 1, end);
+
                 if (constraintBegin < requiresEnd) {
                     auto* constraint = MakeNode(NodeKind::ConstraintExpression, constraintBegin);
                     constraint->Tokens.End = requiresEnd;
                     AddExpressionRange(*constraint, constraintBegin, requiresEnd);
                     Append(*requiresClause, *constraint);
                 }
+
                 Append(*lambda, *requiresClause);
                 cursor = ArgumentSignificant(requiresEnd, end);
                 continue;
             }
+
             if (kind == TK::Operator_OpenBracket &&
                 Kind(ArgumentSignificant(cursor + 1, end)) == TK::Operator_OpenBracket)
             {
                 auto attributeEnd = ArgumentPairEnd(cursor, end).value_or(cursor);
+
                 if (attributeEnd == cursor) {
                     break;
                 }
+
                 auto* attribute = MakeNode(NodeKind::AttributeSpecifier, cursor);
                 attribute->Tokens.End = attributeEnd;
                 Append(*lambda, *attribute);
                 cursor = ArgumentSignificant(attributeEnd, end);
                 continue;
             }
+
             break;
         }
+
         // Unsupported/missing suffixes are locally protected, not certified
         // by finding a later brace. The caller supplied this argument's end.
         ErrorAt(cursor, "expected lambda body or supported suffix");
         AddUnparsedSyntax(*lambda, cursor, end);
+
         if (cursor >= end) {
             AddMissingToken(*lambda, end);
         }
+
         cursor = end;
         lambda->Tokens.End = cursor;
+
         if (templateParameters) {
             PopScope();
         }
+
         return lambda;
     }
 
@@ -6936,18 +8008,22 @@ private:
         auto closing = closingEnd - 1;
         size_t ellipsis = closing;
         int depth = 0;
+
         for (auto i = opening + 1; i < closing; ++i) {
             auto kind = Kind(i);
+
             if (depth == 0 && kind == TK::Operator_Less && i > opening + 1 &&
                 (Kind(PreviousSignificant(i)) == TK::Identifier ||
                     Kind(PreviousSignificant(i)) == TK::Operator_Greater))
             {
                 auto templateEnd = SkipTemplateArguments(i, closing);
+
                 if (templateEnd > i + 1 && templateEnd <= closing) {
                     i = templateEnd - 1;
                     continue;
                 }
             }
+
             if (IsOpenDelimiter(kind)) {
                 ++depth;
             } else if (kind == TK::Operator_CloseParenthesis || kind == TK::Operator_CloseBracket ||
@@ -6959,6 +8035,7 @@ private:
                 break;
             }
         }
+
         if (ellipsis == closing) {
             return nullptr;
         }
@@ -6967,6 +8044,7 @@ private:
         auto after = NextSignificant(ellipsis + 1);
         bool operatorBefore = before > opening && GetBinaryOperatorInfo(Kind(before)).Precedence != 0;
         bool operatorAfter = after < closing && GetBinaryOperatorInfo(Kind(after)).Precedence != 0;
+
         if (!operatorBefore && !operatorAfter) {
             return nullptr;
         }
@@ -6975,32 +8053,39 @@ private:
         fold->Tokens.End = closingEnd;
         auto leftEnd = operatorBefore ? before : ellipsis;
         auto leftBegin = NextSignificant(opening + 1);
+
         if (leftBegin < leftEnd) {
             auto* operand = MakeNode(NodeKind::FoldOperand, leftBegin);
             operand->Tokens.End = leftEnd;
             AddExpressionRange(*operand, leftBegin, leftEnd);
             Append(*fold, *operand);
         }
+
         if (operatorBefore) {
             auto* op = MakeNode(NodeKind::FoldOperator, before);
             op->Tokens.End = before + 1;
             Append(*fold, *op);
         }
+
         auto* dots = MakeNode(NodeKind::FoldEllipsis, ellipsis);
         dots->Tokens.End = ellipsis + 1;
         Append(*fold, *dots);
+
         if (operatorAfter) {
             auto* op = MakeNode(NodeKind::FoldOperator, after);
             op->Tokens.End = after + 1;
             Append(*fold, *op);
         }
+
         auto rightBegin = operatorAfter ? NextSignificant(after + 1) : NextSignificant(ellipsis + 1);
+
         if (rightBegin < closing) {
             auto* operand = MakeNode(NodeKind::FoldOperand, rightBegin);
             operand->Tokens.End = closing;
             AddExpressionRange(*operand, rightBegin, closing);
             Append(*fold, *operand);
         }
+
         cursor = closingEnd;
         return fold;
     }
@@ -7008,6 +8093,7 @@ private:
     void AddRequirementExpression(Node& owner, TokenIndex begin, TokenIndex end)
     {
         auto cursor = std::min(NextSignificant(begin), end);
+
         if (auto* expression = ParseExpressionSyntax(cursor, end)) {
             Append(owner, *expression);
             // Recovery may advance past a failed operator. Only the syntax
@@ -7017,7 +8103,9 @@ private:
             ErrorAt(cursor, "expected requirement expression");
             AddMissingToken(owner, cursor);
         }
+
         cursor = std::min(NextSignificant(cursor), end);
+
         if (cursor < end) {
             ErrorAt(cursor, "unexpected tokens in requirement expression");
             AddUnparsedSyntax(owner, cursor, end);
@@ -7027,41 +8115,54 @@ private:
     void AddRequirementName(Node& owner, TokenIndex begin, TokenIndex end)
     {
         auto cursor = std::min(NextSignificant(begin), end);
+
         if (cursor < end && Kind(cursor) == TK::Operator_ScopeResolution) {
             cursor = std::min(NextSignificant(cursor + 1), end);
         }
+
         size_t work = 4096;
+
         while (true) {
             if (cursor >= end || Kind(cursor) != TK::Identifier) {
                 ErrorAt(cursor, "expected requirement type or concept name");
+
                 if (cursor == end) {
                     AddMissingToken(owner, cursor);
                 } else {
                     AddUnparsedSyntax(owner, cursor, end);
                 }
+
                 return;
             }
+
             cursor = std::min(NextSignificant(cursor + 1), end);
+
             if (cursor < end && Kind(cursor) == TK::Operator_Less) {
                 // This grammar expects a name, so a proved angle list is
                 // template syntax even for an unknown type or concept.
                 const auto after = ArgumentTemplateEnd(cursor, end, work);
+
                 if (!after) {
                     ErrorAt(cursor, "expected complete requirement template arguments");
                     AddUnparsedSyntax(owner, cursor, end);
                     return;
                 }
+
                 Append(owner, *MakeTemplateArgumentList(cursor, *after));
                 cursor = std::min(NextSignificant(*after), end);
             }
+
             if (cursor >= end || Kind(cursor) != TK::Operator_ScopeResolution) {
                 break;
             }
+
             cursor = std::min(NextSignificant(cursor + 1), end);
+
             if (cursor < end && Kind(cursor) == TK::Keyword_template) {
                 cursor = std::min(NextSignificant(cursor + 1), end);
             }
         }
+
         if (cursor < end) {
             ErrorAt(cursor, "unexpected tokens after requirement name");
             AddUnparsedSyntax(owner, cursor, end);
@@ -7079,14 +8180,18 @@ private:
         auto* requirement = MakeNode(nodeKind, begin);
         requirement->Tokens.End = end;
         const bool hasDirective = Tree_.Tokens_.FindPreprocessingDirective(begin, end) < end;
+
         if (RequiresSyntaxDepth_ >= 64 || hasDirective) {
             if (hasDirective) {
                 requirement->Kind = NodeKind::Requirement;
             }
+
             AddUnparsedSyntax(*requirement, begin, end);
             return requirement;
         }
+
         ++RequiresSyntaxDepth_;
+
         if (kind == TK::Keyword_typename) {
             const auto nameBegin = std::min(NextSignificant(begin + 1), end);
             auto* name = MakeNode(NodeKind::TypeId, nameBegin);
@@ -7103,18 +8208,21 @@ private:
             // A compound requirement owns a single braced expression, not
             // a statement body or initializer list. Its suffix is separate.
             const auto after = FindBalancedEnd(begin);
+
             if (after <= end) {
                 auto* expression = MakeNode(NodeKind::RequirementExpression, begin);
                 expression->Tokens.End = after;
                 AddRequirementExpression(*expression, begin + 1, after - 1);
                 Append(*requirement, *expression);
                 auto suffix = std::min(NextSignificant(after), end);
+
                 if (suffix < end && Kind(suffix) == TK::Keyword_noexcept) {
                     auto* specification = MakeNode(NodeKind::ExceptionSpecification, suffix);
                     specification->Tokens.End = suffix + 1;
                     Append(*requirement, *specification);
                     suffix = std::min(NextSignificant(suffix + 1), end);
                 }
+
                 if (suffix < end && Kind(suffix) == TK::Operator_IndirectClassMemberAccess) {
                     auto* constraint = MakeNode(NodeKind::TypeConstraint, suffix);
                     constraint->Tokens.End = end;
@@ -7131,6 +8239,7 @@ private:
         } else {
             AddRequirementExpression(*requirement, begin, end);
         }
+
         --RequiresSyntaxDepth_;
         return requirement;
     }
@@ -7141,22 +8250,27 @@ private:
             if (parameter->Kind != NodeKind::ParameterDeclaration) {
                 continue;
             }
+
             const auto first = NextSignificant(parameter->Tokens.Begin);
+
             if (Kind(first) == TK::Operator_Ellipsis && NextSignificant(first + 1) >= parameter->Tokens.End) {
                 ErrorAt(first, "requires parameter list cannot end with ellipsis");
                 parameter->FirstChild = parameter->LastChild = nullptr;
                 AddUnparsedSyntax(*parameter, first, parameter->Tokens.End);
                 continue;
             }
+
             for (auto* list = parameter->FirstChild; list; list = list->NextSibling) {
                 if (list->Kind != NodeKind::InitDeclaratorList) {
                     continue;
                 }
+
                 for (auto* declarator = list->FirstChild; declarator; declarator = declarator->NextSibling) {
                     for (auto* part = declarator->FirstChild; part; part = part->NextSibling) {
                         if (part->Kind != NodeKind::Initializer) {
                             continue;
                         }
+
                         ErrorAt(part->Tokens.Begin, "requires parameters cannot have " "default arguments");
                         part->FirstChild = part->LastChild = nullptr;
                         AddUnparsedSyntax(*part, part->Tokens.Begin, part->Tokens.End);
@@ -7172,8 +8286,10 @@ private:
         auto* expression = MakeNode(NodeKind::RequiresExpression, start);
         Node* localParameters = nullptr;
         cursor = std::min(NextSignificant(cursor + 1), end);
+
         if (cursor < end && Kind(cursor) == TK::Operator_OpenParenthesis) {
             const auto parameterEnd = FindBalancedEnd(cursor);
+
             if (parameterEnd > end) {
                 ErrorAt(cursor, "expected complete requires parameter list");
                 AddUnparsedSyntax(*expression, cursor, end);
@@ -7181,23 +8297,29 @@ private:
                 expression->Tokens.End = end;
                 return expression;
             }
+
             auto* parameters = MakeNode(NodeKind::ParameterList, cursor);
             parameters->Tokens.End = parameterEnd;
+
             if (!AddParameterDeclarations(*parameters, TokenRange{.Begin = cursor, .End = parameterEnd})) {
                 ErrorAt(cursor, "expected requires parameter declarations");
             }
+
             ValidateRequiresParameters(*parameters);
             localParameters = parameters;
             Append(*expression, *parameters);
             cursor = std::min(NextSignificant(parameterEnd), end);
         }
+
         if (cursor >= end || Kind(cursor) != TK::Operator_OpenBrace) {
             ErrorAt(cursor, "expected requirement body");
             AddMissingToken(*expression, cursor);
             expression->Tokens.End = cursor;
             return expression;
         }
+
         const auto bodyEnd = FindBalancedEnd(cursor);
+
         if (bodyEnd > end) {
             ErrorAt(cursor, "expected complete requirement body");
             AddUnparsedSyntax(*expression, cursor, end);
@@ -7205,17 +8327,22 @@ private:
             expression->Tokens.End = end;
             return expression;
         }
+
         PushScope();
+
         if (localParameters) {
             RegisterParameterValues(*localParameters);
         }
+
         auto* body = MakeNode(NodeKind::RequirementBody, cursor);
         body->Tokens.End = bodyEnd;
         const auto closing = bodyEnd - 1;
         auto requirementBegin = std::min(NextSignificant(cursor + 1), closing);
         bool hasDirective = false;
+
         for (auto i = requirementBegin; i < closing; ++i) {
             const auto kind = Kind(i);
+
             if (kind == TK::PreprocessingDirective && i == requirementBegin) {
                 hasDirective = true;
                 requirementBegin = std::min(NextSignificant(i + 1), closing);
@@ -7224,9 +8351,11 @@ private:
                 // Cached pairs keep nested requirement splitting linear;
                 // inner semicolons belong to their own expression or body.
                 const auto after = FindBalancedEnd(i);
+
                 if (after > closing) {
                     break;
                 }
+
                 i = after - 1;
             } else if (kind == TK::Operator_Semicolon) {
                 if (requirementBegin < i) {
@@ -7235,12 +8364,14 @@ private:
                     ErrorAt(i, "expected requirement before semicolon");
                     AddMissingToken(*body, i);
                 }
+
                 auto* separator = MakeNode(NodeKind::ListSeparator, i);
                 separator->Tokens.End = i + 1;
                 Append(*body, *separator);
                 requirementBegin = std::min(NextSignificant(i + 1), closing);
             }
         }
+
         if (requirementBegin < closing) {
             auto* requirement = MakeRequirement(requirementBegin, closing);
             ErrorAt(closing, "expected semicolon after requirement");
@@ -7250,6 +8381,7 @@ private:
             ErrorAt(closing, "expected nonempty requirement body");
             AddMissingToken(*body, closing);
         }
+
         AddDirectiveChildrenInGap(*body, cursor, bodyEnd);
         Append(*expression, *body);
         PopScope();
@@ -7284,13 +8416,16 @@ private:
         auto typeEnd = cursor;
         while (typeEnd < end) {
             auto kind = Kind(typeEnd);
+
             if (kind == TK::Operator_Star) {
                 // A following array bound makes this a pointer new-type-id,
                 // not multiplication with a bare '[' as its right operand.
                 auto afterPointers = NextSignificant(typeEnd + 1);
+
                 while (Kind(afterPointers) == TK::Operator_Star) {
                     afterPointers = NextSignificant(afterPointers + 1);
                 }
+
                 if (Kind(afterPointers) == TK::Operator_OpenBracket && afterPointers < end) {
                     typeEnd = afterPointers;
                     continue;
@@ -7309,6 +8444,7 @@ private:
             {
                 break;
             }
+
             ++typeEnd;
         }
         if (typeBegin < typeEnd) {
@@ -7317,6 +8453,7 @@ private:
             AddTypeSyntaxChildren(*type, typeBegin, typeEnd);
             Append(*expression, *type);
         }
+
         cursor = NextSignificant(typeEnd);
         if (typeBegin == typeEnd) {
             // Without a new-type-id, parentheses cannot be an initializer.
@@ -7353,11 +8490,13 @@ private:
             if (initializerEnd != std::numeric_limits<TokenIndex>::max() && initializerEnd <= end) {
                 auto* initializer = MakeNode(NodeKind::NewInitializer, cursor);
                 initializer->Tokens.End = initializerEnd;
+
                 if (Kind(cursor) == TK::Operator_OpenParenthesis) {
                     AddArgumentList(*initializer, cursor, initializerEnd);
                 } else {
                     AddBracedInitializerElements(*initializer, cursor, initializerEnd);
                 }
+
                 Append(*expression, *initializer);
                 cursor = initializerEnd;
             }
@@ -7371,6 +8510,7 @@ private:
         auto start = cursor;
         auto* expression = MakeNode(NodeKind::DeleteExpression, start);
         cursor = NextSignificant(cursor + 1);
+
         if (Kind(cursor) == TK::Operator_OpenBracket && Kind(NextSignificant(cursor + 1)) == TK::Operator_CloseBracket)
         {
             auto closing = NextSignificant(cursor + 1);
@@ -7379,6 +8519,7 @@ private:
             Append(*expression, *marker);
             cursor = NextSignificant(closing + 1);
         }
+
         if (auto* operand = ParseExpressionSyntax(cursor, end, 15)) {
             Append(*expression, *operand);
             expression->Tokens.End = operand->Tokens.End;
@@ -7386,6 +8527,7 @@ private:
             AddMissingToken(*expression, cursor);
             expression->Tokens.End = cursor;
         }
+
         return expression;
     }
 
@@ -7393,6 +8535,7 @@ private:
     {
         const auto firstKind = Kind(firstArgument);
         auto afterArgument = NextSignificant(firstArgument + 1);
+
         // These specifiers cannot start a comparison operand, even when the
         // type name comes from an include or a constrained template parameter.
         if (firstKind == TK::Keyword_const || firstKind == TK::Keyword_volatile || firstKind == TK::Keyword_typename ||
@@ -7403,16 +8546,21 @@ private:
         {
             return true;
         }
+
         const bool knownTypeArgument = IsKnownType(firstArgument);
+
         if (!knownTypeArgument && !IsFundamentalTypeKeyword(firstKind)) {
             return false;
         }
+
         if (!knownTypeArgument) {
             while (afterArgument < following && IsFundamentalTypeKeyword(Kind(afterArgument))) {
                 afterArgument = NextSignificant(afterArgument + 1);
             }
         }
+
         bool sharedCloser = false;
+
         if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Less) {
             // A locally known type remains a type when specialized. Do not
             // mistake its nested angles for a competing comparison, and keep
@@ -7421,10 +8569,12 @@ private:
             const auto nestedEnd = SkipTemplateArguments(afterArgument, following, false, &exactClosing);
             sharedCloser = nestedEnd > afterArgument && Kind(nestedEnd - 1) == TK::Operator_RightShift &&
                 NextSignificant(nestedEnd) == following && !exactClosing;
+
             if (exactClosing || sharedCloser) {
                 afterArgument = NextSignificant(nestedEnd);
             }
         }
+
         // Qualifiers and pointer/reference operators preserve definite type
         // evidence; a value name followed by the same operators does not.
         while (afterArgument < following &&
@@ -7447,6 +8597,7 @@ private:
         if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Ellipsis) {
             afterArgument = NextSignificant(afterArgument + 1);
         }
+
         return sharedCloser || Kind(afterArgument) == TK::Operator_Comma ||
             Kind(afterArgument) == TK::Operator_Greater || Kind(afterArgument) == TK::Operator_RightShift;
     }
@@ -7454,23 +8605,29 @@ private:
     [[nodiscard]] bool HasTypeTemplateArgument(TokenIndex opening, TokenIndex following) const
     {
         auto first = NextSignificant(opening + 1);
+
         if (IsTypeTemplateArgument(first, following)) {
             return true;
         }
+
         // A definite type in any top-level argument rules out comparison
         // syntax. Nested lists, operand delimiters, and conditional middles
         // must not expose their commas as the enclosing list's separators.
         size_t work = 4096;
         unsigned depth = 1;
         unsigned middle = 0;
+
         for (auto i = first; i < following && work != 0; ++i) {
             --work;
             const auto kind = Kind(i);
+
             if (IsOpenDelimiter(kind)) {
                 const auto after = ArgumentPairEnd(i, following);
+
                 if (!after) {
                     return false;
                 }
+
                 i = *after - 1;
             } else if (kind == TK::Operator_Less) {
                 if (++depth > 256) {
@@ -7478,14 +8635,17 @@ private:
                 }
             } else if (kind == TK::Operator_Greater || kind == TK::Operator_RightShift) {
                 const unsigned count = kind == TK::Operator_RightShift ? 2 : 1;
+
                 if (count >= depth) {
                     return false;
                 }
+
                 depth -= count;
             } else if (depth == 1) {
                 if (!AdvanceConditionalMiddle(kind, middle)) {
                     return false;
                 }
+
                 if (kind == TK::Operator_Comma && middle == 0 &&
                     IsTypeTemplateArgument(NextSignificant(i + 1), following))
                 {
@@ -7493,6 +8653,7 @@ private:
                 }
             }
         }
+
         return false;
     }
 
@@ -7506,20 +8667,24 @@ private:
         // Local type bindings rule out the competing comparison expression.
         // Included or dependent names alone still do not prove template use.
         const bool unqualifiedTypeName = NextSignificant(name + 1) == opening && IsKnownType(name);
+
         if (explicitTemplate || unqualifiedTypeName || HasTypeTemplateArgument(opening, following) ||
             Kind(following) == TK::Operator_ClassMemberAccess ||
             Kind(following) == TK::Operator_IndirectClassMemberAccess)
         {
             return true;
         }
+
         if (Kind(following) == TK::Operator_OpenBrace) {
             // A braced initializer cannot be a comparison's right operand;
             // it proves the preceding balanced angle list is a template-id.
             return FindBalancedEnd(following) <= end;
         }
+
         if (Kind(following) != TK::Operator_OpenParenthesis) {
             return false;
         }
+
         auto closingEnd = FindBalancedEnd(following);
         return closingEnd <= end && NextSignificant(following + 1) == closingEnd - 1;
     }
@@ -7527,6 +8692,7 @@ private:
     Node* ParseMemberName(TokenIndex& cursor, TokenIndex end)
     {
         cursor = NextSignificant(cursor);
+
         if (cursor >= end) {
             return nullptr;
         }
@@ -7534,8 +8700,10 @@ private:
         const auto memberBegin = cursor;
         bool explicitTemplate = Kind(cursor) == TK::Keyword_template;
         size_t templateWork = 4096;
+
         if (explicitTemplate) {
             cursor = NextSignificant(cursor + 1);
+
             if (cursor >= end) {
                 return nullptr;
             }
@@ -7544,21 +8712,26 @@ private:
         if (explicitTemplate) {
             const auto nameKind = Kind(cursor);
             bool supportedName = nameKind == TK::Identifier;
+
             if (nameKind == TK::Keyword_operator) {
                 supportedName = ArgumentOperatorNameEnd(cursor, end, templateWork).has_value();
                 const auto symbol = ArgumentSignificant(cursor + 1, end);
+
                 if (symbol < end) {
                     supportedName = supportedName || Kind(symbol) == TK::Identifier || IsTypeKeyword(Kind(symbol));
                 }
             }
+
             if (!supportedName) {
                 ErrorAt(memberBegin, "expected member template name");
                 return nullptr;
             }
         }
+
         auto nameBegin = cursor;
         if (Kind(cursor) == TK::Operator_Complement) {
             cursor = NextSignificant(cursor + 1);
+
             if (Kind(cursor) == TK::Identifier) {
                 cursor = NextSignificant(cursor + 1);
             }
@@ -7580,15 +8753,19 @@ private:
             } else if (Kind(cursor) == TK::Identifier || IsTypeKeyword(Kind(cursor))) {
                 do {
                     cursor = NextSignificant(cursor + 1);
+
                     if (Kind(cursor) == TK::Operator_Less) {
                         auto templateEnd = explicitTemplate
                             ? ArgumentTemplateEnd(cursor, end, templateWork).value_or(cursor)
                             : SkipTemplateArguments(cursor, end);
+
                         if (templateEnd <= cursor || templateEnd > end) {
                             break;
                         }
+
                         cursor = NextSignificant(templateEnd);
                     }
+
                     if (Kind(cursor) == TK::Operator_ScopeResolution) {
                         cursor = NextSignificant(cursor + 1);
                     }
@@ -7605,6 +8782,7 @@ private:
         auto* name = MakeNode(NodeKind::IdentifierExpression, nameBegin);
         // Lookahead skips comments, but they are not part of the member name.
         name->Tokens.End = PreviousSignificant(cursor) + 1;
+
         if (Kind(cursor) != TK::Operator_Less) {
             return name;
         }
@@ -7617,6 +8795,7 @@ private:
         bool hasClosing =
             templateEnd <= end && (closingKind == TK::Operator_Greater || closingKind == TK::Operator_RightShift);
         bool hasTemplateUse = IsUnambiguousTemplateUse(following, end, explicitTemplate, nameBegin, cursor);
+
         if (!hasClosing) {
             if (explicitTemplate) {
                 ErrorAt(memberBegin, "unterminated member template arguments");
@@ -7625,12 +8804,15 @@ private:
                 cursor = end;
                 return unparsed;
             }
+
             return name;
         }
+
         if (!hasTemplateUse) {
             if (templateEnd != end && IsWordToken(Kind(following))) {
                 return name;
             }
+
             auto* ambiguous = MakeNode(NodeKind::UnparsedSyntax, nameBegin);
             ambiguous->Tokens.End = templateEnd;
             cursor = templateEnd;
@@ -7648,35 +8830,43 @@ private:
     [[nodiscard]] bool IsTypeConstructionName(const Node& name) const
     {
         const auto* node = &name;
+
         while (node) {
             if (node->Kind == NodeKind::IdentifierExpression) {
                 return Kind(node->Tokens.Begin) == TK::Identifier ||
                     Kind(node->Tokens.Begin) == TK::Operator_ScopeResolution;
             }
+
             if (node->Kind == NodeKind::Expression) {
                 return node->Tokens.Size() == 1 && IsFundamentalTypeKeyword(Kind(node->Tokens.Begin));
             }
+
             if (node->Kind == NodeKind::CallExpression) {
                 return Kind(node->Tokens.Begin) == TK::Keyword_decltype;
             }
+
             if (node->Kind == NodeKind::TemplateIdExpression) {
                 node = node->FirstChild;
                 continue;
             }
+
             if (node->Kind == NodeKind::MemberExpression && node->FirstChild &&
                 Kind(NextSignificant(node->FirstChild->Tokens.End)) == TK::Operator_ScopeResolution)
             {
                 node = node->FirstChild;
                 continue;
             }
+
             return false;
         }
+
         return false;
     }
 
     Node* ParseExpressionSyntax(TokenIndex& cursor, TokenIndex end, int minimum = 1)
     {
         cursor = NextSignificant(cursor);
+
         if (cursor >= end) {
             return nullptr;
         }
@@ -7684,6 +8874,7 @@ private:
         auto start = cursor;
         Node* left = nullptr;
         auto kind = Kind(cursor);
+
         if (kind == TK::PreprocessingDirective) {
             return nullptr;
         }
@@ -7708,17 +8899,21 @@ private:
                     typeArguments->Tokens.End = angleEnd;
                     auto* type = MakeNode(NodeKind::TypeId, angleBegin + 1);
                     type->Tokens.End = Kind(angleEnd - 1) == TK::Operator_RightShift ? angleEnd : angleEnd - 1;
+
                     if (type->Tokens.Empty()) {
                         AddMissingToken(*type, type->Tokens.Begin);
                     } else {
                         AddTypeSyntaxChildren(*type, angleBegin + 1, type->Tokens.End);
                     }
+
                     Append(*typeArguments, *type);
                     Append(*cast, *typeArguments);
                     auto operandCursor = opening + 1;
+
                     if (auto* operand = ParseExpressionSyntax(operandCursor, closingEnd - 1)) {
                         Append(*cast, *operand);
                     }
+
                     cursor = closingEnd;
                     left = cast;
                 }
@@ -7739,6 +8934,7 @@ private:
                 auto* operand = MakeNode(NodeKind::ParenthesizedExpression, opening);
                 operand->Tokens.End = closingEnd;
                 auto name = NextSignificant(opening + 1);
+
                 if (name == closingEnd - 1) {
                     AddMissingToken(*operand, name);
                 } else if (Kind(name) == TK::Identifier && NextSignificant(name + 1) == closingEnd - 1) {
@@ -7748,6 +8944,7 @@ private:
                 } else {
                     AddUnparsedSyntax(*operand, name, closingEnd - 1);
                 }
+
                 Append(*left, *operand);
                 cursor = closingEnd;
             } else {
@@ -7774,12 +8971,14 @@ private:
                 }
             }
             auto* operand = ParseExpressionSyntax(cursor, operandEnd, 15);
+
             if (!operand) {
                 // A dangling prefix operator cannot be the right operand
                 // of a binary expression (`char**` in a type-like macro
                 // argument is not `char * *<missing operand>`).
                 return nullptr;
             }
+
             left = MakeNode(NodeKind::UnaryExpression, start);
             left->Tokens.End = operand->Tokens.End;
             Append(*left, *operand);
@@ -7816,12 +9015,14 @@ private:
                 AddTypeSyntaxChildren(*type, cursor + 1, closing);
                 Append(*cast, *type);
                 cursor = closingEnd;
+
                 if (auto* operand = ParseExpressionSyntax(cursor, end, 15)) {
                     Append(*cast, *operand);
                     cast->Tokens.End = operand->Tokens.End;
                 } else {
                     cast->Tokens.End = closingEnd;
                 }
+
                 left = cast;
             } else {
                 auto innerCursor = cursor + 1;
@@ -7829,13 +9030,16 @@ private:
                 cursor = closingEnd;
                 left = MakeNode(NodeKind::ParenthesizedExpression, start);
                 left->Tokens.End = closingEnd;
+
                 if (inner) {
                     Append(*left, *inner);
                 }
+
                 AddUnparsedSyntax(*left, innerCursor, closing);
             }
         } else if (kind == TK::Operator_ScopeResolution) {
             const auto name = NextSignificant(cursor + 1);
+
             if (name < end && Kind(name) == TK::Identifier) {
                 cursor = name + 1;
                 left = MakeNode(NodeKind::IdentifierExpression, start);
@@ -7863,10 +9067,12 @@ private:
                     : NodeKind::Expression);
             left = MakeNode(nodeKind, cursor);
             left->Tokens.End = ++cursor;
+
             if (kind == TK::Literal_String) {
                 // Adjacent string tokens form one primary expression. Keep
                 // intervening comments in its range, but not trailing trivia.
                 auto next = NextSignificant(cursor);
+
                 while (next < end && Kind(next) == TK::Literal_String) {
                     cursor = next + 1;
                     left->Tokens.End = cursor;
@@ -7877,16 +9083,20 @@ private:
 
         while (left && cursor < end) {
             cursor = NextSignificant(cursor);
+
             if (cursor >= end) {
                 break;
             }
+
             kind = Kind(cursor);
+
             if (kind == TK::Operator_Less) {
                 auto templateEnd = SkipTemplateArguments(cursor, end);
                 auto closingKind = templateEnd > cursor ? Kind(templateEnd - 1) : TK::Invalid;
                 auto following = NextSignificant(templateEnd);
                 bool hasClosing = templateEnd <= end &&
                     (closingKind == TK::Operator_Greater || closingKind == TK::Operator_RightShift);
+
                 if (hasClosing && IsUnambiguousTemplateUse(following, end, false, start, cursor)) {
                     auto* templateId = MakeNode(NodeKind::TemplateIdExpression, start);
                     templateId->Tokens.End = templateEnd;
@@ -7896,6 +9106,7 @@ private:
                     left = templateId;
                     continue;
                 }
+
                 if (hasClosing && (templateEnd == end || !IsWordToken(Kind(following)))) {
                     auto* ambiguous = MakeNode(NodeKind::UnparsedSyntax, start);
                     ambiguous->Tokens.End = templateEnd;
@@ -7914,12 +9125,14 @@ private:
                 auto* initializer = MakeNode(NodeKind::BracedInitializer, cursor);
                 initializer->Tokens.End = closingEnd;
                 AddBracedInitializerElements(*initializer, cursor, closingEnd);
+
                 if (initializer->Kind == NodeKind::UnparsedSyntax) {
                     construction->Kind = NodeKind::UnparsedSyntax;
                 } else {
                     Append(*construction, *left);
                     Append(*construction, *initializer);
                 }
+
                 cursor = closingEnd;
                 left = construction;
                 continue;
@@ -7947,9 +9160,11 @@ private:
                 Append(*subscript, *left);
                 auto indexCursor = cursor + 1;
                 auto* index = ParseExpressionSyntax(indexCursor, closingEnd - 1);
+
                 if (index) {
                     Append(*subscript, *index);
                 }
+
                 cursor = closingEnd;
                 left = subscript;
                 continue;
@@ -7963,9 +9178,11 @@ private:
                         Kind(memberCursor) == TK::Keyword_operator || Kind(memberCursor) == TK::Operator_Complement)
                     ? ParseMemberName(memberCursor, end)
                     : nullptr;
+
                 if (!name) {
                     break;
                 }
+
                 auto* member = MakeNode(NodeKind::MemberExpression, start);
                 member->Tokens.End = name->Tokens.End;
                 Append(*member, *left);
@@ -7974,6 +9191,7 @@ private:
                 left = member;
                 continue;
             }
+
             if (kind == TK::Operator_Increment || kind == TK::Operator_Decrement) {
                 auto* unary = MakeNode(NodeKind::UnaryExpression, start);
                 unary->Tokens.End = ++cursor;
@@ -7981,38 +9199,48 @@ private:
                 left = unary;
                 continue;
             }
+
             if (kind == TK::Operator_Conditional && minimum <= 3) {
                 ++cursor;
                 auto* trueExpression = ParseExpressionSyntax(cursor, end, 1);
                 cursor = NextSignificant(cursor);
+
                 if (Kind(cursor) != TK::Operator_Colon) {
                     break;
                 }
+
                 ++cursor;
                 auto* falseExpression = ParseExpressionSyntax(cursor, end, 3);
                 auto* conditional = MakeNode(NodeKind::ConditionalExpression, start);
                 conditional->Tokens.End = falseExpression ? falseExpression->Tokens.End : cursor;
                 Append(*conditional, *left);
+
                 if (trueExpression) {
                     Append(*conditional, *trueExpression);
                 }
+
                 if (falseExpression) {
                     Append(*conditional, *falseExpression);
                 }
+
                 left = conditional;
                 continue;
             }
 
             auto binary = GetBinaryOperatorInfo(kind);
+
             if (binary.Precedence < minimum || binary.Precedence == 0) {
                 break;
             }
+
             ++cursor;
             auto* right =
                 ParseExpressionSyntax(cursor, end, binary.RightAssociative ? binary.Precedence : binary.Precedence + 1);
+
             if (!right) {
                 break;
             }
+
             auto nodeKind = binary.Precedence == 2 ? NodeKind::AssignmentExpression : NodeKind::BinaryExpression;
             auto* expression = MakeNode(nodeKind, start);
             expression->Tokens.End = right->Tokens.End;
@@ -8029,46 +9257,60 @@ private:
         bool hasTemplateArguments = false;
         bool typeEvidence = false;
         bool hasQualifiedType = Kind(first) == TK::Operator_ScopeResolution;
+
         if (hasQualifiedType) {
             first = NextSignificant(first + 1);
+
             if (first >= end || Kind(first) != TK::Identifier) {
                 return false;
             }
         }
+
         auto cursor = NextSignificant(first + 1);
+
         while (cursor < end) {
             if (Kind(cursor) == TK::Operator_Less) {
                 bool exactClosing = false;
                 auto templateEnd = SkipTemplateArguments(cursor, end, true, &exactClosing);
                 auto closingKind = templateEnd > cursor ? Kind(templateEnd - 1) : TK::Invalid;
+
                 if (!exactClosing || templateEnd <= cursor || templateEnd > end ||
                     (closingKind != TK::Operator_Greater && closingKind != TK::Operator_RightShift))
                 {
                     break;
                 }
+
                 hasTemplateArguments = true;
                 typeEvidence |= HasTypeTemplateArgument(cursor, templateEnd);
                 cursor = NextSignificant(templateEnd);
                 hasQualifiedType = true;
                 continue;
             }
+
             if (Kind(cursor) != TK::Operator_ScopeResolution) {
                 break;
             }
+
             cursor = NextSignificant(cursor + 1);
+
             if (Kind(cursor) == TK::Keyword_template) {
                 cursor = NextSignificant(cursor + 1);
             }
+
             if (cursor >= end || Kind(cursor) != TK::Identifier) {
                 return false;
             }
+
             cursor = NextSignificant(cursor + 1);
             hasQualifiedType = true;
         }
+
         if (!hasQualifiedType) {
             return false;
         }
+
         bool pointerOrReference = false;
+
         while (cursor < end &&
             (Kind(cursor) == TK::Keyword_const || Kind(cursor) == TK::Keyword_volatile ||
                 Kind(cursor) == TK::Operator_Star || Kind(cursor) == TK::Operator_Ampersand ||
@@ -8078,6 +9320,7 @@ private:
                 Kind(cursor) == TK::Operator_And;
             cursor = NextSignificant(cursor + 1);
         }
+
         // Definite type arguments rule out comparison syntax, not value
         // template-ids. Only adjacent type-shaped and declarator names prove
         // a declaration: *, & and && can still be expression operators.
@@ -8098,14 +9341,18 @@ private:
         if (IsTypeKeyword(Kind(first))) {
             return NodeKind::DeclarationStatement;
         }
+
         const bool global = Kind(first) == TK::Operator_ScopeResolution;
         const auto name = global ? NextSignificant(first + 1) : first;
         const auto* binding = Kind(name) == TK::Identifier ? LookupBinding(Text(name), global) : nullptr;
+
         if (binding && binding->Kind == NameKind::Type) {
             auto afterName = NextSignificant(name + 1);
+
             if (Kind(afterName) == TK::Operator_Less) {
                 afterName = NextSignificant(SkipTemplateArguments(afterName, Tree_.Tokens_.Size(), true));
             }
+
             if (Kind(afterName) == TK::Operator_ScopeResolution && !IsKnownQualifiedType(name, Tree_.Tokens_.Size()) &&
                 Kind(SkipDeclarationTypeName(name, Tree_.Tokens_.Size(), true)) == TK::Operator_OpenParenthesis)
             {
@@ -8114,28 +9361,36 @@ private:
                 // exposing template-argument parentheses as initializers.
                 return NodeKind::ExpressionStatement;
             }
+
             return NodeKind::DeclarationStatement;
         }
+
         if (Kind(name) != TK::Identifier || binding) {
             return NodeKind::ExpressionStatement;
         }
 
         auto next = NextSignificant(name + 1);
+
         if (Kind(next) == TK::Identifier) {
             // Adjacent type and declarator names cannot form an expression,
             // even when the type's declaration is outside this input file.
             return NodeKind::DeclarationStatement;
         }
+
         bool unambiguous = false;
+
         if (LooksLikeUnknownTypeDeclaration(first, Tree_.Tokens_.Size(), unambiguous)) {
             return unambiguous ? NodeKind::DeclarationStatement : NodeKind::AmbiguousStatement;
         }
+
         if (Kind(next) == TK::Operator_Star || Kind(next) == TK::Operator_Ampersand || Kind(next) == TK::Operator_And) {
             auto name = NextSignificant(next + 1);
+
             if (Kind(name) == TK::Identifier) {
                 return NodeKind::AmbiguousStatement;
             }
         }
+
         return NodeKind::ExpressionStatement;
     }
 
@@ -8156,14 +9411,17 @@ private:
             if (list->Kind != NodeKind::InitDeclaratorList) {
                 continue;
             }
+
             for (auto* init = list->FirstChild; init; init = init->NextSibling) {
                 if (init->Kind != NodeKind::InitDeclarator) {
                     continue;
                 }
+
                 for (auto* declarator = init->FirstChild; declarator; declarator = declarator->NextSibling) {
                     if (declarator->Kind != NodeKind::Declarator) {
                         continue;
                     }
+
                     RegisterDeclaratorNames(*declarator, nameKind);
                 }
             }
@@ -8181,6 +9439,7 @@ private:
         // assignment without choosing pointer/reference or binary roles, and
         // do not search through conditionals, other declarators or macros.
         TokenIndex cursor = SkipDeclarationTypeName(SkipAttributeSpecifiers(statement.Tokens.Begin), end, true);
+
         while (cursor < end &&
             (Kind(cursor) == TK::Operator_Star || Kind(cursor) == TK::Operator_Ampersand ||
                 Kind(cursor) == TK::Operator_And || Kind(cursor) == TK::Keyword_const ||
@@ -8188,20 +9447,26 @@ private:
         {
             cursor = NextSignificant(cursor + 1);
         }
+
         if (Kind(cursor) != TK::Identifier) {
             return;
         }
+
         const auto assignment = NextSignificant(cursor + 1);
+
         if (Kind(assignment) != TK::Operator_Assign) {
             return;
         }
+
         cursor = NextSignificant(assignment + 1);
         // A comma can separate declarators rather than expressions. Only a
         // complete assignment-expression RHS is shared by both readings.
         auto* expression = ParseExpressionSyntax(cursor, end, 2);
+
         if (!expression || NextSignificant(cursor) != end || NextSignificant(expression->Tokens.End) != end) {
             return;
         }
+
         auto* initializer = MakeNode(NodeKind::Initializer, assignment);
         initializer->Tokens.End = end;
         Append(*initializer, *expression);
@@ -8216,10 +9481,12 @@ private:
 
         while (!AtEnd()) {
             auto tokenKind = CurrentKind();
+
             if (tokenKind == TK::Operator_Semicolon) {
                 ++Cursor_;
                 break;
             }
+
             // Unexpanded statement macros need not spell a semicolon. A
             // following switch label is a proven boundary, not part of the
             // preceding opaque run. Balanced macro arguments stay inside it.
@@ -8228,6 +9495,7 @@ private:
                 node->Kind = nodeKind;
                 break;
             }
+
             if (tokenKind == TK::Operator_CloseBrace) {
                 if (Kind(NextSignificant(start)) == TK::Identifier) {
                     nodeKind = NodeKind::UnparsedSyntax;
@@ -8235,26 +9503,33 @@ private:
                 } else {
                     ErrorAt(start, "expected semicolon after statement");
                 }
+
                 break;
             }
+
             if (IsOpenDelimiter(tokenKind)) {
                 ConsumeBalanced();
             } else {
                 ++Cursor_;
             }
         }
+
         node->Tokens.End = Cursor_;
+
         if (nodeKind == NodeKind::DeclarationStatement) {
             AddDeclarationSyntax(*node, start, Cursor_);
             AddDirectiveChildrenInGap(*node, start, Cursor_);
             RegisterDeclaredValues(*node);
         } else if (nodeKind == NodeKind::ExpressionStatement) {
             auto expressionEnd = Cursor_;
+
             if (expressionEnd > start && Kind(expressionEnd - 1) == TK::Operator_Semicolon) {
                 --expressionEnd;
             }
+
             auto expressionCursor = start;
             auto* expression = ParseExpressionSyntax(expressionCursor, expressionEnd);
+
             if (expressionCursor != expressionEnd ||
                 (expression && expression->Kind == NodeKind::UnparsedSyntax && expressionEnd > start &&
                     Kind(expressionEnd - 1) == TK::Operator_CloseBrace))
@@ -8267,24 +9542,30 @@ private:
             } else if (expression) {
                 Append(*node, *expression);
             }
+
             AddDirectiveChildrenInGap(*node, start, Cursor_);
         } else {
             if (nodeKind == NodeKind::AmbiguousStatement) {
                 auto unknown = SkipAttributeSpecifiers(start);
+
                 if (Kind(unknown) == TK::Operator_ScopeResolution) {
                     unknown = NextSignificant(unknown + 1);
                 }
+
                 if (Kind(unknown) == TK::Identifier) {
                     auto* name = MakeNode(NodeKind::UnknownTypeName, unknown);
                     name->Tokens.End = unknown + 1;
                     Append(*node, *name);
                 }
+
                 if (Kind(node->Tokens.End - 1) == TK::Operator_Semicolon) {
                     AddAmbiguousAssignmentRhs(*node, node->Tokens.End - 1);
                 }
             }
+
             AddDirectiveChildrenInGap(*node, start, Cursor_);
         }
+
         return node;
     }
 
@@ -8294,11 +9575,13 @@ private:
         bool advanced;
         do {
             advanced = false;
+
             while (CurrentKind() == TK::Comment || CurrentKind() == TK::PreprocessingDirective) {
                 consumedConditional |= GetDirectiveKind(Cursor_) == DirectiveKind::If;
                 ParseTrivia(parent, true);
                 advanced = true;
             }
+
             if (allowAttributes && CurrentKind() == TK::Operator_OpenBracket &&
                 Kind(Cursor_ + 1) == TK::Operator_OpenBracket)
             {
@@ -8310,6 +9593,7 @@ private:
                 advanced = true;
             }
         } while (advanced);
+
         return consumedConditional;
     }
 
@@ -8319,6 +9603,7 @@ private:
     {
         Node* previous = nullptr;
         auto* child = parent.FirstChild;
+
         for (auto i = Tree_.Tokens_.FindPreprocessingDirective(begin, end);
             i < end;
             i = Tree_.Tokens_.FindPreprocessingDirective(i + 1, end))
@@ -8327,6 +9612,7 @@ private:
                 previous = child;
                 child = child->NextSibling;
             }
+
             if (child && child->Tokens.Begin <= i && i < child->Tokens.End) {
                 continue;
             }
@@ -8334,14 +9620,17 @@ private:
             auto* directive = MakeNode(NodeKind::PreprocessingDirective, i);
             directive->Tokens.End = i + 1;
             directive->NextSibling = child;
+
             if (previous) {
                 previous->NextSibling = directive;
             } else {
                 parent.FirstChild = directive;
             }
+
             if (!child) {
                 parent.LastChild = directive;
             }
+
             previous = directive;
         }
     }
@@ -8368,10 +9657,13 @@ private:
             list.First = &trivia;
             return;
         }
+
         auto* previous = list.First;
+
         while (previous->Next && previous->Next->Source.Begin <= trivia.Source.Begin) {
             previous = previous->Next;
         }
+
         trivia.Next = previous->Next;
         previous->Next = &trivia;
     }
@@ -8391,6 +9683,7 @@ private:
                 list = &attachments.Dangling;
                 break;
         }
+
         auto text = Tree_.Tokens_[token].Text.View(Tree_.Input_);
         auto sourceBegin = static_cast<SourceOffset>(text.data() - Tree_.Input_.data());
         auto* trivia = detail::Make<Trivia>(
@@ -8408,6 +9701,7 @@ private:
         if (whitespace.empty()) {
             return;
         }
+
         auto& attachments = EnsureTriviaAttachments(node);
         TriviaList* list = nullptr;
         switch (placement) {
@@ -8421,6 +9715,7 @@ private:
                 list = &attachments.Dangling;
                 break;
         }
+
         auto sourceBegin = static_cast<SourceOffset>(whitespace.data() - Tree_.Input_.data());
         auto* trivia = detail::Make<Trivia>(
             *Tree_.Memory_,
@@ -8439,6 +9734,7 @@ private:
                 return node;
             }
         }
+
         return nullptr;
     }
 
@@ -8470,21 +9766,26 @@ private:
         if (Tree_.Tokens_.FindComment(node.Tokens.Begin, node.Tokens.End) == node.Tokens.End) {
             return;
         }
+
         TokenIndex gapBegin = node.Tokens.Begin;
         Node* previous = nullptr;
         for (auto* child = node.FirstChild; child; child = child->NextSibling) {
             auto* next = child->Kind == NodeKind::Comment ? NextSyntaxSibling(child->NextSibling) : child;
+
             if (gapBegin < child->Tokens.Begin) {
                 AssociateCommentRange(node, gapBegin, child->Tokens.Begin, previous, next);
             }
+
             if (child->Kind == NodeKind::Comment) {
                 AssociateCommentRange(node, child->Tokens.Begin, child->Tokens.End, previous, next);
             } else {
                 AssociateComments(*child);
                 previous = child;
             }
+
             gapBegin = std::max(gapBegin, child->Tokens.End);
         }
+
         if (gapBegin < node.Tokens.End) {
             AssociateCommentRange(node, gapBegin, node.Tokens.End, previous, nullptr);
         }
@@ -8493,6 +9794,7 @@ private:
     [[nodiscard]] bool ContainsBlankLine(std::string_view whitespace) const
     {
         int newlines = 0;
+
         for (size_t i = 0; i < whitespace.size(); ++i) {
             if (whitespace[i] == '\n' && (i == 0 || whitespace[i - 1] != '\\')) {
                 if (++newlines == 2) {
@@ -8500,6 +9802,7 @@ private:
                 }
             }
         }
+
         return false;
     }
 
@@ -8514,6 +9817,7 @@ private:
     void MarkRangeRole(TokenIndex begin, TokenIndex end, PunctuationRole role)
     {
         end = std::min(end, Tree_.Tokens_.Size());
+
         for (auto i = begin; i < end; ++i) {
             if (Tree_.Tokens_.Role(i) != PunctuationRole::None) {
                 Tree_.Tokens_.SetRole(i, role);
@@ -8529,20 +9833,25 @@ private:
             Tree_.Tokens_.SetRole(node.Tokens.End - 1, role);
             return;
         }
+
         for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
             if (Kind(i) != openingKind) {
                 continue;
             }
+
             // Parsed scope boundaries remain valid even when conditional
             // branches prevent a globally balanced linear delimiter map.
             const auto parsedClose = Tree_.Tokens_.MatchingDelimiter(i);
+
             if (!HasDelimiterMap_ && Tree_.Tokens_.Role(i) == role && parsedClose > i &&
                 parsedClose < node.Tokens.End && Tree_.Tokens_.MatchingDelimiter(parsedClose) == i &&
                 Kind(parsedClose) == closingKind)
             {
                 return;
             }
+
             auto closingEnd = FindBalancedEnd(i);
+
             if (closingEnd <= node.Tokens.End && closingEnd > i && Kind(closingEnd - 1) == closingKind) {
                 Tree_.Tokens_.SetRole(i, role);
                 Tree_.Tokens_.SetRole(closingEnd - 1, role);
@@ -8562,22 +9871,28 @@ private:
         {
             return false;
         }
+
         const auto end = left.Tokens.End - 1;
+
         if (Kind(left.Tokens.Begin) != TK::Operator_OpenParenthesis || Kind(end) != TK::Operator_CloseParenthesis ||
             Kind(left.Tokens.Begin + 1) != TK::Identifier)
         {
             return false;
         }
+
         // A local value binding rules out the competing cast type-id.
         const auto name = LookupName(Text(left.Tokens.Begin + 1));
+
         if (end == left.Tokens.Begin + 2 && name == NameKind::Value) {
             return false;
         }
+
         for (auto i = left.Tokens.Begin + 2; i < end; i += 2) {
             if (i + 1 >= end || Kind(i) != TK::Operator_ScopeResolution || Kind(i + 1) != TK::Identifier) {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -8593,26 +9908,31 @@ private:
                         Tree_.Tokens_.SetRole(i, PunctuationRole::ReferenceDeclarator);
                     }
                 }
+
                 break;
             case NodeKind::UnaryExpression:
                 MarkRangeRole(
                     node.Tokens.Begin,
                     node.FirstChild ? node.FirstChild->Tokens.Begin : node.Tokens.End,
                     PunctuationRole::UnaryOperator);
+
                 if (node.FirstChild) {
                     MarkRangeRole(node.FirstChild->Tokens.End, node.Tokens.End, PunctuationRole::UnaryOperator);
                 }
+
                 break;
             case NodeKind::BinaryExpression:
             case NodeKind::AssignmentExpression:
                 if (node.FirstChild && node.FirstChild->NextSibling) {
                     auto begin = node.FirstChild->Tokens.End;
                     auto end = node.FirstChild->NextSibling->Tokens.Begin;
+
                     for (auto i = begin; i < end; ++i) {
                         auto kind = Kind(i);
                         auto role = node.Kind == NodeKind::AssignmentExpression
                             ? PunctuationRole::AssignmentOperator
                             : PunctuationRole::BinaryOperator;
+
                         if (i == node.FirstChild->Tokens.End && IsAmbiguousCastOperator(*node.FirstChild, kind)) {
                             role = PunctuationRole::AmbiguousOperator;
                         } else if (kind == TK::Operator_Less || kind == TK::Operator_Greater ||
@@ -8623,11 +9943,13 @@ private:
                         } else if (kind == TK::Operator_LeftShift || kind == TK::Operator_RightShift) {
                             role = PunctuationRole::ShiftOperator;
                         }
+
                         if (GetBinaryOperatorInfo(kind).Precedence != 0) {
                             Tree_.Tokens_.SetRole(i, role);
                         }
                     }
                 }
+
                 break;
             case NodeKind::ConditionalExpression:
                 for (auto i = node.Tokens.Begin; i < node.Tokens.End; ++i) {
@@ -8635,6 +9957,7 @@ private:
                         Tree_.Tokens_.SetRole(i, PunctuationRole::ConditionalDelimiter);
                     }
                 }
+
                 break;
             case NodeKind::TemplateArgumentList:
             case NodeKind::TemplateParameterList:
@@ -8642,9 +9965,11 @@ private:
                     node.Tokens.Begin,
                     std::min(node.Tokens.Begin + 1, node.Tokens.End),
                     PunctuationRole::TemplateDelimiter);
+
                 if (!node.Tokens.Empty()) {
                     Tree_.Tokens_.SetRole(node.Tokens.End - 1, PunctuationRole::TemplateDelimiter);
                 }
+
                 break;
             case NodeKind::ListSeparator:
                 MarkRangeRole(node.Tokens.Begin, node.Tokens.End, PunctuationRole::ListSeparator);
@@ -8653,16 +9978,19 @@ private:
                 if (!node.Tokens.Empty()) {
                     Tree_.Tokens_.SetRole(node.Tokens.Begin, PunctuationRole::BaseDelimiter);
                 }
+
                 break;
             case NodeKind::BitField:
                 if (!node.Tokens.Empty()) {
                     Tree_.Tokens_.SetRole(node.Tokens.Begin, PunctuationRole::BitFieldDelimiter);
                 }
+
                 break;
             case NodeKind::ConstructorInitializerList:
                 if (!node.Tokens.Empty()) {
                     Tree_.Tokens_.SetRole(node.Tokens.Begin, PunctuationRole::ConstructorInitializerDelimiter);
                 }
+
                 break;
             case NodeKind::RangeForSeparator:
                 MarkRangeRole(node.Tokens.Begin, node.Tokens.End, PunctuationRole::ConditionDelimiter);
@@ -8675,6 +10003,7 @@ private:
                         Tree_.Tokens_.SetRole(i, PunctuationRole::LabelDelimiter);
                     }
                 }
+
                 break;
             case NodeKind::RequirementExpression:
                 MarkDelimiterRole(
@@ -8773,12 +10102,14 @@ private:
                 // this expression. Mark the bracket after that base instead.
                 const auto* base = node.Child();
                 auto open = base ? base->Tokens.End : node.Tokens.End;
+
                 if (open < node.Tokens.End && Kind(open) == TK::Operator_OpenBracket &&
                     FindBalancedEnd(open) == node.Tokens.End)
                 {
                     Tree_.Tokens_.SetRole(open, PunctuationRole::CallDelimiter);
                     Tree_.Tokens_.SetRole(node.Tokens.End - 1, PunctuationRole::CallDelimiter);
                 }
+
                 break;
             }
             case NodeKind::FoldOperator:
@@ -8827,8 +10158,10 @@ private:
             for (auto* child = node.FirstChild; child; child = child->NextSibling) {
                 if (!child->Tokens.Empty()) {
                     auto whitespace = Tree_.WhitespaceBefore(child->Tokens.Begin);
+
                     if (ContainsBlankLine(whitespace)) {
                         auto* target = child->Kind == NodeKind::Comment ? NextSyntaxSibling(child->NextSibling) : child;
+
                         if (target) {
                             AttachWhitespace(*target, whitespace, child->Tokens.Begin, TriviaPlacement::Leading);
                         } else {
@@ -8837,22 +10170,27 @@ private:
                     }
                 }
             }
+
             if (!node.Tokens.Empty()) {
                 auto closing = node.Tokens.End - 1;
                 auto closingKind = Kind(closing);
+
                 if (closingKind == TK::Operator_CloseBrace || closingKind == TK::Operator_CloseBracket) {
                     auto whitespace = Tree_.WhitespaceBefore(closing);
+
                     if (ContainsBlankLine(whitespace)) {
                         AttachWhitespace(node, whitespace, closing, TriviaPlacement::Dangling);
                     }
                 } else if (node.Kind == NodeKind::TranslationUnit && node.Tokens.End == Tree_.Tokens_.Size()) {
                     auto whitespace = Tree_.WhitespaceAfter(closing);
+
                     if (ContainsBlankLine(whitespace)) {
                         AttachWhitespace(node, whitespace, node.Tokens.End, TriviaPlacement::Dangling);
                     }
                 }
             }
         }
+
         for (auto* child = node.FirstChild; child; child = child->NextSibling) {
             if (child->Kind != NodeKind::Comment && MayContainTriviaContainer(child->Kind)) {
                 AssociateBlankLines(*child);

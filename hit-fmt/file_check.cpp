@@ -35,20 +35,25 @@ public:
         if (offset < Cursor_ || offset > Text_.size()) {
             throw std::runtime_error("invalid emitted diagnostic offset");
         }
+
         if (Lines_) {
             const auto line = Lines_->LineAt(static_cast<parser::SourceOffset>(offset));
             const auto begin = Lines_->Range(line).Begin;
+
             if (Cursor_ < begin) {
                 Cursor_ = begin;
                 Current_ = {static_cast<uint32_t>(line), 1};
             }
         }
+
         while (Cursor_ < offset) {
             Advance();
         }
+
         if (Cursor_ != offset) {
             throw std::runtime_error("diagnostic offset splits a code point");
         }
+
         return Current_;
     }
 
@@ -64,6 +69,7 @@ private:
     {
         const auto c = static_cast<unsigned char>(Text_[Cursor_]);
         Cursor_ = NextOffset();
+
         if (c == '\n') {
             ++Current_.Line;
             Current_.Column = 1;
@@ -106,6 +112,7 @@ std::string_view RequiredChangeMessage(formatter::StructuralAction action)
         case Action::NamespaceComments:
             break; // These skips are not proof of a required edit.
     }
+
     throw std::logic_error("unexpected required hunk edit");
 }
 
@@ -123,21 +130,26 @@ void MapSemanticPositions(
         size_t Offset;
         util::Position* Position;
     };
+
     std::pmr::vector<Point> points(&scratch);
     points.reserve(semantic.size() + required.size());
+
     for (auto* diagnostics : {&semantic, &required}) {
         for (auto& diagnostic : *diagnostics) {
             const auto anchor = diagnostic.Anchor;
             const auto range = tree.Token(anchor.Token).Text;
             const auto& mapped = formatting.OriginalTokens.at(anchor.Token);
+
             if (anchor.Offset < range.Begin || anchor.Offset > range.End || !mapped.Present ||
                 mapped.Output.End - mapped.Output.Begin != range.End - range.Begin)
             {
                 throw std::runtime_error("diagnostic token identity did not survive formatting");
             }
+
             points.push_back({mapped.Output.Begin + anchor.Offset - range.Begin, &diagnostic.Emitted});
         }
     }
+
     std::sort(
         points.begin(),
         points.end(),
@@ -145,6 +157,7 @@ void MapSemanticPositions(
             return a.Offset < b.Offset;
         });
     PositionSweep emitted(formatting.Text, formatting.Changes ? &formatting.Changes->OutputLines : nullptr);
+
     for (const auto& point : points) {
         *point.Position = emitted.Position(point.Offset);
     }
@@ -174,18 +187,23 @@ CheckedFile FormatAndCheckFile(
     CheckedFile checked;
     const bool locations = diagnostics != DiagnosticDetail::Summary;
     checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
+
     for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings)) {
         checked.Semantic
             .push_back({diagnostic.Position, {}, diagnostic.Message + "; " + diagnostic.Expected, diagnostic.Anchor});
     }
+
     for (const auto& diagnostic : formatter::CheckParameterNames(tree, configuration.Settings)) {
         auto message = "parameter #" + std::to_string(diagnostic.ParameterNumber) + " in " + diagnostic.Function +
             ": expected a name";
+
         if (diagnostic.AllowCommentedName) {
             message += " or /*name*/ comment";
         }
+
         checked.Semantic.push_back({diagnostic.Position, {}, std::move(message), diagnostic.Anchor});
     }
+
     const bool tokenMap = locations && (changed.has_value() || !checked.Semantic.empty());
     std::vector<formatter::Hunk> selected, permitted;
     const formatter::FormatRequest request{
@@ -197,12 +215,14 @@ CheckedFile FormatAndCheckFile(
             configuration.Formatting.Policies.ColumnLimit != 0 &&
             configuration.Formatting.Policies.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Report,
     };
+
     if (changed) {
         auto result =
             formatter::FormatChanged(tree, configuration.Formatting, changed->Hunks, changed->Spillover, request);
         selected = std::move(result.SelectedLines);
         permitted = std::move(result.PermittedLines);
         checked.Incomplete = std::move(result.Incomplete);
+
         for (const auto& skip : result.RequiredSkips) {
             checked.RequiredChanges.push_back({
                 tree.TokenPosition(skip.Tokens.Begin),
@@ -211,6 +231,7 @@ CheckedFile FormatAndCheckFile(
                 {skip.Tokens.Begin, tree.Token(skip.Tokens.Begin).Text.Begin},
             });
         }
+
         checked.Formatting = std::move(result.Result);
         std::erase_if(
             checked.Semantic,
@@ -220,8 +241,10 @@ CheckedFile FormatAndCheckFile(
     } else {
         checked.Formatting = formatter::Format(tree, configuration.Formatting, request);
     }
+
     const auto& summary = *checked.Formatting.Summary;
     checked.FormattingMismatch = summary.OtherChanges || !summary.IncludeOrderChanges.empty();
+
     for (auto* items : {&checked.Semantic, &checked.RequiredChanges}) {
         std::sort(
             items->begin(),
@@ -230,21 +253,27 @@ CheckedFile FormatAndCheckFile(
                 return Before(a.Original, b.Original);
             });
     }
+
     if (locations) {
         MapSemanticPositions(tree, checked.Formatting, checked.Semantic, checked.RequiredChanges);
     }
+
     if (changed) {
         size_t count = 0;
+
         for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
             if (InLines(checked.Formatting.Diagnostics[i].Original->Line, permitted)) {
                 if (count != i) {
                     checked.Formatting.Diagnostics[count] = std::move(checked.Formatting.Diagnostics[i]);
                 }
+
                 ++count;
             }
         }
+
         checked.Formatting.Diagnostics.resize(count);
     }
+
     return checked;
 }
 
@@ -261,23 +290,29 @@ void PrintFileIssues(
         output << "fail: includes are not sorted\n  --> " << path << ':' << position.Line << ':' << position.Column
             << " [original source]\n";
     }
+
     for (const auto& diagnostic : checked.Semantic) {
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message << "\n  --> " << path << ':' << position.Line << ':' << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
     }
+
     for (const auto& diagnostic : checked.RequiredChanges) {
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message;
+
         if (fix) {
             output << BlockedHunkFix;
         }
+
         output << "\n  --> " << path << ':' << position.Line << ':' << position.Column
             << (fix ? " [written output]" : " [original source]") << '\n';
     }
+
     if (checked.Formatting.Diagnostics.empty()) {
         return;
     }
+
     const std::string_view source = fix ? checked.Formatting.Text : originalSource;
     const auto* lines = checked.Formatting.Changes
         ? (fix ? &checked.Formatting.Changes->OutputLines : &checked.Formatting.Changes->OriginalLines)
@@ -289,6 +324,7 @@ void PrintFileIssues(
         ownedLines.emplace(source, fix);
         lines = &*ownedLines;
     }
+
     for (size_t i = 0; i < checked.Formatting.Diagnostics.size(); ++i) {
         const auto& diagnostic = checked.Formatting.Diagnostics[i];
         const auto position = fix ? diagnostic.Position : *diagnostic.Original;
@@ -300,13 +336,16 @@ void PrintFileIssues(
         const auto gutter = std::string(number.size() + 1, ' ') + "| ";
         const auto prefix = number + " | ";
         auto text = lines->Text(source, position.Line);
+
         if (text.ends_with('\r')) {
             text.remove_suffix(1);
         }
+
         const auto column = fix ? diagnostic.CodePointColumn : position.Column;
         output << gutter.substr(0, gutter.size() - 1) << '\n' << prefix;
         const auto rendered = RenderLine(text, prefix.size());
         const auto excerpt = PrintSourceExcerpt(output, rendered, column, prefix.size(), terminal.Width);
+
         if (excerpt.CaretVisible) {
             output << gutter << std::string(excerpt.CaretOffset, ' ') << "^\n";
         }
@@ -320,27 +359,35 @@ void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bo
         if (separated) {
             output << "; ";
         }
+
         if (failure) {
             output << "fail: ";
         }
+
         output << message;
         separated = true;
     };
+
     if (!fix && checked.Formatting.Summary->OtherChanges) {
         issue("formatting mismatch");
     }
+
     if (!fix && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
         issue("includes are not sorted", true);
     }
+
     if (!checked.Semantic.empty()) {
         issue("fail: naming or parameter-name violation");
     }
+
     for (const auto& diagnostic : checked.RequiredChanges) {
         issue(diagnostic.Message, true);
+
         if (fix) {
             output << BlockedHunkFix;
         }
     }
+
     if (!checked.Formatting.Diagnostics.empty()) {
         issue(fix ? "fail: cannot format automatically within column limit" : "fail: column-limit violation");
     }

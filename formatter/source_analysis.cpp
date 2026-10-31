@@ -49,6 +49,7 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
             return a.Source.Begin < b.Source.Begin;
         });
     size_t merged = 0;
+
     for (const auto range : protection) {
         if (merged &&
             (range.Source.Begin < protection[merged - 1].Source.End ||
@@ -58,6 +59,7 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
             auto& previous = protection[merged - 1];
             previous.Source.End = std::max(previous.Source.End, range.Source.End);
             previous.Reasons = previous.Reasons | range.Reasons;
+
             // A true overlap can make the union equal to its touching neighbor.
             while (merged > 1 && protection[merged - 2].Source.End == protection[merged - 1].Source.Begin &&
                 protection[merged - 2].Reasons == protection[merged - 1].Reasons)
@@ -69,6 +71,7 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
             protection[merged++] = range;
         }
     }
+
     protection.resize(merged);
 }
 
@@ -104,6 +107,7 @@ bool Punctuation(TK kind)
 bool PunctuationNeedsSeparation(std::string_view first, std::string_view second)
 {
     const auto next = second.front();
+
     if (first.size() == 1) {
         switch (first.front()) {
             case ':':
@@ -138,15 +142,19 @@ bool PunctuationNeedsSeparation(std::string_view first, std::string_view second)
                 return false;
         }
     }
+
     if (first == "->") {
         return next == '*';
     }
+
     if (first == "<<" || first == ">>") {
         return next == '=';
     }
+
     if (first == "<=") {
         return next == '>';
     }
+
     // Joining <: and : can invoke the <:: exception and split the digraph.
     return first == "<:" && next == ':';
 }
@@ -164,17 +172,21 @@ bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
     const auto b = tree.Kind(right);
     const auto first = tree.TokenText(left);
     const auto second = tree.TokenText(right);
+
     if ((Word(a, first) || Literal(a)) && (Word(b, second) || Literal(b))) {
         return true;
     }
+
     if ((Number(a) && (second.starts_with(".") || second.starts_with("+") || second.starts_with("-"))) ||
         (first.ends_with(".") && Number(b)))
     {
         return true;
     }
+
     if (Punctuation(a) && Punctuation(b)) {
         return PunctuationNeedsSeparation(first, second);
     }
+
     // A slash before a comment can turn a block comment into a line comment.
     return a == TK::Operator_Divide && b == TK::Comment;
 }
@@ -189,11 +201,13 @@ bool SimpleStatementBoundary(const parser::SyntaxTree& tree, const parser::Node&
 {
     using NK = parser::NodeKind;
     const auto tokens = node.Tokens;
+
     if ((parent != NK::CompoundStatement && parent != NK::LambdaBody) || tokens.Empty() ||
         tree.Kind(tokens.End - 1) != TK::Operator_Semicolon)
     {
         return false;
     }
+
     switch (node.Kind) {
         case NK::ExpressionStatement:
         case NK::DeclarationStatement:
@@ -208,20 +222,25 @@ bool SimpleStatementBoundary(const parser::SyntaxTree& tree, const parser::Node&
         default:
             return false;
     }
+
     // A semicolon inside unmatched delimiters is not a statement boundary.
     // Invalid tokens and directives retain their existing recovery fences.
     for (auto token = tokens.Begin; token < tokens.End; ++token) {
         const auto kind = tree.Kind(token);
+
         if (kind == TK::Invalid || kind == TK::PreprocessingDirective) {
             return false;
         }
+
         if (kind >= TK::Operator_OpenBrace && kind <= TK::Operator_CloseParenthesis) {
             const auto matching = tree.MatchingDelimiter(token);
+
             if (matching < tokens.Begin || matching >= tokens.End) {
                 return false;
             }
         }
     }
+
     return true;
 }
 
@@ -242,6 +261,7 @@ parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
     if (size > util::MaxSourceSize) {
         throw std::length_error("source analysis input exceeds maximum size");
     }
+
     return static_cast<parser::SourceOffset>(size);
 }
 
@@ -269,9 +289,11 @@ SourceAnalysis::SourceAnalysis(SourceAnalysis&& other) noexcept
 bool SourceAnalysis::IntersectsImmutable(parser::SourceRange source) const
 {
     assert(source.Begin <= source.End);
+
     if (HasEditScope_ && !Covered(EditScope_, source)) {
         return true;
     }
+
     auto first = std::lower_bound(
         Protection_.begin(),
         Protection_.end(),
@@ -290,6 +312,7 @@ bool SourceAnalysis::CanRewriteDirective(parser::SourceRange source) const
     {
         return false;
     }
+
     const auto first = std::lower_bound(
         DirectiveFences_.begin(),
         DirectiveFences_.end(),
@@ -305,17 +328,22 @@ bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
     if (id >= Gaps_.size()) {
         return false;
     }
+
     const auto& gap = Gaps_[id];
+
     if (replacement == Original(gap)) {
         return true;
     }
+
     if (gap.Preserve || !Whitespace(replacement) || (gap.Separation == GapSeparation::Required && replacement.empty()))
     {
         return false;
     }
+
     if (gap.MustStartWithLineFeed && !replacement.starts_with('\n')) {
         return false;
     }
+
     const auto newline = replacement.find('\n') != std::string_view::npos;
     return (gap.LineBoundary != GapLineBoundary::Required || newline) &&
         (gap.LineBoundary != GapLineBoundary::Forbidden || !newline);
@@ -326,6 +354,7 @@ bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
     if (!Built_ || id >= Gaps_.size()) {
         return false;
     }
+
     const auto& gap = Gaps_[id];
     return !gap.Source.Empty() && !gap.IntrinsicPreserve && !gap.IntrinsicContextSensitive &&
         !IntersectsImmutable(gap.Source);
@@ -339,22 +368,26 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
     // Keep the same slice authority for unrestricted and scoped formatting.
     for (GapId id = 0; id < Gaps_.size(); ++id) {
         const auto& gap = Gaps_[id];
+
         if ((gap.Preserve || (scope && !WholeGapCovered(*scope, gap, Original(gap)))) && !gap.IntrinsicPreserve &&
             !gap.IntrinsicContextSensitive && (!gap.MustStartWithLineFeed || Original(gap).starts_with('\n')) &&
             Original(gap).find_first_not_of(" \t\r\n") == std::string_view::npos)
         {
             // Lone CR is not a supported horizontal slice or LF-ended prefix.
             bool supported = true;
+
             for (size_t i = 0; i < Original(gap).size(); ++i) {
                 if (Original(gap)[i] == '\r' && (i + 1 == Original(gap).size() || Original(gap)[i + 1] != '\n')) {
                     supported = false;
                     break;
                 }
             }
+
             auto permit = [&] (parser::SourceRange slice, PartialGapPermissionKind kind) {
                 if (scope && !Covered(*scope, slice)) {
                     return;
                 }
+
                 // HeaderName does not own insertion before its opener.
                 // A certified empty statement indent can insert before
                 // opaque spelling, even if touching chunks merged.
@@ -370,20 +403,26 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
                         (kind == PartialGapPermissionKind::FinalIndentation && gap.MovableStatementIndent &&
                             (first->Reasons == ProtectionReason::Ambiguous ||
                                 first->Reasons == ProtectionReason::Recovery)));
+
                 if (first != Protection_.end() && !beforeSpelling &&
                     (slice.Empty() ? first->Source.Begin <= slice.Begin : first->Source.Begin < slice.End))
                 {
                     return;
                 }
+
                 permissions.push_back({id, slice, kind});
             };
+
             if (supported) {
                 size_t lineBegin = 0;
+
                 for (size_t i = 0; i < Original(gap).size(); ++i) {
                     if (Original(gap)[i] != '\n') {
                         continue;
                     }
+
                     const auto end = i && Original(gap)[i - 1] == '\r' ? i - 1 : i;
+
                     if (lineBegin < end) {
                         permit(
                             {
@@ -392,8 +431,10 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
                             },
                             PartialGapPermissionKind::TrimHorizontal);
                     }
+
                     lineBegin = i + 1;
                 }
+
                 if (lineBegin && id + 1 < Gaps_.size()) {
                     permit(
                         {gap.Source.Begin + static_cast<Offset>(lineBegin), gap.Source.End},
@@ -402,6 +443,7 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
             }
         }
     }
+
     return permissions;
 }
 
@@ -410,18 +452,23 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
     if (!Built_ || Gaps_.empty() || HasEditScope_) {
         throw std::logic_error("edit scope requires built unrestricted analysis");
     }
+
     const auto size = Gaps_.back().Source.End;
     // Validate before allocating or changing any analysis facts.
     Offset previousEnd = 0;
+
     for (const auto range : ranges) {
         if (range.Begin >= range.End || range.End > size || range.Begin < previousEnd) {
             throw std::invalid_argument("invalid source edit scope");
         }
+
         previousEnd = range.End;
     }
+
     const auto allocator = Gaps_.get_allocator().resource();
     std::pmr::vector<parser::SourceRange> scope(allocator);
     scope.reserve(ranges.size());
+
     for (const auto range : ranges) {
         if (!scope.empty() && range.Begin == scope.back().End) {
             scope.back().End = range.End;
@@ -429,6 +476,7 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
             scope.push_back(range);
         }
     }
+
     // All potentially throwing work precedes commit. Protection still contains
     // semantic/explicit reasons only; the complement must not hide safe slices.
     auto permissions = CollectPartialGapPermissions(scope);
@@ -441,18 +489,22 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
             protection.push_back({{begin, end}, ProtectionReason::OutsideEditScope});
         }
     };
+
     for (const auto range : scope) {
         outside(range.Begin);
         begin = range.End;
     }
+
     outside(size);
     MergeProtection(protection);
+
     for (auto& gap : Gaps_) {
         if (!WholeGapCovered(scope, gap, Original(gap))) {
             gap.Preserve = true;
             gap.Reasons = gap.Reasons | ProtectionReason::OutsideEditScope;
         }
     }
+
     EditScope_.swap(scope);
     PartialGapPermissions_.swap(permissions);
     Protection_.swap(protection);
@@ -474,6 +526,7 @@ SourceAnalysis BuildSourceAnalysis(
         if (begin > end || end > size) {
             throw std::invalid_argument("invalid immutable source range");
         }
+
         if (begin != end) {
             result.Protection_.push_back({{begin, end}, reason});
         }
@@ -485,12 +538,15 @@ SourceAnalysis BuildSourceAnalysis(
         Offset ContentEnd;
         bool Continued;
     };
+
     std::pmr::vector<Line> lines(&scratchMemory);
     lines.push_back({0, size, 0, false});
     Offset logicalBegin = 0;
     bool splice = false;
+
     for (Offset i = 0; i < size; ++i) {
         auto& line = lines.back();
+
         if (source[i] != '\n') {
             // Matches Tokenizer::TrySkipNewline's horizontal whitespace.
             // Cache both marker boundaries once; candidate comments must not
@@ -498,28 +554,36 @@ SourceAnalysis BuildSourceAnalysis(
             // LF was handled above; the remaining horizontal whitespace is
             // space or one of the contiguous ASCII control codes HT..CR.
             const auto c = source[i];
+
             if (c != ' ' && (c < '\t' || c > '\r')) {
                 if (line.FirstContent == size) {
                     line.FirstContent = i;
                 }
+
                 line.ContentEnd = i + 1;
             }
+
             continue;
         }
+
         const auto continued = line.ContentEnd > line.Begin && source[line.ContentEnd - 1] == '\\';
         splice |= continued;
         lines.push_back({i + 1, size, i + 1, continued});
+
         if (!continued) {
             if (splice) {
                 protect(logicalBegin, i + 1, ProtectionReason::LineSplice);
             }
+
             logicalBegin = i + 1;
             splice = false;
         }
     }
+
     if (splice) {
         protect(logicalBegin, size, ProtectionReason::LineSplice);
     }
+
     size_t lineIndex = 0;
     size_t endLineIndex = 0;
     std::pmr::vector<std::string_view> names(
@@ -529,9 +593,11 @@ SourceAnalysis BuildSourceAnalysis(
     std::sort(names.begin(), names.end());
     std::pmr::vector<std::string_view> enumNames(&scratchMemory);
     enumNames.reserve(options.EnumMacroNames.size());
+
     for (const auto& name : options.EnumMacroNames) {
         enumNames.push_back(name);
     }
+
     std::sort(enumNames.begin(), enumNames.end());
     std::pmr::vector<ProtectedSourceRange> enumInvocations(&scratchMemory);
     std::pmr::vector<Offset> parsedEnumBegins(&scratchMemory);
@@ -547,11 +613,13 @@ SourceAnalysis BuildSourceAnalysis(
     parser::TokenIndex macroEnd = 0;
     parser::TokenIndex pendingMacro = NoToken;
     bool pendingEnum = false;
+
     for (parser::TokenIndex i = 0; i <= count; ++i) {
         const auto begin = i ? tree.Token(i - 1).Text.End : 0;
         const auto end = i < count ? tree.Token(i).Text.Begin : size;
         const auto original = source.substr(begin, end - begin);
         SourceGap gap{.Source = {begin, end}};
+
         // Classify bare CR in the existing whitespace validation walk.
         for (size_t offset = begin; offset < end; ++offset) {
             const auto c = source[offset];
@@ -560,6 +628,7 @@ SourceAnalysis BuildSourceAnalysis(
             gap.HasLineFeed |= c == '\n';
             gap.Horizontal &= c == ' ' || c == '\t';
         }
+
         if (i && i < count && TokenGapNeedsSeparation(tree, i)) {
             // C++ permits adjacent template closers to be retokenized as >>.
             // Only confirmed delimiters may relax maximal-munch separation;
@@ -568,43 +637,52 @@ SourceAnalysis BuildSourceAnalysis(
                 return tree.Role(index) == parser::PunctuationRole::TemplateDelimiter &&
                     (tree.Kind(index) == TK::Operator_Greater || tree.Kind(index) == TK::Operator_RightShift);
             };
+
             if (!templateCloser(i - 1) || !templateCloser(i)) {
                 gap.Separation = GapSeparation::Required;
             }
         }
+
         // Preserve comment attachment topology, not its surrounding whitespace.
         // In particular a line comment must not swallow the following token.
         const auto commentOrDirective = [&] (parser::TokenIndex index) {
             return tree.Kind(index) == TK::Comment || tree.Kind(index) == TK::PreprocessingDirective;
         };
+
         if ((i && commentOrDirective(i - 1)) || (i < count && commentOrDirective(i))) {
             gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
         }
+
         if (i &&
             (tree.Kind(i - 1) == TK::PreprocessingDirective ||
                 (tree.Kind(i - 1) == TK::Comment && tree.TokenText(i - 1).starts_with("//"))))
         {
             gap.MustStartWithLineFeed = true;
+
             // No terminator at EOF: insertion could extend the line token,
             // even though its half-open protection ends at the insertion point.
             if (original.empty()) {
                 gap.Preserve = true;
             }
         }
+
         if (i < count && tree.Kind(i) == TK::Operator_Remainder) {
             // %: is a directive only at the beginning of a line in our lexer.
             gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
         }
+
         if (i && i < count && Literal(tree.Kind(i - 1)) && Word(tree.Kind(i), tree.TokenText(i)) && original.empty()) {
             // The tokenizer leaves string/character user-defined suffixes as
             // identifiers. Adding whitespace changes grammar, not token kinds.
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
+
         if (i && (tree.TokenText(i - 1).ends_with("\\") || tree.TokenText(i - 1).ends_with("\\\r"))) {
             gap.Preserve = true;
             gap.Reasons = ProtectionReason::LineSplice;
         }
+
         if (i && i < count &&
             ((tree.Kind(i - 1) == TK::Operator_OpenBracket && tree.Kind(i) == TK::Operator_OpenBracket) ||
                 (tree.Kind(i - 1) == TK::Operator_CloseBracket && tree.Kind(i) == TK::Operator_CloseBracket &&
@@ -616,18 +694,24 @@ SourceAnalysis BuildSourceAnalysis(
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
+
         result.Gaps_.push_back(gap);
+
         if (i == count) {
             break;
         }
+
         const auto token = tree.Token(i);
         const auto text = tree.TokenText(i);
+
         while (lineIndex + 1 < lines.size() && lines[lineIndex + 1].Begin <= token.Text.Begin) {
             ++lineIndex;
         }
+
         while (endLineIndex + 1 < lines.size() && lines[endLineIndex + 1].Begin <= token.Text.End) {
             ++endLineIndex;
         }
+
         const parser::SourceRange tokenLine{
             lines[lineIndex].Begin,
             endLineIndex + 1 < lines.size() ? lines[endLineIndex + 1].Begin : size,
@@ -635,30 +719,37 @@ SourceAnalysis BuildSourceAnalysis(
         recoveryPrefix.push_back(recoveryPrefix.back() + (token.Kind == TK::Invalid));
         ambiguousPrefix
             .push_back(ambiguousPrefix.back() + (tree.Role(i) == parser::PunctuationRole::AmbiguousOperator));
+
         if (token.Kind == TK::PreprocessingDirective) {
             protect(tokenLine.Begin, tokenLine.End, ProtectionReason::Directive);
         }
+
         if (token.Kind == TK::Invalid || tree.Role(i) == parser::PunctuationRole::AmbiguousOperator) {
             protect(
                 begin,
                 i + 1 < count ? tree.Token(i + 1).Text.Begin : size,
                 token.Kind == TK::Invalid ? ProtectionReason::Recovery : ProtectionReason::Ambiguous);
         }
+
         if (token.Kind == TK::Comment) {
             auto marker = text;
+
             if (marker.starts_with("//")) {
                 while (!marker.empty() && (marker.back() == ' ' || marker.back() == '\t' || marker.back() == '\r')) {
                     marker.remove_suffix(1);
                 }
             }
+
             const bool off = marker == "// hit-fmt off" || marker == "/* hit-fmt off */" ||
                 (options.HonorClangFormatDirectives &&
                     (marker == "// clang-format off" || marker == "/* clang-format off */"));
             const bool on = marker == "// hit-fmt on" || marker == "/* hit-fmt on */" ||
                 (options.HonorClangFormatDirectives &&
                     (marker == "// clang-format on" || marker == "/* clang-format on */"));
+
             if (off || on) {
                 const auto range = tokenLine;
+
                 if (lineIndex == endLineIndex && !lines[lineIndex].Continued &&
                     token.Text.Begin == lines[lineIndex].FirstContent && token.Text.End >= lines[lineIndex].ContentEnd)
                 {
@@ -670,6 +761,7 @@ SourceAnalysis BuildSourceAnalysis(
                 }
             }
         }
+
         if (i >= macroEnd && token.Kind == TK::Operator_OpenParenthesis && pendingMacro != NoToken) {
             const auto close = tree.MatchingDelimiter(i);
             const auto balanced = close > i && close < count && tree.Kind(close) == TK::Operator_CloseParenthesis;
@@ -681,12 +773,14 @@ SourceAnalysis BuildSourceAnalysis(
             const auto reason = balanced
                 ? ProtectionReason::SensitiveMacro
                 : ProtectionReason::SensitiveMacro | ProtectionReason::Recovery;
+
             if (pendingEnum) {
                 enumInvocations.push_back({{begin, end}, reason});
             } else {
                 protect(begin, end, reason);
             }
         }
+
         if (token.Kind != TK::Comment) {
             // Comments are preprocessing whitespace between a macro name and
             // its opening parenthesis; directives and other tokens are not.
@@ -696,21 +790,27 @@ SourceAnalysis BuildSourceAnalysis(
             pendingMacro = sensitive || pendingEnum ? i : NoToken;
         }
     }
+
     if (disabledDepth) {
         protect(disabledBegin, size, ProtectionReason::Disabled);
     }
+
     for (const auto range : options.ImmutableRanges) {
         protect(range.Begin, range.End, ProtectionReason::Explicit);
     }
+
     for (const auto& range : options.InheritedProtection) {
         if (range.Reasons == ProtectionReason::None) {
             throw std::invalid_argument("inherited protection requires a reason");
         }
+
         protect(range.Source.Begin, range.Source.End, range.Reasons);
+
         if ((uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::Directive)) != 0) {
             result.DirectiveFences_.push_back(range);
         }
     }
+
     struct Frame
     {
         const parser::Node* Next;
@@ -721,18 +821,22 @@ SourceAnalysis BuildSourceAnalysis(
         RegionId EnclosingStatement = NoRegion;
         RegionId LastChild = NoRegion;
     };
+
     std::pmr::vector<Frame> stack(&scratchMemory);
     auto visit = [&] (const parser::Node& node, RegionId parent) {
         if (result.Regions_.size() >= NoRegion) {
             throw std::length_error("too many source regions");
         }
+
         const auto id = static_cast<RegionId>(result.Regions_.size());
         const auto tokens = node.Tokens;
         const auto begin = tokens.Begin < count ? tree.Token(tokens.Begin).Text.Begin : size;
         const auto end = tokens.Empty() ? begin : tree.Token(tokens.End - 1).Text.End;
+
         if (node.Kind == parser::NodeKind::MacroEnumDeclaration) {
             parsedEnumBegins.push_back(begin);
         }
+
         const bool recovery = Recovery(node.Kind);
         const bool ambiguous = node.Kind == parser::NodeKind::AmbiguousStatement;
         const auto hasRecovery = recovery || recoveryPrefix[tokens.End] != recoveryPrefix[tokens.Begin];
@@ -741,14 +845,17 @@ SourceAnalysis BuildSourceAnalysis(
             hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
             hasAmbiguity ? RegionStatus::Ambiguous : RegionStatus::Complete);
         auto attached = tokens;
+
         if (const auto* trivia = tree.AssociatedTrivia(node)) {
             for (auto* item = trivia->Leading.First; item; item = item->Next) {
                 attached.Begin = std::min(attached.Begin, item->Tokens.Begin);
             }
+
             for (auto* item = trivia->Trailing.First; item; item = item->Next) {
                 attached.End = std::max(attached.End, item->Tokens.End);
             }
         }
+
         const auto boundaryParent = parent == NoRegion ? NoRegion : stack.back().StatementParent;
         const auto enclosingStatement = parent == NoRegion ? NoRegion : stack.back().EnclosingStatement;
         result.Regions_.push_back({
@@ -763,15 +870,19 @@ SourceAnalysis BuildSourceAnalysis(
             node.GetFunctionKind(),
             boundaryParent != NoRegion && SimpleStatementBoundary(tree, node, result.Regions_[boundaryParent].Kind),
         });
+
         if (parent != NoRegion) {
             auto& frame = stack.back();
+
             if (frame.LastChild == NoRegion) {
                 result.Regions_[parent].FirstChild = id;
             } else {
                 result.Regions_[frame.LastChild].NextSibling = id;
             }
+
             frame.LastChild = id;
         }
+
         auto prefix = NoToken;
         const parser::Node* next = nullptr;
         switch (node.Kind) {
@@ -780,6 +891,7 @@ SourceAnalysis BuildSourceAnalysis(
                     prefix = tokens.End;
                     next = node.NextSibling;
                 }
+
                 break;
             case parser::NodeKind::ArgumentList:
             case parser::NodeKind::ParameterList:
@@ -796,21 +908,26 @@ SourceAnalysis BuildSourceAnalysis(
                     prefix = tokens.Begin + 1;
                     next = node.Child();
                 }
+
                 break;
             default:
                 break;
         }
+
         if (prefix < count && tree.Kind(prefix) == TK::Comment && tree.TokenText(prefix).starts_with("/*")) {
             while (next && next->Kind == parser::NodeKind::Comment) {
                 next = next->NextSibling;
             }
+
             if (next) {
                 auto afterComments = prefix;
+
                 while (afterComments < next->Tokens.End && tree.Kind(afterComments) == TK::Comment &&
                     tree.TokenText(afterComments).starts_with("/*"))
                 {
                     ++afterComments;
                 }
+
                 // Some list items include their leading trivia in Tokens.
                 // The first non-comment token must belong to the next item.
                 if (afterComments >= next->Tokens.Begin && afterComments < next->Tokens.End) {
@@ -821,10 +938,12 @@ SourceAnalysis BuildSourceAnalysis(
                 }
             }
         }
+
         if (node.Kind == parser::NodeKind::HeaderName) {
             // Whitespace inside header delimiters is part of the filename.
             protect(begin, end, ProtectionReason::HeaderName);
         }
+
         if (node.Kind == parser::NodeKind::MacroFunctionHeader || node.Kind == parser::NodeKind::MacroRecordBegin ||
             node.Kind == parser::NodeKind::MacroRecordEnd)
         {
@@ -832,6 +951,7 @@ SourceAnalysis BuildSourceAnalysis(
             // be stringified or token-pasted; preserve complete invocations.
             protect(begin, end, ProtectionReason::SensitiveMacro);
         }
+
         if (recovery || ambiguous) {
             // Complete ambiguous statements and bounded conditions have
             // proven edges, even when their interpretation is unknown.
@@ -839,6 +959,7 @@ SourceAnalysis BuildSourceAnalysis(
             // parsed assignment RHS and let the body indent around it.
             // Other recovery still owns adjacent trivia and insertion points.
             auto protectedEnd = end;
+
             if (ambiguous) {
                 for (auto* child = node.Child(); child; child = child->NextSibling) {
                     if (child->Kind == parser::NodeKind::Initializer) {
@@ -847,6 +968,7 @@ SourceAnalysis BuildSourceAnalysis(
                     }
                 }
             }
+
             const bool conditionBoundary =
                 parent != NoRegion && result.Regions_[parent].Kind == parser::NodeKind::Condition &&
                     result.Regions_[parent].Tokens.End == tokens.End + 1 &&
@@ -861,10 +983,12 @@ SourceAnalysis BuildSourceAnalysis(
             const bool calleeBoundary = node.Kind == parser::NodeKind::UnparsedSyntax && !tokens.Empty() &&
                 parent != NoRegion && result.Regions_[parent].Kind == parser::NodeKind::CallExpression &&
                 result.Regions_[parent].FirstChild == id && result.Regions_[parent].Tokens.Begin == tokens.Begin;
+
             if (calleeBoundary || (recovery && statementBoundary)) {
                 result.Gaps_[tokens.Begin].RecoveryBoundary = true;
                 result.Gaps_[tokens.Begin].MovableStatementIndent = statementBoundary;
             }
+
             const auto before = statementBoundary || calleeBoundary
                 ? begin
                 : tokens.Begin ? tree.Token(tokens.Begin - 1).Text.End : 0;
@@ -875,6 +999,7 @@ SourceAnalysis BuildSourceAnalysis(
             // but a bounded enclosing statement still proves its indentation
             // may move. Other recovery retains its existing opaque fences.
             bool preprocessingFragment = false;
+
             if (enclosingStatement != NoRegion && node.Kind == parser::NodeKind::UnparsedSyntax) {
                 for (auto token = tokens.Begin; token < tokens.End; ++token) {
                     if (tree.Kind(token) == TK::PreprocessingDirective) {
@@ -883,6 +1008,7 @@ SourceAnalysis BuildSourceAnalysis(
                     }
                 }
             }
+
             if ((statementBoundary || preprocessingFragment) && ((ambiguous && !hasRecovery) || recovery)) {
                 // Preserve opaque tokens, horizontal spelling and every
                 // newline. Complete final indentation slices can still follow
@@ -890,23 +1016,31 @@ SourceAnalysis BuildSourceAnalysis(
                 auto protectedBegin = before;
                 const auto firstGap = preprocessingFragment ? tokens.Begin : tokens.Begin + 1;
                 const auto gapEnd = preprocessingFragment ? std::min(tokens.End, count) + 1 : tokens.End;
+
                 for (auto token = firstGap; token < gapEnd; ++token) {
                     auto& gap = result.Gaps_[token];
+
                     if (gap.Source.End > after) {
                         break;
                     }
+
                     if (!gap.HasLineFeed || gap.Preserve || gap.ContextSensitive || gap.HasBareCR) {
                         continue;
                     }
+
                     const auto original = result.Original(gap);
                     const auto indentBegin = original.rfind('\n') + 1;
+
                     if (original.substr(indentBegin).find_first_not_of(" \t") != std::string_view::npos) {
                         continue;
                     }
+
                     const auto indent = gap.Source.Begin + Offset(indentBegin);
+
                     if (indent < protectedBegin) {
                         continue;
                     }
+
                     protect(
                         protectedBegin,
                         indent,
@@ -914,16 +1048,19 @@ SourceAnalysis BuildSourceAnalysis(
                     protectedBegin = gap.Source.End;
                     gap.MovableStatementIndent = true;
                 }
+
                 protect(protectedBegin, after, recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous);
             } else {
                 protect(before, after, recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous);
             }
+
             if (before == after && tokens.Begin < result.Gaps_.size()) {
                 result.Gaps_[tokens.Begin].Preserve = true;
                 result.Gaps_[tokens.Begin].Reasons =
                     recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous;
             }
         }
+
         stack
             .push_back({
                 node.Child(),
@@ -941,6 +1078,7 @@ SourceAnalysis BuildSourceAnalysis(
             });
     };
     visit(tree.Root(), NoRegion);
+
     while (!stack.empty()) {
         if (const auto* child = stack.back().Next) {
             const auto parent = stack.back().Id;
@@ -950,40 +1088,49 @@ SourceAnalysis BuildSourceAnalysis(
             const auto id = stack.back().Id;
             stack.pop_back();
             const auto& region = result.Regions_[id];
+
             if (region.Parent != NoRegion) {
                 auto& parent = result.Regions_[region.Parent];
                 parent.Status = Combine(parent.Status, region.Status);
             }
         }
     }
+
     // Both lists follow source order. Defer these protections until the
     // existing tree walk proves which invocations own the enum grammar.
     size_t parsedEnum = 0;
+
     for (const auto& range : enumInvocations) {
         while (parsedEnum < parsedEnumBegins.size() && parsedEnumBegins[parsedEnum] < range.Source.Begin) {
             ++parsedEnum;
         }
+
         if (parsedEnum == parsedEnumBegins.size() || parsedEnumBegins[parsedEnum] != range.Source.Begin) {
             protect(range.Source.Begin, range.Source.End, range.Reasons);
         }
     }
+
     for (const auto& range : result.Protection_) {
         if ((uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::Directive | ProtectionReason::LineSplice)) != 0) {
             result.DirectiveFences_.push_back(range);
         }
     }
+
     MergeProtection(result.DirectiveFences_);
     MergeProtection(result.Protection_);
     size_t interval = 0;
+
     for (auto& gap : result.Gaps_) {
         // Keep intrinsic fences distinct from protection folded into the gap:
         // a protected exact prefix need not protect a selected
         // horizontal slice.
         gap.IntrinsicPreserve = gap.Preserve;
         gap.IntrinsicContextSensitive = gap.ContextSensitive;
+
         while (interval < result.Protection_.size() && result.Protection_[interval].Source.End <= gap.Source.Begin) {
             ++interval;
         }
+
         if (interval < result.Protection_.size()) {
             const auto& range = result.Protection_[interval];
             // Proven incoming gaps are outside the protected spelling, even
@@ -992,23 +1139,28 @@ SourceAnalysis BuildSourceAnalysis(
             const bool beforeSpelling = gap.Source.Empty() && gap.Source.Begin == range.Source.Begin &&
                 (range.Reasons == ProtectionReason::HeaderName ||
                     (gap.RecoveryBoundary && range.Reasons == ProtectionReason::Recovery));
+
             if (!beforeSpelling &&
                 (gap.Source.Empty() ? range.Source.Begin <= gap.Source.Begin : range.Source.Begin < gap.Source.End))
             {
                 gap.Preserve = true;
                 gap.Reasons = gap.Reasons | range.Reasons;
+
                 if ((static_cast<uint16_t>(range.Reasons) & static_cast<uint16_t>(ProtectionReason::HeaderName)) != 0) {
                     gap.ContextSensitive = true;
                 }
             }
         }
     }
+
     result.Built_ = true;
+
     if (options.EditScope) {
         result.RestrictEditScope(*options.EditScope);
     } else {
         result.PartialGapPermissions_ = result.CollectPartialGapPermissions(std::nullopt);
     }
+
     return result;
 }
 

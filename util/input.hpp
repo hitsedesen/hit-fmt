@@ -39,9 +39,11 @@ template <size_t Size>
 [[nodiscard]] constexpr auto PadSource(const char (&source)[Size])
 {
     std::array<char, Size - 1 + SourcePaddingSize> result{};
+
     for (size_t i = 0; i < Size - 1; ++i) {
         result[i] = source[i];
     }
+
     return result;
 }
 

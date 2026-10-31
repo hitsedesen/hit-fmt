@@ -20,9 +20,11 @@ bool Flags::Flag::Matches(std::string_view argument) const
     if (argument == Name) {
         return true;
     }
+
     if (Mode == ValueMode::None || !argument.starts_with(Name)) {
         return false;
     }
+
     return !Name.starts_with("--") || argument.substr(Name.size()).starts_with('=');
 }
 
@@ -46,25 +48,30 @@ void Flags::Parse(std::span<const char* const> args) const
     if (!args.empty()) {
         args = args.subspan(1);
     }
+
     bool positionalOnly = false;
     while (!args.empty()) {
         const std::string_view argument(args.front());
         args = args.subspan(1);
+
         if (positionalOnly || !IsFlag(argument)) {
             if (!Positionals_) {
                 throw UsageError("unexpected argument: " + std::string(argument));
             }
+
             Positionals_(argument);
             continue;
         } else if (argument == "--") {
             positionalOnly = true;
             continue;
         }
+
         const auto flag = std::ranges::find_if(
             Registered_,
             [&] (const Flag& candidate) {
                 return candidate.Matches(argument);
             });
+
         if (flag == Registered_.end()) {
             throw UsageError("unknown option: " + std::string(argument));
         }
@@ -79,6 +86,7 @@ void Flags::Parse(std::span<const char* const> args) const
         } else if (flag->Mode == ValueMode::Required) {
             throw UsageError(std::string(flag->MissingValueError));
         }
+
         flag->Apply(value);
     }
 }

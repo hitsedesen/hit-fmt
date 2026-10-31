@@ -15,6 +15,7 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
     size_t original = 0, output = 0;
     size_t includes = 0;
     bool other = false;
+
     for (const auto& edit : changes.Edits) {
         ASSERT_LE(original, edit.Original.Begin);
         ASSERT_LE(edit.Original.Begin, edit.Original.End);
@@ -22,6 +23,7 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
         ASSERT_LE(output, edit.Output.Begin);
         ASSERT_LE(edit.Output.Begin, edit.Output.End);
         ASSERT_LE(edit.Output.End, result.Text.size());
+
         if (edit.Kind == formatter::FormatChangeKind::IncludeOrder) {
             ASSERT_LT(includes, result.Summary->IncludeOrderChanges.size());
             const auto& block = result.Summary->IncludeOrderChanges[includes++];
@@ -34,6 +36,7 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
         } else {
             other = true;
         }
+
         const auto unchanged = source.substr(original, edit.Original.Begin - original);
         EXPECT_EQ(unchanged, std::string_view(result.Text).substr(output, edit.Output.Begin - output));
         reconstructed += unchanged;
@@ -41,6 +44,7 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
         original = edit.Original.End;
         output = edit.Output.End;
     }
+
     EXPECT_EQ(source.substr(original), std::string_view(result.Text).substr(output));
     reconstructed += source.substr(original);
     EXPECT_EQ(reconstructed, result.Text);
@@ -50,6 +54,7 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
 
     const auto checkLines = [] (const formatter::SourceLines& lines, std::string_view text) {
         size_t cursor = 0;
+
         for (size_t line = 1; line <= lines.Count(); ++line) {
             const auto range = lines.Range(line);
             ASSERT_EQ(range.Begin, cursor);
@@ -61,6 +66,7 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
             EXPECT_EQ(lines.LineAt(range.End - 1), line);
             cursor = range.End;
         }
+
         EXPECT_EQ(cursor, text.size());
     };
     checkLines(changes.OriginalLines, source);
@@ -76,6 +82,7 @@ inline void ExpectChangeSummary(const formatter::FormatResult& summary, const fo
     const auto& blocks = summary.Summary->IncludeOrderChanges;
     const auto& expected = detailed.Summary->IncludeOrderChanges;
     ASSERT_EQ(blocks.size(), expected.size());
+
     for (size_t i = 0; i < blocks.size(); ++i) {
         EXPECT_EQ(blocks[i].Original.Begin, expected[i].Original.Begin);
         EXPECT_EQ(blocks[i].Original.End, expected[i].Original.End);

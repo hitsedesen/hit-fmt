@@ -50,6 +50,7 @@ bool IsExcluded(const std::filesystem::path& relativePath, const std::vector<std
     if (exclusions.empty()) {
         return false;
     }
+
     auto name = relativePath.generic_string();
     return std::ranges::any_of(
         exclusions,
@@ -82,9 +83,11 @@ public:
         // descending; a file uses its own nearest configuration.
         auto source = directory ? path.parent_path() / "unused.cpp" : path;
         const auto& config = FindConfig(source);
+
         if (config.Settings->Settings.Exclude.empty()) {
             return false;
         }
+
         auto relative = std::filesystem::absolute(path).lexically_normal().lexically_relative(config.Directory);
         return hit_fmt::IsExcluded(relative, config.Settings->Settings.Exclude);
     }
@@ -112,6 +115,7 @@ private:
             DefaultConfig_.Settings =
                 std::make_unique<const hit_fmt::PreparedConfiguration>(formatter::Configuration{});
         }
+
         return DefaultConfig_;
     }
 
@@ -120,18 +124,22 @@ private:
         if (ExplicitConfig_) {
             return *ExplicitConfig_;
         }
+
         auto directory = sourcePath.parent_path();
         std::error_code error;
         directory =
             directory.empty() ? std::filesystem::current_path(error) : std::filesystem::absolute(directory, error);
+
         if (error) {
             std::osyncstream(std::cerr) << "warning: " << sourcePath.string()
                 << ": cannot determine configuration search directory: " << error.message()
                 << "; using default configuration\n";
             return DefaultConfig();
         }
+
         auto directoryKey = directory.lexically_normal().string();
         auto [configIterator, configInserted] = ConfigPaths_.try_emplace(directoryKey);
+
         if (configInserted) {
             configIterator->second = formatter::FindStyleFile(
                 directory,
@@ -141,16 +149,21 @@ private:
                         << error.message() << '\n';
                 });
         }
+
         const auto& config = configIterator->second;
+
         if (!config) {
             return DefaultConfig();
         }
+
         auto key = config->lexically_normal().string();
         auto iterator = Configs_.try_emplace(key).first;
+
         if (!iterator->second.Settings) {
             iterator->second.Directory = config->parent_path().lexically_normal();
             iterator->second.Settings = LoadPreparedConfig(*config);
         }
+
         return iterator->second;
     }
 
@@ -168,36 +181,46 @@ bool DiscoverFiles(const Options& options, StyleResolver& resolver, Visit visit)
     auto emit = [&] (const std::filesystem::path& path) {
         return !seen.insert(path).second || visit(path);
     };
+
     for (const auto& path : options.Paths) {
         if (std::filesystem::is_regular_file(path)) {
             if (!IsExcluded(path.filename(), options.Exclusions) && !resolver.IsExcluded(path, false) && !emit(path)) {
                 return false;
             }
+
             continue;
         }
+
         if (!std::filesystem::is_directory(path)) {
             throw std::runtime_error(path.string() + ": path does not exist");
         }
+
         if (resolver.IsExcluded(path, true)) {
             continue;
         }
+
         auto iterator = std::filesystem::recursive_directory_iterator(path);
+
         for (const auto end = std::filesystem::recursive_directory_iterator(); iterator != end; ++iterator) {
             const auto& entry = *iterator;
             bool directory = entry.is_directory();
+
             if (IsExcluded(entry.path().lexically_relative(path), options.Exclusions) ||
                 resolver.IsExcluded(entry.path(), directory))
             {
                 if (directory) {
                     iterator.disable_recursion_pending();
                 }
+
                 continue;
             }
+
             if (!entry.is_symlink() && entry.is_regular_file() && IsCppSource(entry.path()) && !emit(entry.path())) {
                 return false;
             }
         }
     }
+
     return true;
 }
 
@@ -249,6 +272,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
         << "Output is colorized when written to a terminal; set " "NO_COLOR to disable it.\n\n";
     highlight("Examples:", terminal.BoldCyan);
     output << '\n';
+
     for (auto example :
         {
             " source.cpp",
@@ -270,10 +294,13 @@ formatter::ChangedHunkFiles ReadChangedHunks(const std::string& path)
     if (path == "-") {
         return formatter::ParseChangedHunks(std::cin, std::filesystem::current_path());
     }
+
     std::ifstream input(path);
+
     if (!input) {
         throw std::runtime_error("cannot open changed ranges: " + path);
     }
+
     return formatter::ParseChangedHunks(input, std::filesystem::current_path());
 }
 
@@ -289,18 +316,22 @@ void PrintCheckResult(
         if (options.Fix && checked.FormattingMismatch) {
             output << terminal.BoldGreen << path << ": fixed formatting" << terminal.Reset << '\n';
         }
+
         if (checked.HasFailures(options.Fix)) {
             output << terminal.BoldRed << path << ": ";
             PrintFileSummaryIssues(output, checked, options.Fix);
             output << terminal.Reset << '\n';
         }
+
         return;
     }
+
     if (checked.FormattingMismatch && options.Fix) {
         PrintFormattingDiagnostics(output, path, source, checked.Formatting, terminal, true);
     } else if (checked.FormattingMismatch) {
         PrintFormattingDiagnostics(output, path, source, checked.Formatting, terminal, false);
     }
+
     PrintFileIssues(output, path, source, checked, options.Fix, terminal);
 }
 
@@ -328,15 +359,18 @@ FileResult ProcessFile(
             const auto absolute = std::filesystem::absolute(path).lexically_normal();
             scope = ChangedFileScope{changed.Hunks.at(absolute.string()), options.Spillover};
         }
+
         const auto checked = FormatAndCheckFile(
             source,
             config,
             inputFilePath,
             scope,
             options.SummaryOnly ? DiagnosticDetail::Summary : DiagnosticDetail::Full);
+
         if (options.Fix && checked.FormattingMismatch) {
             util::WriteEntireFile(filePath, checked.Formatting.Text);
         }
+
         PrintCheckResult(output, filePath, source.View(), checked, options, terminal);
         result.Mismatches = checked.HasFailures(options.Fix);
     }
@@ -365,9 +399,11 @@ bool DispatchFiles(
     const auto process = [&] (const auto& path, StyleResolver& resolver) {
         return ProcessFile(path, resolver, options, changed, terminal);
     };
+
     if (options.Threads == 1) {
         return RunSerialFiles(discover, discoveryResolver, process, print);
     }
+
     const auto makeWorkerResolver = [&options] {
         return StyleResolver(options);
     };
@@ -378,9 +414,11 @@ bool PrintFileResult(const FileResult& result, size_t& mismatchCount)
 {
     std::cout << result.Output;
     std::cout.flush();
+
     if (!result.Error.empty()) {
         std::osyncstream(std::cerr) << result.Error;
     }
+
     mismatchCount += result.Mismatches;
     return result.Failed;
 }
@@ -390,6 +428,7 @@ void PrintSummary(size_t mismatchCount, bool changedHunks, const Terminal& termi
     if (terminal.Reset.empty()) {
         return;
     }
+
     if (mismatchCount == 0) {
         std::cout << terminal.BoldGreen
             << (changedHunks ? "No hunk or spillover violations found." : "All checked files are formatted.")
@@ -406,9 +445,11 @@ int RunFiles(const Options& options, const formatter::ChangedHunkFiles& changed,
     const auto print = [&mismatchCount] (const FileResult& result) {
         return PrintFileResult(result, mismatchCount);
     };
+
     if (!DispatchFiles(options, changed, terminal, print)) {
         return 1;
     }
+
     PrintSummary(mismatchCount, options.HunkInput.has_value(), terminal);
     return mismatchCount != 0 ? 1 : 0;
 }
@@ -419,23 +460,29 @@ int Run(std::span<const char* const> args)
 {
     auto options = ParseOptions(args);
     const auto terminal = GetTerminal();
+
     if (options.ShowHelp) {
         PrintHelp(std::cout, args[0], terminal);
         return 0;
     }
+
     if (options.ShowVersion) {
         std::cout << "hit-fmt " << BuildVersion() << '\n';
         return 0;
     }
+
     if (options.ShowConfigHelp) {
         PrintConfigHelp(std::cout, terminal);
         return 0;
     }
+
     if (options.GenerateConfig) {
         PrintConfig(std::cout, *options.GenerateConfig);
         return 0;
     }
+
     formatter::ChangedHunkFiles changed;
+
     if (options.HunkInput) {
         changed = ReadChangedHunks(*options.HunkInput);
         options.Paths = std::move(changed.Paths);
@@ -443,6 +490,7 @@ int Run(std::span<const char* const> args)
         PrintHelp(std::cerr, args[0], GetTerminal(stderr));
         return 1;
     }
+
     return RunFiles(options, changed, terminal);
 }
 

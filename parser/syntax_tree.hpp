@@ -395,16 +395,20 @@ public:
     [[nodiscard]] Slot Append()
     {
         assert(!Chunks_);
+
         if (!Last_ || Last_->Size == Capacity) {
             auto* chunk = MakeDefaultInitialized<Chunk>(*Memory_);
+
             if (Last_) {
                 Last_->Next = chunk;
             } else {
                 First_ = chunk;
             }
+
             Last_ = chunk;
             ++ChunkCount_;
         }
+
         auto offset = Last_->Size++;
         auto index = Size_++;
         return {.ChunkPtr = Last_, .Offset = offset, .Index = index};
@@ -413,11 +417,14 @@ public:
     void Seal()
     {
         assert(!Chunks_);
+
         if (ChunkCount_ == 0) {
             return;
         }
+
         Chunks_ = static_cast<Chunk**>(Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
         auto* chunk = First_;
+
         for (uint32_t i = 0; i < ChunkCount_; ++i) {
             Chunks_[i] = chunk;
             chunk = chunk->Next;
@@ -435,16 +442,21 @@ public:
     [[nodiscard]] Chunk* ResolveChunk(uint32_t index) const
     {
         assert(index < ChunkCount_);
+
         if (Chunks_) {
             return Chunks_[index];
         }
+
         if (index + 1 == ChunkCount_) {
             return Last_;
         }
+
         auto* chunk = First_;
+
         while (index-- != 0) {
             chunk = chunk->Next;
         }
+
         return chunk;
     }
 

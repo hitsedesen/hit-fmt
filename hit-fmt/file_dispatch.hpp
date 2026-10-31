@@ -79,6 +79,7 @@ bool RunParallelFiles(
             workers.emplace_back([&, resolver] {
                 std::vector<FileResult> completed;
                 completed.reserve(BatchFileLimit);
+
                 for (;;) {
                     FileBatch batch;
                     {
@@ -89,19 +90,25 @@ bool RunParallelFiles(
                                 bool canClaim = !pending.empty() && bufferedBytes < BufferedOutputLimit;
                                 return stop || canClaim || (discoveryDone && pending.empty());
                             });
+
                         if (stop || (discoveryDone && pending.empty())) {
                             return;
                         }
+
                         batch = std::move(pending.front());
                         pending.pop_front();
                         ++processing;
                     }
+
                     completed.clear();
+
                     for (const auto& path : batch.Paths) {
                         completed.push_back(process(path, *resolver));
                     }
+
                     {
                         std::lock_guard lock(mutex);
+
                         for (size_t index = 0; index < completed.size(); ++index) {
                             auto& result = completed[index];
                             bufferedBytes += result.Output.size() + result.Error.size();
@@ -109,8 +116,10 @@ bool RunParallelFiles(
                             // already left this deque.
                             results[batch.FirstIndex + index - printed] = std::move(result);
                         }
+
                         --processing;
                     }
+
                     ready.notify_all();
                 }
             });
@@ -128,18 +137,22 @@ bool RunParallelFiles(
                         if (batch.Paths.empty()) {
                             return true;
                         }
+
                         std::unique_lock lock(mutex);
                         ready.wait(
                             lock,
                             [&] {
                                 return stop || results.size() + batch.Paths.size() <= pendingFileLimit;
                             });
+
                         if (stop) {
                             return false;
                         }
+
                         for (size_t i = 0; i < batch.Paths.size(); ++i) {
                             results.emplace_back();
                         }
+
                         pending.push_back(std::move(batch));
                         lock.unlock();
                         ready.notify_all();
@@ -174,12 +187,14 @@ bool RunParallelFiles(
                     std::lock_guard lock(mutex);
                     discoveryDone = true;
                 }
+
                 ready.notify_all();
             });
             auto canLaunch = [&] {
                 return !pending.empty() && bufferedBytes < BufferedOutputLimit && workers.size() < threadCount &&
                     workers.size() < pending.size() + processing;
             };
+
             for (;;) {
                 FileResult result;
                 {
@@ -190,19 +205,23 @@ bool RunParallelFiles(
                             return (!results.empty() && results.front().has_value()) ||
                                 (discoveryDone && results.empty()) || canLaunch();
                         });
+
                     if (canLaunch()) {
                         lock.unlock();
                         launchWorker();
                         continue;
                     }
+
                     if (results.empty()) {
                         break;
                     }
+
                     bufferedBytes -= results.front()->Output.size() + results.front()->Error.size();
                     result = std::move(*results.front());
                     results.pop_front();
                     ++printed;
                 }
+
                 ready.notify_all();
                 failed |= print(result);
             }
@@ -212,6 +231,7 @@ bool RunParallelFiles(
                 std::lock_guard lock(mutex);
                 stop = true;
             }
+
             ready.notify_all();
             throw;
         }
@@ -219,6 +239,7 @@ bool RunParallelFiles(
     if (discoveryError) {
         std::rethrow_exception(discoveryError);
     }
+
     return !failed;
 }
 

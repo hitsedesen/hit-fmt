@@ -39,6 +39,7 @@ enum class GapContext : std::uint8_t
         case GapPolicy::GeneratedNoSpace:
             return context == GapContext::Rebuilt ? std::optional<bool>{false} : std::nullopt;
     }
+
     return std::nullopt;
 }
 

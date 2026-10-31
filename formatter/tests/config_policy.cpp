@@ -57,6 +57,7 @@ struct TemporaryConfig
     {
         std::ofstream output(Path);
         output << contents;
+
         if (!output) {
             throw std::runtime_error("cannot write test config");
         }
@@ -79,6 +80,7 @@ struct TemporaryConfigTree
         std::filesystem::create_directories((Path / name).parent_path());
         std::ofstream output(Path / name);
         output << contents;
+
         if (!output) {
             throw std::runtime_error("cannot write test config");
         }
@@ -117,6 +119,7 @@ TEST(ConfigPolicy, FindStyleFileReportsErrorsAndContinuesWithParentDirectories)
     const auto broken = tree.Path / "nested/.hit-fmt";
     std::error_code error;
     std::filesystem::create_symlink(".hit-fmt", broken, error);
+
     if (error) {
         GTEST_SKIP() << "Cannot create a symbolic link: " << error.message();
     }
@@ -143,6 +146,7 @@ TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
         "ColumnLimit = 80\nIndentWidth = 2\n" "ClassNameCase = PascalCase\nExclude = [\"generated\"]\n"
         "CallLineFirstArgumentNames = [\"Trace\"]\n" "DefinitionBlankLines = 2\nMaxEmptyLines = 1\n");
     tree.Write("nested/middle", "include = \"../base\"\nIndentWidth = 3\n");
+
     for (const auto contents :
         {"ColumnLimit = 100\ninclude = \"nested/middle\"\n", "include = \"nested/middle\"\nColumnLimit = 100\n"})
     {
@@ -156,6 +160,7 @@ TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
         EXPECT_TRUE(config.Exclude.empty());
         EXPECT_EQ(config.FormattingStyle.CallLineFirstArgumentNames, (std::vector<std::string>{"Log"}));
     }
+
     tree.Write("child", "include = \"" + (tree.Path / "base").generic_string() + "\"\nMaxEmptyLines = 2\n");
     EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "child").FormattingStyle.IndentWidth, 2u);
     tree.Write("child", "include = \"base\"\n");
@@ -176,11 +181,13 @@ TEST(ConfigPolicy, RepositoryIncludesFindNearestGitOrArcRoot)
             TemporaryConfigTree tree;
             tree.Write(".git", "gitdir: outer\n");
             tree.Write("base", "IndentWidth = 7\n");
+
             if (directory) {
                 std::filesystem::create_directories(tree.Path / "repo" / marker);
             } else {
                 tree.Write(std::filesystem::path("repo") / marker, "repository marker\n");
             }
+
             tree.Write("repo/base", "IndentWidth = 2\n");
             tree.Write("repo/nested/base", "include = \"@/base\"\nColumnLimit = 90\n");
             tree.Write("repo/nested/deeper/child", "include = \"../base\"\n");
@@ -189,6 +196,7 @@ TEST(ConfigPolicy, RepositoryIncludesFindNearestGitOrArcRoot)
             EXPECT_EQ(style.ColumnLimit, 90u);
         }
     }
+
     TemporaryConfigTree tree;
     tree.Write(".git", "gitdir: outer\n");
     tree.Write("settings", "IndentWidth = 7\n");
@@ -204,6 +212,7 @@ TEST(ConfigPolicy, InvalidIncludesReportIncludingFileAndLine)
     TemporaryConfigTree tree;
     tree.Write("cycle", "include = \"nested/../child\"\n");
     std::filesystem::create_directories(tree.Path / "nested");
+
     for (const auto value :
         {
             "unquoted",
@@ -224,11 +233,13 @@ TEST(ConfigPolicy, InvalidIncludesReportIncludingFileAndLine)
             EXPECT_NE(std::string(error.what()).find((tree.Path / "child").string() + ":"), std::string::npos);
         }
     }
+
     for (size_t index = 0; index < 65; ++index) {
         tree.Write(
             std::to_string(index),
             index == 64 ? "IndentWidth = 2\n" : "include = \"" + std::to_string(index + 1) + "\"\n");
     }
+
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(tree.Path / "1"));
     EXPECT_THROW((void)formatter::LoadConfigFile(tree.Path / "0"), std::runtime_error);
 }
@@ -417,6 +428,7 @@ TEST(ConfigPolicy, SoleArgumentPlacementInheritsFinalCallsFirstItem)
 {
     for (const auto firstItem : {"InlineIfFits", "NextLine"}) {
         SCOPED_TRACE(firstItem);
+
         for (const auto inherited :
             {"", "CallsSoleArgumentFirstItem = InlineIfFits\n" "CallsSoleArgumentFirstItem = Inherit\n"})
         {
@@ -473,6 +485,7 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
 {
     for (const auto& [key, member] : VerticalCountSettings) {
         SCOPED_TRACE(key);
+
         for (const auto mode : {formatter::BlankLineMode::Exact, formatter::BlankLineMode::Minimum}) {
             formatter::Style style;
             style.*member = {mode, 10001};
@@ -484,6 +497,7 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
             EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
         }
     }
+
     formatter::Style style;
     style.MaxEmptyLines = 10001;
     EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
@@ -546,6 +560,7 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
     const TemporaryConfig replaced(
         "MemberDefinitionBlankLines = " "2\nMaxEmptyLines = 1\n" "MemberDefinitionBlankLines = Preserve\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(replaced.Path));
+
     for (const auto& setting : VerticalCountSettings) {
         const auto key = setting.first;
         SCOPED_TRACE(key);
@@ -557,6 +572,7 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
             const std::string message = error.what();
             EXPECT_NE(message.find(std::string(key) + " at " + invalid.Path.string() + ":1"), std::string::npos);
             EXPECT_NE(message.find("MaxEmptyLines at " + invalid.Path.string() + ":2"), std::string::npos);
+
             if (std::string_view(key) == "DefinitionBlankLines") {
                 EXPECT_NE(message.find("inherited from DefinitionBlankLines"), std::string::npos);
             }
@@ -621,6 +637,7 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
     const auto checkConfigDefault = [&] <typename T> (std::string_view name, const T& actual, const T& expected) {
         SCOPED_TRACE(name);
         EXPECT_NE(text.find("\n" + std::string(name) + " = "), std::string::npos);
+
         if constexpr (std::is_same_v<T, std::vector<std::regex>>) {
             EXPECT_EQ(actual.size(), expected.size());
         } else {
@@ -689,6 +706,7 @@ TEST(ConfigPolicy, CvRefQualifierSpacingSeparatesInheritanceAndPreservation)
         EXPECT_EQ(compiled.Spacing.FunctionCvRefQualifierSpacing, policy);
         EXPECT_EQ(compiled.Spacing.FunctionRefQualifierSpacing, GapPolicy::Space);
     }
+
     const TemporaryConfig reset("FunctionRefQualifierSpacing = NoSpace\n" "FunctionCvRefQualifierSpacing = Space\n"
         "FunctionCvRefQualifierSpacing = Inherit\n");
     const auto resetStyle = formatter::LoadConfigFile(reset.Path).FormattingStyle;
@@ -706,11 +724,13 @@ TEST(ConfigPolicy, GeneratedGapsFollowOwningCombinatorNotTokenProvenance)
     using formatter::GapContext;
     using formatter::GapPolicy;
     using formatter::GapUsesSpace;
+
     for (const auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
         EXPECT_FALSE(GapUsesSpace(GapPolicy::Preserve, context).has_value());
         EXPECT_EQ(GapUsesSpace(GapPolicy::Space, context), true);
         EXPECT_EQ(GapUsesSpace(GapPolicy::NoSpace, context), false);
     }
+
     EXPECT_FALSE(GapUsesSpace(GapPolicy::GeneratedSpace, GapContext::Preserved));
     EXPECT_FALSE(GapUsesSpace(GapPolicy::GeneratedNoSpace, GapContext::Preserved));
     EXPECT_EQ(GapUsesSpace(GapPolicy::GeneratedSpace, GapContext::Rebuilt), true);
@@ -763,6 +783,7 @@ TEST(ConfigPolicy, AttachedArgumentOverflowCompilesIntoOwnedAnnotations)
     for (const bool anyArgument : {false, true}) {
         const std::string prefix = anyArgument ? "CallLineFirstArgument" : "CallLineFirstString";
         SCOPED_TRACE(prefix);
+
         for (const auto overflow :
             {
                 formatter::AttachedStringOverflow::Wrap,
@@ -787,6 +808,7 @@ TEST(ConfigPolicy, AttachedArgumentOverflowCompilesIntoOwnedAnnotations)
                 ? formatter::FirstArgumentAnnotation::PinAnyArgument
                 : formatter::FirstArgumentAnnotation::PinCompleteStringLiteral);
         }
+
         const TemporaryConfig invalid(prefix + "Overflow = Unknown\n");
         EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     }
@@ -868,6 +890,7 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_TRUE(empty.VisualScopes().empty());
     EXPECT_TRUE(empty.ChainScopes().empty());
     EXPECT_TRUE(empty.StickyChainPairs().empty());
+
     for (const auto text :
         {
             "CallLineFirstArgumentNames = [\"Trace\", \"Trace\"]\n",
@@ -903,6 +926,7 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
         const TemporaryConfig invalid(text);
         EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     }
+
     EXPECT_THROW((void)formatter::LoadConfigFile(ConfigData("invalid-annotation")), std::runtime_error);
     style.AlwaysBreakChainRootNames = {"ns::"};
     EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style), std::invalid_argument);
@@ -967,6 +991,7 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
         SCOPED_TRACE(name);
         EXPECT_THROW((void)formatter::LoadConfigFile(ConfigData(name)), std::runtime_error);
     }
+
     const TemporaryConfig invalid("IfConditionsPacking = Inherit\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     formatter::Style style;
@@ -1027,6 +1052,7 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritance)
     const auto changed = formatter::CompilePolicies(style);
     EXPECT_EQ(changed.Braces.Constructor, formatter::BracePlacement::NextLine);
     EXPECT_EQ(changed.Braces.Function, formatter::BracePlacement::Attached);
+
     for (const auto placement :
         {
             formatter::BracePlacement::Attached,
@@ -1060,6 +1086,7 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
                     EXPECT_NE(message.find("MaxEmptyLines = 0"), std::string::npos);
                     EXPECT_EQ(message.find("staged"), std::string::npos);
                 }
+
                 style.MaxEmptyLines = 1;
                 EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
                 EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
@@ -1072,6 +1099,7 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
             }
         }
     }
+
     formatter::Style invalidGroupOrder;
     invalidGroupOrder.IncludeGroupOrder = static_cast<formatter::IncludeGroupOrder>(255);
     EXPECT_THROW((void)formatter::PreparedFormat(invalidGroupOrder), std::invalid_argument);
@@ -1146,6 +1174,7 @@ TEST(ConfigPolicy, SupportedOptionsKeepExistingRejections)
         } catch (const std::invalid_argument& error) {
             EXPECT_NE(std::string(error.what()).find("CallLikeMacroNames syntax hints"), std::string::npos);
         }
+
         style.CallLikeMacroNames.clear();
         style.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
         try {
@@ -1155,9 +1184,11 @@ TEST(ConfigPolicy, SupportedOptionsKeepExistingRejections)
             EXPECT_EQ(std::string(error.what()), "AmbiguousTemplateDeclarationSpacing is unsupported");
         }
     }
+
     formatter::Style style;
     style.ColumnLimit = 0;
     EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+
     for (const auto key : {"StandaloneCommentBlankLinesBefore", "StandaloneCommentBlankLinesAfter"}) {
         const TemporaryConfig invalid(std::string(key) + " = Inherit\n");
         EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
@@ -1171,6 +1202,7 @@ TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
     EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
     style.ClassMacroNames.clear();
     EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+
     for (const auto& pairs :
         std::vector<std::vector<std::string>>{
             {"OPEN_CLASS"},
@@ -1187,9 +1219,11 @@ TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
     {
         style.ClassMacroNames = pairs;
         std::string text = "ClassMacroNames = [";
+
         for (size_t i = 0; i < pairs.size(); ++i) {
             text += (i ? ", \"" : "\"") + pairs[i] + "\"";
         }
+
         text += "]\n";
         SCOPED_TRACE(text);
         EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
@@ -1219,6 +1253,7 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
     EXPECT_EQ(groups.Classify("engine/..\\name.h").Group, 0u);
     EXPECT_EQ(groups.Classify("eng/item.h").Group, 3u);
     EXPECT_EQ(groups.Classify("engineer/item.h").Group, groups.GroupCount());
+
     for (const auto path :
         {
             "/engine/item.h",
@@ -1234,6 +1269,7 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
         SCOPED_TRACE(path);
         EXPECT_EQ(groups.Classify(path).Group, groups.GroupCount());
     }
+
     const formatter::PreparedIncludeGroups reversed(std::vector<formatter::IncludeGroupRule>{
         {{"engine/detail/"}, 1},
         {{"engine/"}, 2},
@@ -1255,9 +1291,12 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
         if (index == '/' || index == '\\' || index == '.') {
             continue;
         }
+
         many.push_back({{"base/" + std::string(1, static_cast<char>(index)) + "/"}, 0});
     }
+
     const formatter::PreparedIncludeGroups wide(many);
+
     for (std::size_t index = 0; index < many.size(); ++index) {
         EXPECT_EQ(wide.Classify(many[index].Prefixes.front() + "item.h").Group, index);
     }
@@ -1286,11 +1325,13 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
         EXPECT_THROW((void)formatter::PreparedIncludeGroups(style.IncludeGroups), std::invalid_argument);
         EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
     }
+
     formatter::Style invalidDepth;
     invalidDepth.IncludeGroups = {{{"engine/"}, -1}};
     EXPECT_THROW((void)formatter::CompilePolicies(invalidDepth), std::invalid_argument);
     EXPECT_THROW((void)formatter::PreparedIncludeGroups(invalidDepth.IncludeGroups), std::invalid_argument);
     EXPECT_THROW((void)formatter::PreparedFormat(invalidDepth), std::invalid_argument);
+
     for (const auto& rules :
         {
             std::vector<formatter::IncludeGroupRule>{{{"../stdio.h"}, 0, 0, true}},
@@ -1304,6 +1345,7 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
         EXPECT_THROW((void)formatter::PreparedIncludeGroups(rules), std::invalid_argument);
         EXPECT_THROW((void)formatter::PreparedFormat(invalidStandard), std::invalid_argument);
     }
+
     const TemporaryConfig repaired("IncludeGroups = [{Prefix = \"./bad\"}]\n"
         "IncludeGroups = [{Prefix = \"engine/\"}, " "{Prefix = \"engine/detail/\"}]\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(repaired.Path));
@@ -1316,6 +1358,7 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
             std::string(error.what()).find("IncludeGroups at " + duplicate.Path.string() + ":1"),
             std::string::npos);
     }
+
     const TemporaryConfig serialized(std::string("ExpressionsAlignment = ") +
         std::string(formatter::SerializeConfigEnum(formatter::ExpressionAlignment::Operand)) +
         "\nIncludeMatchingHeader = " +
@@ -1356,16 +1399,19 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
     EXPECT_EQ(prepared.Classify("../other/item.h").Group, 4u);
     EXPECT_EQ(prepared.Classify("vector", true).Group, 3u);
     EXPECT_EQ(prepared.Classify("vector", false).Group, 4u);
+
     for (const auto path : {"stdio.h", "stdint.h", "compat/header.h"}) {
         SCOPED_TRACE(path);
         EXPECT_EQ(prepared.Classify(path, true).Group, 3u);
         EXPECT_TRUE(prepared.Classify(path, true).StandardHeaders);
         EXPECT_EQ(prepared.Classify(path, false).Group, 3u);
     }
+
     for (const auto path : {"vendor/stdio.h", "stdio.hpp", "stdio.h.extra", "Stdio.h", "stdckdint.h", "threads.h"}) {
         SCOPED_TRACE(path);
         EXPECT_EQ(prepared.Classify(path, true).Group, 4u);
     }
+
     EXPECT_EQ(prepared.Classify("Windows.h", true).Group, 4u);
     EXPECT_EQ(prepared.Classify("vendor/vector", true).Group, 4u);
     const formatter::PreparedIncludeGroups shadowed(std::vector<formatter::IncludeGroupRule>{{{""}}, {{}, 0, 0, true}});
@@ -1389,6 +1435,7 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
     EXPECT_FALSE(exact.Classify("plain", true).StandardHeaders);
     EXPECT_EQ(exact.Classify("plain/header.h").Group, 2u);
     EXPECT_EQ(exact.Classify("plain_extra").Group, exact.GroupCount());
+
     for (const auto text :
         {
             "IncludeGroups = [\"engine/\"]\n",
@@ -1435,6 +1482,7 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
 TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
 {
     formatter::Style style;
+
     for (const auto indentation :
         {formatter::TernaryOperatorIndentation::Align, formatter::TernaryOperatorIndentation::Indent})
     {
@@ -1444,6 +1492,7 @@ TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
         const auto loaded = formatter::LoadConfigFile(config.Path).FormattingStyle;
         EXPECT_EQ(loaded.TernaryOperatorIndentation, indentation);
     }
+
     const TemporaryConfig invalid("TernaryOperatorIndentation = Shared\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     style.TernaryOperatorIndentation = static_cast<formatter::TernaryOperatorIndentation>(255);
@@ -1453,12 +1502,14 @@ TEST(ConfigPolicy, TernaryOperatorIndentationRoundTripsAndValidates)
 TEST(ConfigPolicy, LineEndingRoundTripsAndValidates)
 {
     formatter::Style style;
+
     for (const auto ending : {formatter::LineEnding::Preserve, formatter::LineEnding::LF, formatter::LineEnding::CRLF})
     {
         SCOPED_TRACE(formatter::SerializeConfigEnum(ending));
         TemporaryConfig config("LineEnding = " + std::string(formatter::SerializeConfigEnum(ending)) + "\n");
         EXPECT_EQ(formatter::LoadConfigFile(config.Path).FormattingStyle.LineEnding, ending);
     }
+
     style.LineEnding = static_cast<formatter::LineEnding>(255);
     EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
     TemporaryConfig bad("LineEnding = Native\n");
@@ -1473,6 +1524,7 @@ TEST(ConfigPolicy, TrailingCommentSpacesPreserveAndValidateBounds)
     const auto preserved = formatter::LoadConfigFile(preserve.Path).FormattingStyle;
     ASSERT_TRUE(preserved.TrailingCommentSpaces);
     EXPECT_FALSE(preserved.TrailingCommentSpaces->Count);
+
     for (const auto count : {0u, 1u, 2u, 10000u}) {
         SCOPED_TRACE(count);
         const TemporaryConfig config("TrailingCommentSpaces = " + std::to_string(count) + "\nMaxEmptyLines = 0\n");
@@ -1480,11 +1532,13 @@ TEST(ConfigPolicy, TrailingCommentSpacesPreserveAndValidateBounds)
         ASSERT_TRUE(style.TrailingCommentSpaces);
         EXPECT_EQ(style.TrailingCommentSpaces->Count, count);
     }
+
     for (const auto value : {"10001", "-1", "+2", "Inherit", "Space", "1.5", "999999999999999999999999999999"}) {
         SCOPED_TRACE(value);
         const TemporaryConfig invalid(std::string("TrailingCommentSpaces = ") + value + "\n");
         EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     }
+
     formatter::Style invalid;
     invalid.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{10001};
     EXPECT_THROW((void)formatter::PreparedFormat(invalid), std::invalid_argument);

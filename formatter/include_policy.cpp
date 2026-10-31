@@ -14,17 +14,22 @@ bool NormalizedRelativePath(std::string_view path) noexcept
     if (path.empty() || path.front() == '/') {
         return false;
     }
+
     while (!path.empty()) {
         const auto end = path.find('/');
         const auto component = path.substr(0, end);
+
         if (component.empty() || component == "." || component == "..") {
             return false;
         }
+
         if (end == std::string_view::npos) {
             break;
         }
+
         path.remove_prefix(end + 1);
     }
+
     return true;
 }
 
@@ -34,19 +39,24 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
 {
     std::vector<std::string_view> prefixes;
     bool standardHeaders = false;
+
     for (const auto& group : groups) {
         if (group.Depth < 0) {
             throw std::invalid_argument("IncludeGroups Depth must be an integer from 0 to 127");
         }
+
         if (group.StandardHeaders) {
             if (standardHeaders) {
                 throw std::invalid_argument("IncludeGroups has duplicate StandardHeaders rule");
             }
+
             standardHeaders = true;
         }
+
         if (group.Prefixes.empty() && !group.StandardHeaders) {
             throw std::invalid_argument("IncludeGroups requires Prefix, nonempty Prefixes or StandardHeaders = true");
         }
+
         for (const auto& prefix : group.Prefixes) {
             if (prefix.empty()) {
                 if (group.Prefixes.size() != 1) {
@@ -57,10 +67,13 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups)
                 throw std::invalid_argument("IncludeGroups requires normalized relative header names or directory "
                     "prefixes (no empty, . or .. components or backslashes)");
             }
+
             prefixes.push_back(prefix);
         }
     }
+
     std::sort(prefixes.begin(), prefixes.end());
+
     if (std::adjacent_find(prefixes.begin(), prefixes.end()) != prefixes.end()) {
         throw std::invalid_argument("IncludeGroups has duplicate prefix");
     }
@@ -76,6 +89,7 @@ void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std:
     while (!path.empty()) {
         const auto slash = path.find('/');
         const auto part = path.substr(0, slash);
+
         if (part == "..") {
             if (!parts.empty() && parts.back() != "..") {
                 parts.pop_back();
@@ -85,9 +99,11 @@ void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std:
         } else if (!part.empty() && part != ".") {
             parts.push_back(part);
         }
+
         if (slash == std::string_view::npos) {
             break;
         }
+
         path.remove_prefix(slash + 1);
     }
 }
@@ -105,6 +121,7 @@ IncludeDelimiterResolver::IncludeDelimiterResolver(
 {
     if (policy != IncludeDelimiters::Preserve) {
         const auto slash = inputFilePath.rfind('/');
+
         if (slash != std::string_view::npos) {
             AppendIncludePathComponents(Current_, inputFilePath.substr(0, slash + 1), InputAbsolute_);
         }
@@ -119,13 +136,16 @@ bool IncludeDelimiterResolver::Angled(std::string_view path, bool original)
     {
         return original;
     }
+
     const bool relative = !path.starts_with('/') &&
         (Base_ == IncludePathBase::SourceDirectory || path.starts_with("./") || path.starts_with("../"));
     const bool absolute = relative ? InputAbsolute_ : path.starts_with('/');
     Parts_.clear();
+
     if (relative) {
         Parts_.assign(Current_.begin(), Current_.end());
     }
+
     AppendIncludePathComponents(Parts_, path.substr(0, path.rfind('/') + 1), absolute);
     return absolute != InputAbsolute_ || Parts_ != Current_;
 }
@@ -134,24 +154,31 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     : StandardGroup_(groups.size())
 {
     ValidateIncludeGroups(groups);
+
     if (groups.empty()) {
         return;
     }
+
     std::size_t count = 0;
+
     for (const auto& group : groups) {
         count += group.Prefixes.size();
     }
+
     Groups_.reserve(groups.size());
     Prefixes_.reserve(count);
+
     for (std::size_t group = 0; group < groups.size(); ++group) {
         if (groups[group].StandardHeaders) {
             StandardGroup_ = group;
         }
+
         Groups_.push_back({
             groups[group].StandardHeaders ? count : Prefixes_.size(),
             groups[group].StandardHeaders ? std::int8_t{0} : groups[group].Depth,
             groups[group].Priority,
         });
+
         for (const auto& prefix : groups[group].Prefixes) {
             const auto slash = prefix.rfind('/');
             Prefixes_.push_back({
@@ -177,6 +204,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     for (const auto prefixIndex : order) {
         const std::string_view prefix = Prefixes_[prefixIndex].Text;
         std::size_t common = 0;
+
         while (common < std::min(previous.size(), prefix.size()) && previous[common] == prefix[common]) {
             ++common;
         }
@@ -194,20 +222,25 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
         std::size_t Parent;
         Edge Value;
     };
+
     std::vector<PendingEdge> pending;
     pending.reserve(bytes);
     std::vector<std::size_t> ancestors;
     ancestors.reserve(longest + 1);
     ancestors.push_back(0);
     previous = {};
+
     // Sorted prefixes share trie storage without per-node heap allocations.
     for (const auto prefixIndex : order) {
         const std::string_view prefix = Prefixes_[prefixIndex].Text;
         std::size_t common = 0;
+
         while (common < std::min(previous.size(), prefix.size()) && previous[common] == prefix[common]) {
             ++common;
         }
+
         ancestors.resize(common + 1);
+
         for (std::size_t index = common; index < prefix.size(); ++index) {
             const auto parent = ancestors.back();
             const auto child = Nodes_.size();
@@ -216,14 +249,18 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
             ++Nodes_[parent].EdgeCount;
             ancestors.push_back(child);
         }
+
         Nodes_[ancestors.back()].Prefix = prefixIndex;
         previous = prefix;
     }
+
     std::size_t first = 0;
+
     for (auto& node : Nodes_) {
         node.FirstEdge = first;
         first += node.EdgeCount;
     }
+
     Edges_.resize(pending.size());
     std::vector<std::size_t> inserted(Nodes_.size(), 0);
     for (const auto& edge : pending) {
@@ -245,16 +282,21 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
             selected < GroupCount() && selected == StandardGroup_,
         };
     };
+
     if (Nodes_.empty()) {
         return result(Prefixes_.size());
     }
+
     auto match = Nodes_.front().Prefix; // An explicit empty-prefix fallback.
+
     if (match == 0 && !Prefixes_.empty()) {
         // A leading prefix fallback needs neither validation nor trie traversal.
         return result(0);
     }
+
     if (NormalizedRelativePath(path)) {
         std::size_t node = 0;
+
         for (const unsigned char byte : path) {
             const auto& current = Nodes_[node];
             const auto begin = Edges_.begin() + current.FirstEdge;
@@ -266,11 +308,14 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
                 [] (const Edge& value, auto key) {
                     return value.Byte < key;
                 });
+
             if (edge == end || edge->Byte != byte) {
                 break;
             }
+
             node = edge->Child;
             const auto candidate = Nodes_[node].Prefix;
+
             if (candidate < Prefixes_.size() &&
                 (Prefixes_[candidate].Text.ends_with('/') || Prefixes_[candidate].Text.size() == path.size()))
             {
@@ -278,6 +323,7 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
             }
         }
     }
+
     return result(match);
 }
 
