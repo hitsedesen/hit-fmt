@@ -267,20 +267,24 @@ FunctionNameCase = PascalCase
 NamespaceNameCase = PascalCase
 NamespaceNamePrefixes = ["N"]
 LocalVariableNameCase = camelCase
-LocalVariableNameExemptions = ["Logger"]
+LocalVariableNameExemptions = ["Logger", "_", "this_"]
 ParameterNameCase = camelCase
+ParameterNameExemptions = ["Logger", "_", "this_"]
 GlobalVariableNameCase = PascalCase
 StaticLocalVariableNameCase = PascalCase
 PublicMemberVariableNameCase = PascalCase
 ProtectedMemberVariableNameCase = PascalCase
 ProtectedMemberVariableNameSuffixes = ["_"]
+ProtectedMemberVariableNameExemptions = ["Logger"]
 PrivateMemberVariableNameCase = PascalCase
 PrivateMemberVariableNameSuffixes = ["_"]
+PrivateMemberVariableNameExemptions = ["Logger"]
 # Static members take precedence over access-specific suffix rules.
 StaticMemberVariableNameCase = PascalCase
 EnumeratorNameCase = PascalCase
 # Explicit vocabulary; unrecognized words and ambiguous boundaries stay unchecked.
-NamingAcronyms = ["IO", "IP", "YT", "CH", "TCP", "HTTP", "RPC", "MPSC"]
+# Omit overloaded abbreviations such as CH (ClickHouse / character).
+NamingAcronyms = ["IO", "IP", "YT", "TCP", "HTTP", "RPC", "MPSC"]
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
 
 # Explicit YTsaurus library annotations; syntax lowering owns contextual guards.

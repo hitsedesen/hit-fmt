@@ -850,7 +850,8 @@ Variable roles, in precedence order:
   whole rule. Its fields replace the fallback; Unchecked can disable it.
 - Static locals use their storage role even inside methods. Local classes
   use member rules. Struct/union members default public; class members
-  default private. Macro-generated records need explicit access labels
+  default private. Anonymous unions use their enclosing scope and access.
+  Macro-generated records need explicit access labels
   for access-specific rules, otherwise they use MemberVariable.
 - Local const/constexpr variables retain their local role. Structured
   bindings use their declaration's variable rule.
@@ -865,7 +866,8 @@ Enum rules also cover the declared type name in these macros.
 ```config
 ClassNamePrefixes = ["T", "I", "E"]
 LocalVariableNameCase = camelCase
-LocalVariableNameExemptions = ["Logger"]
+LocalVariableNameExemptions = ["Logger", "_", "this_"]
+ParameterNameExemptions = ["Logger", "_", "this_"]
 ParameterNameCase = camelCase
 GlobalVariableNameCase = PascalCase
 StaticLocalVariableNameCase = PascalCase
@@ -884,3 +886,6 @@ lowercase: TIOBuffer, TTcpBuffer, ioBuffer, tcpBuffer. Configured affixes
 are stripped first. Matching uses complete camel-case words ignoring case,
 with digits as boundaries; unknown words and ambiguous boundaries remain
 unchecked. This vocabulary does not identify abbreviations automatically.
+Choose unambiguous vocabulary: CH may mean ClickHouse or character, so it is
+omitted from the YTsaurus preset. Its Logger exemption also covers parameters
+and non-public fields; _ and this_ are exempt locals and parameters.

@@ -98,3 +98,43 @@ private:
 END_SETTER()
 }
 namespace std { struct foreign_type { int foreign_field; }; }
+
+namespace NRegressions {
+class TLauncher {};
+void Exercise(const int& Logger, int this_, int _, int BadParameter)
+{
+    TLauncher().Launch();
+    TLauncher{}.Launch();
+    { auto this_ = GetOwner(); }
+    for (auto [key, _] : Pairs()) {}
+    unsigned char unsignedCh = 0;
+    unsigned char BadCharacter = 0;
+    union { int localCount; int BadLocalUnion; };
+}
+class TStorage
+{
+    union { int Count_; int Missing; };
+    union [[maybe_unused]] { int TaggedCount_; int TaggedMissing; };
+    union alignas(16) { int AlignedCount_; int AlignedMissing; };
+    union { int Visible; int badVisible; } Container_;
+    union TNamed { int Count; int badNamed; };
+    NLogging::TLogger Logger;
+protected:
+    union { int ProtectedCount_; int ProtectedMissing; };
+public:
+    union { int Count; int badPublicUnion; };
+};
+class TDerivedStorage : public TStorage
+{
+protected:
+    NLogging::TLogger Logger;
+};
+DECLARE_CHANNEL(TChannel, Channel, .Configure(1).Enable());
+REGISTER_OBJECT(TObject, Object, MakeRegistry().WithScope("scope"));
+DECLARE_KIND(TNode)
+DECLARE_HANDLE(THandle)
+DEFINE_ENUM(InvalidStage,
+    (Ready)
+    (bad_stage)
+);
+}

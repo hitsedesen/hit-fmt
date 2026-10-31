@@ -78,3 +78,27 @@
   expected PascalCase
 97:9: variable name 'MissingGeneratedSuffix' has invalid suffix and case
   expected suffix '_' and PascalCase between naming affixes
+104:56: variable name 'BadParameter' has invalid case
+  expected camelCase
+111:19: variable name 'BadCharacter' has invalid case
+  expected camelCase
+112:33: variable name 'BadLocalUnion' has invalid case
+  expected camelCase
+116:29: variable name 'Missing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+117:52: variable name 'TaggedMissing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+118:48: variable name 'AlignedMissing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+119:30: variable name 'badVisible' has invalid case
+  expected PascalCase
+120:35: variable name 'badNamed' has invalid case
+  expected PascalCase
+123:38: variable name 'ProtectedMissing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+125:28: variable name 'badPublicUnion' has invalid case
+  expected PascalCase
+136:13: enum name 'InvalidStage' has invalid prefix and case
+  expected prefix 'E' and PascalCase between naming affixes
+138:6: enumerator name 'bad_stage' has invalid case
+  expected PascalCase

@@ -9,3 +9,10 @@ struct TContainer {
 void Execute() {
     DEFINE_ENUM(ELocal, ((A)(0)));
 }
+
+DECLARE_KIND(TNode)
+DECLARE_HANDLE(THandle)
+DEFINE_ENUM(EAfterDeclarations, (Ready)(Stopped));
+DECLARE_KIND(TWorker)
+/* The configured declaration owns its own invocation. */
+DEFINE_ENUM_WITH_UNDERLYING_TYPE(EFlagsAfterDeclarations, unsigned, (Enabled));

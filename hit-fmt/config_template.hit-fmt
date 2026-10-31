@@ -1835,6 +1835,7 @@ ConstructorListsColonSpaceAfter = GeneratedSpace
 # Affix [] disables that affix check; [""] explicitly permits no affix.
 # Case/acronym checks apply after removing a matching prefix and suffix.
 # Exemptions are exact, case-sensitive, unqualified identifier names.
+# Anonymous-union members use their enclosing scope and access rule.
 # Parameter rules also check named parameters in function declarations.
 # Function names and forward type names remain definition-only checks.
 # Native enumerators and entries/types in configured EnumMacroNames are checked.
@@ -2060,6 +2061,7 @@ EnumeratorNameExemptions = []
 # capitalized; initial camelCase words lowercase. Example: IOCount, TcpCount,
 # ioCount. Match whole camel-case words ignoring case, never substrings.
 # Digits delimit words; unknown words and ambiguous boundaries stay unchecked.
+# Use unambiguous vocabulary: CH can mean ClickHouse or character.
 NamingAcronyms = []
 
 # Configuration inheritance (optional)

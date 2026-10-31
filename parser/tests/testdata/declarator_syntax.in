@@ -30,3 +30,8 @@ int (*ChooseCallback(int index) noexcept)(int first, int second) { return nullpt
 int (&GetCallback())(int first, int second);
 int (Owner::*MakeMemberCallback(int selection))(int first, int second);
 int (*Callback)(int first, int second);
+
+DECLARE_CHANNEL(TChannel, Channel, .Configure(1).Enable());
+REGISTER_OBJECT(TObject, Object, MakeRegistry().WithScope("scope"));
+void InvalidMemberArgument(.Configure(1));
+void ValidParameters(Item item, Item (*callback)(int), decltype(Make()) value);

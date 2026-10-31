@@ -994,4 +994,157 @@
     )
     ";"
   )
+  (function-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "DECLARE_CHANNEL")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "TChannel")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Channel")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (unparsed-syntax "." "Configure" "(" "1" ")" "." "Enable" "(" ")")
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "REGISTER_OBJECT")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "TObject")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Object")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (unparsed-syntax "MakeRegistry" "(" ")" "." "WithScope" "(" "\"scope\"" ")")
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "InvalidMemberArgument")
+        )
+        (initializer
+          (argument-list
+            "("
+            (argument
+              (expression ".")
+              (unparsed-syntax "Configure" "(" "1" ")")
+            )
+            ")"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "ValidParameters")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Item")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "item")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Item")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (nested-declarator
+                        "("
+                        (pointer-operator "*")
+                        (declarator-name "callback")
+                        ")"
+                      )
+                      (function-declarator
+                        (parameter-list
+                          "("
+                          (parameter-declaration
+                            (declaration-specifiers "int")
+                          )
+                          ")"
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers
+                  (type-id
+                    "decltype"
+                    (parenthesized-expression
+                      "("
+                      (call-expression
+                        (identifier-expression "Make")
+                        (argument-list "(" ")")
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
 )

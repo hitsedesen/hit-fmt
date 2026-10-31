@@ -230,7 +230,7 @@ public:
                 Visit(node, namespaceNames, frame.NamingContext);
                 auto& context = frame.NamingContext;
 
-                if (node.Kind == NK::RecordDeclaration) {
+                if (node.Kind == NK::RecordDeclaration && !IsAnonymousUnion(node)) {
                     context = {
                         VariableScope::Record,
                         Tree.Kind(node.Tokens.Begin) == TK::Keyword_class ? TK::Keyword_private : TK::Keyword_public,
@@ -409,6 +409,55 @@ public:
     }
 
 private:
+    bool IsAnonymousUnion(const parser::Node& node) const
+    {
+        if (Tree.Kind(node.Tokens.Begin) != TK::Keyword_union) {
+            return false;
+        }
+
+        auto opening = Next(node.Tokens.Begin + 1, node.Tokens.End);
+
+        while (opening < node.Tokens.End) {
+            const auto kind = Tree.Kind(opening);
+
+            if (kind == TK::Keyword_alignas) {
+                opening = Next(opening + 1, node.Tokens.End);
+
+                if (opening >= node.Tokens.End || Tree.Kind(opening) != TK::Operator_OpenParenthesis) {
+                    return false;
+                }
+            } else if (kind != TK::Operator_OpenBracket || opening + 1 >= node.Tokens.End ||
+                Tree.Kind(opening + 1) != TK::Operator_OpenBracket)
+            {
+                break;
+            }
+
+            const auto closing = Tree.MatchingDelimiter(opening);
+
+            if (closing >= node.Tokens.End) {
+                return false;
+            }
+
+            opening = Next(closing + 1, node.Tokens.End);
+        }
+
+        if (opening >= node.Tokens.End || Tree.Kind(opening) != TK::Operator_OpenBrace) {
+            return false;
+        }
+
+        const auto closing = Tree.MatchingDelimiter(opening);
+
+        if (closing >= node.Tokens.End) {
+            return false;
+        }
+
+        const auto after = Next(closing + 1, node.Tokens.End);
+        // Anonymous unions inject their members into the enclosing scope;
+        // an unnamed union type with a declarator still owns public members.
+        return after < node.Tokens.End && Tree.Kind(after) == TK::Operator_Semicolon &&
+            Next(after + 1, node.Tokens.End) == node.Tokens.End;
+    }
+
     bool ValidAcronyms(std::string_view name, NameCase casing) const
     {
         if (Acronyms.empty() || (casing != NameCase::CamelCase && casing != NameCase::PascalCase)) {
