@@ -11,5 +11,6 @@ ContinuationOffset = 4
 BodyShape = Expanded
 CommaSpaceAfter = Space
 ArgumentCommentSpacing = Space
+ArgumentNameCommentSpacing = Space
 SpaceInsideCallArguments = NoSpace
 BraceInitializerSpacing = NoSpace

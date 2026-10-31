@@ -301,9 +301,10 @@ Spacing
   controls the gap before {, except after comments.
 - ArgumentCommentSpacing controls attached block comments in arguments
   and initializers. ArgumentNameCommentSpacing separately controls the
-  gap after a leading /*name=*/ label (also /* name = */), where name
-  is an identifier. Gaps between comments and before trailing comments
-  use ArgumentCommentSpacing. Both default to Preserve. Newlines,
+  gap after a leading /*name*/ or /*name=*/ label. Spaces and tabs
+  around the name and optional = are accepted. Any single identifier
+  is a label. Gaps between comments and before trailing comments use
+  ArgumentCommentSpacing. Both default to Preserve. Newlines,
   contents, separator-facing gaps and line comments stay intact.
   Generated* needs canonical layout of that list.
 - FunctionCvRefQualifierSpacing controls const/volatile to &/&& in

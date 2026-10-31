@@ -64,6 +64,7 @@ void CompleteRequest(TFuture<void> future, TFuture<int> valueFuture, IInvokerPtr
     auto immediate = [] {
         return 7;
     } ();
+    Dispatch(/*retryCount*/ 3, /*force*/ true);
     switch (value) {
         case 0:
         case 1:

@@ -47,6 +47,7 @@ void CompleteRequest(TFuture<void> future, TFuture<int> valueFuture, IInvokerPtr
     BIND(&TWorker::Dispatch, worker).Via(invoker).Run();
     BIND([] { Dispatch(); }).AsyncVia(invoker).Run();
     auto immediate = [] { return 7; }();
+    Dispatch(/*retryCount*/3, /*force*/true);
     switch (value) {
         case 0:
         case 1:
