@@ -38,6 +38,7 @@ constexpr std::pair<std::string_view, formatter::BlankLineSetting formatter::Sty
     {"MemberDeclarationBlankLines", &formatter::Style::MemberDeclarationBlankLines},
     {"DefinitionBlankLines", &formatter::Style::DefinitionBlankLines},
     {"MemberDefinitionBlankLines", &formatter::Style::MemberDefinitionBlankLines},
+    {"CaseBlankLines", &formatter::Style::CaseBlankLines},
     {"StandaloneCommentBlankLinesBefore", &formatter::Style::StandaloneCommentBlankLinesBefore},
     {"StandaloneCommentBlankLinesAfter", &formatter::Style::StandaloneCommentBlankLinesAfter},
     {"RulerBlankLinesBefore", &formatter::Style::RulerBlankLinesBefore},

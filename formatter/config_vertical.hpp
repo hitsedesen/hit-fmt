@@ -61,6 +61,7 @@ struct VerticalGapPolicies
     VerticalGapPolicy MemberDeclarationBlankLines;
     VerticalGapPolicy DefinitionBlankLines;
     VerticalGapPolicy MemberDefinitionBlankLines;
+    VerticalGapPolicy CaseBlankLines;
     EmptyLineCap MaxEmptyLines;
     VerticalGapPolicy StandaloneCommentBlankLinesBefore;
     VerticalGapPolicy StandaloneCommentBlankLinesAfter;

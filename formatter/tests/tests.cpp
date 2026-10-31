@@ -394,6 +394,12 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         data / "vertical-grouping",
+        {"cases-add", "cases-zero", "cases-preserve", "cases-canonical"},
+        "cases.input.cpp");
+    ShareExpected(cases, data / "vertical-grouping", "cases-preserve.output.cpp", "cases.input.cpp");
+    AddCases(
+        cases,
+        data / "vertical-grouping",
         {"access-sections", "access-sections-zero", "access-sections-preserve"},
         "access-sections.input.cpp");
     ShareExpected(
