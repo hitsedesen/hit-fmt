@@ -14,9 +14,8 @@ void Execute()
                         .ThrowOnError(),
                     TQuotaExpiredException);
                 auto outstanding = started - completed;
-                THROW_ERROR_EXCEPTION_UNLESS(
-                    outstanding <= configuredLimit,
-                    "Processing window %v cannot accept an additional allocation when quota %v has already been reached",
+                THROW_ERROR_EXCEPTION_UNLESS(outstanding <=
+                    configuredLimit, "Processing window %v cannot accept an additional allocation when quota %v has already been reached",
                     outstanding,
                     configuredLimit);
             };

@@ -524,6 +524,13 @@ FunctionCvRefQualifierSpacing = NoSpace
 ```
 
 # Call annotations
+- CallLineMessageNames keeps preceding arguments and the first complete
+  string literal beside the opener, then puts each following format argument
+  on its own line even if the call fits. Default: []. Exact unqualified
+  names, including members; overrides both first-argument pin lists.
+  The header's opening pieces stay inline even past ColumnLimit; nested
+  expressions and concatenated literals may wrap. Calls without a complete
+  literal use ordinary layout. Preserve/Always and protection still win.
 - CallLineFirstArgumentNames pins any first argument beside the opener;
   CallLineFirstStringNames pins string literals only. Both default to [].
   Use exact unqualified call names, including members; the general list
@@ -548,6 +555,14 @@ FunctionCvRefQualifierSpacing = NoSpace
   Both obey ChainsLayout/root selection; sticky pairs may name a factory.
 - Pairs use exact First:Second names, not patterns. Scope endpoints must
   be distinct and unambiguous; sticky pairs may share names.
+
+## Message and format arguments
+```config
+CallLineMessageNames = ["LOG_MESSAGE", "RAISE_ERROR"]
+# LOG_MESSAGE(code, "Value: %v, count: %v",
+#     value,
+#     count);
+```
 
 ## Pin first arguments
 ```config

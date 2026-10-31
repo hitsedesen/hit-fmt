@@ -6,7 +6,7 @@
 # Field paths and single-call chains wrap only when they do not fit.
 # Mixed links (. / -> / invocation) participate in the same call chain.
 # Receiver construction does not count as a chained call.
-# Message pins and paired visual scopes remain explicit library annotations.
+# Message layouts and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
 # Approximation: existing rulers normalize, but namespace rulers are not inserted;
 # variable roles, macro languages and semantic grouping are not enforced;
@@ -261,11 +261,12 @@ NamespaceNamePrefixes = ["N"]
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
 
 # Explicit YTsaurus library annotations; syntax lowering owns contextual guards.
-# Pins currently cover a first-argument string only. Code/condition/error
-# prefixes and always-vertical format arguments require additional policies.
-CallLineFirstStringOverflow = KeepInline
-CallLineFirstStringNames = [
+# Keep condition/error prefixes and the message inline; format arguments break.
+CallLineMessageNames = [
     "THROW_ERROR_EXCEPTION",
+    "THROW_ERROR_EXCEPTION_IF",
+    "THROW_ERROR_EXCEPTION_UNLESS",
+    "TError",
     "YT_LOG_TRACE",
     "YT_LOG_DEBUG",
     "YT_LOG_INFO",
@@ -282,11 +283,16 @@ CallLineFirstStringNames = [
     "YT_TLOG_ALERT",
     "YT_TLOG_FATAL",
     "YT_TLOG_ALERT_AND_THROW",
+    "YT_TLOG_EVENT",
+    "YT_TLOG_DEBUG_IF",
+    "YT_TLOG_FATAL_IF",
+    "YT_TLOG_DEBUG_UNLESS",
+    "YT_TLOG_EVENT_WITH_STATIC_ANCHOR",
 ]
 # Empty annotations select AllSafe; ordinary chains wrap when they do not fit.
 ChainedCallRootNames = []
 # Logging/error and YSON builders break even with one suffix call.
-# This is independent of pinning their first message argument.
+# This is independent of their message and format-argument layout.
 AlwaysBreakChainRootNames = [
     "THROW_ERROR_EXCEPTION",
     "THROW_ERROR_EXCEPTION_IF",

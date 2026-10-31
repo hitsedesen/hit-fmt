@@ -1074,40 +1074,60 @@ private:
         return directSafe;
     }
 
-    const MessagePinAnnotation* PinFirst(Index id) const
+    struct PinnedArgument
+    {
+        const MessagePinAnnotation* Annotation = nullptr;
+        Index Argument = None;
+    };
+
+    PinnedArgument PinArgument(Index id) const
     {
         const auto parent = Region(Syntax_[id]).Parent;
         if (parent == None || Region(Syntax_[parent]).Kind != NodeKind::CallExpression) {
-            return nullptr;
+            return {};
         }
         auto callee = Region(Syntax_[parent]).FirstChild;
         if (callee == None) {
-            return nullptr;
+            return {};
         }
         if (Region(Syntax_[callee]).Kind == NodeKind::MemberExpression) {
             callee = LastChild_[callee];
         }
         const auto name = Region(Syntax_[callee]).Tokens;
         if (name.Size() != 1) {
-            return nullptr;
+            return {};
         }
         const auto* pin = Annotations_.FindMessagePin(Tree_.TokenText(name.Begin));
         if (!pin) {
-            return nullptr;
+            return {};
         }
         auto first = Region(Syntax_[id]).FirstChild;
+        while (pin->MessageLayout && first != None && Region(Syntax_[first]).Kind == NodeKind::Comment) {
+            first = Region(Syntax_[first]).NextSibling;
+        }
         if (first == None || Region(Syntax_[first]).Kind != NodeKind::Argument) {
-            return nullptr;
+            return {};
         }
         if (pin->FirstArgument == FirstArgumentAnnotation::PinAnyArgument) {
-            return pin;
+            return {pin, first};
         }
-        const auto expression = Region(Syntax_[first]).FirstChild;
-        return expression != None && Syntax_[expression].String &&
-            Region(Syntax_[expression]).Tokens.Begin == Region(Syntax_[first]).Tokens.Begin &&
-            Region(Syntax_[expression]).Tokens.End == Region(Syntax_[first]).Tokens.End
-            ? pin
-            : nullptr;
+        for (auto argument = first; argument != None; argument = Region(Syntax_[argument]).NextSibling) {
+            const auto& part = Region(Syntax_[argument]);
+            if (part.Kind != NodeKind::Argument) {
+                continue;
+            }
+            const auto expression = part.FirstChild;
+            if (expression != None && Syntax_[expression].String &&
+                Region(Syntax_[expression]).Tokens.Begin == part.Tokens.Begin &&
+                Region(Syntax_[expression]).Tokens.End == part.Tokens.End)
+            {
+                return {pin, argument};
+            }
+            if (!pin->MessageLayout) {
+                break;
+            }
+        }
+        return {};
     }
 
     void PreserveUnplannedListContext(Index id)
@@ -1201,6 +1221,10 @@ private:
             }
         }
         const bool canonical = policy.Layout == LayoutMode::Canonical;
+        const auto pinned = canonical ? PinArgument(id) : PinnedArgument{};
+        const auto* pin = pinned.Annotation;
+        const bool messageLayout = pin && pin->MessageLayout;
+        const auto messageEnd = messageLayout ? Region(Syntax_[pinned.Argument]).Tokens.End : None;
         if (sharedCloser && node.Tokens.Size() == 2) {
             return;
         }
@@ -1304,8 +1328,7 @@ private:
                     firstItem = Policies_.CallsSoleArgumentFirstItem;
                 }
             }
-            const auto* pin = PinFirst(id);
-            const auto pinnedExpression = pin ? Region(Syntax_[node.FirstChild]).FirstChild : None;
+            const auto pinnedExpression = pin ? Region(Syntax_[pinned.Argument]).FirstChild : None;
             const bool forcePinnedFragments = Policies_.StringLiteralFragmentsAsArguments && pinnedExpression != None &&
                 Syntax_[pinnedExpression].String && Region(Syntax_[pinnedExpression]).Tokens.Size() > 1 &&
                 policy.Break == BreakRequirement::Always;
@@ -1431,7 +1454,7 @@ private:
         }
         // Delimiter edges can break independently of the items. Consistent
         // item gaps keep the complete row together or split every separator.
-        const auto items = canonical && !empty && policy.Packing == ListPacking::AllOrVertical
+        const auto items = canonical && !empty && !messageLayout && policy.Packing == ListPacking::AllOrVertical
             ? PackingGroup(group, TokenPosition(begin + 1), GapPosition(closer))
             : group;
         if (node.Kind == NodeKind::ArgumentList) {
@@ -1498,13 +1521,21 @@ private:
             if (canonical) {
                 const auto split = side == OperatorSide::Leading ? t : t + 1;
                 if (split < closer) {
+                    const bool formatArgument = messageLayout && t >= messageEnd;
+                    const bool messagePrefix =
+                        messageLayout && t < messageEnd && policy.Break != BreakRequirement::Always;
+                    if (formatArgument) {
+                        Groups_[group].Spec.ForceBreak = true;
+                    }
                     Own(
                         split,
                         items,
                         Boundary::Conditional,
-                        policy.Packing == ListPacking::VerticalWhenBroken
-                        ? document::GapKind::Hard
-                        : document::GapKind::Soft);
+                        messagePrefix
+                        ? document::GapKind::Flat
+                        : formatArgument || policy.Packing == ListPacking::VerticalWhenBroken
+                            ? document::GapKind::Hard
+                            : document::GapKind::Soft);
                 }
                 Own(side == OperatorSide::Leading ? t + 1 : t, group, Boundary::Flat);
             } else {

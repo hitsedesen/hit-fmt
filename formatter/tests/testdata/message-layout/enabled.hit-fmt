@@ -1,0 +1,14 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 120
+CallsPacking = Fill
+CallsFirstItem = NextLine
+CallLineMessageNames = ["message", "raise", "event"]
+# Message layout must take precedence over overlapping pin annotations.
+CallLineFirstArgumentNames = ["message"]
+CallLineFirstStringNames = ["raise"]
+BinaryOperatorSpacing = Space
+MemberAccessOperatorsSpacing = NoSpace
+FunctionBracePlacement = NextLine
+BodyShape = Expanded

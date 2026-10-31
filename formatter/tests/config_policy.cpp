@@ -856,6 +856,9 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
             "CallLineFirstArgumentNames = [\"ns::Trace\"]\n",
             "CallLineFirstArgumentNames = [\"\"]\n",
             "CallLineFirstStringNames = [\"Trace\", \"Trace\"]\n",
+            "CallLineMessageNames = [\"Trace\", \"Trace\"]\n",
+            "CallLineMessageNames = [\"ns::Trace\"]\n",
+            "CallLineMessageNames = [\"\"]\n",
             "ChainedCallRootNames = [\"ns::Root\", \"ns::Root\"]\n",
             "ChainedCallRootNames = [\"ns::\"]\n",
             "AlwaysBreakChainRootNames = [\"Trace\", \"Trace\"]\n",
@@ -907,7 +910,7 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_EQ(yt.FormattingStyle.FunctionRefQualifierSpacing, formatter::GapPolicy::Space);
     EXPECT_EQ(yt.FormattingStyle.FunctionCvRefQualifierSpacing, formatter::GapPolicy::Space);
     EXPECT_EQ(yt.FormattingStyle.CapturesCloser, formatter::CloserPlacement::OwnLine);
-    EXPECT_EQ(ytAnnotations.MessagePins().size(), 17u);
+    EXPECT_EQ(ytAnnotations.MessagePins().size(), 25u);
     EXPECT_TRUE(ytAnnotations.ChainRoots().empty());
     EXPECT_EQ(ytAnnotations.Chains(), formatter::ChainParticipation::AllSafe);
     EXPECT_EQ(ytAnnotations.VisualScopes().size(), 3u);
@@ -919,7 +922,7 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_TRUE(ytAnnotations.IsStickyChainPair("Item", "BeginMap"));
     EXPECT_TRUE(ytAnnotations.IsStickyChainPair("registrar", "Parameter"));
     EXPECT_NE(ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION"), nullptr);
-    EXPECT_EQ(ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION_IF"), nullptr);
+    EXPECT_NE(ytAnnotations.FindMessagePin("THROW_ERROR_EXCEPTION_IF"), nullptr);
     EXPECT_FALSE(ytAnnotations.IsAnnotatedChainRoot("BuildYsonFluently"));
 }
 
