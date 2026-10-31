@@ -849,8 +849,22 @@ std::vector<FormatCase> FormatCases()
         ShareExpected(cases, directory, "depth-default.output.cpp", "depth-maximum.output.cpp");
         AddCases(cases, directory, {"standard", "standard-preserve", "standard-adjacent"}, "standard.input.cpp");
         AddCases(cases, directory, {"standard-group"}, "standard.input.cpp");
-        for (const auto profile : {"system-directory", "system-regroup", "system-configured", "system-adjacent"}) {
+        for (const auto profile :
+            {"system-directory", "system-regroup", "system-configured", "system-adjacent", "header-names"})
+        {
             FormatCase value{directory, profile, "system.input.cpp"};
+            value.InputFilePath = "project/widget.cpp";
+            cases.push_back(std::move(value));
+        }
+        for (const auto grouping : {formatter::IncludeGrouping::Directory, formatter::IncludeGrouping::Regroup}) {
+            FormatCase value{
+                directory,
+                "standard-first-" + std::string(formatter::SerializeConfigEnum(grouping)),
+                "system.input.cpp",
+                "standard-first",
+            };
+            value.Style = formatter::LoadConfigFile(directory / "standard-first.hit-fmt").FormattingStyle;
+            value.Style->IncludeGrouping = grouping;
             value.InputFilePath = "project/widget.cpp";
             cases.push_back(std::move(value));
         }

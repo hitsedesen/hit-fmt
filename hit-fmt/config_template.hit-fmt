@@ -17,8 +17,10 @@
 # Regroup groups by IncludeGroups rules; Directory additionally
 # subdivides each rule by its directory suffix and Depth.
 # Example: IncludeGroups = [{Prefix = "library/", Depth = 1}]
-# Each rule has one selector: Prefix, Prefixes or StandardHeaders = true;
-# Depth and Priority are optional.
+# Each rule has Prefix or Prefixes, StandardHeaders = true, or both;
+# Depth and Priority are optional. Nonempty entries ending in / match
+# directory prefixes; other entries match exact header names, quoted or angled.
+# Entries must be unique normalized relative paths.
 # Depth defaults to 127; Priority defaults to 0.
 # Priority is an integer from -128 to 127.
 # Lower values sort first within each quote/angle category.
@@ -32,7 +34,8 @@
 # With prefix library/, 1 groups library/core/a.hpp and
 # library/core/detail/b.hpp together; 2 separates them.
 # Prefixes = ["yt/yt/", "yt/yt_proto/yt/"] merges corresponding
-# suffix groups; the first prefix represents their ordering path.
+# suffix groups; the first entry's directory represents their ordering path.
+# Exact-name aliases use containing directories, excluding filenames.
 # First matching rule/prefix wins. IncludeGroupOrder = Directory
 # (default) orders equal-priority groups together by directory.
 # Configured uses list order within each priority tier, then
@@ -42,14 +45,17 @@
 # StandardHeaders = true selects the same angled names as
 # IncludeStandardHeaders = Last, but uses ordinary group ordering.
 # A matched standard group overrides Last, ignores Depth and stays
-# alphabetical. At most one standard rule is allowed; it cannot
-# have Prefix or Prefixes. Put it before an empty-prefix fallback.
-# Example: project headers, then standard headers, then system headers:
+# alphabetical. At most one standard rule is allowed. Prefix or Prefixes
+# adds headers to it, for example Prefixes = ["stdio.h", "stdint.h"].
+# Put it before an empty-prefix fallback.
+# Example: project headers, then standard headers, then unknown/system headers:
 # IncludeGroups = [
 #     {Prefix = "project/", Priority = 0},
-#     {StandardHeaders = true, Priority = 1},
+#     {StandardHeaders = true, Prefixes = ["stdio.h", "stdint.h"], Priority = 1},
 #     {Prefix = "", Priority = 2}
 # ]
+# <stdio.h> and <vector> precede <unknown_project/header.h> and <Windows.h>.
+# To put standard headers first, give their rule Priority = -1.
 # Example: IncludeGroupOrder = Configured with IncludeGroups =
 # [{Prefix = "library/", Depth = 1}, {Prefix = "util/", Depth = 1}]
 # puts library/ first, then util/, with nearest subgroups and
@@ -90,8 +96,9 @@
 # names containing neither / nor .h go in a final alphabetical group,
 # unless claimed by an explicit StandardHeaders = true rule.
 # It is case-sensitive, not ISO detection: extensionless vendor
-# names qualify; quoted names and stdio.h do not. Preserve keeps
-# ordinary sorting. The final group follows even unmatched headers.
+# names qualify; quoted names and stdio.h do not qualify automatically.
+# Add stdio.h to a StandardHeaders rule via Prefix or Prefixes when needed.
+# Preserve keeps ordinary sorting. The final group follows even unmatched headers.
 # Check mode reports one include-order failure per file, not per header.
 # Other formatting, naming and width failures remain independent.
 # Rules are validated even when inactive; prefixes must be unique.
@@ -845,7 +852,8 @@ IncludeMatchingHeader = Off
 IncludeGrouping = Preserve
 
 # Values: [] or [{Prefix = "directory/", Depth = 127, Priority = 0}, ...]
-# A rule may instead use {StandardHeaders = true, Priority = 0}.
+# Entries without a trailing / match exact header names.
+# A rule may use StandardHeaders = true alone or with Prefix/Prefixes.
 IncludeGroups = []
 
 # Values: Directory | Configured

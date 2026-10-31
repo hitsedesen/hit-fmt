@@ -2,8 +2,13 @@
 #include "vector"
 #include "widget.h"
 #include <Windows.h>
+#include <project/detail.hpp>
+#include <stdint.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <unknown_project/header.h>
+#include <userver/example.hpp>
 #include <algorithm>
 #include <vector>
 #include <vendor_api>

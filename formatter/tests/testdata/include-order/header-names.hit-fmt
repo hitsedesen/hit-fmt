@@ -1,0 +1,7 @@
+include = "system-configured.hit-fmt"
+IncludeGrouping = Directory
+IncludeGroups = [
+    {Prefixes = ["project/detail.hpp", "stdio.h", "stdint.h"]},
+    {StandardHeaders = true},
+    {Prefix = ""}
+]

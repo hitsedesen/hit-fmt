@@ -1231,7 +1231,9 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
         {
             std::vector<std::string>{},
             {"", "engine/"},
-            {"engine"},
+            {"."},
+            {"engine/.."},
+            {"engine//stdio.h"},
             {"/engine/"},
             {"engine//"},
             {"./engine/"},
@@ -1253,7 +1255,8 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
     EXPECT_THROW((void)formatter::PreparedFormat(invalidDepth), std::invalid_argument);
     for (const auto& rules :
         {
-            std::vector<formatter::IncludeGroupRule>{{{"engine/"}, 0, 0, true}},
+            std::vector<formatter::IncludeGroupRule>{{{"../stdio.h"}, 0, 0, true}},
+            std::vector<formatter::IncludeGroupRule>{{{"stdio.h", "stdio.h"}, 0, 0, true}},
             std::vector<formatter::IncludeGroupRule>{{{}, 0, 0, true}, {{}, 0, 0, true}},
         })
     {
@@ -1263,8 +1266,8 @@ TEST(ConfigPolicy, PrefixValidationIsFinalOrderedAndCannotBeBypassed)
         EXPECT_THROW((void)formatter::PreparedIncludeGroups(rules), std::invalid_argument);
         EXPECT_THROW((void)formatter::PreparedFormat(invalidStandard), std::invalid_argument);
     }
-    const TemporaryConfig repaired("IncludeGroups = [{Prefix = \"bad\"}]\n" "IncludeGroups = [{Prefix = \"engine/\"}, "
-        "{Prefix = \"engine/detail/\"}]\n");
+    const TemporaryConfig repaired("IncludeGroups = [{Prefix = \"./bad\"}]\n"
+        "IncludeGroups = [{Prefix = \"engine/\"}, " "{Prefix = \"engine/detail/\"}]\n");
     EXPECT_NO_THROW((void)formatter::LoadConfigFile(repaired.Path));
     const TemporaryConfig duplicate("IncludeGroups = [{Prefix = \"engine/\"}, " "{Prefixes = [\"engine/\"]}]\n");
     try {
@@ -1296,7 +1299,8 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
     const TemporaryConfig nested("IncludeGroups = [\n" "  { Prefixes = [\n"
         "      \"engine]/\", # brackets inside strings are not terminators\n" "      \"mirror#root/\"\n"
         "    ], Depth = 2, Priority = 127 },\n" "  { Priority = -128, Depth = 0, Prefix = \"other/\" },\n"
-        "  { Depth = 127, Prefix = \"deep/\", Priority = -1 },\n" "  { StandardHeaders = true, Priority = -2 },\n"
+        "  { Depth = 127, Prefix = \"deep/\", Priority = -1 },\n"
+        "  { StandardHeaders = true, Prefixes = [\"stdio.h\", \"stdint.h\", \"compat/\"], Priority = -2 },\n"
         "  { Prefix = \"\" }\n" "]\n");
     const auto style = formatter::LoadConfigFile(nested.Path).FormattingStyle;
     EXPECT_EQ(
@@ -1305,7 +1309,7 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
             {{"engine]/", "mirror#root/"}, 2, 127},
             {{"other/"}, 0, -128},
             {{"deep/"}, 127, -1},
-            {{}, 127, -2, true},
+            {{"stdio.h", "stdint.h", "compat/"}, 127, -2, true},
             {{""}, 127},
         }));
     const formatter::PreparedIncludeGroups prepared(style.IncludeGroups);
@@ -1314,6 +1318,16 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
     EXPECT_EQ(prepared.Classify("../other/item.h").Group, 4u);
     EXPECT_EQ(prepared.Classify("vector", true).Group, 3u);
     EXPECT_EQ(prepared.Classify("vector", false).Group, 4u);
+    for (const auto path : {"stdio.h", "stdint.h", "compat/header.h"}) {
+        SCOPED_TRACE(path);
+        EXPECT_EQ(prepared.Classify(path, true).Group, 3u);
+        EXPECT_TRUE(prepared.Classify(path, true).StandardHeaders);
+        EXPECT_EQ(prepared.Classify(path, false).Group, 3u);
+    }
+    for (const auto path : {"vendor/stdio.h", "stdio.hpp", "stdio.h.extra", "Stdio.h", "stdckdint.h", "threads.h"}) {
+        SCOPED_TRACE(path);
+        EXPECT_EQ(prepared.Classify(path, true).Group, 4u);
+    }
     EXPECT_EQ(prepared.Classify("Windows.h", true).Group, 4u);
     EXPECT_EQ(prepared.Classify("vendor/vector", true).Group, 4u);
     const formatter::PreparedIncludeGroups shadowed(std::vector<formatter::IncludeGroupRule>{{{""}}, {{}, 0, 0, true}});
@@ -1321,7 +1335,22 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
     EXPECT_FALSE(shadowed.Classify("vector", true).StandardHeaders);
     const formatter::PreparedIncludeGroups standardOnly(std::vector<formatter::IncludeGroupRule>{{{}, 127, 0, true}});
     EXPECT_TRUE(standardOnly.Classify("vector", true).StandardHeaders);
+    EXPECT_EQ(standardOnly.Classify("stdio.h", true).Group, standardOnly.GroupCount());
     EXPECT_EQ(standardOnly.Classify("Windows.h", true).Group, standardOnly.GroupCount());
+    const formatter::PreparedIncludeGroups exact(std::vector<formatter::IncludeGroupRule>{
+        {{"engine/item.h", "plain"}},
+        {{"engine/"}},
+        {{"plain/"}},
+        {{"engine/other.h"}},
+        {{}, 0, 0, true},
+    });
+    EXPECT_EQ(exact.Classify("engine/item.h").Group, 0u);
+    EXPECT_EQ(exact.Classify("engine/item.hpp").Group, 1u);
+    EXPECT_EQ(exact.Classify("engine/other.h").Group, 1u);
+    EXPECT_EQ(exact.Classify("plain", true).Group, 0u);
+    EXPECT_FALSE(exact.Classify("plain", true).StandardHeaders);
+    EXPECT_EQ(exact.Classify("plain/header.h").Group, 2u);
+    EXPECT_EQ(exact.Classify("plain_extra").Group, exact.GroupCount());
     for (const auto text :
         {
             "IncludeGroups = [\"engine/\"]\n",
@@ -1329,8 +1358,8 @@ TEST(ConfigPolicy, IncludeGroupRulesParseNestedArraysAndRejectAmbiguity)
             "IncludeGroups = [{Prefixes = []}]\n",
             "IncludeGroups = [{StandardHeaders = false}]\n",
             "IncludeGroups = [{StandardHeaders = \"true\"}]\n",
-            "IncludeGroups = [{StandardHeaders = true, Prefix = \"engine/\"}]\n",
-            "IncludeGroups = [{Prefixes = [], StandardHeaders = true}]\n",
+            "IncludeGroups = [{StandardHeaders = true, Prefix = \"../stdio.h\"}]\n",
+            "IncludeGroups = [{Prefixes = [\"stdio.h\", \"stdio.h\"], StandardHeaders = true}]\n",
             "IncludeGroups = [{StandardHeaders = true, StandardHeaders = true}]\n",
             "IncludeGroups = [{StandardHeaders = true}, {StandardHeaders = true}]\n",
             "IncludeGroups = [{Prefix = \"engine/\" \"mirror/\"}]\n",
