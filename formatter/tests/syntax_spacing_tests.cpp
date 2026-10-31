@@ -1097,7 +1097,7 @@ TEST(SyntaxSpacing, NewArrayRulesDoNotLeakIntoSizesOrUnconfirmedTypes)
     policies.SubscriptOperatorSpacing = GapPolicy::Space;
     Analysis analysis("void f(){ auto p = new int[values[0]]; " "auto q = new decltype(values[0])[2][3]; }", policies);
     EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("[", 0)].Field, F::NewArraySpaceBeforeBrackets);
-    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("[", 1)].Field, F::None);
+    EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("[", 1)].Field, F::SubscriptOperatorSpacing);
     // The parser leaves a one-token decltype NewTypeId and calls its operand a
     // NewInitializer, without recording recovery. That type is not confirmed.
     for (auto index : {analysis.Before("[", 2), analysis.Before("[", 3), analysis.Before("[", 4)}) {

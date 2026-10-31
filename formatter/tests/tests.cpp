@@ -2101,6 +2101,7 @@ std::vector<FormatCase> FormatCases()
     }
     // Keep safety and recovered-syntax examples in separate parse units.
     const auto spacing = data / "spacing-options";
+    AddCases(cases, spacing, {"new-array-size-operators-compact"}, "new-array-size-operators.input.cpp");
     AddCases(
         cases,
         spacing,
