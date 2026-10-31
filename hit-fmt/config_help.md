@@ -525,6 +525,11 @@ FunctionCvRefQualifierSpacing = NoSpace
   roots. AlwaysBreakChainRootNames may break even one following call.
   Omit template arguments and the template keyword:
   ns::Builder<T>::Make<U> matches ns::Builder::Make, not Make.
+- AlwaysBreakChainCallNames starts matching member calls on a new line,
+  including in control headers. Use exact unqualified names without template
+  arguments or the template keyword. Fields and root calls do not match.
+  Obeys ChainsLayout/root selection; overrides sticky pairs at matching calls.
+  Safety and protected regions still win.
 - IndentedCallScopePairs preserves extra indentation between matched calls
   in one context and label section. GenerateCallScopeIndentation creates it
   from flat input; requires non-Preserve IndentationKind.
@@ -547,6 +552,8 @@ CallLineFirstStringOverflow = BreakBefore
 ChainedCallRootNames = ["factory", "pipeline::Builder"]
 AlwaysBreakChainRootNames = ["WRITE_EVENT", "logging::Event"]
 # Root names omit template arguments: factory<T> matches factory.
+AlwaysBreakChainCallNames = ["Then", "Finish"]
+# Break before .Then(), ->Finish(), or .Then<T>(), even when they fit.
 ```
 
 ## Paired calls and chains

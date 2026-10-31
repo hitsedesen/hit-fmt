@@ -1152,6 +1152,33 @@ std::vector<FormatCase> FormatCases()
         {"lambda-comments-follow", "lambda-comments-preserve"},
         "lambda-leading-comments.input.cpp");
     const auto chains = data / "chained-calls";
+    AddCases(cases, chains, {"call-breaks"}, "call-breaks.input.cpp");
+    for (const auto* profile :
+        {
+            "call-breaks-vertical",
+            "call-breaks-all-or-vertical",
+            "call-breaks-scoped-sticky",
+            "call-breaks-selected",
+            "call-breaks-preserve",
+        })
+    {
+        cases.push_back({chains, profile, "call-breaks.input.cpp"});
+        auto style = formatter::LoadConfigFile(chains / "call-breaks.hit-fmt").FormattingStyle;
+        if (std::string_view(profile) == "call-breaks-vertical") {
+            style.ChainsPacking = ListPacking::VerticalWhenBroken;
+        } else if (std::string_view(profile) == "call-breaks-all-or-vertical") {
+            style.ChainsPacking = ListPacking::AllOrVertical;
+        } else if (std::string_view(profile) == "call-breaks-scoped-sticky") {
+            style.IndentedChainScopePairs = {"Begin:End"};
+            style.StickyChainCallPairs = {"Item:Then", "Then:Value", "builder:Then"};
+        } else if (std::string_view(profile) == "call-breaks-selected") {
+            style.ChainedCallRootNames = {"builder"};
+        } else {
+            style.ChainsLayout = CategoryLayout::Preserve;
+            cases.back().Expected = "call-breaks.input.cpp";
+        }
+        cases.back().Style = std::move(style);
+    }
     AddCases(cases, chains, {"always", "continuation", "preserve"});
     cases.push_back({chains, "overflow", "overflow.input.cpp"});
     AddCases(cases, chains, {"moved-root", "moved-root-preserve", "moved-root-tabs"}, "moved-root.input.cpp");

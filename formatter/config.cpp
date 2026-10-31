@@ -702,20 +702,24 @@ std::vector<ChainCallPairAnnotation> CompileChainPairs(
 void ValidateLibraryAnnotationStyle(const Style& style)
 {
     std::vector<std::string_view> scratch;
-    scratch.reserve(std::max({
-        style.CallLineFirstArgumentNames.size(),
-        style.CallLineFirstStringNames.size(),
-        style.ChainedCallRootNames.size(),
-        style.AlwaysBreakChainRootNames.size(),
-        style.IndentedCallScopePairs.size() * 2,
-        style.IndentedChainScopePairs.size() * 2,
-        style.StickyChainCallPairs.size(),
-        style.ClassMacroNames.size() * 2,
-    }));
+    scratch
+        .reserve(
+            std::max({
+                style.CallLineFirstArgumentNames.size(),
+                style.CallLineFirstStringNames.size(),
+                style.ChainedCallRootNames.size(),
+                style.AlwaysBreakChainRootNames.size(),
+                style.AlwaysBreakChainCallNames.size(),
+                style.IndentedCallScopePairs.size() * 2,
+                style.IndentedChainScopePairs.size() * 2,
+                style.StickyChainCallPairs.size(),
+                style.ClassMacroNames.size() * 2,
+            }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
     ValidateAnnotationNames(style.CallLineFirstStringNames, scratch, "CallLineFirstStringNames", false);
     ValidateAnnotationNames(style.ChainedCallRootNames, scratch, "ChainedCallRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainRootNames, scratch, "AlwaysBreakChainRootNames", true);
+    ValidateAnnotationNames(style.AlwaysBreakChainCallNames, scratch, "AlwaysBreakChainCallNames", false);
     scratch.clear();
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
@@ -781,6 +785,8 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     std::sort(result.ChainRoots_.begin(), result.ChainRoots_.end());
     result.AlwaysBreakChainRoots_ = style.AlwaysBreakChainRootNames;
     std::sort(result.AlwaysBreakChainRoots_.begin(), result.AlwaysBreakChainRoots_.end());
+    result.AlwaysBreakChainCalls_ = style.AlwaysBreakChainCallNames;
+    std::sort(result.AlwaysBreakChainCalls_.begin(), result.AlwaysBreakChainCalls_.end());
     result.VisualScopes_.reserve(style.IndentedCallScopePairs.size());
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
@@ -865,6 +871,16 @@ std::span<const std::string> LibraryAnnotations::AlwaysBreakChainRoots() const
 bool LibraryAnnotations::AlwaysBreakChainRoot(std::string_view name) const noexcept
 {
     return std::binary_search(AlwaysBreakChainRoots_.begin(), AlwaysBreakChainRoots_.end(), name);
+}
+
+std::span<const std::string> LibraryAnnotations::AlwaysBreakChainCalls() const
+{
+    return AlwaysBreakChainCalls_;
+}
+
+bool LibraryAnnotations::AlwaysBreakChainCall(std::string_view name) const noexcept
+{
+    return std::binary_search(AlwaysBreakChainCalls_.begin(), AlwaysBreakChainCalls_.end(), name);
 }
 
 std::span<const std::string> LibraryAnnotations::ChainRoots() const
