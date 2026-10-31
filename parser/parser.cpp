@@ -1359,6 +1359,11 @@ private:
         }
 
         auto first = NextSignificant(Cursor_);
+
+        if (Kind(first) == TK::Keyword_inline && Kind(NextSignificant(first + 1)) == TK::Keyword_namespace) {
+            return ParseNamespaceDeclaration();
+        }
+
         switch (Kind(first)) {
             case TK::Operator_Semicolon:
                 return ParseToSemicolon(NodeKind::EmptyDeclaration);

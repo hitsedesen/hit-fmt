@@ -26,6 +26,7 @@ enum class StructuralAction : uint8_t
     DirectiveWhitespace,
     IncludeDelimiters,
     RulerLength,
+    RulerPlacement,
 };
 
 enum class StructuralSkip : uint8_t
@@ -71,6 +72,8 @@ struct StructuralOptions
     IncludeInGroupOrder InGroupOrder = IncludeInGroupOrder::Alphabetical;
     IncludePathBase PathBase = IncludePathBase::SourceDirectory;
     IncludeStandardHeaders StandardHeaders = IncludeStandardHeaders::Preserve;
+    RulerPlacement Rulers = RulerPlacement::Preserve;
+    LineEnding RulerLineEnding = LineEnding::Preserve;
 };
 
 struct IncludeSortContext

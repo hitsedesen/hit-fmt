@@ -9,11 +9,15 @@
 
 namespace NPaper::NMarkdown {
 
+////////////////////////////////////////////////////////////////////////////////
+
 enum class EProgressKind : unsigned
 {
     Page,
     Fraction
 };
+
+////////////////////////////////////////////////////////////////////////////////
 
 union TProgressValue
 {
@@ -21,17 +25,23 @@ union TProgressValue
     double Fraction;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
 struct TProgressEvent
 {
     EProgressKind Kind;
     TProgressValue Value;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
 struct TExportFlags
 {
     unsigned WriteSourceMap : 1 = 1; // Keep preview links in the exported sidecar.
     unsigned AtomicReplace : 1 = 1; // Publish only after every asset is copied.
 };
+
+////////////////////////////////////////////////////////////////////////////////
 
 struct TMarkdownView
 {
@@ -49,6 +59,8 @@ struct TMarkdownView
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
 struct TProgressContext
 {
     unsigned LastPage = 0;
@@ -57,6 +69,8 @@ struct TProgressContext
 using TProgressCallback = void (*)(const TProgressEvent& event, void* context);
 using TRevealMethod = void (IPreviewObserver::*)(std::size_t blockId);
 
+////////////////////////////////////////////////////////////////////////////////
+
 class IExportOperation
 {
 public:
@@ -64,12 +78,16 @@ public:
     virtual TResult Run(EExportMode mode) const = 0;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
 class IProgressSource
 {
 public:
     virtual ~IProgressSource() = default;
     virtual void SetProgress(TProgressCallback callback, void* context) = 0;
 };
+
+////////////////////////////////////////////////////////////////////////////////
 
 class TExportJob final
     : public IExportOperation
@@ -114,10 +132,14 @@ std::string_view NativeLineEnding() noexcept;
 unsigned ProgressBucket(unsigned percent) noexcept;
 std::string_view ExportModeLabel(EExportMode mode) noexcept;
 
+////////////////////////////////////////////////////////////////////////////////
+
 extern "C" {
 
 void paper_export_progress(unsigned page, void* context);
 
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 } // namespace NPaper::NMarkdown

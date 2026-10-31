@@ -1,5 +1,6 @@
 #include "syntax_layout.hpp"
 
+#include "declaration_kind.hpp"
 #include "text_policies.hpp"
 
 #include <util/ascii.hpp>
@@ -5136,36 +5137,6 @@ private:
         }
 
         return DeclarationCategory::None;
-    }
-
-    static bool DeclarationItem(NodeKind kind)
-    {
-        switch (kind) {
-            case NodeKind::MacroEnumDeclaration:
-            case NodeKind::EmptyDeclaration:
-            case NodeKind::Declaration:
-            case NodeKind::FunctionDeclaration:
-            case NodeKind::FunctionDefinition:
-            case NodeKind::MacroFunctionDefinition:
-            case NodeKind::FunctionTryBlock:
-            case NodeKind::NamespaceDeclaration:
-            case NodeKind::RecordDeclaration:
-            case NodeKind::MacroRecordDeclaration:
-            case NodeKind::EnumDeclaration:
-            case NodeKind::TemplateDeclaration:
-            case NodeKind::UsingDeclaration:
-            case NodeKind::TypedefDeclaration:
-            case NodeKind::StaticAssertDeclaration:
-            case NodeKind::ConceptDeclaration:
-            case NodeKind::ModuleDeclaration:
-            case NodeKind::ImportDeclaration:
-            case NodeKind::ExportDeclaration:
-            case NodeKind::AsmDeclaration:
-            case NodeKind::LinkageSpecification:
-                return true;
-            default:
-                return false;
-        }
     }
 
     void ApplyVerticalGap(Index gap, VerticalGapPolicy policy, uint8_t priority = 0)

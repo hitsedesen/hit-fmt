@@ -719,6 +719,8 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.IncludeInGroupOrder,
         style.IncludePathBase,
         style.IncludeStandardHeaders,
+        style.RulerPlacement,
+        style.LineEnding,
     }
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)

@@ -1217,4 +1217,34 @@
       ";"
     )
   )
+  (namespace-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "inline" "namespace" "versioned" "{"
+    (namespace-declaration
+      "namespace" "{"
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "helper")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement "{" "}")
+      )
+      "}"
+    )
+    "}"
+  )
+  (namespace-declaration
+    "namespace" "after_versioned" "{"
+    (record-declaration "struct" "Record" "{" "}" ";")
+    "}"
+  )
 )

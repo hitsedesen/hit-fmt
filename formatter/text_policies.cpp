@@ -244,6 +244,7 @@ void PlanTextPolicyEdits(
 {
     const bool indentDirectives = options.IndentPreprocessingDirectives == BodyIndentation::Indent;
     const bool rewriteDirectives = options.IndentPreprocessingDirectives != BodyIndentation::Preserve;
+    const bool rewriteRulers = options.Rulers == RulerPlacement::Preserve && options.RulerLength != 0;
 
     if ((indentDirectives && (options.IndentWidth == 0 || options.IndentWidth > 32)) ||
         (options.RulerLength != 0 && (options.RulerLength < 3 || options.RulerLength > 10000)))
@@ -251,7 +252,7 @@ void PlanTextPolicyEdits(
         throw std::invalid_argument("invalid directive indent width or ruler length");
     }
 
-    if (!rewriteDirectives && !options.AlignMacroBackslashes && options.RulerLength == 0 &&
+    if (!rewriteDirectives && !options.AlignMacroBackslashes && !rewriteRulers &&
         options.Delimiters == IncludeDelimiters::Preserve)
     {
         return;
@@ -292,7 +293,7 @@ void PlanTextPolicyEdits(
         parser::SourceRange source{atom.Begin, atom.End};
 
         if (tree.Kind(token) == tokenizer::TokenKind::Comment) {
-            if (options.RulerLength && IsRuler(text) && (token == 0 || safety.Gaps()[token].HasLineFeed) &&
+            if (rewriteRulers && IsRuler(text) && (token == 0 || safety.Gaps()[token].HasLineFeed) &&
                 (token + 1 == tree.TokenCount() || safety.Gaps()[token + 1].HasLineFeed) &&
                 CanRewriteTextAtom(safety, source, false))
             {

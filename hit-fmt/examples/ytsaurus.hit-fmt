@@ -8,8 +8,7 @@
 # Receiver construction does not count as a chained call.
 # Message layouts and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
-# Approximation: existing rulers normalize, but namespace rulers are not inserted;
-# variable roles, macro languages and semantic grouping are not enforced;
+# Approximation: variable roles, macro languages and semantic grouping are not enforced;
 # protected macro bytes are not style conformance.
 Layout = Canonical
 IndentWidth = 4
@@ -106,7 +105,8 @@ ControlStatementBlankLinesBefore = 1
 MacroBlankLinesAround = 1
 BlankLineMacroNames = ["YT_LOG_*", "YT_TLOG_*", "THROW_ERROR_EXCEPTION", "YT_VERIFY"]
 CaseBlankLines = 1
-# Normalize existing separators; placement still needs human review.
+# Separate namespace boundaries and declaration blocks; free functions stay grouped.
+RulerPlacement = DeclarationBlocks
 RulerLength = 80
 RulerBlankLinesBefore = 1
 RulerBlankLinesAfter = 1

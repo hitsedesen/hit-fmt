@@ -2166,4 +2166,39 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
     }
 }
 
+TEST(PublicPipeline, RulerPlacementHonorsScopeAndProtection)
+{
+    auto style = Canonical();
+    style.RulerPlacement = formatter::RulerPlacement::DeclarationBlocks;
+    style.RulerLength = 16;
+    style.RulerBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+    style.RulerBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "namespace N {\nstruct A {};\nstruct B {};\n}\n";
+    const std::array all{parser::SourceRange{0, parser::SourceOffset(source.size())}};
+    EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = all}).Text, source);
+    const std::array<parser::SourceRange, 0> empty{};
+    EXPECT_EQ(FormatInput(source, prepared, {.EditScope = empty}).Text, source);
+    const auto begin = parser::SourceOffset(source.find("struct B"));
+    const std::array selected{parser::SourceRange{begin - 1, begin + 1}};
+    const auto scoped = FormatInput(source, prepared, {.SourceMap = true, .EditScope = selected});
+    const std::string ruler(16, '/');
+    const auto position = scoped.Text.find(ruler);
+    ASSERT_NE(position, std::string::npos);
+    EXPECT_EQ(scoped.Text.find(ruler, position + ruler.size()), std::string::npos);
+    EXPECT_EQ(scoped.Text.substr(0, begin - 1), source.substr(0, begin - 1));
+    EXPECT_EQ(scoped.Text.substr(scoped.Text.find("struct B")), source.substr(begin));
+    const test::Input input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    ASSERT_EQ(scoped.OriginalTokens.size(), tree.TokenCount());
+
+    for (parser::TokenIndex token = 0; token < tree.TokenCount(); ++token) {
+        const auto& mapping = scoped.OriginalTokens[token];
+        ASSERT_TRUE(mapping.Present);
+        EXPECT_EQ(
+            std::string_view(scoped.Text).substr(mapping.Output.Begin, mapping.Output.End - mapping.Output.Begin),
+            tree.TokenText(token));
+    }
+}
+
 } // namespace

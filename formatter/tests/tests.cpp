@@ -1586,6 +1586,11 @@ std::vector<FormatCase> FormatCases()
             profile,
         });
     };
+    AddCases(cases, data / "separator-lines", {"blocks", "fences"}, "blocks.input.cpp");
+    cases.back().Input = "fences.input.cpp";
+    cases.push_back({data / "separator-lines", "crlf", "crlf.input.cpp"});
+    cases.push_back({data / "separator-lines", "minimal", "minimal.input.cpp"});
+    cases.push_back({data / "separator-lines", "scope", "scope.input.cpp", "blocks", {{2, 3}}, false});
     addProfileCase("../ytsaurus-corpus", "vertical");
     {
         auto continuation = cases.back();

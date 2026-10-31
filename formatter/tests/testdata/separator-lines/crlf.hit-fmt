@@ -1,0 +1,3 @@
+include = "blocks.hit-fmt"
+LineEnding = CRLF
+RulerLength = 12

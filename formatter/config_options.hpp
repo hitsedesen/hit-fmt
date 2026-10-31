@@ -586,6 +586,8 @@
     OPT(bool, AlignMacroBackslashes, false) \
     /* Zero preserves spelling; length counts slashes, not indentation. */ \
     OPT(std::size_t, RulerLength, 0) \
+    OPT(formatter::RulerPlacement, RulerPlacement, \
+        formatter::RulerPlacement::Preserve) \
     OPT(formatter::BlankLineSetting, RulerBlankLinesBefore, {}) \
     OPT(formatter::BlankLineSetting, RulerBlankLinesAfter, {}) \
     OPT(formatter::IncludeOrder, IncludeOrder, \
