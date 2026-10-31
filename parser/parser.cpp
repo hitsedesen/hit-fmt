@@ -234,6 +234,10 @@ public:
         ErrorHandler errorHandler,
         const ParseOptions& options);
 
+    [[nodiscard]] static std::optional<SyntaxTree> ReparseIncludes(
+        const SyntaxTree& original,
+        util::PaddedSourceView input);
+
     ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler, const ParseOptions& options)
         : Tree_(tree)
         , ErrorHandler_(errorHandler)
@@ -301,6 +305,114 @@ public:
             AssociateBlankLines(*root);
             Tree_.Trivia_.Seal();
         }
+    }
+
+    bool ReuseIncludeSyntax(const SyntaxTree& original)
+    {
+        Tokenize();
+        Tree_.Tokens_.Seal();
+        ParseLimit_ = Tree_.TokenCount();
+
+        if (ParseLimit_ != original.TokenCount()) {
+            return false;
+        }
+
+        const auto literalInclude = [] (std::string_view text) {
+            if (text.find_first_of("\n\\") != std::string_view::npos) {
+                return false;
+            }
+
+            if (text.starts_with("%:")) {
+                text.remove_prefix(2);
+            } else if (text.starts_with('#')) {
+                text.remove_prefix(1);
+            } else {
+                return false;
+            }
+
+            const auto trim = [&] {
+                text.remove_prefix(std::min(text.find_first_not_of(" \t\v\f"), text.size()));
+            };
+            trim();
+
+            if (!text.starts_with("include")) {
+                return false;
+            }
+
+            text.remove_prefix(7);
+            trim();
+
+            if (text.empty() || (text.front() != '<' && text.front() != '"')) {
+                return false;
+            }
+
+            const auto close = text.find(text.front() == '<' ? '>' : '"', 1);
+            return close != std::string_view::npos && close != 1;
+        };
+
+        for (TokenIndex i = 0; i < ParseLimit_; ++i) {
+            if (Kind(i) != original.Kind(i)) {
+                return false;
+            }
+
+            if (Text(i) != original.TokenText(i) &&
+                (Kind(i) != TK::PreprocessingDirective || !literalInclude(Text(i)) ||
+                    !literalInclude(original.TokenText(i))))
+            {
+                return false;
+            }
+
+            Tree_.Tokens_.SetRole(i, original.Role(i));
+            Tree_.Tokens_.SetMatchingDelimiter(i, original.MatchingDelimiter(i));
+        }
+
+        const auto clone = [&] (const Node& node) {
+            auto* copy = MakeNode(node.Kind, node.Tokens.Begin);
+            copy->Tokens.End = node.Tokens.End;
+            copy->FunctionKind_ = node.FunctionKind_;
+            return copy;
+        };
+        Tree_.Root_ = clone(original.Root());
+        struct Frame
+        {
+            const Node* Next;
+            Node* Parent;
+        };
+
+        std::pmr::vector<Frame> stack(&ScratchMemory_);
+        stack.push_back({original.Root().FirstChild, Tree_.Root_});
+
+        while (!stack.empty()) {
+            auto& frame = stack.back();
+
+            if (!frame.Next) {
+                stack.pop_back();
+                continue;
+            }
+
+            const auto* node = frame.Next;
+            frame.Next = node->NextSibling;
+            auto* copy = clone(*node);
+
+            if (frame.Parent->LastChild) {
+                frame.Parent->LastChild->NextSibling = copy;
+            } else {
+                frame.Parent->FirstChild = copy;
+            }
+
+            frame.Parent->LastChild = copy;
+
+            if (node->FirstChild) {
+                stack.push_back({node->FirstChild, copy});
+            }
+        }
+
+        // Trivia owns source ranges and line-based attachments, so none of
+        // the original trivia records may survive include permutations.
+        AssociateComments(*Tree_.Root_);
+        AssociateBlankLines(*Tree_.Root_);
+        Tree_.Trivia_.Seal();
+        return true;
     }
 
 private:
@@ -10235,6 +10347,25 @@ SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler, const 
 {
     HIT_FMT_PROFILE_PHASE("parser.total");
     return ParseContext::Run(input, std::move(errorHandler), options);
+}
+
+std::optional<SyntaxTree> ParseContext::ReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input)
+{
+    SyntaxTree tree(input.View());
+    ErrorHandler errors = [] (ParseError) { };
+    ParseContext context(tree, errors, {});
+
+    if (!context.ReuseIncludeSyntax(original)) {
+        return std::nullopt;
+    }
+
+    return tree;
+}
+
+std::optional<SyntaxTree> TryReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input)
+{
+    HIT_FMT_PROFILE_PHASE("parser.reuse_includes");
+    return ParseContext::ReparseIncludes(original, input);
 }
 
 } // namespace parser

@@ -286,6 +286,74 @@ TEST_P(FileTest, Golden)
     }
 }
 
+TEST_P(FileTest, IncludeReuseMatchesFreshParse)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, GetParam().Name};
+    const auto body = fixture.InputNamed(".in");
+    PaddedInput rewritten("%:include <a.h>\n\n# include \"z/long.h\"\n\n" + body);
+    const parser::ParseOptions options{
+        .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
+        .ClassMacroNames = GetParam().ClassMacroNames,
+        .EnumMacroNames = GetParam().EnumMacroNames,
+    };
+    const auto fresh = parser::Parse(rewritten.View(), [] (parser::ParseError) { }, options);
+    std::optional<parser::SyntaxTree> reused;
+    {
+        PaddedInput input("#include \"z/long.h\"\n#include <a.h>\n" + body);
+        const auto original = parser::Parse(input.View(), [] (parser::ParseError) { }, options);
+        reused = parser::TryReparseIncludes(original, rewritten.View());
+    }
+
+    ASSERT_TRUE(reused);
+    EXPECT_EQ(Serialize(*reused), Serialize(fresh));
+    ASSERT_EQ(reused->TokenCount(), fresh.TokenCount());
+
+    for (parser::TokenIndex i = 0; i < fresh.TokenCount(); ++i) {
+        EXPECT_EQ(reused->Kind(i), fresh.Kind(i)) << i;
+        EXPECT_EQ(reused->Role(i), fresh.Role(i)) << i;
+        EXPECT_EQ(reused->MatchingDelimiter(i), fresh.MatchingDelimiter(i)) << i;
+        EXPECT_EQ(reused->Token(i).Text.Begin, fresh.Token(i).Text.Begin) << i;
+        EXPECT_EQ(reused->Token(i).Text.End, fresh.Token(i).Text.End) << i;
+        EXPECT_EQ(reused->TokenPosition(i).Line, fresh.TokenPosition(i).Line) << i;
+        EXPECT_EQ(reused->TokenPosition(i).Column, fresh.TokenPosition(i).Column) << i;
+    }
+    std::vector<std::pair<const Node*, const Node*>> pending{{&reused->Root(), &fresh.Root()}};
+    while (!pending.empty()) {
+        const auto [copy, reference] = pending.back();
+        pending.pop_back();
+        ASSERT_EQ(copy->Kind, reference->Kind);
+        EXPECT_EQ(copy->GetFunctionKind(), reference->GetFunctionKind());
+        EXPECT_EQ(copy->Tokens.Begin, reference->Tokens.Begin);
+        EXPECT_EQ(copy->Tokens.End, reference->Tokens.End);
+        auto* left = copy->FirstChild;
+        auto* right = reference->FirstChild;
+
+        for (; left && right; left = left->NextSibling, right = right->NextSibling) {
+            pending.push_back({left, right});
+        }
+
+        ASSERT_EQ(left == nullptr, right == nullptr);
+    }
+}
+
+TEST(Parser, IncludeReuseRejectsChangedGrammar)
+{
+    PaddedInput input("#include <a.h>\n#if ENABLED\nint value;\n#endif\n");
+    const auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
+
+    for (const std::string_view source :
+        {
+            "#include <b.h>\n#if ENABLED\nint other;\n#endif\n",
+            "#include <b.h>\n#if DIFFERENT\nint value;\n#endif\n",
+            "#include <b.h>\n#include <c.h>\n#if ENABLED\nint value;\n#endif\n",
+            "#include HEADER\n#if ENABLED\nint value;\n#endif\n",
+        })
+    {
+        PaddedInput rewritten(source);
+        EXPECT_FALSE(parser::TryReparseIncludes(original, rewritten.View())) << source;
+    }
+}
+
 TEST(Parser, ClassMacroNestingHasABoundedRecoveryDepth)
 {
     std::string source;

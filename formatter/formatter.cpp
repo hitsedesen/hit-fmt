@@ -794,10 +794,23 @@ FormatResult detail::FormatWithAnalysis(
         scratch.release();
         const auto size = normalized->Text.size();
         normalized->Text.append(util::SourcePaddingSize, '\0');
-        normalizedTree.emplace(parser::Parse(
-            {normalized->Text.data(), static_cast<uint32_t>(size)},
-            [] (parser::ParseError) { },
-            prepared.ParsingOptions()));
+        const util::PaddedSourceView normalizedSource{normalized->Text.data(), static_cast<uint32_t>(size)};
+        const bool includeOnly = std::ranges::all_of(
+            plan.Operations,
+            [] (const auto& operation) {
+                return operation.Kind == StructuralAction::IncludeOrder ||
+                    operation.Kind == StructuralAction::IncludeDelimiters;
+            });
+
+        if (includeOnly) {
+            normalizedTree = parser::TryReparseIncludes(original, normalizedSource);
+        }
+
+        if (!normalizedTree) {
+            normalizedTree
+                .emplace(parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+        }
+
         tree = &*normalizedTree;
         auto inherited = ProjectProtection(safety.Protection(), normalized->Provenance, scratch);
         std::optional<std::span<const Range>> currentScope;
