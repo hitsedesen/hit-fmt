@@ -50,6 +50,11 @@ void G() {
     return value;
     co_return value;
     co_yield value;
+    co_await task;
+    auto result = co_await *task;
+    co_await   (task);
+    auto nested = co_await co_await task;
+    co_await /* keep   content */ task;
     throw value;
     goto done;
     if (x)
@@ -95,6 +100,7 @@ struct Ops {
     operator bool();
     void operator delete[](void*);
 };
+Task operator co_await(Task);
 
 alignas(16) int aligned;
 int noexcept_fn() noexcept( true );

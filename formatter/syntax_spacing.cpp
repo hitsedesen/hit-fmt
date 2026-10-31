@@ -1757,6 +1757,7 @@ private:
                     field = F::AlignofSpaceBeforeParentheses;
                     break;
                 case TK::Keyword_co_await:
+                    Mark(i + 1, F::CoAwaitOperandSpacing, node, C::Expressions, 2, true);
                     field = F::CoAwaitSpaceBeforeParentheses;
                     break;
                 default:

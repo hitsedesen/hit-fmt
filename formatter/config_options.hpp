@@ -15,6 +15,8 @@
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, CoYieldValueSpacing, \
         formatter::GapPolicy::Preserve) \
+    OPT(formatter::GapPolicy, CoAwaitOperandSpacing, \
+        formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, GotoLabelSpacing, \
         formatter::GapPolicy::Preserve) \
     OPT(formatter::GapPolicy, CaseValueSpacing, \
