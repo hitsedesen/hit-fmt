@@ -61,7 +61,7 @@ void statements() {
     int local;
     ;
     ;
-ANNOTATED(local) {};
+    ANNOTATED(local) {};
     ;
     ;
     int next;

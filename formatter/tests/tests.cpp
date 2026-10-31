@@ -1066,6 +1066,21 @@ std::vector<FormatCase> FormatCases()
         }
     }
     AddCases(cases, BODY_INDENT_TESTDATA_DIR, {"preserve", "indent", "no-indent", "mixed"});
+    cases.push_back({
+        BODY_INDENT_TESTDATA_DIR,
+        "template-statements",
+        "template-statements.input.cpp",
+        "../public-pipeline/terminal-constructor-template-ids",
+    });
+    {
+        auto preserved = cases.back();
+        preserved.Name = "template-statements-preserve";
+        preserved.Expected = preserved.Input;
+        preserved.Style =
+            formatter::LoadConfigFile(preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
+        preserved.Style->BodiesLayout = CategoryLayout::Preserve;
+        cases.push_back(std::move(preserved));
+    }
     AddCases(
         cases,
         BODY_INDENT_TESTDATA_DIR,

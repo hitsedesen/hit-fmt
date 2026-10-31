@@ -1451,7 +1451,7 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     const auto incompleteArm = Lower(
         "void f(int value){ switch(value){ if(value) case 0: first(); " "else second(); default: break; } }\n",
         style).Text;
-    EXPECT_NE(incompleteArm.find("if(value) case 0:\n" "        first(); else second();"), std::string::npos)
+    EXPECT_NE(incompleteArm.find("if(value) case 0:\n" "        first();\n        else second();"), std::string::npos)
         << incompleteArm;
 }
 
