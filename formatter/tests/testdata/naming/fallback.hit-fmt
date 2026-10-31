@@ -1,0 +1,9 @@
+VariableNameCase = snake_case
+MemberVariableNameCase = PascalCase
+PrivateMemberVariableNameCase = PascalCase
+PrivateMemberVariableNameSuffixes = ["_"]
+StaticMemberVariableNameCase = Unchecked
+LocalVariableNameCase = camelCase
+LocalVariableNameExemptions = ["Logger"]
+StaticLocalVariableNameCase = PascalCase
+ParameterNameCase = camelCase

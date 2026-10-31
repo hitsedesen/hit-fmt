@@ -19,9 +19,12 @@ inline constexpr std::string_view DefaultConfigFileName = ".hit-fmt";
 
 struct NameRule
 {
-    NameCase Case = NameCase::Unchecked;
+    // Unspecified roles fall back; explicit Unchecked selects a role.
+    std::optional<NameCase> Case;
     // No prefix rule by default; an explicit [""] permits no prefix.
     std::optional<std::vector<std::string>> Prefixes;
+    std::optional<std::vector<std::string>> Suffixes;
+    std::vector<std::string> Exemptions;
 };
 
 struct NamingStyle

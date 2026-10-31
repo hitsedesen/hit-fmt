@@ -1,0 +1,80 @@
+3:5: variable name 'badGlobal' has invalid case
+  expected PascalCase
+5:12: variable name 'badStaticGlobal' has invalid case
+  expected PascalCase
+6:19: variable name 'BadDeclarationParameter' has invalid case
+  expected camelCase
+7:29: variable name 'BadParameter' has invalid case
+  expected camelCase
+9:21: variable name 'BadLocal' has invalid case
+  expected camelCase
+11:19: variable name 'BadConstant' has invalid case
+  expected camelCase
+13:16: variable name 'badStatic' has invalid case
+  expected PascalCase
+15:10: variable name 'OtherLogger' has invalid case
+  expected camelCase
+17:11: variable name 'BadCallback' has invalid case
+  expected camelCase
+18:18: variable name 'BadBinding' has invalid case
+  expected camelCase
+19:21: variable name 'BadKey' has invalid case
+  expected camelCase
+20:14: variable name 'BadIndex' has invalid case
+  expected camelCase
+21:27: variable name 'BadLambdaParameter' has invalid case
+  expected camelCase
+21:53: variable name 'BadLambdaLocal' has invalid case
+  expected camelCase
+22:36: variable name 'badMember' has invalid case
+  expected PascalCase
+27:9: variable name 'MissingSuffix' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+28:9: variable name 'lower_' has invalid case
+  expected PascalCase between naming affixes
+30:16: variable name 'badShared' has invalid case
+  expected PascalCase
+33:9: variable name 'ProtectedMissing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+36:9: variable name 'badPublic' has invalid case
+  expected PascalCase
+38:16: variable name 'badPublicShared' has invalid case
+  expected PascalCase
+39:18: variable name 'BadConstructorParameter' has invalid case
+  expected camelCase
+40:19: variable name 'BadMethodParameter' has invalid case
+  expected camelCase
+40:68: variable name 'badStatic' has invalid case
+  expected PascalCase
+41:37: variable name 'Missing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+47:9: variable name 'badDefaultPublic' has invalid case
+  expected PascalCase
+50:9: variable name 'Missing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+55:9: variable name 'badUnionField' has invalid case
+  expected PascalCase
+62:9: variable name 'badBranchPublic' has invalid case
+  expected PascalCase
+68:9: variable name 'badAfterBranches' has invalid case
+  expected PascalCase
+72:9: variable name 'MissingBranchSuffix' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+77:9: variable name 'MissingPrivateSuffix' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+79:9: variable name 'StillPrivateMissing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+81:28: enumerator name 'bad_phase' has invalid case
+  expected PascalCase
+84:6: enumerator name 'bad_state' has invalid case
+  expected PascalCase
+86:17: enum name 'BadState' has invalid prefix and case
+  expected prefix 'E' and PascalCase between naming affixes
+88:7: enumerator name 'bad_flag' has invalid case
+  expected PascalCase
+90:25: variable name 'BadMacroLocal' has invalid case
+  expected camelCase
+94:9: variable name 'badGeneratedPublic' has invalid case
+  expected PascalCase
+97:9: variable name 'MissingGeneratedSuffix' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes

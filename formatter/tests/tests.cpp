@@ -4719,23 +4719,34 @@ TEST_P(NamingTest, Golden)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
     const auto name = GetParam();
-    const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" : "alternate.cpp"));
+    const bool extended = name == "roles" || name == "fallback" || name == "affixes" || name == "acronyms";
+    const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" : extended ? name + ".cpp" : "alternate.cpp"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
     const Input storage(input);
-    const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
+    const formatter::PreparedFormat prepared(config.FormattingStyle);
+    const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { }, prepared.ParsingOptions());
     std::string actual;
 
     for (const auto& diagnostic : formatter::CheckNames(tree, config)) {
         actual += std::to_string(diagnostic.Position.Line) + ":" + std::to_string(diagnostic.Position.Column) + ": " +
             diagnostic.Message + "\n";
+
+        if (extended) {
+            actual += "  " + diagnostic.Expected + "\n";
+        }
     }
 
     test::golden::ExpectGolden(dir / (name + ".expected"), actual);
-    EXPECT_EQ(formatter::Format(tree, config.FormattingStyle), input);
+    // Naming checks cannot introduce formatting edits, even for invalid names.
+    EXPECT_EQ(formatter::Format(tree), input);
     EXPECT_TRUE(formatter::CheckNames(tree, {}).empty());
 }
 
-INSTANTIATE_TEST_SUITE_P(Formatter, NamingTest, testing::Values("rules", "alternate", "no_exempt"), ConfigName);
+INSTANTIATE_TEST_SUITE_P(
+    Formatter,
+    NamingTest,
+    testing::Values("rules", "alternate", "no_exempt", "roles", "fallback", "affixes", "acronyms"),
+    ConfigName);
 
 TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
 {

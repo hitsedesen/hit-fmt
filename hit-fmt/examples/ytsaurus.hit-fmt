@@ -8,7 +8,7 @@
 # Receiver construction does not count as a chained call.
 # Message layouts and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
-# Approximation: variable roles, macro languages and semantic grouping are not enforced;
+# Approximation: macro languages and semantic grouping are not fully enforced;
 # protected macro bytes are not style conformance.
 Layout = Canonical
 IndentWidth = 4
@@ -266,9 +266,21 @@ EnumNamePrefixes = ["E"]
 FunctionNameCase = PascalCase
 NamespaceNameCase = PascalCase
 NamespaceNamePrefixes = ["N"]
-# VariableNameCase stays unchecked: globals/statics/public fields use PascalCase,
-# locals/parameters use camelCase, private fields have a suffix, and Logger is
-# an exception. The current single variable category cannot express these roles.
+LocalVariableNameCase = camelCase
+LocalVariableNameExemptions = ["Logger"]
+ParameterNameCase = camelCase
+GlobalVariableNameCase = PascalCase
+StaticLocalVariableNameCase = PascalCase
+PublicMemberVariableNameCase = PascalCase
+ProtectedMemberVariableNameCase = PascalCase
+ProtectedMemberVariableNameSuffixes = ["_"]
+PrivateMemberVariableNameCase = PascalCase
+PrivateMemberVariableNameSuffixes = ["_"]
+# Static members take precedence over access-specific suffix rules.
+StaticMemberVariableNameCase = PascalCase
+EnumeratorNameCase = PascalCase
+# Explicit vocabulary; unrecognized words and ambiguous boundaries stay unchecked.
+NamingAcronyms = ["IO", "IP", "YT", "CH", "TCP", "HTTP", "RPC", "MPSC"]
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
 
 # Explicit YTsaurus library annotations; syntax lowering owns contextual guards.
