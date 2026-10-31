@@ -191,6 +191,11 @@ void ValidatePolicyStyle(const Style& style)
             " requires one empty line, exceeding " "MaxEmptyLines = 0");
     }
     ValidateIncludeGroups(style.IncludeGroups);
+    if (static_cast<std::size_t>(style.IndentPreprocessingDirectives) >=
+        ConfigEnumNames<BodyIndentation>::Values.size())
+    {
+        throw std::invalid_argument("IndentPreprocessingDirectives has invalid value");
+    }
     if (static_cast<std::size_t>(style.IfConditionsPacking) >=
         ConfigEnumNames<ListPacking>::Values.size())
     {

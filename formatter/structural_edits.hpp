@@ -57,7 +57,7 @@ struct StructuralOptions
     bool SortIncludes = false;
     // Explicit ending selection retains original whitespace bare-CR membership.
     bool PreserveBareCR = false;
-    bool IndentPreprocessingDirectives = false;
+    BodyIndentation IndentPreprocessingDirectives = BodyIndentation::Preserve;
     bool AlignMacroBackslashes = false;
     std::size_t RulerLength = 0;
     std::uint8_t IndentWidth = 4;

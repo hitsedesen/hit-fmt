@@ -820,12 +820,15 @@ ClassMacroNames = []
 # Values: [] or ["name", ...]
 WhitespaceSensitiveMacros = []
 
-# Indent the whole directive (including # or %:) by nesting
-# depth using IndentWidth spaces; remove spaces after the marker.
+# Preserve keeps directive indentation and spacing after # or %:.
+# Indent moves the whole directive by conditional nesting depth
+# using IndentWidth spaces; NoIndent puts it at column one.
+# Indent and NoIndent remove spaces after the marker.
 # Example with IndentWidth = 4: a nested #if becomes "    #if".
 # else/elif/endif align with their if.
-# Values: false | true
-IndentPreprocessingDirectives = false
+# Legacy true means Indent; false means Preserve.
+# Values: Preserve | Indent | NoIndent (also false | true)
+IndentPreprocessingDirectives = Preserve
 
 # Values: false | true
 AlignMacroBackslashes = false

@@ -467,6 +467,15 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
             config.FormattingStyle.*Member = ParseCallNames(value, path, line);
         }
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
+            decltype(config.FormattingStyle.*Member)>, BodyIndentation>)
+    {
+        if constexpr (Member == &Style::IndentPreprocessingDirectives) {
+            if (value == "true" || value == "false") {
+                value = value == "true" ? "Indent" : "Preserve";
+            }
+        }
+        ParseField(config.FormattingStyle.*Member, value, path, line);
+    } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>,
             std::optional<TrailingCommentSpaceSetting>>)
     {

@@ -146,7 +146,8 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             style.IncludeMatchingHeader = formatter::IncludeMatchingHeader::First;
             style.IncludeGrouping = formatter::IncludeGrouping::Directory;
             style.IncludeStandardHeaders = formatter::IncludeStandardHeaders::Last;
-            style.IndentPreprocessingDirectives = indent;
+            style.IndentPreprocessingDirectives =
+                indent ? formatter::BodyIndentation::Indent : formatter::BodyIndentation::Preserve;
             if (mixed) {
                 style.SpaceInsideFunctionParameters = formatter::GapPolicy::NoSpace;
             }
