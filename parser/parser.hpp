@@ -5,6 +5,7 @@
 #include <util/input.hpp>
 
 #include <functional>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -42,5 +43,12 @@ struct ParseOptions
     util::PaddedSourceView input,
     ErrorHandler errorHandler = {},
     const ParseOptions& options = {});
+
+// Retokenize and copy grammar when token kinds/order and all non-include
+// spellings are unchanged. Only single-line literal #include spellings may
+// differ. Positions and trivia are rebuilt; macro hints are inherited from
+// original's parsed grammar. Returns nullopt when reuse cannot be proven.
+// The result owns its arena and borrows input; original may be released.
+[[nodiscard]] std::optional<SyntaxTree> TryReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input);
 
 } // namespace parser
