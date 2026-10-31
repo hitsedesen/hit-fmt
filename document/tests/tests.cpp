@@ -781,6 +781,44 @@ TEST(GroupLayout, BoundedChildFittingGolden)
         }
     }
 
+    for (const auto wrappers : {1u, 4u}) {
+        Document document("");
+        const auto expression = document.BeginGroup({.Mode = GroupMode::Fill, .Indent = 4});
+        document.Text("result =");
+        document.Gap();
+        document.Text("assemble({");
+        std::array<GroupId, 4> enclosing;
+
+        // Consistent wrappers leave gaps between eligible child depths; four
+        // place the inner Fill group beyond the bounded probe depth.
+        for (unsigned i = 0; i < wrappers; ++i) {
+            enclosing[i] = document.BeginGroup({.Mode = GroupMode::Consistent});
+        }
+
+        const auto arguments = document.BeginGroup({.Mode = GroupMode::Fill, .Indent = 4});
+        document.Gap({GapKind::Soft, 0});
+        document.Text("firstValue,");
+        document.Gap();
+        document.Text("secondValue,");
+        document.Gap();
+        document.Text("thirdValue");
+        document.ConditionalText(arguments, "", ",");
+        document.Text("})");
+        document.EndGroup(arguments);
+
+        for (unsigned i = wrappers; i != 0; --i) {
+            document.EndGroup(enclosing[i - 1]);
+        }
+
+        document.EndGroup(expression);
+        document.Text(";");
+        ASSERT_TRUE(document.Seal());
+
+        for (const auto width : {28u, 48u}) {
+            AppendRender(actual, document, width, "consistent wrappers=" + std::to_string(wrappers));
+        }
+    }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "bounded-child-fit.expected", actual);
 }
 
