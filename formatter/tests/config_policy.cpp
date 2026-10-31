@@ -1061,6 +1061,11 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
     EXPECT_THROW((void)formatter::PreparedFormat(invalidCategoryOrder), std::invalid_argument);
     const TemporaryConfig badCategoryOrder("IncludeCategoryOrder = Reverse\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(badCategoryOrder.Path), std::runtime_error);
+    formatter::Style invalidDelimiters;
+    invalidDelimiters.IncludeDelimiters = static_cast<formatter::IncludeDelimiters>(255);
+    EXPECT_THROW((void)formatter::PreparedFormat(invalidDelimiters), std::invalid_argument);
+    const TemporaryConfig badDelimiters("IncludeDelimiters = Quotes\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(badDelimiters.Path), std::runtime_error);
     formatter::Style invalidOrder;
     invalidOrder.IncludeDirectoryOrder = static_cast<formatter::IncludeDirectoryOrder>(255);
     EXPECT_THROW((void)formatter::PreparedFormat(invalidOrder), std::invalid_argument);

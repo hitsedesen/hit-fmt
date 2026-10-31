@@ -71,6 +71,65 @@ bool IsStandardInclude(std::string_view path, bool angled) noexcept
     return angled && path.find('/') == std::string_view::npos && path.find(".h") == std::string_view::npos;
 }
 
+void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std::string_view path, bool absolute)
+{
+    while (!path.empty()) {
+        const auto slash = path.find('/');
+        const auto part = path.substr(0, slash);
+        if (part == "..") {
+            if (!parts.empty() && parts.back() != "..") {
+                parts.pop_back();
+            } else if (!absolute) {
+                parts.push_back(part);
+            }
+        } else if (!part.empty() && part != ".") {
+            parts.push_back(part);
+        }
+        if (slash == std::string_view::npos) {
+            break;
+        }
+        path.remove_prefix(slash + 1);
+    }
+}
+
+IncludeDelimiterResolver::IncludeDelimiterResolver(
+    IncludeDelimiters policy,
+    IncludePathBase base,
+    std::string_view inputFilePath,
+    std::pmr::memory_resource& scratch)
+    : Policy_(policy)
+    , Base_(base)
+    , InputAbsolute_(inputFilePath.starts_with('/'))
+    , Current_(&scratch)
+    , Parts_(&scratch)
+{
+    if (policy != IncludeDelimiters::Preserve) {
+        const auto slash = inputFilePath.rfind('/');
+        if (slash != std::string_view::npos) {
+            AppendIncludePathComponents(Current_, inputFilePath.substr(0, slash + 1), InputAbsolute_);
+        }
+    }
+}
+
+bool IncludeDelimiterResolver::Angled(std::string_view path, bool original)
+{
+    // Bare names carry no evidence about the header's location or search root.
+    if (Policy_ == IncludeDelimiters::Preserve || path.find('/') == std::string_view::npos ||
+        path.find_first_of("\"<>\\\r\n") != std::string_view::npos)
+    {
+        return original;
+    }
+    const bool relative = !path.starts_with('/') &&
+        (Base_ == IncludePathBase::SourceDirectory || path.starts_with("./") || path.starts_with("../"));
+    const bool absolute = relative ? InputAbsolute_ : path.starts_with('/');
+    Parts_.clear();
+    if (relative) {
+        Parts_.assign(Current_.begin(), Current_.end());
+    }
+    AppendIncludePathComponents(Parts_, path.substr(0, path.rfind('/') + 1), absolute);
+    return absolute != InputAbsolute_ || Parts_ != Current_;
+}
+
 PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> groups)
     : StandardGroup_(groups.size())
 {

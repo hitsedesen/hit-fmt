@@ -1,0 +1,6 @@
+include = "root.hit-fmt"
+IncludeOrder = Sort
+IncludeMatchingHeader = First
+IncludeGrouping = Directory
+IncludeStandardHeaders = Last
+IndentPreprocessingDirectives = Indent

@@ -819,6 +819,27 @@ std::vector<FormatCase> FormatCases()
         cases.back().Style = std::move(style);
     }
     AddCases(cases, data / "include-order", {"sort", "composed", "angled-first"});
+    {
+        const auto directory = data / "include-delimiters";
+        for (const auto profile : {"root", "source", "sorted", "preserve"}) {
+            FormatCase value{directory, profile, "input.cpp"};
+            value.InputFilePath = "project/engine/widget.cpp";
+            if (std::string_view(profile) == "preserve") {
+                value.Style = formatter::Style{};
+                value.Expected = "input.cpp";
+            }
+            cases.push_back(std::move(value));
+        }
+        FormatCase absolute{directory, "root-absolute", "input.cpp", "root"};
+        absolute.InputFilePath = std::filesystem::absolute("project/engine/widget.cpp").generic_string();
+        absolute.Expected = "root.output.cpp";
+        cases.push_back(std::move(absolute));
+        FormatCase hunk{directory, "hunk", "input.cpp", "root", {{1, 1}}, false};
+        hunk.InputFilePath = "project/engine/widget.cpp";
+        cases.push_back(std::move(hunk));
+        FormatCase endings{directory, "crlf", "crlf.input.cpp", "root"};
+        cases.push_back(std::move(endings));
+    }
     cases.push_back({data / "include-order", "crlf", "crlf.input.cpp", "sort"});
     {
         const auto directory = data / "include-order";

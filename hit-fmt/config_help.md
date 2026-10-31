@@ -575,7 +575,15 @@ IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
 StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 ```
 
-# Include sorting
+# Include directives
+- IncludeDelimiters: Preserve (default) or QuotedLocal. QuotedLocal uses
+  quotes for lexically same-directory paths and angles for other paths,
+  using IncludePathBase and the input filename; it never changes paths.
+  Bare names retain their delimiters: spelling alone cannot distinguish
+  local headers from system headers such as <stdio.h> or <vector>.
+  Explicit ./ and ../ paths are source-relative with either delimiter.
+  This policy works independently of sorting, including commented and
+  standalone includes. Macros, splices and protected directives stay exact.
 - IncludeOrder = Sort sorts safe blocks;
   Preserve disables sorting. IncludeMatchingHeader = First pairs a
   source with a same-directory, same-stem .h/.hh/.hpp/.hxx/.h++ header.
@@ -748,6 +756,7 @@ AddMissingControlBraces = false
 RemoveNullStatements = false
 RemoveNullDeclarations = false
 IncludeOrder = Preserve
+IncludeDelimiters = Preserve
 NamespaceComments = Preserve
 IndentPreprocessingDirectives = Preserve
 AlignMacroBackslashes = false

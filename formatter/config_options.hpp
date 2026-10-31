@@ -585,6 +585,8 @@
         formatter::IncludeOrder::Preserve) \
     OPT(formatter::IncludeCategoryOrder, IncludeCategoryOrder, \
         formatter::IncludeCategoryOrder::QuotedFirst) \
+    OPT(formatter::IncludeDelimiters, IncludeDelimiters, \
+        formatter::IncludeDelimiters::Preserve) \
     OPT(formatter::IncludeMatchingHeader, IncludeMatchingHeader, \
         formatter::IncludeMatchingHeader::Off) \
     OPT(formatter::IncludeGrouping, IncludeGrouping, \

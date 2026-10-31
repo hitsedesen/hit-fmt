@@ -1,6 +1,6 @@
-#include <util/ascii.hpp>
+#include "document/document.hpp"
 
-#include <document/document.hpp>
+#include <util/ascii.hpp>
 
 #include <unicode/utf8.hpp>
 

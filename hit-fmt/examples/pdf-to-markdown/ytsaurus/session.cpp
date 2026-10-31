@@ -1,9 +1,9 @@
 #include "document.hpp"
 
-#include "export/job.hpp"
-
 #include <desktop/preview.hpp>
 #include <desktop/task.hpp>
+
+#include <export/job.hpp>
 
 #include <exception>
 

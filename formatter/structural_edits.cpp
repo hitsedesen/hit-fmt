@@ -448,29 +448,6 @@ bool HeaderFilename(std::string_view name)
     return extension == ".h" || extension == ".hh" || extension == ".hpp" || extension == ".hxx" || extension == ".h++";
 }
 
-// Reuse component storage for lexical normalization; no filesystem queries or
-// per-include owning paths. Unknown leading parents remain explicit.
-void AppendComponents(std::pmr::vector<std::string_view>& parts, std::string_view path, bool absolute)
-{
-    while (!path.empty()) {
-        const auto slash = path.find('/');
-        const auto part = path.substr(0, slash);
-        if (part == "..") {
-            if (!parts.empty() && parts.back() != "..") {
-                parts.pop_back();
-            } else if (!absolute) {
-                parts.push_back(part);
-            }
-        } else if (!part.empty() && part != ".") {
-            parts.push_back(part);
-        }
-        if (slash == std::string_view::npos) {
-            break;
-        }
-        path.remove_prefix(slash + 1);
-    }
-}
-
 void Includes(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
@@ -481,24 +458,6 @@ void Includes(
 {
     if (options.Grouping == IncludeGrouping::Preserve) {
         context.Groups = nullptr;
-    }
-    std::string relativeInput;
-    if (options.PathBase == IncludePathBase::ProjectRoot && !context.InputFilePath.empty()) {
-        const std::filesystem::path input(context.InputFilePath);
-        if (input.is_absolute()) {
-            std::error_code error;
-            const auto root = std::filesystem::current_path(error);
-            if (!error) {
-                const auto relative = input.lexically_normal().lexically_relative(root);
-                // Project-root includes and filenames passed relative to the
-                // working directory must use the same coordinate system.
-                // External absolute roots retain their lexical coordinates.
-                if (!relative.empty() && *relative.begin() != "..") {
-                    relativeInput = relative.generic_string();
-                    context.InputFilePath = relativeInput;
-                }
-            }
-        }
     }
     std::pmr::vector<std::string_view> current(&scratch), parts(&scratch);
     std::pmr::vector<std::string_view> grouped(&scratch);
@@ -518,8 +477,9 @@ void Includes(
         return current.size() - common + path.size() - common;
     };
     if (needPaths) {
-        AppendComponents(current, inputDirectory, inputAbsolute);
+        AppendIncludePathComponents(current, inputDirectory, inputAbsolute);
     }
+    IncludeDelimiterResolver delimiters(options.Delimiters, options.PathBase, context.InputFilePath, scratch);
     const auto sourceName = Filename(context.InputFilePath);
     std::pmr::string directories(&scratch);
     std::pmr::vector<StructuralPiece> pieces(&scratch);
@@ -537,6 +497,11 @@ void Includes(
             {
                 keys.clear();
                 keys.resize(group.size());
+            }
+            if (options.Delimiters != IncludeDelimiters::Preserve) {
+                for (auto& atom : group) {
+                    atom.Angled = delimiters.Angled(atom.Path, atom.Angled);
+                }
             }
             for (std::size_t i = 0; i < group.size() && !keys.empty(); ++i) {
                 const auto& atom = group[i];
@@ -557,16 +522,16 @@ void Includes(
                 parts.clear();
                 // Bare quoted names are local even with root-based project
                 // includes. Explicit ./ and ../ spell source-relative paths.
-                const bool local = !atom.Angled &&
-                    (atom.Path.find('/') == std::string_view::npos || atom.Path.starts_with("./") ||
-                        atom.Path.starts_with("../"));
+                const bool local = (!atom.Angled && atom.Path.find('/') == std::string_view::npos) ||
+                    ((!atom.Angled || options.Delimiters != IncludeDelimiters::Preserve) &&
+                        (atom.Path.starts_with("./") || atom.Path.starts_with("../")));
                 const bool relative =
                     !atom.Path.starts_with('/') && (local || options.PathBase == IncludePathBase::SourceDirectory);
                 const bool absolute = relative ? inputAbsolute : atom.Path.starts_with('/');
                 if (relative) {
                     parts.assign(current.begin(), current.end());
                 }
-                AppendComponents(parts, Directory(atom.Path), absolute);
+                AppendIncludePathComponents(parts, Directory(atom.Path), absolute);
                 if (nearestHeaders) {
                     // Keep literal resolved directories distinct from alias
                     // and depth-capped group paths. Compute once per header.
@@ -583,7 +548,7 @@ void Includes(
                     if (options.PathBase == IncludePathBase::SourceDirectory) {
                         grouped.assign(current.begin(), current.end());
                     }
-                    AppendComponents(grouped, canonical, groupAbsolute);
+                    AppendIncludePathComponents(grouped, canonical, groupAbsolute);
                 } else if (!prefix.empty()) {
                     const auto base = relative ? current.size() : 0;
                     const auto suffix = base + context.Groups->PrefixDepth(key.Prefix);
@@ -591,7 +556,7 @@ void Includes(
                         ? parts.size() - suffix
                         : std::min(static_cast<std::size_t>(key.Depth), parts.size() - suffix);
                     grouped.insert(grouped.end(), parts.begin(), parts.begin() + base);
-                    AppendComponents(grouped, canonical, groupAbsolute);
+                    AppendIncludePathComponents(grouped, canonical, groupAbsolute);
                     grouped.insert(grouped.end(), parts.begin() + suffix, parts.begin() + suffix + count);
                 } else {
                     const auto count = key.Depth == IncludeGroupRule::MaxDepth
@@ -1049,10 +1014,30 @@ StructuralPlan PlanStructuralEdits(
                 }
             },
         trailingLabels);
+    std::string relativeInput;
+    if ((options.SortIncludes || options.Delimiters != IncludeDelimiters::Preserve) &&
+        options.PathBase == IncludePathBase::ProjectRoot && !includes.InputFilePath.empty())
+    {
+        const std::filesystem::path input(includes.InputFilePath);
+        if (input.is_absolute()) {
+            std::error_code error;
+            const auto root = std::filesystem::current_path(error);
+            if (!error) {
+                const auto relative = input.lexically_normal().lexically_relative(root);
+                // Project-root includes and filenames passed relative to the
+                // working directory must use the same coordinate system.
+                // External absolute roots retain their lexical coordinates.
+                if (!relative.empty() && *relative.begin() != "..") {
+                    relativeInput = relative.generic_string();
+                    includes.InputFilePath = relativeInput;
+                }
+            }
+        }
+    }
     if (options.SortIncludes) {
         Includes(tree, safety, plan, scratchMemory, options, includes);
     }
-    PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory);
+    PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory, includes.InputFilePath);
     Sort(plan);
     (void)Validate(tree.Source(), plan);
     return plan;

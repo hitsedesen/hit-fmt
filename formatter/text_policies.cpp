@@ -143,6 +143,42 @@ std::string_view StoreText(std::string_view text, std::pmr::memory_resource& fil
     return {bytes, text.size()};
 }
 
+bool RewriteIncludeDelimiters(std::pmr::string& text, size_t begin, IncludeDelimiterResolver& delimiters)
+{
+    if (text.find_first_of("\n\\") != std::string_view::npos) {
+        return false;
+    }
+    const auto open = text.find_first_not_of(" \t", begin);
+    if (open == std::string_view::npos || (text[open] != '"' && text[open] != '<')) {
+        return false;
+    }
+    const bool angled = text[open] == '<';
+    const auto close = text.find(angled ? '>' : '"', open + 1);
+    if (close == std::string_view::npos || close == open + 1) {
+        return false;
+    }
+    auto tail = std::string_view(text).substr(close + 1);
+    while (!tail.empty()) {
+        const auto next = tail.find_first_not_of(" \t\r");
+        tail.remove_prefix(std::min(next, tail.size()));
+        if (tail.empty() || tail.starts_with("//")) {
+            break;
+        }
+        if (!tail.starts_with("/*")) {
+            return false;
+        }
+        const auto end = tail.find("*/", 2);
+        if (end == std::string_view::npos) {
+            return false;
+        }
+        tail.remove_prefix(end + 2);
+    }
+    const bool desired = delimiters.Angled(std::string_view(text).substr(open + 1, close - open - 1), angled);
+    text[open] = desired ? '<' : '"';
+    text[close] = desired ? '>' : '"';
+    return desired != angled;
+}
+
 void ReplaceAtom(
     StructuralPlan& plan,
     parser::SourceRange source,
@@ -167,7 +203,8 @@ void PlanTextPolicyEdits(
     StructuralOptions options,
     StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
-    std::pmr::memory_resource& scratchMemory)
+    std::pmr::memory_resource& scratchMemory,
+    std::string_view inputFilePath)
 {
     const bool indentDirectives = options.IndentPreprocessingDirectives == BodyIndentation::Indent;
     const bool rewriteDirectives = options.IndentPreprocessingDirectives != BodyIndentation::Preserve;
@@ -176,9 +213,12 @@ void PlanTextPolicyEdits(
     {
         throw std::invalid_argument("invalid directive indent width or ruler length");
     }
-    if (!rewriteDirectives && !options.AlignMacroBackslashes && options.RulerLength == 0) {
+    if (!rewriteDirectives && !options.AlignMacroBackslashes && options.RulerLength == 0 &&
+        options.Delimiters == IncludeDelimiters::Preserve)
+    {
         return;
     }
+    IncludeDelimiterResolver delimiters(options.Delimiters, options.PathBase, inputFilePath, scratchMemory);
     struct MovedAtom
     {
         parser::SourceRange Source;
@@ -188,7 +228,9 @@ void PlanTextPolicyEdits(
     for (const auto& edit : plan.Edits) {
         if (plan.Operations[edit.Operation].Kind == StructuralAction::IncludeOrder) {
             for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
-                moved.push_back({plan.Pieces[p].Source, p});
+                if (plan.Pieces[p].FromSource) {
+                    moved.push_back({plan.Pieces[p].Source, p});
+                }
             }
         }
     }
@@ -247,6 +289,8 @@ void PlanTextPolicyEdits(
         }
         if (!name.empty() && CanRewriteTextAtom(safety, source, true)) {
             replacement.assign(text);
+            const bool includeChanged = options.Delimiters != IncludeDelimiters::Preserve && name == "include" &&
+                RewriteIncludeDelimiters(replacement, begin + name.size(), delimiters);
             if (indent) {
                 replacement.erase(marker, begin - marker);
                 replacement.insert(0, level * options.IndentWidth, ' ');
@@ -272,7 +316,13 @@ void PlanTextPolicyEdits(
                     piece.Literal = StoreText(line, fileMemory);
                     piece.FromSource = false;
                 } else {
-                    ReplaceAtom(plan, source, token, StructuralAction::DirectiveWhitespace, replacement, fileMemory);
+                    ReplaceAtom(
+                        plan,
+                        source,
+                        token,
+                        includeChanged ? StructuralAction::IncludeDelimiters : StructuralAction::DirectiveWhitespace,
+                        replacement,
+                        fileMemory);
                 }
             }
         }
