@@ -1,0 +1,5 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+IndentNamespaces = Indent
+ColumnLimit = 0
