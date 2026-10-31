@@ -1822,63 +1822,247 @@ ConstructorListsColonSpaceBefore = GeneratedNoSpace
 # Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
 ConstructorListsColonSpaceAfter = GeneratedSpace
 
-# Naming checks
+# Naming checks report diagnostics only, including with --fix.
+# Inherit leaves the category unspecified; Unchecked explicitly disables case.
+# A configured role replaces the whole fallback rule, including affixes and
+# exemptions. Set NameCase = Unchecked to select a role with no case check.
+# Variable role fallback, from most specific to least specific:
+# Parameter -> Variable; GlobalVariable -> Variable;
+# StaticLocalVariable -> LocalVariable -> Variable;
+# StaticMemberVariable -> access-specific member -> MemberVariable -> Variable.
+# Non-static members start at their access-specific rule.
+# Any non-Inherit case, nonempty affix list or exemption list selects a rule.
+# Affix [] disables that affix check; [""] explicitly permits no affix.
+# Case/acronym checks apply after removing a matching prefix and suffix.
+# Exemptions are exact, case-sensitive, unqualified identifier names.
+# Anonymous-union members use their enclosing scope and access rule.
+# Parameter rules also check named parameters in function declarations.
+# Function names and forward type names remain definition-only checks.
+# Native enumerators and entries/types in configured EnumMacroNames are checked.
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-ClassNameCase = Unchecked
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+ClassNameCase = Inherit
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 ClassNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-EnumNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+ClassNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+ClassNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+EnumNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 EnumNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-UnionNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+EnumNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+EnumNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+UnionNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 UnionNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-StructNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+UnionNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+UnionNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+StructNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 StructNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-FunctionNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+StructNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+StructNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+FunctionNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 FunctionNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-ConceptNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+FunctionNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+FunctionNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+ConceptNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 ConceptNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-VariableNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+ConceptNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+ConceptNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+VariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 VariableNamePrefixes = []
 
-# Values: Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
-NamespaceNameCase = Unchecked
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+VariableNameSuffixes = []
 
-# Values: [] (disabled) or ["prefix", ...]
-# [""] explicitly allows names without a prefix.
+# Values: [] or ["identifier", ...]
+VariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+NamespaceNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
 NamespaceNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+NamespaceNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+NamespaceNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+LocalVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+LocalVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+LocalVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+LocalVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+ParameterNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+ParameterNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+ParameterNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+ParameterNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+GlobalVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+GlobalVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+GlobalVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+GlobalVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+StaticLocalVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+StaticLocalVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+StaticLocalVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+StaticLocalVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+MemberVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+MemberVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+MemberVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+MemberVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+StaticMemberVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+StaticMemberVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+StaticMemberVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+StaticMemberVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+PublicMemberVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+PublicMemberVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+PublicMemberVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+PublicMemberVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+ProtectedMemberVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+ProtectedMemberVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+ProtectedMemberVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+ProtectedMemberVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+PrivateMemberVariableNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+PrivateMemberVariableNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+PrivateMemberVariableNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+PrivateMemberVariableNameExemptions = []
+
+# Values: Inherit | Unchecked | camelCase | PascalCase | snake_case | SCREAMING_SNAKE_CASE
+EnumeratorNameCase = Inherit
+
+# Values: [] (disabled) or ["prefix", ...]; [""] permits no prefix.
+EnumeratorNamePrefixes = []
+
+# Values: [] (disabled) or ["suffix", ...]; [""] permits no suffix.
+EnumeratorNameSuffixes = []
+
+# Values: [] or ["identifier", ...]
+EnumeratorNameExemptions = []
+
+# Known acronyms: uppercase words of at least two letters; [] disables checks.
+# For camelCase/PascalCase only: two-letter words uppercase, longer words
+# capitalized; initial camelCase words lowercase. Example: IOCount, TcpCount,
+# ioCount. Match whole camel-case words ignoring case, never substrings.
+# Digits delimit words; unknown words and ambiguous boundaries stay unchecked.
+# Use unambiguous vocabulary: CH can mean ClickHouse or character.
+NamingAcronyms = []
 
 # Configuration inheritance (optional)
 # Relative paths start here; absolute filesystem paths work too.

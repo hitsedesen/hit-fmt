@@ -1,0 +1,10 @@
+ClassNameCase = PascalCase
+ClassNamePrefixes = ["T", "Type"]
+ClassNameSuffixes = ["_", "End"]
+ClassNameExemptions = ["external_type"]
+VariableNameCase = snake_case
+VariableNamePrefixes = ["m_", ""]
+VariableNameSuffixes = ["_", "Tail"]
+VariableNameExemptions = ["EXTERNAL"]
+FunctionNamePrefixes = ["Get"]
+FunctionNameSuffixes = ["et"]

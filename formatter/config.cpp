@@ -443,7 +443,7 @@ std::vector<std::string> ParseCallNames(std::string_view value, const std::files
     return names;
 }
 
-std::optional<std::vector<std::string>> ParseNamePrefixes(
+std::optional<std::vector<std::string>> ParseNameAffixes(
     std::string_view value,
     const std::filesystem::path& path,
     size_t line)
@@ -458,7 +458,7 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
         if (prefix.find_first_not_of("abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
             std::string::npos)
         {
-            ThrowConfigError(path, line, "prefix must contain only identifier characters");
+            ThrowConfigError(path, line, "naming affix must contain only identifier characters");
         }
     }
 
@@ -498,7 +498,7 @@ void ParseField(
     const std::filesystem::path& path,
     size_t line)
 {
-    field = ParseNamePrefixes(value, path, line);
+    field = ParseNameAffixes(value, path, line);
 }
 
 void ParseField(std::vector<std::string>& field, std::string_view value, const std::filesystem::path& path, size_t line)
@@ -609,6 +609,16 @@ template <auto Member>
 void AssignConfig(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
 {
     ParseField(config.*Member, value, path, line);
+    if constexpr (std::is_same_v<decltype(Member), decltype(&Configuration::NamingAcronyms)>) {
+        if constexpr (Member == &Configuration::NamingAcronyms) {
+            for (const auto& acronym : config.NamingAcronyms) {
+                if (acronym.size() < 2 || acronym.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ") != std::string::npos)
+                {
+                    ThrowConfigError(path, line, "NamingAcronyms requires uppercase words of at least two letters");
+                }
+            }
+        }
+    }
 }
 
 template <auto Member>
@@ -621,6 +631,22 @@ template <auto Member>
 void AssignNamingPrefixes(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
 {
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
+}
+
+template <auto Member>
+void AssignNamingSuffixes(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
+{
+    (config.Naming.*Member).Suffixes = ParseNameAffixes(value, path, line);
+}
+
+template <auto Member>
+void AssignNamingExemptions(
+    Configuration& config,
+    std::string_view value,
+    const std::filesystem::path& path,
+    size_t line)
+{
+    (config.Naming.*Member).Exemptions = ParseCallNames(value, path, line);
 }
 
 using OptionHandler = void (*)(Configuration&, std::string_view, const std::filesystem::path&, size_t);
@@ -638,7 +664,9 @@ constexpr auto Options = std::to_array<OptionBinding>({
 #undef STYLE_BINDING
 #define NAMING_CATEGORY_BINDINGS(category)                                     \
     {#category "NameCase", &AssignNamingCase<&NamingStyle::category>},         \
-    {#category "NamePrefixes", &AssignNamingPrefixes<&NamingStyle::category>},
+    {#category "NamePrefixes", &AssignNamingPrefixes<&NamingStyle::category>}, \
+    {#category "NameSuffixes", &AssignNamingSuffixes<&NamingStyle::category>}, \
+    {#category "NameExemptions", &AssignNamingExemptions<&NamingStyle::category>},
     FORMATTER_NAMING_CATEGORIES(NAMING_CATEGORY_BINDINGS)
 #undef NAMING_CATEGORY_BINDINGS
 #define CONFIG_BINDING(type, name, initial)                                    \

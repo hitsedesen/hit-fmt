@@ -651,7 +651,11 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
 #define CHECK_NAMING_DEFAULT(category) \
     checkConfigDefault(#category "NameCase", parsed.Naming.category.Case, configDefaults.Naming.category.Case); \
     EXPECT_NE(text.find("\n" #category "NamePrefixes = "), std::string::npos); \
-    EXPECT_TRUE(!parsed.Naming.category.Prefixes || parsed.Naming.category.Prefixes->empty()) << #category;
+    EXPECT_TRUE(!parsed.Naming.category.Prefixes || parsed.Naming.category.Prefixes->empty()) << #category; \
+    checkConfigDefault(#category "NameSuffixes", \
+        parsed.Naming.category.Suffixes, configDefaults.Naming.category.Suffixes); \
+    checkConfigDefault(#category "NameExemptions", \
+        parsed.Naming.category.Exemptions, configDefaults.Naming.category.Exemptions);
     FORMATTER_NAMING_CATEGORIES(CHECK_NAMING_DEFAULT)
 #undef CHECK_NAMING_DEFAULT
     for (const auto expected : {
@@ -907,6 +911,13 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
             "AlwaysBreakChainCallNames = [\"Then\", \"Then\"]\n",
             "AlwaysBreakChainCallNames = [\"ns::Then\"]\n",
             "AlwaysBreakChainCallNames = [\"\"]\n",
+            "PrivateMemberVariableNameSuffixes = [\"-\"]\n",
+            "LocalVariableNameExemptions = [\"ns::Logger\"]\n",
+            "ParameterNameExemptions = [\"\"]\n",
+            "NamingAcronyms = [\"Tcp\"]\n",
+            "NamingAcronyms = [\"I\"]\n",
+            "NamingAcronyms = [\"IP6\"]\n",
+            "NamingAcronyms = [\"N::IO\"]\n",
             "IndentedCallScopePairs = [\"Start:End\", \"Start:Other\"]\n",
             "IndentedCallScopePairs = [\"Start:End\", \"End:Other\"]\n",
             "IndentedCallScopePairs = [\"Start:Start\"]\n",

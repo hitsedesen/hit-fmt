@@ -1,0 +1,22 @@
+2:5: variable name 'BadGlobal' has invalid case
+  expected snake_case
+6:9: variable name 'bad_member' has invalid case
+  expected PascalCase
+10:9: variable name 'Missing' has invalid suffix and case
+  expected suffix '_' and PascalCase between naming affixes
+14:9: variable name 'bad_protected' has invalid case
+  expected PascalCase
+16:19: variable name 'bad_parameter' has invalid case
+  expected camelCase
+19:13: variable name 'bad_local' has invalid case
+  expected camelCase
+21:20: variable name 'bad_static' has invalid case
+  expected PascalCase
+23:13: variable name 'OtherLogger' has invalid case
+  expected camelCase
+24:40: variable name 'bad_nested' has invalid case
+  expected PascalCase
+28:5: variable name 'Logger' has invalid case
+  expected snake_case
+29:19: variable name 'bad_parameter' has invalid case
+  expected camelCase

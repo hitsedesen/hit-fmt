@@ -490,4 +490,209 @@
       "}"
     )
   )
+  (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "struct" "Launcher" "{" "}" ";"
+  )
+  (namespace-declaration
+    "namespace" "Nested" "{"
+    (record-declaration "struct" "Factory" "{" "}" ";")
+    "}"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "construction_statements")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (member-expression
+            (call-expression
+              (identifier-expression "Launcher")
+              (argument-list "(" ")")
+            )
+            "."
+            (identifier-expression "Execute")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (call-expression
+              (identifier-expression "::" "Launcher")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
+                )
+                ")"
+              )
+            )
+            "."
+            (identifier-expression "Execute")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (type-construction-expression
+              (identifier-expression "Launcher")
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+            "."
+            (identifier-expression "Execute")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (call-expression
+              (member-expression
+                (identifier-expression "Nested")
+                "::"
+                (identifier-expression "Factory")
+              )
+              (argument-list "(" ")")
+            )
+            "."
+            (identifier-expression "Execute")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (call-expression
+              (member-expression
+                (call-expression
+                  (identifier-expression "Launcher")
+                  (argument-list "(" ")")
+                )
+                "."
+                (identifier-expression "operator" "->")
+              )
+              (argument-list "(" ")")
+            )
+            "->"
+            (identifier-expression "Execute")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (type-construction-expression
+              (call-expression
+                (expression "decltype")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (identifier-expression "Make")
+                      (argument-list "(" ")")
+                    )
+                  )
+                  ")"
+                )
+              )
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+            "."
+            (identifier-expression "Execute")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "Launcher")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (declarator-name "declared")
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "Launcher")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (nested-declarator
+                "("
+                (pointer-operator "*")
+                (declarator-name "callback")
+                ")"
+              )
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "Launcher")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "object")
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
+                )
+                ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

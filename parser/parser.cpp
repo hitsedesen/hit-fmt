@@ -1456,6 +1456,30 @@ private:
         return node;
     }
 
+    [[nodiscard]] bool IsHintedDeclarationMacro(TokenIndex index) const
+    {
+        if (Kind(index) != TK::Identifier) {
+            return false;
+        }
+
+        const auto name = Text(index);
+
+        if (std::binary_search(EnumMacroNames_.begin(), EnumMacroNames_.end(), name) ||
+            std::binary_search(FunctionBodyMacroNames_.begin(), FunctionBodyMacroNames_.end(), name))
+        {
+            return true;
+        }
+
+        const auto pair = std::lower_bound(
+            ClassMacroPairs_.begin(),
+            ClassMacroPairs_.end(),
+            name,
+            [] (const auto& pair, std::string_view name) {
+                return pair.first < name;
+            });
+        return pair != ClassMacroPairs_.end() && pair->first == name;
+    }
+
     Node* ParseDeclaration()
     {
         if (auto* macro = TryParseEnumMacro()) {
@@ -3238,6 +3262,27 @@ private:
         return index;
     }
 
+    [[nodiscard]] bool IsConstructionExpression(size_t typeEnd, size_t end) const
+    {
+        const auto kind = Kind(typeEnd);
+
+        if (kind != TK::Operator_OpenParenthesis && kind != TK::Operator_OpenBrace) {
+            return false;
+        }
+
+        const auto closing = FindBalancedEnd(typeEnd);
+        if (closing == std::numeric_limits<TokenIndex>::max() || closing > end) {
+            return false;
+        }
+        if (kind == TK::Operator_OpenBrace) {
+            return true;
+        }
+
+        const auto after = NextSignificant(closing);
+        return after < end &&
+            (Kind(after) == TK::Operator_ClassMemberAccess || Kind(after) == TK::Operator_IndirectClassMemberAccess);
+    }
+
     [[nodiscard]] size_t FindDeclarationSpecifiersEnd(
         size_t begin,
         size_t end,
@@ -3850,10 +3895,12 @@ private:
                 auto* parameter = MakeNode(NodeKind::ParameterDeclaration, segmentBegin);
                 parameter->Tokens.End = i;
                 const auto firstKind = Kind(NextSignificant(segmentBegin));
-                // A pointer/reference operator cannot supply a parameter's
-                // missing type. The payload may be unexpanded macro arguments.
+                // Declarator operators and construction/member expressions
+                // cannot supply a parameter type in an unexpanded macro payload.
                 const bool missingType = firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand ||
-                    firstKind == TK::Operator_And;
+                    firstKind == TK::Operator_And || firstKind == TK::Operator_ClassMemberAccess ||
+                    firstKind == TK::Operator_IndirectClassMemberAccess ||
+                    IsConstructionExpression(FindDeclarationSpecifiersEnd(segmentBegin, i), i);
 
                 if (conditionalMiddle != 0 || missingType) {
                     AddUnparsedSyntax(*parameter, segmentBegin, i);
@@ -6612,13 +6659,15 @@ private:
                     const auto following = NextSignificant(Cursor_);
                     const auto suffix = Kind(following);
 
-                    if (cachedEnd && *cachedEnd == Cursor_ && suffix != TK::Identifier &&
-                        !IsFunctionSuffixStart(following))
+                    if (cachedEnd && *cachedEnd == Cursor_ &&
+                        ((suffix != TK::Identifier && !IsFunctionSuffixStart(following)) ||
+                            IsHintedDeclarationMacro(following)))
                     {
                         // A closed bare invocation cannot own the next
                         // declaration prefix, even after adjacent invocations
-                        // made the header opaque. Keep identifier-led headers
-                        // and possible function suffixes conservatively opaque.
+                        // made the header opaque. Explicit macro hints also
+                        // establish independent declaration boundaries. Keep
+                        // other identifier-led headers and suffixes opaque.
                         auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
                         node->Tokens.End = Cursor_;
                         AddDirectiveChildrenInGap(*node, start, Cursor_);
@@ -9456,6 +9505,13 @@ private:
             first = SkipAttributeSpecifiers(end);
         }
         if (IsTypeKeyword(Kind(first))) {
+            if (IsConstructionExpression(
+                FindDeclarationSpecifiersEnd(first, Tree_.Tokens_.Size()),
+                Tree_.Tokens_.Size()))
+            {
+                return NodeKind::ExpressionStatement;
+            }
+
             return NodeKind::DeclarationStatement;
         }
 
@@ -9464,6 +9520,13 @@ private:
         const auto* binding = Kind(name) == TK::Identifier ? LookupBinding(Text(name), global) : nullptr;
 
         if (binding && binding->Kind == NameKind::Type) {
+            if (IsConstructionExpression(
+                SkipDeclarationTypeName(name, Tree_.Tokens_.Size(), true),
+                Tree_.Tokens_.Size()))
+            {
+                return NodeKind::ExpressionStatement;
+            }
+
             auto afterName = NextSignificant(name + 1);
 
             if (Kind(afterName) == TK::Operator_Less) {

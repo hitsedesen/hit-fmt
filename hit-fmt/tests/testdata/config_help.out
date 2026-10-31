@@ -770,3 +770,58 @@ Naming checks and excluded paths
     ClassNamePrefixes = []
     NamingNamespaceExemptions = ["std"]
     Exclude = ["(^|/)generated(/|$)"]
+
+Naming rules only report diagnostics; --fix never renames identifiers.
+Each category has NameCase, NamePrefixes, NameSuffixes and NameExemptions.
+NameCase accepts Inherit (unspecified), Unchecked, camelCase, PascalCase,
+snake_case and SCREAMING_SNAKE_CASE. Affix [] disables that check; [""]
+permits no affix. Case checks use the name between matching affixes.
+Exemptions are exact, case-sensitive, unqualified identifier names.
+
+Variable roles, in precedence order:
+- Parameter falls back to Variable; GlobalVariable falls back to Variable.
+- StaticLocalVariable falls back to LocalVariable, then Variable.
+- StaticMemberVariable falls back to PublicMemberVariable,
+  ProtectedMemberVariable or PrivateMemberVariable, then MemberVariable,
+  then Variable. Non-static members start at their access-specific rule.
+- A non-Inherit case, nonempty affix list or exemption list selects the
+  whole rule. Its fields replace the fallback; Unchecked can disable it.
+- Static locals use their storage role even inside methods. Local classes
+  use member rules. Struct/union members default public; class members
+  default private. Anonymous unions use their enclosing scope and access.
+  Macro-generated records need explicit access labels
+  for access-specific rules, otherwise they use MemberVariable.
+- Local const/constexpr variables retain their local role. Structured
+  bindings use their declaration's variable rule.
+- Access labels flow through preprocessing branches. If branches disagree,
+  subsequent fields use general member rules until access is explicit.
+
+Parameter rules check named parameters in definitions and declarations.
+Function names and forward type names remain definition-only checks.
+Enumerator rules cover native enumerators and entries of EnumMacroNames;
+Enum rules also cover the declared type name in these macros.
+
+    ClassNamePrefixes = ["T", "I", "E"]
+    LocalVariableNameCase = camelCase
+    LocalVariableNameExemptions = ["Logger", "_", "this_"]
+    ParameterNameExemptions = ["Logger", "_", "this_"]
+    ParameterNameCase = camelCase
+    GlobalVariableNameCase = PascalCase
+    StaticLocalVariableNameCase = PascalCase
+    PublicMemberVariableNameCase = PascalCase
+    PrivateMemberVariableNameCase = PascalCase
+    PrivateMemberVariableNameSuffixes = ["_"]
+    StaticMemberVariableNameCase = PascalCase
+    EnumeratorNameCase = PascalCase
+    NamingAcronyms = ["IO", "IP", "TCP", "MPSC"]
+
+NamingAcronyms accepts uppercase words of at least two letters; [] disables
+acronym checks. With camelCase/PascalCase, known two-letter words stay
+uppercase, longer words are capitalized, and initial camelCase words stay
+lowercase: TIOBuffer, TTcpBuffer, ioBuffer, tcpBuffer. Configured affixes
+are stripped first. Matching uses complete camel-case words ignoring case,
+with digits as boundaries; unknown words and ambiguous boundaries remain
+unchecked. This vocabulary does not identify abbreviations automatically.
+Choose unambiguous vocabulary: CH may mean ClickHouse or character, so it is
+omitted from the YTsaurus preset. Its Logger exemption also covers parameters
+and non-public fields; _ and this_ are exempt locals and parameters.

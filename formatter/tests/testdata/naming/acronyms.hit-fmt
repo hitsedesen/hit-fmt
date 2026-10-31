@@ -1,0 +1,9 @@
+ClassNameCase = PascalCase
+ClassNamePrefixes = ["T"]
+VariableNameCase = camelCase
+PrivateMemberVariableNameCase = PascalCase
+PrivateMemberVariableNameSuffixes = ["_"]
+FunctionNameCase = PascalCase
+NamespaceNameCase = PascalCase
+NamespaceNamePrefixes = ["N"]
+NamingAcronyms = ["IO", "IP", "YT", "TCP", "HTTP", "MPSC"]

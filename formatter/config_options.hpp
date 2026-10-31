@@ -624,13 +624,17 @@
     OPT(std::size_t, ShortNamespaceLines, 0)                                 \
     FORMATTER_GAP_OPTIONS(OPT)
 
-// A category supplies its name-case and prefix options together.
+// Each category supplies case, affix and exemption options together.
 #define FORMATTER_NAMING_CATEGORIES(X)                                       \
     X(Class) X(Enum) X(Union) X(Struct) X(Function) X(Concept) X(Variable)     \
-    X(Namespace)
+    X(Namespace) X(LocalVariable) X(Parameter) X(GlobalVariable)             \
+    X(StaticLocalVariable) X(MemberVariable) X(StaticMemberVariable)         \
+    X(PublicMemberVariable) X(ProtectedMemberVariable) X(PrivateMemberVariable) \
+    X(Enumerator)
 
 #define FORMATTER_CONFIGURATION_OPTIONS(X)                                  \
     X(std::vector<std::string>, NamingNamespaceExemptions, {"std"})          \
+    X(std::vector<std::string>, NamingAcronyms, {})                          \
     X(formatter::FunctionDeclarationParameterNames, \
         FunctionDeclarationParameterNames, \
         formatter::FunctionDeclarationParameterNames::Unchecked) \

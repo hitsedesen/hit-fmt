@@ -1,0 +1,26 @@
+2:7: class name 'TIoBuffer' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+4:7: class name 'TIp6Buffer' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+6:7: class name 'TTCPBuffer' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+8:7: class name 'TMPSCBuffer' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+10:7: class name 'THTTPBuffer' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+11:7: class name 'TTCP' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+19:9: variable name 'IoCount_' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+21:9: variable name 'TCPCount_' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+28:9: variable name 'countIo' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+29:9: variable name 'countTCP' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+35:6: function name 'IoFactory' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+37:6: function name 'HTTPFactory' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+39:11: namespace name 'NYt' has invalid acronym capitalization
+  expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)

@@ -1,0 +1,22 @@
+3:7: class name 'Type_' has invalid case
+  expected PascalCase between naming affixes
+4:7: class name 'T_' has invalid case
+  expected PascalCase between naming affixes
+5:7: class name 'Tlower_' has invalid case
+  expected PascalCase between naming affixes
+6:7: class name 'TWidget' has invalid suffix and case
+  expected suffix '_' or 'End' and PascalCase between naming affixes
+7:7: class name 'Widget_' has invalid prefix and case
+  expected prefix 'T' or 'Type' and PascalCase between naming affixes
+8:7: class name 'Widget' has invalid prefix and suffix and case
+  expected prefix 'T' or 'Type' and suffix '_' or 'End' and PascalCase between naming affixes
+13:5: variable name 'm__' has invalid case
+  expected snake_case between naming affixes
+14:5: variable name 'm_Bad_' has invalid case
+  expected snake_case between naming affixes
+15:5: variable name 'count' has invalid suffix and case
+  expected suffix '_' or 'Tail' and snake_case between naming affixes
+17:5: variable name 'EXTERNAL_OTHER' has invalid suffix and case
+  expected suffix '_' or 'Tail' and snake_case between naming affixes
+18:6: function name 'Get' has invalid suffix
+  expected suffix 'et'

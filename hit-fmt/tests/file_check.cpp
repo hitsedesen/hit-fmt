@@ -56,6 +56,39 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(clean.HasFailures(true));
 }
 
+TEST(FileCheck, NamingRolesRemainFailuresAfterApplyingFormatting)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "naming-roles",
+    };
+    auto raw = Configuration();
+    raw.Naming.LocalVariable.Case = formatter::NameCase::CamelCase;
+    raw.Naming.PrivateMemberVariable.Case = formatter::NameCase::PascalCase;
+    raw.Naming.PrivateMemberVariable.Suffixes = std::vector<std::string>{"_"};
+    raw.Naming.Enumerator.Case = formatter::NameCase::PascalCase;
+    raw.NamingAcronyms = {"IO"};
+    const hit_fmt::PreparedConfiguration prepared(std::move(raw));
+    const Input input(fixture.InputNamed(".input.cpp"));
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared);
+    EXPECT_TRUE(checked.FormattingMismatch);
+    EXPECT_TRUE(checked.HasFailures(true));
+    fixture.Expect(checked.Formatting.Text);
+    const Input applied(checked.Formatting.Text);
+    const auto fixed = hit_fmt::FormatAndCheckFile(applied.View(), prepared);
+    EXPECT_FALSE(fixed.FormattingMismatch);
+    EXPECT_TRUE(fixed.HasFailures(true));
+    ASSERT_EQ(fixed.Semantic.size(), checked.Semantic.size());
+    std::string diagnostics;
+
+    for (size_t i = 0; i < fixed.Semantic.size(); ++i) {
+        EXPECT_EQ(fixed.Semantic[i].Message, checked.Semantic[i].Message);
+        diagnostics += fixed.Semantic[i].Message + "\n";
+    }
+
+    fixture.Expect(diagnostics, ".diagnostics.txt");
+}
+
 TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
 {
     auto raw = Configuration();

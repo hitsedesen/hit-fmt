@@ -1,0 +1,4 @@
+variable name 'Count' has invalid suffix and case; expected suffix '_' and PascalCase between naming affixes
+variable name 'IoCount_' has invalid acronym capitalization; expected configured acronym capitalization (two letters uppercase, longer words capitalized; initial camelCase words lowercase)
+enumerator name 'bad_phase' has invalid case; expected PascalCase
+variable name 'BadLocal' has invalid case; expected camelCase

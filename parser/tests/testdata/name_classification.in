@@ -50,3 +50,17 @@ void classify() {
         ::Local* unknown_outside_scope;
     }
 }
+
+struct Launcher {};
+namespace Nested { struct Factory {}; }
+void construction_statements() {
+    Launcher().Execute();
+    ::Launcher(1).Execute();
+    Launcher{} .Execute();
+    Nested::Factory().Execute();
+    Launcher().operator->()->Execute();
+    decltype(Make()){}.Execute();
+    Launcher(declared);
+    Launcher (*callback)(int);
+    Launcher object(1);
+}

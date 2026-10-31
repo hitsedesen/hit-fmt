@@ -78,4 +78,26 @@
       "}"
     )
   )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "DECLARE_KIND" "(" "TNode" ")" "DECLARE_HANDLE" "(" "THandle" ")"
+  )
+  (macro-enum-declaration
+    (macro-enum-header "DEFINE_ENUM" "(" "EAfterDeclarations" ",")
+    (macro-enum-entry "(" "Ready" ")")
+    (macro-enum-entry "(" "Stopped" ")")
+    ")" ";"
+  )
+  (unparsed-syntax "DECLARE_KIND" "(" "TWorker" ")")
+  (comment "/* The configured declaration owns its own invocation. */")
+  (macro-enum-declaration
+    (leading-trivia
+      (comment "/* The configured declaration owns its own invocation. */")
+    )
+    (macro-enum-header "DEFINE_ENUM_WITH_UNDERLYING_TYPE" "(" "EFlagsAfterDeclarations" "," "unsigned" ",")
+    (macro-enum-entry "(" "Enabled" ")")
+    ")" ";"
+  )
 )
