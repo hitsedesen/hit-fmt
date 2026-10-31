@@ -715,34 +715,6 @@ private:
             if (entry.Safe) {
                 entry.Safe = PrefixProtection_[node.Tokens.Begin] == PrefixProtection_[node.Tokens.End];
             }
-            // Bounded opaque statements and conditions permit leading
-            // indentation without rewriting their uncertain interiors.
-            const bool statementBoundary = node.StatementBoundary;
-            if (PrefixOpaqueFences_[node.Tokens.Begin] != PrefixOpaqueFences_[node.Tokens.End]) {
-                DirectTokens(
-                    i,
-                    [&] (Index token) {
-                        const bool safe = PrefixOpaqueFences_[token] == PrefixOpaqueFences_[token + 1];
-                        entry.OpaqueSafe &= safe;
-                        entry.Preprocessing |= Tree_.Kind(token) == TokenKind::PreprocessingDirective;
-                        if (!statementBoundary) {
-                            // Directives keep their own indentation, but do
-                            // not anchor the surrounding C++ container.
-                            entry.IndentSafe &= safe || IndentTransparentDirective(token);
-                        }
-                    });
-            }
-            for (auto child = Region(entry).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
-                entry.Safe = entry.Safe && Syntax_[child].Safe;
-                entry.Preprocessing |= Syntax_[child].Preprocessing;
-                entry.OpaqueSafe &= Syntax_[child].OpaqueSafe || HasIndependentBodyBoundary(Region(Syntax_[child]));
-                if (!statementBoundary) {
-                    entry.IndentSafe &= Syntax_[child].IndentSafe;
-                }
-            }
-            // Opaque arguments do not invalidate a proven callee/member spine.
-            // Cache this separately: other planners still need subtree safety.
-            entry.ChainSafe = entry.Safe || (IsSpine(node.Kind) && CanPlanAroundOpaqueChildren(i));
             if (entry.ItemSequence) {
                 entry.SequenceBody = node.Tokens;
                 if (node.Kind == NodeKind::MacroRecordDeclaration) {
@@ -776,6 +748,45 @@ private:
                     }
                 }
             }
+            const auto body = entry.SequenceBody;
+            // A matched body isolates its preceding header's indentation.
+            // Plain blocks still inherit their contents' indentation constraints.
+            const bool boundedBody = entry.ItemSequence && body.Begin != 0 && body.Begin - 1 > node.Tokens.Begin &&
+                body.End < Tree_.TokenCount() && Tree_.Kind(body.Begin - 1) == TokenKind::Operator_OpenBrace &&
+                Tree_.MatchingDelimiter(body.Begin - 1) == body.End &&
+                PrefixProtection_[body.Begin - 1] == PrefixProtection_[body.Begin] &&
+                PrefixProtection_[body.End] == PrefixProtection_[body.End + 1];
+            // Bounded opaque statements and conditions permit leading
+            // indentation without rewriting their uncertain interiors.
+            const bool statementBoundary = node.StatementBoundary;
+            if (PrefixOpaqueFences_[node.Tokens.Begin] != PrefixOpaqueFences_[node.Tokens.End]) {
+                DirectTokens(
+                    i,
+                    [&] (Index token) {
+                        const bool safe = PrefixOpaqueFences_[token] == PrefixOpaqueFences_[token + 1];
+                        entry.OpaqueSafe &= safe;
+                        entry.Preprocessing |= Tree_.Kind(token) == TokenKind::PreprocessingDirective;
+                        if (!statementBoundary && !(boundedBody && token >= body.Begin && token < body.End)) {
+                            // Directives keep their own indentation, but do
+                            // not anchor the surrounding C++ container.
+                            entry.IndentSafe &= safe || IndentTransparentDirective(token);
+                        }
+                    });
+            }
+            for (auto child = Region(entry).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                entry.Safe = entry.Safe && Syntax_[child].Safe;
+                entry.Preprocessing |= Syntax_[child].Preprocessing;
+                entry.OpaqueSafe &= Syntax_[child].OpaqueSafe || HasIndependentBodyBoundary(Region(Syntax_[child]));
+                const auto childTokens = Region(Syntax_[child]).Tokens;
+                if (!statementBoundary &&
+                    !(boundedBody && childTokens.Begin >= body.Begin && childTokens.End <= body.End))
+                {
+                    entry.IndentSafe &= Syntax_[child].IndentSafe;
+                }
+            }
+            // Opaque arguments do not invalidate a proven callee/member spine.
+            // Cache this separately: other planners still need subtree safety.
+            entry.ChainSafe = entry.Safe || (IsSpine(node.Kind) && CanPlanAroundOpaqueChildren(i));
             if (node.Kind == NodeKind::BinaryExpression || node.Kind == NodeKind::AssignmentExpression) {
                 DirectTokens(
                     i,

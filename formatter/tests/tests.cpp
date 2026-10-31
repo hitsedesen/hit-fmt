@@ -1091,6 +1091,7 @@ std::vector<FormatCase> FormatCases()
         "namespace-preserved-indent",
     });
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "reindented-call", "reindented-call.input.cpp"});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "protected-body", "protected-body.input.cpp"});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "namespace-preserved-lambda", "namespace-preserved-lambda.input.cpp"});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "namespace-template-lambda", "namespace-template-lambda.input.cpp"});
     cases.push_back({
