@@ -137,8 +137,12 @@ bool IncludeDelimiterResolver::Angled(std::string_view path, bool original)
         return original;
     }
 
-    const bool relative = !path.starts_with('/') &&
-        (Base_ == IncludePathBase::SourceDirectory || path.starts_with("./") || path.starts_with("../"));
+    // Explicit source-relative paths must use the source directory's search root.
+    if (path.starts_with("./") || path.starts_with("../")) {
+        return false;
+    }
+
+    const bool relative = !path.starts_with('/') && Base_ == IncludePathBase::SourceDirectory;
     const bool absolute = relative ? InputAbsolute_ : path.starts_with('/');
     Parts_.clear();
 

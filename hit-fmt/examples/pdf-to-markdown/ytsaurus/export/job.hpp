@@ -1,6 +1,6 @@
 #pragma once
 
-#include <../document.hpp>
+#include "../document.hpp"
 
 #include <cstddef>
 #include <iosfwd>
