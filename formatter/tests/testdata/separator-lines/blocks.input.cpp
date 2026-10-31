@@ -19,6 +19,7 @@ void ConsumeEnvelope(const TEnvelope<int>& envelope);
 
 // The next independent type owns this comment.
 enum class EState { Idle, Ready };
+/////////
 DEFINE_ENUM(EFlag,
     (First)
     ///////////////

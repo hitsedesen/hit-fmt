@@ -685,15 +685,12 @@ Templates and comments
 - StandaloneCommentBlankLinesBefore/After uses blank-line counts and caps.
 - RulerLength: 0 preserves standalone all-slash comments; 3..10000 sets
   the slash count. RulerBlankLinesBefore/After overrides surrounding blanks.
-- RulerPlacement: Preserve (default) keeps placement. DeclarationBlocks adds
-  rulers inside namespace openings and before closings, and between distinct
-  declaration blocks. Initial using namespace directives stay with the opening.
-  Records, enums and nested namespaces begin blocks; consecutive free functions,
-  aliases and variables stay grouped. Functions following types share a block.
-  Existing rulers retain finer grouping.
-  Standalone rulers inside records or functions are removed. Protected bytes
-  and directive boundaries are respected. New rulers use RulerLength, or 80
-  when it is 0. Logical grouping still requires human judgment.
+- RulerPlacement: Preserve (default) keeps placement. NamespaceBoundaries adds
+  rulers inside namespace openings and before closings. Initial using namespace
+  directives stay with the opening. Existing ruler placement is preserved,
+  including between declarations and inside records or functions. Protected
+  bytes and directive boundaries are respected. New rulers use RulerLength,
+  or 80 when it is 0. Inter-declaration grouping is left to the author.
 
 Template headers and comments
     DeclarationHeadersLayout = Canonical

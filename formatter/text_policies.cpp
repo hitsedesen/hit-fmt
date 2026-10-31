@@ -244,7 +244,7 @@ void PlanTextPolicyEdits(
 {
     const bool indentDirectives = options.IndentPreprocessingDirectives == BodyIndentation::Indent;
     const bool rewriteDirectives = options.IndentPreprocessingDirectives != BodyIndentation::Preserve;
-    const bool rewriteRulers = options.Rulers == RulerPlacement::Preserve && options.RulerLength != 0;
+    const bool rewriteRulers = options.RulerLength != 0;
 
     if ((indentDirectives && (options.IndentWidth == 0 || options.IndentWidth > 32)) ||
         (options.RulerLength != 0 && (options.RulerLength < 3 || options.RulerLength > 10000)))
