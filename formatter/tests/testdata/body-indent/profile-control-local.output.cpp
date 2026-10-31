@@ -3,16 +3,20 @@ void Dispatch()
     if (Ready()) [[likely]] {
         Act();
     }
+
     if ([] {
         return true;
     } ())
     {
         Act();
     }
+
     while (DrainQueue()) { }
+
     if (Ready()) {
         Act();
     }
+
     class Guard final
     {
     public:

@@ -3,9 +3,11 @@ void Recover()
     auto callback = [state] (int requestId, int additionalRequestId) -> Result {
         UnknownValue value;
         auto chosenId = requestId;
+
         if (chosenId > 0) {
             return value;
         }
+
         return value;
     };
     Use(callback);
@@ -24,10 +26,12 @@ void RecoverNested()
 {
     auto callback = [state] (int requestId, int additionalRequestId) {
         Prepare();
+
         if (requestId) {
             UnknownValue value;
             Finish(value);
         }
+
         Finish(requestId);
     };
     Use(callback);

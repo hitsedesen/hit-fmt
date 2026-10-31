@@ -10,6 +10,7 @@ struct TMockDispatcher
 TEST(TDispatcherTest, CompletesRequests)
 {
     auto result = ReadRequest();
+
     if (result) {
         CompleteRequest(result);
     }
@@ -18,6 +19,7 @@ TEST(TDispatcherTest, CompletesRequests)
 TYPED_TEST(TTypedDispatcherTest, KeepsTestHeader)
 {
     auto result = ReadTypedRequest<TypeParam>();
+
     if (result) {
         CompleteRequest(result);
     }

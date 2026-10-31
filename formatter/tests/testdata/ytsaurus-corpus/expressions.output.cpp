@@ -16,12 +16,16 @@ void ReportStatus(const TLogger& logger, int level, bool ready, int attempt, con
 {
     YT_TLOG_EVENT(logger, level, "Status updated")
         .With("Attempt", attempt);
+
     YT_TLOG_DEBUG_IF(ready, "Status accepted")
         .With("Attempt", attempt);
+
     YT_TLOG_DEBUG_UNLESS(ready, "Status pending")
         .With("Attempt", attempt);
+
     YT_TLOG_FATAL_IF(!ready, "Status rejected")
         .With("Attempt", attempt);
+
     YT_TLOG_EVENT_WITH_STATIC_ANCHOR(logger, level, anchor, "Status recorded")
         .With("Attempt", attempt);
 }

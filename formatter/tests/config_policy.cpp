@@ -39,6 +39,9 @@ constexpr std::pair<std::string_view, formatter::BlankLineSetting formatter::Sty
     {"DefinitionBlankLines", &formatter::Style::DefinitionBlankLines},
     {"MemberDefinitionBlankLines", &formatter::Style::MemberDefinitionBlankLines},
     {"CaseBlankLines", &formatter::Style::CaseBlankLines},
+    {"BlockBlankLinesAfter", &formatter::Style::BlockBlankLinesAfter},
+    {"ControlStatementBlankLinesBefore", &formatter::Style::ControlStatementBlankLinesBefore},
+    {"MacroBlankLinesAround", &formatter::Style::MacroBlankLinesAround},
     {"StandaloneCommentBlankLinesBefore", &formatter::Style::StandaloneCommentBlankLinesBefore},
     {"StandaloneCommentBlankLinesAfter", &formatter::Style::StandaloneCommentBlankLinesAfter},
     {"RulerBlankLinesBefore", &formatter::Style::RulerBlankLinesBefore},
@@ -470,19 +473,24 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
 {
     for (const auto& [key, member] : VerticalCountSettings) {
         SCOPED_TRACE(key);
-        formatter::Style style;
-        style.*member = {formatter::BlankLineMode::Exact, 10001};
-        EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
-        style.*member = {formatter::BlankLineMode::Exact, 10000};
-        style.MaxEmptyLines = 10000;
-        EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
-        style.MaxEmptyLines = 9999;
-        EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+        for (const auto mode : {formatter::BlankLineMode::Exact, formatter::BlankLineMode::Minimum}) {
+            formatter::Style style;
+            style.*member = {mode, 10001};
+            EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+            style.*member = {mode, 10000};
+            style.MaxEmptyLines = 10000;
+            EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
+            style.MaxEmptyLines = 9999;
+            EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+        }
     }
     formatter::Style style;
     style.MaxEmptyLines = 10001;
     EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
     style.MaxEmptyLines.reset();
+    style.MemberGroupMaxEmptyLines = 10001;
+    EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
+    style.MemberGroupMaxEmptyLines.reset();
     style.DefinitionBlankLines = formatter::BlankLineSetting::Inherited();
     EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
     style.DefinitionBlankLines = {static_cast<formatter::BlankLineMode>(255), 0};
@@ -491,6 +499,16 @@ TEST(ConfigPolicy, VerticalBoundsCannotBeBypassedByProgrammaticStyles)
     for (const auto text :
         {
             "NamespaceBlankLinesAfterOpen = -1\n",
+            "BlockBlankLinesAfter = Minimum:10001\n",
+            "ControlStatementBlankLinesBefore = Minimum:-1\n",
+            "MacroBlankLinesAround = Minimum:1\nMaxEmptyLines = 0\n",
+            "MemberGroupMaxEmptyLines = 10001\n",
+            "MemberGroupMaxEmptyLines = Minimum:1\n",
+            "MemberGroupMaxEmptyLines = 0\nDefinitionBlankLines = Minimum:1\n",
+            "MemberGroupMaxEmptyLines = 0\nRulerBlankLinesBefore = Minimum:1\n",
+            "MemberGroupMaxEmptyLines = 0\nDeclarationCategoryBlankLines = 1\n",
+            "BlankLineMacroNames = [\"LOG*INFO\"]\n",
+            "BlankLineMacroNames = [\"CHECK\", \"CHECK\"]\n",
             "NamespaceBlankLinesBeforeClose = Inherit\n",
             "AccessSectionBlankLinesBefore = 10001\n",
             "AccessSectionBlankLinesAfterLabel = 10001\n",

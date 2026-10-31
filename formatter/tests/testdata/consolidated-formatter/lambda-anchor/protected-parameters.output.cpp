@@ -5,9 +5,11 @@ void Recover()
         int additionalRequestId) -> Result {
             UnknownValue value;
             auto chosenId = requestId;
+
             if (chosenId > 0) {
                 return value;
             }
+
             return value;
         };
     Use(callback);
@@ -29,10 +31,12 @@ void RecoverNested()
         int requestId,
         int additionalRequestId) {
             Prepare();
+
             if (requestId) {
                 UnknownValue value;
                 Finish(value);
             }
+
             Finish(requestId);
         };
     Use(callback);

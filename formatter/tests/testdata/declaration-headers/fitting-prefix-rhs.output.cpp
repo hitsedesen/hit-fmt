@@ -16,11 +16,13 @@ void Sample()
                     map.Output.Begin,
                     map.Output.End - map.Output.Begin);
             }
+
             const auto callText = std::string_view(output.Text).substr(
                 output.Map[2].OutputBegin,
                 output.Map[5].OutputEnd - output.Map[2].OutputBegin);
         }
     }
+
     size_t callbacks = 0, factories = 0, pointers = 0, constructors = 0,
         selfTypes = 0;
 }

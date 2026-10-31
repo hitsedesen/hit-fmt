@@ -5,7 +5,8 @@
 # Break = Always requires a legal owned break; Preserve/protection win.
 # EmptyBodyShape is independent of nonempty BodyShape.
 # Blank counts measure empty lines; zero retains boundary topology.
-# Exact counts above an explicit MaxEmptyLines cap are invalid.
+# Exact or minimum counts above an explicit MaxEmptyLines cap are invalid.
+# Minimum:N requires at least N empty lines; caps still limit retained gaps.
 # IncludeDelimiters = Preserve (default) keeps existing quotes/angles.
 # QuotedLocal quotes lexically same-directory paths and angles other
 # paths using IncludePathBase and the input filename, without path edits.
@@ -686,34 +687,34 @@ StatementAttributeIndent = Preserve
 # Values: 0 (use IndentWidth) or 1..32
 StatementAttributeIndentWidth = 0
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 NamespaceBlankLinesAfterOpen = Preserve
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 NamespaceBlankLinesBeforeClose = Preserve
 
 # Inside nonempty extern linkage blocks, outside attached comments.
 # Example: set both LinkageBlankLinesAfterOpen and
 # LinkageBlankLinesBeforeClose to 1 for a blank line at each edge.
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 LinkageBlankLinesAfterOpen = Preserve
 
 # Inside nonempty extern linkage blocks, outside attached comments.
 # Example: set both LinkageBlankLinesAfterOpen and
 # LinkageBlankLinesBeforeClose to 1 for a blank line at each edge.
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 LinkageBlankLinesBeforeClose = Preserve
 
 # Between access sections, including unlabeled initial members.
 # Skips a label at the start of a record; outside attached comments.
 # Example: 1 inserts a blank line between int Value; and private:.
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 AccessSectionBlankLinesBefore = Preserve
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 AccessSectionBlankLinesAfterLabel = Preserve
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 DeclarationBlankLines = Preserve
 
 # Between different entity kinds: types, functions, variables.
@@ -723,16 +724,16 @@ DeclarationBlankLines = Preserve
 # Other declarations, directives and unattached comments stop grouping.
 # Example: DeclarationBlankLines = 0 with this set to 1
 # keeps like declarations together and separates categories.
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 DeclarationCategoryBlankLines = Preserve
 
-# Values: Inherit | Preserve | 0..10000
+# Values: Inherit | Preserve | 0..10000 | Minimum:0..10000
 MemberDeclarationBlankLines = Inherit
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 DefinitionBlankLines = Preserve
 
-# Values: Inherit | Preserve | 0..10000
+# Values: Inherit | Preserve | 0..10000 | Minimum:0..10000
 MemberDefinitionBlankLines = Inherit
 
 # Between a case with statements and the next case/default label.
@@ -742,17 +743,54 @@ MemberDefinitionBlankLines = Inherit
 # Directives and unparsed syntax stop case grouping.
 # Example: 1 adds an empty line after work(); [[fallthrough]];
 # before the next case. 0 removes empty lines; Preserve retains them.
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 CaseBlankLines = Preserve
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 StandaloneCommentBlankLinesBefore = Preserve
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 StandaloneCommentBlankLinesAfter = Preserve
 
 # Values: Preserve | 0..10000
 MaxEmptyLines = Preserve
+
+# Override MaxEmptyLines only between adjacent fields and methods, or between
+# two method definitions. Preserve uses the global cap. Does not infer groups.
+# Unattached comments, access labels and directives stop adjacency.
+# Example: MaxEmptyLines = 1, MemberGroupMaxEmptyLines = 2 retains authored
+# double gaps at these boundaries; use MemberDefinitionBlankLines = Minimum:1
+# to require separation without collapsing such groups.
+# Values: Preserve | 0..10000
+MemberGroupMaxEmptyLines = Preserve
+
+# Between a brace-terminated block/control statement and its next sibling.
+# Also follows braced do/while, definitions, namespaces and linkage blocks.
+# Declaration/definition counts win. Skips scope edges and else/catch links.
+# Initializer braces are not statement blocks. Comments stay attached.
+# Example: 1 separates if (ready) { Run(); } from a following Finish();.
+# Values: Preserve | 0..10000 | Minimum:0..10000
+BlockBlankLinesAfter = Preserve
+
+# Before sibling if/for/while statements, outside attached leading comments.
+# No gap is added at the beginning of a body or after a case/ordinary label.
+# Includes preceding declarations; optional semantic grouping is not inferred.
+# Example: 1 separates Prepare(); from a following while (ready) { Run(); }.
+# Values: Preserve | 0..10000 | Minimum:0..10000
+ControlStatementBlankLinesBefore = Preserve
+
+# Around complete expression statements rooted in BlankLineMacroNames.
+# Consecutive invocations of the same name form a group with zero empty lines.
+# Fluent suffixes belong to the statement. Skips body edges and nested calls.
+# Example: 1 separates CHECK(ok); from Work(); above and below it.
+# Values: Preserve | 0..10000 | Minimum:0..10000
+MacroBlankLinesAround = Preserve
+
+# Unqualified identifiers or prefixes ending in *; no built-in macro names.
+# Selects only standalone call statements, including their fluent chains.
+# Example: ["CHECK", "LOG_*"]
+# Values: identifier/prefix array
+BlankLineMacroNames = []
 
 # Keep preceding arguments and the first complete string literal
 # beside the opener; put every following format argument on its
@@ -888,10 +926,10 @@ AlignMacroBackslashes = false
 # Values: 0 (preserve) or 3..10000
 RulerLength = 0
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 RulerBlankLinesBefore = Preserve
 
-# Values: Preserve | 0..10000
+# Values: Preserve | 0..10000 | Minimum:0..10000
 RulerBlankLinesAfter = Preserve
 
 # Values: Preserve | Sort
@@ -1857,4 +1895,3 @@ FunctionDefinitionParameterNames = Unchecked
 
 # Values: [] or ["path regex", ...]
 Exclude = []
-

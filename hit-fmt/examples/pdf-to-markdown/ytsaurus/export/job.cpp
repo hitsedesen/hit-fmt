@@ -62,15 +62,19 @@ TResult TExportJob::Run(EExportMode mode) const
     if (Document_.Pages.empty()) {
         throw std::invalid_argument("Cannot export a document without pages");
     }
+
     for (std::size_t pageIndex = 0; pageIndex < Document_.Pages.size(); ++pageIndex) {
         if (Callback_) {
             Callback_({.Kind = EProgressKind::Page, .Value = {.Page = Document_.Pages[pageIndex].Number}}, Context_);
         }
     }
+
     auto result = TConverter{Options_}.Convert(Document_, mode);
+
     if (Callback_) {
         Callback_({.Kind = EProgressKind::Fraction, .Value = {.Fraction = 1.0}}, Context_);
     }
+
     return result;
 }
 
@@ -83,6 +87,7 @@ void RevealExportOffset(IPreviewObserver& observer, TRevealMethod method, const 
         [] (std::size_t position, const auto& entry) {
             return position < entry.second;
         });
+
     if (next != result.SourceOffsets.begin()) {
         std::invoke(method, observer, std::prev(next)->first);
     }
@@ -113,9 +118,11 @@ std::string SummarizeExport(const TDocument& document, const TResult& result, TE
     ] (std::size_t maximumCharacters) {
         const TMarkdownView view{result.Markdown.data(), std::min(maximumCharacters, result.Markdown.size())};
         auto bytes = std::unique_ptr<char[]>(new char[view.Size + 1]);
+
         for (std::size_t index = 0; index < view.Size; ++index) {
             bytes[index] = view[index];
         }
+
         bytes[view.Size] = '\0';
         output << ", preview of " << document.Title << ": " << bytes.get() << " (" << status << ", " << exportedBlocks
             << " blocks on " << totalPages << " pages)";
@@ -135,6 +142,7 @@ unsigned ProgressBucket(unsigned percent) noexcept
     do {
         ++index;
     } while (index < std::size(ProgressThresholds) && ProgressThresholds[index] <= percent);
+
     return ProgressThresholds[index - 1];
 }
 
@@ -148,6 +156,7 @@ extern "C" {
 void paper_export_progress(unsigned page, void* context)
 {
     auto* progress = static_cast<TProgressContext*>(context);
+
     if (progress != nullptr) {
         progress->LastPage = page;
     }

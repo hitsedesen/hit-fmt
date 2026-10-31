@@ -5,6 +5,7 @@
 #include <cctype>
 #include <charconv>
 #include <fstream>
+#include <iterator>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -460,7 +461,8 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
     {
         if constexpr (Member == &Style::ChainedCallRootNames || Member == &Style::AlwaysBreakChainRootNames ||
             Member == &Style::IndentedCallScopePairs || Member == &Style::IndentedChainScopePairs ||
-            Member == &Style::StickyChainCallPairs || Member == &Style::ClassMacroNames)
+            Member == &Style::StickyChainCallPairs || Member == &Style::ClassMacroNames ||
+            Member == &Style::BlankLineMacroNames)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -498,13 +500,18 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
                 ThrowConfigError(path, line, "Inherit is only valid for member blank-line settings");
             }
         } else {
-            config.FormattingStyle.*Member = {BlankLineMode::Exact, ParseNonnegativeInteger(value, path, line)};
+            const bool minimum = value.starts_with("Minimum:");
+            config.FormattingStyle.*Member =
+                {
+                    minimum ? BlankLineMode::Minimum : BlankLineMode::Exact,
+                    ParseNonnegativeInteger(minimum ? Trim(value.substr(8)) : value, path, line),
+                };
         }
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, std::optional<std::
                 size_t>>)
     {
-        if constexpr (Member == &Style::MaxEmptyLines) {
+        if constexpr (Member == &Style::MaxEmptyLines || Member == &Style::MemberGroupMaxEmptyLines) {
             config.FormattingStyle.*Member =
                 value == "Preserve"
                 ? std::nullopt
@@ -725,6 +732,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
                 style.StickyChainCallPairs.size(),
                 style.ClassMacroNames.size() * 2,
                 style.EnumMacroNames.size(),
+                style.BlankLineMacroNames.size(),
             }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
     ValidateAnnotationNames(style.EnumMacroNames, scratch, "EnumMacroNames", false);
@@ -733,6 +741,16 @@ void ValidateLibraryAnnotationStyle(const Style& style)
     ValidateAnnotationNames(style.ChainedCallRootNames, scratch, "ChainedCallRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainRootNames, scratch, "AlwaysBreakChainRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainCallNames, scratch, "AlwaysBreakChainCallNames", false);
+    scratch.clear();
+    for (std::string_view name : style.BlankLineMacroNames) {
+        if (!AnnotationIdentifier(name.ends_with('*') ? name.substr(0, name.size() - 1) : name)) {
+            throw std::invalid_argument("BlankLineMacroNames expects identifiers or identifier prefixes ending in *");
+        }
+
+        scratch.push_back(name);
+    }
+
+    RejectDuplicateAnnotations(scratch, "BlankLineMacroNames");
     scratch.clear();
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
@@ -766,6 +784,30 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
 {
     ValidateLibraryAnnotationStyle(style);
     LibraryAnnotations result;
+    for (const auto& name : style.BlankLineMacroNames) {
+        if (name.ends_with('*')) {
+            result.BlankLineMacroPrefixes_.push_back(name.substr(0, name.size() - 1));
+        } else {
+            result.BlankLineMacros_.push_back(name);
+        }
+    }
+
+    std::sort(result.BlankLineMacros_.begin(), result.BlankLineMacros_.end());
+    auto& prefixes = result.BlankLineMacroPrefixes_;
+    std::sort(prefixes.begin(), prefixes.end());
+    std::size_t retained = 0;
+
+    for (std::size_t index = 0; index < prefixes.size(); ++index) {
+        if (retained == 0 || !prefixes[index].starts_with(prefixes[retained - 1])) {
+            if (retained != index) {
+                prefixes[retained] = std::move(prefixes[index]);
+            }
+
+            ++retained;
+        }
+    }
+
+    prefixes.resize(retained);
     result.MessagePins_.reserve(style.CallLineFirstArgumentNames.size() + style.CallLineFirstStringNames.size() +
         style.CallLineMessageNames.size());
     for (const auto& name : style.CallLineFirstArgumentNames) {
@@ -901,6 +943,16 @@ bool LibraryAnnotations::AlwaysBreakChainRoot(std::string_view name) const noexc
 std::span<const std::string> LibraryAnnotations::AlwaysBreakChainCalls() const
 {
     return AlwaysBreakChainCalls_;
+}
+
+bool LibraryAnnotations::IsBlankLineMacro(std::string_view name) const noexcept
+{
+    if (std::binary_search(BlankLineMacros_.begin(), BlankLineMacros_.end(), name)) {
+        return true;
+    }
+
+    const auto prefix = std::upper_bound(BlankLineMacroPrefixes_.begin(), BlankLineMacroPrefixes_.end(), name);
+    return prefix != BlankLineMacroPrefixes_.begin() && name.starts_with(*std::prev(prefix));
 }
 
 bool LibraryAnnotations::AlwaysBreakChainCall(std::string_view name) const noexcept

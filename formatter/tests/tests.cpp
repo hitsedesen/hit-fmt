@@ -394,6 +394,28 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         data / "vertical-grouping",
+        {"contextual", "contextual-zero", "contextual-preserve"},
+        "contextual.input.cpp");
+    ShareExpected(cases, data / "vertical-grouping", "contextual-preserve.output.cpp", "contextual.input.cpp");
+    AddCases(
+        cases,
+        data / "vertical-grouping",
+        {"member-groups", "member-groups-exact", "member-groups-minimum-zero"},
+        "member-groups.input.cpp");
+    ShareExpected(
+        cases,
+        data / "vertical-grouping",
+        "member-groups-minimum-zero.output.cpp",
+        "member-groups.input.cpp");
+    cases.push_back({
+        data / "vertical-grouping",
+        "contextual-ytsaurus",
+        "contextual.input.cpp",
+        "../../../../hit-fmt/examples/ytsaurus",
+    });
+    AddCases(
+        cases,
+        data / "vertical-grouping",
         {"cases-add", "cases-zero", "cases-preserve", "cases-canonical"},
         "cases.input.cpp");
     ShareExpected(cases, data / "vertical-grouping", "cases-preserve.output.cpp", "cases.input.cpp");

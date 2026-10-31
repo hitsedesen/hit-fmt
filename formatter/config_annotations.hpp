@@ -73,6 +73,7 @@ public:
     [[nodiscard]] bool AlwaysBreakChainRoot(std::string_view name) const noexcept;
     [[nodiscard]] std::span<const std::string> AlwaysBreakChainCalls() const;
     [[nodiscard]] bool AlwaysBreakChainCall(std::string_view name) const noexcept;
+    [[nodiscard]] bool IsBlankLineMacro(std::string_view name) const noexcept;
     [[nodiscard]] std::span<const VisualScopeAnnotation> VisualScopes() const;
     [[nodiscard]] std::span<const ChainCallPairAnnotation> ChainScopes() const;
     [[nodiscard]] std::span<const ChainCallPairAnnotation> StickyChainPairs() const;
@@ -85,6 +86,8 @@ private:
     std::vector<std::string> ChainRoots_;
     std::vector<std::string> AlwaysBreakChainRoots_;
     std::vector<std::string> AlwaysBreakChainCalls_;
+    std::vector<std::string> BlankLineMacros_;
+    std::vector<std::string> BlankLineMacroPrefixes_;
     std::vector<VisualScopeAnnotation> VisualScopes_;
     std::vector<ChainCallPairAnnotation> ChainScopes_;
     std::vector<ChainCallPairAnnotation> StickyChainPairs_;

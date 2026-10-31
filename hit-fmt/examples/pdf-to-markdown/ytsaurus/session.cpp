@@ -63,6 +63,7 @@ void TSession::Refresh()
     if (!Dirty_) {
         return;
     }
+
     Preview_ = TConverter{Options_}.Convert(Document_, EExportMode::Selection);
     Desktop_.Preview().SetMarkdown(Preview_.Markdown).SetSourceMap(Preview_.SourceOffsets).PreserveScroll();
     Desktop_.Status().Show("Ready", Preview_.SourceOffsets.size(), Preview_.Skipped);
@@ -73,6 +74,7 @@ void TSession::RevealSource(std::size_t blockId)
 {
     if (const auto* block = Document_.Find(blockId); block != nullptr) {
         Desktop_.Pdf().ScrollTo(block->Bounds.Top).Highlight(block->Bounds);
+
         for (const auto& [id, offset] : Preview_.SourceOffsets) {
             if (id == blockId) {
                 Desktop_.Preview().Reveal(offset);
@@ -85,16 +87,19 @@ void TSession::RevealSource(std::size_t blockId)
 void TSession::ExportTo(std::string_view path, EExportMode mode)
 {
     const auto result = TExportJob{Document_, Options_}.Run(mode);
+
     if (result.Markdown.empty()) {
         Desktop_.Toast("Select at least one visible block before exporting.");
         return;
     }
+
     Desktop_
         .Files()
         .Transaction(
             path,
             [&] (auto& output) {
                 output.Write(result.Markdown);
+
                 if (Options_.KeepImages) {
                     output.CopyReferencedAssets(Document_, Options_.AssetDirectory);
                 }
@@ -109,15 +114,18 @@ void TSession::Run()
     window.Split(0.46).Left(Desktop_.Pdf().Open(Document_)).Right(Desktop_.Preview().Observe(*this));
     window.Help(Welcome);
     Refresh();
+
     while (auto event = window.NextEvent()) {
         switch (event->Kind()) {
             case EEventKind::Selection: {
                 const auto selected = event->BlockIds();
+
                 for (auto& page : Document_.Pages) {
                     for (auto& block : page.Blocks) {
                         block.Selected = selected.contains(block.Id);
                     }
                 }
+
                 Dirty_ = true;
                 break;
             }
@@ -134,6 +142,7 @@ void TSession::Run()
                 {
                     ExportTo(*path, event->ShiftPressed() ? EExportMode::WholeDocument : EExportMode::Selection);
                 }
+
                 break;
 
             case EEventKind::Close:
@@ -142,6 +151,7 @@ void TSession::Run()
             default:
                 break;
         }
+
         Refresh();
     }
 }
@@ -150,9 +160,11 @@ TTask<void> OpenPdf(TDesktop& desktop)
 {
     try {
         auto path = co_await desktop.Dialogs().OpenFile("Open PDF", {"*.pdf"});
+
         if (!path) {
             co_return;
         }
+
         auto reader = desktop.Pdf().Reader().ReadingOrder(EReadingOrder::Columns).RecoverDamagedPages(true);
 #if defined(PAPER_ENABLE_OCR)
         reader.Ocr({.Language = "eng", .MinimumConfidence = 0.85});

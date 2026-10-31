@@ -35,6 +35,7 @@ private:
     int Size_ = 0;
     int Capacity_ = 8;
 
+
     void Reset()
     {
         Size_ = 0;
@@ -64,7 +65,6 @@ void Clear()
 }
 
 void Schedule();
-
 
 void Cancel();
 

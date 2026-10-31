@@ -73,6 +73,8 @@ struct Gap
     bool Frozen = false;
     uint16_t NewlineCount = 1;
     bool Vertical = false;
+    bool VerticalMinimum = false;
+    bool MemberGroup = false;
     bool PreserveIndent = false;
     uint8_t VerticalPriority = 0;
     Index MarkDelimiter = None;
@@ -557,6 +559,7 @@ public:
         PlanVisualScopes();
         PlanVerticalGaps();
         PlanRulerGaps();
+        PlanEmptyLineCaps();
         PlanRelativeIndentation();
         if (!State_) {
             return State_;
@@ -821,7 +824,9 @@ private:
                     entry.Definition = entry.Definition || Syntax_[child].Definition;
                 }
             }
-            if (Policies_.VerticalGaps.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact) {
+            if (Policies_.VerticalGaps.DeclarationCategoryBlankLines.Mode != VerticalGapMode::Preserve ||
+                Policies_.VerticalGaps.MemberGroupMaxEmptyLines.Enabled)
+            {
                 entry.Category = ClassifyDeclaration(i);
             }
             entry.Root = i;
@@ -4480,9 +4485,9 @@ private:
         }
     }
 
-    void ExactVertical(Index gap, VerticalGapPolicy policy, uint8_t priority = 0)
+    void ApplyVerticalGap(Index gap, VerticalGapPolicy policy, uint8_t priority = 0)
     {
-        if (policy.Mode != VerticalGapMode::Exact || !GapMutable(gap) || Gaps_[gap].VerticalPriority > priority) {
+        if (policy.Mode == VerticalGapMode::Preserve || !GapMutable(gap) || Gaps_[gap].VerticalPriority > priority) {
             return;
         }
         auto& plan = Gaps_[gap];
@@ -4493,7 +4498,20 @@ private:
         }
         plan.Vertical = true;
         plan.VerticalPriority = priority;
-        plan.NewlineCount = uint16_t(policy.EmptyLines + 1);
+        plan.VerticalMinimum = policy.Mode == VerticalGapMode::Minimum;
+        const auto originalLines = plan.VerticalMinimum
+            ? std::count(Safety_.Original(gap).begin(), Safety_.Original(gap).end(), '\n')
+            : 0;
+
+        if (originalLines > UINT16_MAX) {
+            // An uncapped authored gap can exceed the document count width.
+            // Preserve its bytes; the later cap pass can still reduce it.
+            plan.Vertical = false;
+            plan.Shape = Boundary::Preserve;
+            return;
+        }
+        plan.NewlineCount =
+            uint16_t(std::min<std::size_t>(UINT16_MAX, std::max<std::size_t>(policy.EmptyLines + 1, originalLines)));
         if (policy.EmptyLines != 0) {
             plan.Shape = Boundary::Hard;
         }
@@ -4549,18 +4567,18 @@ private:
                 continue;
             }
             if (first != 0) {
-                ExactVertical(first, policy.StandaloneCommentBlankLinesBefore, 1);
+                ApplyVerticalGap(first, policy.StandaloneCommentBlankLinesBefore, 1);
             }
             if (last != Tree_.TokenCount()) {
-                ExactVertical(last, policy.StandaloneCommentBlankLinesAfter, 2);
+                ApplyVerticalGap(last, policy.StandaloneCommentBlankLinesAfter, 2);
             }
         }
     }
 
     void PlanRulerGaps()
     {
-        if (Policies_.RulerBlankLinesBefore.Mode != VerticalGapMode::Exact &&
-            Policies_.RulerBlankLinesAfter.Mode != VerticalGapMode::Exact)
+        if (Policies_.RulerBlankLinesBefore.Mode == VerticalGapMode::Preserve &&
+            Policies_.RulerBlankLinesAfter.Mode == VerticalGapMode::Preserve)
         {
             return;
         }
@@ -4573,11 +4591,167 @@ private:
                 continue;
             }
             if (token != 0) {
-                ExactVertical(token, Policies_.RulerBlankLinesBefore, 3);
+                ApplyVerticalGap(token, Policies_.RulerBlankLinesBefore, 3);
             }
             if (token + 1 != Tree_.TokenCount()) {
-                ExactVertical(token + 1, Policies_.RulerBlankLinesAfter, 4);
+                ApplyVerticalGap(token + 1, Policies_.RulerBlankLinesAfter, 4);
             }
+        }
+    }
+
+    Index UnwrapStatement(Index id) const
+    {
+        while (Region(Syntax_[id]).Kind == NodeKind::AttributedStatement && LastChild_[id] != None) {
+            id = LastChild_[id];
+        }
+
+        return id;
+    }
+
+    std::string_view StatementMacroName(Index id) const
+    {
+        const auto& node = Region(Syntax_[UnwrapStatement(id)]);
+
+        if (node.Kind != NodeKind::ExpressionStatement) {
+            return {};
+        }
+
+        auto expression = node.FirstChild;
+
+        if (expression != None && Region(Syntax_[expression]).Kind == NodeKind::Expression) {
+            expression = Region(Syntax_[expression]).FirstChild;
+        }
+
+        if (expression == None || Region(Syntax_[expression]).Kind != NodeKind::CallExpression) {
+            return {};
+        }
+
+        const auto root = Region(Syntax_[Syntax_[expression].Root]).Tokens;
+
+        if (root.Size() != 1 || Tree_.Kind(root.Begin) != TokenKind::Identifier) {
+            return {};
+        }
+
+        const auto name = Tree_.TokenText(root.Begin);
+        return Annotations_.IsBlankLineMacro(name) ? name : std::string_view{};
+    }
+
+    bool EndsStatementBlock(Index id) const
+    {
+        const auto& entry = Syntax_[UnwrapStatement(id)];
+        const auto& node = Region(entry);
+
+        if (entry.Definition ||
+            (entry.ItemSequence &&
+                (node.Kind == NodeKind::NamespaceDeclaration || node.Kind == NodeKind::LinkageSpecification ||
+                    node.Kind == NodeKind::ExportDeclaration)))
+        {
+            return true;
+        }
+
+        switch (node.Kind) {
+            case NodeKind::CompoundStatement:
+            case NodeKind::IfStatement:
+            case NodeKind::ForStatement:
+            case NodeKind::WhileStatement:
+            case NodeKind::SwitchStatement:
+            case NodeKind::TryStatement:
+                return !node.Tokens.Empty() && Tree_.Kind(node.Tokens.End - 1) == TokenKind::Operator_CloseBrace;
+            case NodeKind::DoWhileStatement:
+                for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                    if (Region(Syntax_[child]).Kind == NodeKind::CompoundStatement) {
+                        return true;
+                    }
+                }
+
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    void PlanStatementGaps(Index id)
+    {
+        const auto& sequence = Syntax_[id];
+        const auto kind = Region(sequence).Kind;
+
+        if (!sequence.ItemSequence ||
+            (kind != NodeKind::CompoundStatement && kind != NodeKind::LambdaBody &&
+                kind != NodeKind::PreprocessingBranch))
+        {
+            return;
+        }
+
+        const auto& policy = Policies_.VerticalGaps;
+        Index previous = None;
+        Index commentBegin = None;
+        std::string_view previousMacro;
+
+        for (auto child = Region(sequence).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+            const auto& entry = Syntax_[child];
+            const auto& part = Region(entry);
+
+            if (part.Tokens.Empty() || part.Tokens.Begin < sequence.SequenceBody.Begin ||
+                part.Tokens.End > sequence.SequenceBody.End)
+            {
+                continue;
+            }
+
+            if (!entry.Safe || part.Kind == NodeKind::PreprocessingDirective ||
+                part.Kind == NodeKind::PreprocessingConditional || IsCaseLabel(child) ||
+                part.Kind == NodeKind::LabelStatement)
+            {
+                previous = commentBegin = None;
+                previousMacro = {};
+                continue;
+            }
+
+            if (part.Kind == NodeKind::Comment) {
+                if (previous == None || part.Tokens.End > Region(Syntax_[previous]).Attached.End) {
+                    if (commentBegin == None) {
+                        commentBegin = part.Tokens.Begin;
+                    }
+                }
+
+                continue;
+            }
+
+            const auto macro = policy.MacroBlankLinesAround.Mode != VerticalGapMode::Preserve
+                ? StatementMacroName(child)
+                : std::string_view{};
+
+            if (previous != None && (commentBegin == None || part.Attached.Begin <= commentBegin)) {
+                const auto gap = part.Attached.Begin;
+                // Library visual scopes can give sibling statements different
+                // indentation. Only peers within the same scope need a gap.
+                const bool sameScope = Gaps_[gap].Owner == Gaps_[Region(Syntax_[previous]).Attached.Begin].Owner;
+
+                if (sameScope && EndsStatementBlock(previous)) {
+                    ApplyVerticalGap(gap, policy.BlockBlankLinesAfter);
+                }
+
+                const auto statementKind = Region(Syntax_[UnwrapStatement(child)]).Kind;
+
+                if (statementKind == NodeKind::IfStatement || statementKind == NodeKind::ForStatement ||
+                    statementKind == NodeKind::WhileStatement)
+                {
+                    ApplyVerticalGap(gap, policy.ControlStatementBlankLinesBefore);
+                }
+
+                if (sameScope && (!macro.empty() || !previousMacro.empty())) {
+                    // A run of the same macro is one logical group. The root
+                    // of a fluent call identifies its complete statement.
+                    ApplyVerticalGap(
+                        gap,
+                        macro == previousMacro
+                        ? VerticalGapPolicy{VerticalGapMode::Exact, 0}
+                        : policy.MacroBlankLinesAround);
+                }
+            }
+
+            previous = child;
+            previousMacro = macro;
+            commentBegin = None;
         }
     }
 
@@ -4612,7 +4786,7 @@ private:
                 // Attributes on null statements (including fallthrough) are
                 // part of the preceding body, never a boundary themselves.
                 if (content && part.Attached.Begin >= contentEnd) {
-                    ExactVertical(part.Attached.Begin, Policies_.VerticalGaps.CaseBlankLines);
+                    ApplyVerticalGap(part.Attached.Begin, Policies_.VerticalGaps.CaseBlankLines);
                 }
                 labeled = true;
                 content = false;
@@ -4626,26 +4800,33 @@ private:
     void PlanVerticalGaps()
     {
         const auto& policy = Policies_.VerticalGaps;
-        const bool commentRules = policy.StandaloneCommentBlankLinesBefore.Mode == VerticalGapMode::Exact ||
-            policy.StandaloneCommentBlankLinesAfter.Mode == VerticalGapMode::Exact;
-        const bool caseRules = policy.CaseBlankLines.Mode == VerticalGapMode::Exact;
-        const bool sequenceRules = caseRules || commentRules ||
-            policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.MemberDeclarationBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.MemberDefinitionBlankLines.Mode == VerticalGapMode::Exact ||
-            policy.NamespaceBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
-            policy.NamespaceBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
-            policy.LinkageBlankLinesAfterOpen.Mode == VerticalGapMode::Exact ||
-            policy.LinkageBlankLinesBeforeClose.Mode == VerticalGapMode::Exact ||
-            policy.AccessSectionBlankLinesBefore.Mode == VerticalGapMode::Exact ||
-            policy.AccessSectionBlankLinesAfterLabel.Mode == VerticalGapMode::Exact;
+        const bool commentRules = policy.StandaloneCommentBlankLinesBefore.Mode != VerticalGapMode::Preserve ||
+            policy.StandaloneCommentBlankLinesAfter.Mode != VerticalGapMode::Preserve;
+        const bool caseRules = policy.CaseBlankLines.Mode != VerticalGapMode::Preserve;
+        const bool statementRules = policy.BlockBlankLinesAfter.Mode != VerticalGapMode::Preserve ||
+            policy.ControlStatementBlankLinesBefore.Mode != VerticalGapMode::Preserve ||
+            policy.MacroBlankLinesAround.Mode != VerticalGapMode::Preserve;
+        const bool sequenceRules = caseRules || commentRules || statementRules ||
+            policy.MemberGroupMaxEmptyLines.Enabled || policy.DeclarationBlankLines.Mode != VerticalGapMode::Preserve ||
+            policy.DeclarationCategoryBlankLines.Mode != VerticalGapMode::Preserve ||
+            policy.MemberDeclarationBlankLines.Mode != VerticalGapMode::Preserve ||
+            policy.DefinitionBlankLines.Mode != VerticalGapMode::Preserve ||
+            policy.MemberDefinitionBlankLines.Mode != VerticalGapMode::Preserve ||
+            policy.NamespaceBlankLinesAfterOpen.Mode != VerticalGapMode::Preserve ||
+            policy.NamespaceBlankLinesBeforeClose.Mode != VerticalGapMode::Preserve ||
+            policy.LinkageBlankLinesAfterOpen.Mode != VerticalGapMode::Preserve ||
+            policy.LinkageBlankLinesBeforeClose.Mode != VerticalGapMode::Preserve ||
+            policy.AccessSectionBlankLinesBefore.Mode != VerticalGapMode::Preserve ||
+            policy.AccessSectionBlankLinesAfterLabel.Mode != VerticalGapMode::Preserve;
         if (sequenceRules) {
             std::pmr::vector<Index> children(Syntax_.get_allocator().resource());
             std::pmr::vector<Index> following(Syntax_.get_allocator().resource());
+
             for (Index id = 0; id < Syntax_.size(); ++id) {
                 const auto& node = Region(Syntax_[id]);
+                if (statementRules) {
+                    PlanStatementGaps(id);
+                }
                 if (caseRules) {
                     PlanCaseGaps(id);
                 }
@@ -4701,10 +4882,10 @@ private:
                         continue;
                     }
                     if (!content && node.Kind == NodeKind::NamespaceDeclaration && !part.Tokens.Empty()) {
-                        ExactVertical(Region(entry).Attached.Begin, policy.NamespaceBlankLinesAfterOpen);
+                        ApplyVerticalGap(Region(entry).Attached.Begin, policy.NamespaceBlankLinesAfterOpen);
                     }
                     if (!content && node.Kind == NodeKind::LinkageSpecification && !part.Tokens.Empty()) {
-                        ExactVertical(Region(entry).Attached.Begin, policy.LinkageBlankLinesAfterOpen);
+                        ApplyVerticalGap(Region(entry).Attached.Begin, policy.LinkageBlankLinesAfterOpen);
                     }
                     content = content || !part.Tokens.Empty();
                     const bool macroDefinition = part.Kind == NodeKind::MacroFunctionDefinition ||
@@ -4734,7 +4915,7 @@ private:
                         (node.Kind == NodeKind::RecordDeclaration || node.Kind == NodeKind::MacroRecordDeclaration))
                     {
                         if (seenSection) {
-                            ExactVertical(Region(entry).Attached.Begin, policy.AccessSectionBlankLinesBefore);
+                            ApplyVerticalGap(Region(entry).Attached.Begin, policy.AccessSectionBlankLinesBefore);
                         }
                         seenSection = true;
                         access = child;
@@ -4752,17 +4933,30 @@ private:
                         continue;
                     }
                     if (access != None) {
-                        ExactVertical(Region(entry).Attached.Begin, policy.AccessSectionBlankLinesAfterLabel);
+                        ApplyVerticalGap(Region(entry).Attached.Begin, policy.AccessSectionBlankLinesAfterLabel);
                         access = None;
                     }
                     if (previous != None) {
+                        if (EndsStatementBlock(previous)) {
+                            ApplyVerticalGap(part.Attached.Begin, policy.BlockBlankLinesAfter);
+                        }
+
                         const bool member =
                             node.Kind == NodeKind::RecordDeclaration || node.Kind == NodeKind::MacroRecordDeclaration;
-                        ExactVertical(
+                        const auto category = entry.Category;
+                        const auto previousCategory = Syntax_[previous].Category;
+                        Gaps_[part.Attached.Begin].MemberGroup = member &&
+                            ((category == DeclarationCategory::Function &&
+                                (previousCategory == DeclarationCategory::Variable ||
+                                    (previousCategory == DeclarationCategory::Function && entry.Definition &&
+                                        Syntax_[previous].Definition))) ||
+                                (category == DeclarationCategory::Variable &&
+                                    previousCategory == DeclarationCategory::Function));
+                        ApplyVerticalGap(
                             Region(entry).Attached.Begin,
                             member ? policy.MemberDeclarationBlankLines : policy.DeclarationBlankLines);
                         if (entry.Definition || Syntax_[previous].Definition) {
-                            ExactVertical(
+                            ApplyVerticalGap(
                                 Region(entry).Attached.Begin,
                                 member ? policy.MemberDefinitionBlankLines : policy.DefinitionBlankLines);
                         }
@@ -4770,26 +4964,40 @@ private:
                             Syntax_[previous].Category != DeclarationCategory::None &&
                             entry.Category != Syntax_[previous].Category)
                         {
-                            ExactVertical(Region(entry).Attached.Begin, policy.DeclarationCategoryBlankLines);
+                            ApplyVerticalGap(Region(entry).Attached.Begin, policy.DeclarationCategoryBlankLines);
                         }
                     }
                     previous = child;
                 }
                 if (content && node.Kind == NodeKind::NamespaceDeclaration && close != None) {
-                    ExactVertical(close, policy.NamespaceBlankLinesBeforeClose);
+                    ApplyVerticalGap(close, policy.NamespaceBlankLinesBeforeClose);
                 }
                 if (content && node.Kind == NodeKind::LinkageSpecification && close != None) {
-                    ExactVertical(close, policy.LinkageBlankLinesBeforeClose);
+                    ApplyVerticalGap(close, policy.LinkageBlankLinesBeforeClose);
                 }
             }
         }
-        if (policy.MaxEmptyLines.Enabled) {
+    }
+
+    void PlanEmptyLineCaps()
+    {
+        const auto& policy = Policies_.VerticalGaps;
+
+        if (policy.MaxEmptyLines.Enabled || policy.MemberGroupMaxEmptyLines.Enabled) {
             for (Index i = 0; i < Gaps_.size(); ++i) {
-                if (!GapMutable(i) || Gaps_[i].Vertical) {
+                const auto cap = Gaps_[i].MemberGroup && policy.MemberGroupMaxEmptyLines.Enabled
+                    ? policy.MemberGroupMaxEmptyLines
+                    : policy.MaxEmptyLines;
+
+                if (!cap.Enabled || !GapMutable(i) || (Gaps_[i].Vertical && !Gaps_[i].VerticalMinimum)) {
                     continue;
                 }
-                const auto lines = std::count(Safety_.Original(i).begin(), Safety_.Original(i).end(), '\n');
-                if (lines > policy.MaxEmptyLines.EmptyLines + 1) {
+
+                const auto lines = Gaps_[i].Vertical
+                    ? Gaps_[i].NewlineCount
+                    : std::count(Safety_.Original(i).begin(), Safety_.Original(i).end(), '\n');
+
+                if (lines > cap.EmptyLines + 1) {
                     auto& gap = Gaps_[i];
                     gap.PreserveIndent |= gap.Shape == Boundary::Preserve && !gap.Reindent && !gap.OverrideIndent;
                     if (!gap.ContextKnown) {
@@ -4797,7 +5005,7 @@ private:
                         gap.Context = GapContext::Preserved;
                     }
                     gap.Vertical = true;
-                    gap.NewlineCount = uint16_t(policy.MaxEmptyLines.EmptyLines + 1);
+                    gap.NewlineCount = uint16_t(cap.EmptyLines + 1);
                 }
             }
         }
