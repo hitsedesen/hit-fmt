@@ -232,6 +232,7 @@ std::pmr::vector<uint8_t> NullRemovalContexts(
         const auto& region = regions[id];
         if ((region.Kind == NK::FunctionDefinition && region.Function == parser::FunctionKind::Unknown) ||
             region.Kind == NK::MacroFunctionDefinition || region.Kind == NK::MacroRecordDeclaration ||
+            region.Kind == NK::MacroEnumDeclaration ||
             (region.Parent != NoRegion && (contexts[region.Parent] & UnknownScope)))
         {
             contexts[id] |= UnknownScope;

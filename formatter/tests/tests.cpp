@@ -1433,6 +1433,13 @@ std::vector<FormatCase> FormatCases()
     cases.back().InputFilePath = "yt/yt/core/concurrency/worker.cpp";
     addProfileCase("../ytsaurus-corpus", "expressions");
     addProfileCase("../ytsaurus-corpus", "macros");
+    cases.push_back({data / "enum-macros", "enabled", "enabled.input.cpp"});
+    for (const auto* name : {"disabled", "protected"}) {
+        FormatCase value{data / "enum-macros", name, "enabled.input.cpp", name};
+        value.Expected = "enabled.input.cpp";
+        cases.push_back(std::move(value));
+    }
+    addProfileCase("../enum-macros", "preset");
     addProfileCase("../preprocessing-fragments", "opaque-blocks");
     addProfileCase("../preprocessing-fragments", "canonical");
     addProfileCase("../preprocessing-fragments", "shared-scopes");

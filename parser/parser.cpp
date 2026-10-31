@@ -242,6 +242,11 @@ public:
             FunctionBodyMacroNames_.push_back(name);
         }
         std::sort(FunctionBodyMacroNames_.begin(), FunctionBodyMacroNames_.end());
+        EnumMacroNames_.reserve(options.EnumMacroNames.size());
+        for (const auto& name : options.EnumMacroNames) {
+            EnumMacroNames_.push_back(name);
+        }
+        std::sort(EnumMacroNames_.begin(), EnumMacroNames_.end());
         ClassMacroPairs_.reserve(options.ClassMacroNames.size());
         ClassEndMacroNames_.reserve(options.ClassMacroNames.size());
         for (std::string_view pair : options.ClassMacroNames) {
@@ -701,7 +706,7 @@ private:
             }
             if (macroRecord && CurrentKind() == TK::Identifier &&
                 std::binary_search(ClassEndMacroNames_.begin(), ClassEndMacroNames_.end(), Text(Cursor_)) &&
-                ClassMacroInvocationEnd(Cursor_, Text(Cursor_)) != std::numeric_limits<TokenIndex>::max())
+                MacroInvocationEnd(Cursor_, Text(Cursor_)) != std::numeric_limits<TokenIndex>::max())
             {
                 break;
             }
@@ -975,7 +980,7 @@ private:
         return true;
     }
 
-    [[nodiscard]] TokenIndex ClassMacroInvocationEnd(TokenIndex first, std::string_view name) const
+    [[nodiscard]] TokenIndex MacroInvocationEnd(TokenIndex first, std::string_view name) const
     {
         constexpr auto none = std::numeric_limits<TokenIndex>::max();
         if (Kind(first) != TK::Identifier || Text(first) != name) {
@@ -1016,7 +1021,7 @@ private:
         if (pair == ClassMacroPairs_.end() || pair->first != Text(first)) {
             return nullptr;
         }
-        const auto beginEnd = ClassMacroInvocationEnd(first, pair->first);
+        const auto beginEnd = MacroInvocationEnd(first, pair->first);
         if (beginEnd == std::numeric_limits<TokenIndex>::max()) {
             return nullptr;
         }
@@ -1042,7 +1047,7 @@ private:
         --MacroRecordDepth_;
         RecordNames_.pop_back();
         PopScope();
-        const auto end = ClassMacroInvocationEnd(Cursor_, pair->second);
+        const auto end = MacroInvocationEnd(Cursor_, pair->second);
         if (end == std::numeric_limits<TokenIndex>::max()) {
             ErrorAt(first, "expected matching class end macro");
             AddMissingToken(*node, Cursor_);
@@ -1113,8 +1118,99 @@ private:
         return node;
     }
 
+    Node* TryParseEnumMacro()
+    {
+        if (EnumMacroNames_.empty()) {
+            return nullptr;
+        }
+        const auto first = NextSignificant(Cursor_);
+        if (Kind(first) != TK::Identifier ||
+            !std::binary_search(EnumMacroNames_.begin(), EnumMacroNames_.end(), Text(first)))
+        {
+            return nullptr;
+        }
+        const auto end = MacroInvocationEnd(first, Text(first));
+        if (end == std::numeric_limits<TokenIndex>::max()) {
+            return nullptr;
+        }
+        const auto opening = NextSignificant(first + 1);
+        const auto close = end - 1;
+        auto sequence = opening + 1;
+        bool valid = true;
+        size_t headerArguments = 0;
+        // Locate the final macro argument without interpreting type/expression
+        // tokens inside balanced delimiters as C++ declarations.
+        for (auto token = opening + 1; token < close; ++token) {
+            if (IsOpenDelimiter(Kind(token))) {
+                const auto next = FindBalancedEnd(token);
+                if (next > close) {
+                    valid = false;
+                    break;
+                }
+                token = next - 1;
+            } else if (Kind(token) == TK::Operator_Comma) {
+                const auto argument = NextSignificant(sequence);
+                valid &= argument < token && Kind(argument) != TK::Operator_OpenParenthesis;
+                if (headerArguments == 0) {
+                    valid &= Kind(argument) == TK::Identifier && NextSignificant(argument + 1) == token;
+                }
+                valid &= ++headerArguments <= 2;
+                sequence = token + 1;
+            }
+        }
+        auto entries = NextSignificant(sequence);
+        valid &= entries < close;
+        for (auto token = entries; valid && token < close;) {
+            const auto entryEnd = Kind(token) == TK::Operator_OpenParenthesis
+                ? FindBalancedEnd(token)
+                : std::numeric_limits<TokenIndex>::max();
+            if (entryEnd > close) {
+                valid = false;
+                break;
+            }
+            const auto name = token + 1;
+            if (Kind(name) == TK::Identifier) {
+                valid = name + 2 == entryEnd;
+            } else if (Kind(name) == TK::Operator_OpenParenthesis && Kind(name + 1) == TK::Identifier &&
+                Kind(name + 2) == TK::Operator_CloseParenthesis)
+            {
+                const auto value = name + 3;
+                valid = Kind(value) == TK::Operator_OpenParenthesis && NextSignificant(value + 1) < entryEnd - 2 &&
+                    FindBalancedEnd(value) == entryEnd - 1;
+            } else {
+                valid = false;
+            }
+            token = NextSignificant(entryEnd);
+        }
+        auto* node = MakeNode(valid ? NodeKind::MacroEnumDeclaration : NodeKind::UnparsedSyntax, Cursor_);
+        if (valid) {
+            auto* prefix = MakeNode(NodeKind::MacroEnumHeader, first);
+            prefix->Tokens.End = sequence;
+            Append(*node, *prefix);
+            Cursor_ = sequence;
+            while (Cursor_ < close) {
+                if (ParseTrivia(*node, false)) {
+                    continue;
+                }
+                auto* entry = MakeNode(NodeKind::MacroEnumEntry, Cursor_);
+                Cursor_ = FindBalancedEnd(Cursor_);
+                entry->Tokens.End = Cursor_;
+                Append(*node, *entry);
+            }
+        }
+        Cursor_ = end;
+        if (CurrentKind() == TK::Operator_Semicolon) {
+            ++Cursor_;
+        }
+        node->Tokens.End = Cursor_;
+        return node;
+    }
+
     Node* ParseDeclaration()
     {
+        if (auto* macro = TryParseEnumMacro()) {
+            return macro;
+        }
         if (auto* macro = TryParseClassMacro()) {
             return macro;
         }
@@ -5965,6 +6061,9 @@ private:
 
     Node* ParseStatement()
     {
+        if (auto* macro = TryParseEnumMacro()) {
+            return macro;
+        }
         auto first = NextSignificant(Cursor_);
         const auto afterAttributes = Kind(first) == TK::Operator_OpenBracket ? SkipAttributeSpecifiers(first) : first;
         if (afterAttributes != first && Kind(afterAttributes) != TK::PreprocessingDirective &&
@@ -8766,6 +8865,7 @@ private:
     std::pmr::monotonic_buffer_resource ScratchMemory_{detail::InitialMemoryResourceSize};
     std::pmr::vector<std::string_view> RecordNames_{&ScratchMemory_};
     std::pmr::vector<std::string_view> FunctionBodyMacroNames_{&ScratchMemory_};
+    std::pmr::vector<std::string_view> EnumMacroNames_{&ScratchMemory_};
     std::pmr::vector<std::pair<std::string_view, std::string_view>> ClassMacroPairs_{&ScratchMemory_};
     std::pmr::vector<std::string_view> ClassEndMacroNames_{&ScratchMemory_};
     size_t MacroRecordDepth_ = 0;

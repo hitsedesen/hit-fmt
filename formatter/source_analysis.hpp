@@ -7,6 +7,7 @@
 #include <memory_resource>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -139,6 +140,9 @@ struct SourceAnalysisOptions
 {
     bool HonorClangFormatDirectives = false;
     std::span<const std::string_view> WhitespaceSensitiveMacros = {};
+    // Only proven enum declarations authorize tuple layout. Other uses of
+    // these configured macros retain their complete invocation bytes.
+    std::span<const std::string> EnumMacroNames = {};
     // Half-open, valid source offsets; insertion inside a range is immutable.
     std::span<const parser::SourceRange> ImmutableRanges = {};
     // Immutable ranges in the current input. Normalization carries original

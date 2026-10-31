@@ -62,10 +62,15 @@ public:
     const std::vector<std::string> WhitespaceSensitiveMacros;
     const std::vector<std::string> FunctionBodyMacroNames;
     const std::vector<std::string> ClassMacroNames;
+    const std::vector<std::string> EnumMacroNames;
 
     [[nodiscard]] parser::ParseOptions ParsingOptions() const
     {
-        return {.FunctionBodyMacroNames = FunctionBodyMacroNames, .ClassMacroNames = ClassMacroNames};
+        return {
+            .FunctionBodyMacroNames = FunctionBodyMacroNames,
+            .ClassMacroNames = ClassMacroNames,
+            .EnumMacroNames = EnumMacroNames,
+        };
     }
 };
 

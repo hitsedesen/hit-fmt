@@ -186,6 +186,7 @@ ChangedFormatResult FormatChanged(
         {
             .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
             .WhitespaceSensitiveMacros = sensitive,
+            .EnumMacroNames = prepared.EnumMacroNames,
             .ImmutableRanges = request.ImmutableRanges,
         },
         file,

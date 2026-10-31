@@ -25,7 +25,8 @@ const NYT::NLogging::TLogger Logger("PaperExport");
 DEFINE_ENUM(EExportStage,
     (Queued)
     (Rendering)
-    (Writing));
+    (Writing)
+);
 
 } // namespace
 

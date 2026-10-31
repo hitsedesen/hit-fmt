@@ -89,6 +89,7 @@ struct Gap
     bool FitFlatTail = false;
     bool KeepFlatSpacing = false;
     bool SpaceFallback = false;
+    uint16_t FixedSpaces = UINT16_MAX;
 };
 
 // Compact, densely accessed finalized facts, separate from planning metadata.
@@ -435,6 +436,9 @@ public:
             switch (node.Kind) {
                 case NodeKind::TranslationUnit:
                     PlanRootIndentation(i);
+                    break;
+                case NodeKind::MacroEnumDeclaration:
+                    PlanEnumMacro(i);
                     break;
                 case NodeKind::AttributedStatement:
                     PlanAttributedStatement(i);
@@ -1174,6 +1178,86 @@ private:
             Tree_.MatchingDelimiter(opening) == node.Tokens.End - 1
             ? opening
             : None;
+    }
+
+    void PlanEnumMacro(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        if (!Syntax_[id].Safe || node.FirstChild == None) {
+            return;
+        }
+        const auto& header = Region(Syntax_[node.FirstChild]);
+        auto close = node.Tokens.End - 1;
+        if (Tree_.Kind(close) == TokenKind::Operator_Semicolon) {
+            --close;
+        }
+        Index width = 0;
+        for (auto child = header.NextSibling; child != None; child = Region(Syntax_[child]).NextSibling) {
+            const auto& entry = Region(Syntax_[child]);
+            if (entry.Kind == NodeKind::MacroEnumEntry &&
+                Tree_.Kind(entry.Tokens.Begin + 1) == TokenKind::Operator_OpenParenthesis)
+            {
+                width = std::max(width, HorizontalColumns(Tree_.TokenText(entry.Tokens.Begin + 2), Options_.TabWidth));
+            }
+        }
+        // GapSpec uses a bounded space count. An unusually long identifier
+        // must not truncate alignment or introduce input-sized scratch storage.
+        if (width >= UINT16_MAX) {
+            return;
+        }
+        const auto indent = Policies_.IndentWidth;
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            document::GroupMode::Consistent,
+            indent,
+            LayoutIndentation{ContinuationAlignment::Block, indent, indent});
+        Groups_[group].Spec.StructuralBase = true;
+        Groups_[group].Spec.LineBase = true;
+        const auto flat = [&] (Index gap, Index spaces) {
+            Own(gap, group, Boundary::Flat);
+            Gaps_[gap].FixedSpaces = uint16_t(spaces);
+        };
+        const auto opening = NextNonComment(header.Tokens.Begin + 1);
+        flat(opening, 0);
+        flat(opening + 1, 0);
+        for (auto token = opening + 1; token < header.Tokens.End; ++token) {
+            if (Tree_.Kind(token) == TokenKind::Operator_Comma) {
+                flat(token, 0);
+                if (token + 1 < header.Tokens.End) {
+                    flat(token + 1, 1);
+                }
+            } else if (Tree_.MatchingDelimiter(token) > token && Tree_.MatchingDelimiter(token) < header.Tokens.End) {
+                token = Tree_.MatchingDelimiter(token);
+            }
+        }
+        for (auto child = header.NextSibling; child != None; child = Region(Syntax_[child]).NextSibling) {
+            const auto& entry = Region(Syntax_[child]);
+            const auto begin = entry.Tokens.Begin;
+            const auto end = entry.Tokens.End;
+            if (entry.Kind == NodeKind::Comment) {
+                if (Safety_.Gaps()[begin].HasLineFeed) {
+                    Own(begin, group, Boundary::Hard);
+                    Gaps_[begin].Reindent = true;
+                }
+                continue;
+            }
+            Own(begin, group, Boundary::Hard);
+            Gaps_[begin].Reindent = true;
+            flat(begin + 1, 0);
+            flat(end - 1, 0);
+            if (Tree_.Kind(begin + 1) == TokenKind::Operator_OpenParenthesis) {
+                flat(begin + 2, 0);
+                flat(begin + 3, 0);
+                const auto nameWidth = HorizontalColumns(Tree_.TokenText(begin + 2), Options_.TabWidth);
+                flat(begin + 4, width - nameWidth + 1);
+            }
+        }
+        Own(close, group, Boundary::Hard, document::GapKind::Flat, true);
+        Gaps_[close].Reindent = true;
+        if (close + 1 < node.Tokens.End) {
+            flat(close + 1, 0);
+        }
     }
 
     void PlanList(Index id, const ListPolicy& policy)
@@ -4246,6 +4330,7 @@ private:
         const auto& entry = Syntax_[id];
         const auto& node = Region(entry);
         switch (node.Kind) {
+            case NodeKind::MacroEnumDeclaration:
             case NodeKind::RecordDeclaration:
             case NodeKind::MacroRecordDeclaration:
             case NodeKind::EnumDeclaration:
@@ -4337,6 +4422,7 @@ private:
     static bool DeclarationItem(NodeKind kind)
     {
         switch (kind) {
+            case NodeKind::MacroEnumDeclaration:
             case NodeKind::EmptyDeclaration:
             case NodeKind::Declaration:
             case NodeKind::FunctionDeclaration:
@@ -4875,6 +4961,9 @@ private:
         GapContext context,
         GapAdjacency adjacency = GapAdjacency::Source) const
     {
+        if (adjacency == GapAdjacency::Source && Gaps_[i].FixedSpaces != UINT16_MAX) {
+            return Gaps_[i].FixedSpaces != 0;
+        }
         if (adjacency != GapAdjacency::Source) {
             return Spacing_.SpacePreference(i, context, Safety_, adjacency);
         }
@@ -4920,6 +5009,9 @@ private:
 
     Index ComputeFlatWidth(Index i, GapAdjacency adjacency = GapAdjacency::Source) const
     {
+        if (adjacency == GapAdjacency::Source && Gaps_[i].FixedSpaces != UINT16_MAX) {
+            return Gaps_[i].FixedSpaces;
+        }
         if (Removed_.size() > i && Removed_[i]) {
             return 0;
         }

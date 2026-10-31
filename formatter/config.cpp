@@ -723,8 +723,10 @@ void ValidateLibraryAnnotationStyle(const Style& style)
                 style.IndentedChainScopePairs.size() * 2,
                 style.StickyChainCallPairs.size(),
                 style.ClassMacroNames.size() * 2,
+                style.EnumMacroNames.size(),
             }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
+    ValidateAnnotationNames(style.EnumMacroNames, scratch, "EnumMacroNames", false);
     ValidateAnnotationNames(style.CallLineFirstStringNames, scratch, "CallLineFirstStringNames", false);
     ValidateAnnotationNames(style.ChainedCallRootNames, scratch, "ChainedCallRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainRootNames, scratch, "AlwaysBreakChainRootNames", true);

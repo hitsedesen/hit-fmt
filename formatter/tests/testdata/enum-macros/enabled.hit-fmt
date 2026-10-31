@@ -1,0 +1,3 @@
+EnumMacroNames = ["DEFINE_ENUM", "DEFINE_BIT_ENUM", "DECLARE_CHOICES", "DEFINE_ENUM_WITH_UNDERLYING_TYPE"]
+IndentationKind = Spaces
+IndentWidth = 4
