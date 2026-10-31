@@ -1,7 +1,7 @@
 #pragma once
 
-#include <formatter/policy.hpp>
-#include <formatter/source_analysis.hpp>
+#include "formatter/policy.hpp"
+#include "formatter/source_analysis.hpp"
 
 #include <memory_resource>
 #include <optional>

@@ -1,7 +1,10 @@
 #pragma once
 
+#include "config_enum.hpp"
+
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <span>
 #include <string>
 #include <string_view>
@@ -27,6 +30,29 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
 
 // Angled names with neither / nor .h; no catalog or filesystem inference.
 bool IsStandardInclude(std::string_view path, bool angled) noexcept;
+
+// Lexical normalization, retaining unresolved leading parents for relative paths.
+void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std::string_view path, bool absolute);
+
+// Reuses scratch storage across includes; never queries the filesystem.
+class IncludeDelimiterResolver
+{
+public:
+    IncludeDelimiterResolver(
+        IncludeDelimiters policy,
+        IncludePathBase base,
+        std::string_view inputFilePath,
+        std::pmr::memory_resource& scratch);
+
+    [[nodiscard]] bool Angled(std::string_view path, bool original);
+
+private:
+    IncludeDelimiters Policy_;
+    IncludePathBase Base_;
+    bool InputAbsolute_;
+    std::pmr::vector<std::string_view> Current_;
+    std::pmr::vector<std::string_view> Parts_;
+};
 
 // Owns grouping metadata for read-only reuse across files. Rule order controls
 // matching and optional configured sorting within each priority tier. The

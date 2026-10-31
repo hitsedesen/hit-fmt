@@ -164,6 +164,7 @@ struct HeaderListPolicy
 struct IncludePolicy
 {
     IncludeCategoryOrder CategoryOrder;
+    IncludeDelimiters Delimiters;
     IncludeMatchingHeader MatchingHeader;
     IncludeGrouping Grouping;
     IncludeGroupOrder GroupOrder;

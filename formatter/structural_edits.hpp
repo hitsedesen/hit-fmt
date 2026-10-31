@@ -1,8 +1,8 @@
 #pragma once
 
-#include <formatter/config_enum.hpp>
-#include <formatter/include_policy.hpp>
-#include <formatter/source_analysis.hpp>
+#include "formatter/config_enum.hpp"
+#include "formatter/include_policy.hpp"
+#include "formatter/source_analysis.hpp"
 
 #include <memory_resource>
 #include <span>
@@ -13,7 +13,7 @@
 namespace formatter {
 
 // Independent of renderer fitting and configuration storage. Include sorting
-// moves exact directive atoms unless opt-in directive whitespace also applies.
+// moves exact directive atoms unless opt-in directive text policies also apply.
 // Text policies never grant authority over other protected interiors.
 enum class StructuralAction : uint8_t
 {
@@ -24,6 +24,7 @@ enum class StructuralAction : uint8_t
     IncludeOrder,
     NamespaceComments,
     DirectiveWhitespace,
+    IncludeDelimiters,
     RulerLength,
 };
 
@@ -62,6 +63,7 @@ struct StructuralOptions
     std::size_t RulerLength = 0;
     std::uint8_t IndentWidth = 4;
     IncludeCategoryOrder CategoryOrder = IncludeCategoryOrder::QuotedFirst;
+    IncludeDelimiters Delimiters = IncludeDelimiters::Preserve;
     IncludeMatchingHeader MatchingHeader = IncludeMatchingHeader::Off;
     IncludeGrouping Grouping = IncludeGrouping::Preserve;
     IncludeGroupOrder GroupOrder = IncludeGroupOrder::Directory;

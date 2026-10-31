@@ -114,6 +114,7 @@ std::pmr::vector<Range> ProjectEditScope(
             // follow. A deletion emits no literal and grants no new authority.
             if (piece.Operation == NoStructuralAction ||
                 ((plan.Operations[piece.Operation].Kind == StructuralAction::DirectiveWhitespace ||
+                    plan.Operations[piece.Operation].Kind == StructuralAction::IncludeDelimiters ||
                     plan.Operations[piece.Operation].Kind == StructuralAction::IncludeOrder)
                     ? !CanRewriteTextAtom(safety, piece.Original, true)
                     : safety.IntersectsImmutable(piece.Original)))
@@ -621,6 +622,7 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.RulerLength,
         static_cast<std::uint8_t>(style.IndentWidth),
         style.IncludeCategoryOrder,
+        style.IncludeDelimiters,
         style.IncludeMatchingHeader,
         style.IncludeGrouping,
         style.IncludeGroupOrder,

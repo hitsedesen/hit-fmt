@@ -1,9 +1,9 @@
 #include "runner.h"
 
-#include "yt/yt_proto/yt/core/rpc/runner.h"
+#include "yt/yt/core/rpc/alpha.h"
+#include "yt/yt/core/rpc/zeta.h"
 
-#include <yt/yt/core/rpc/alpha.h>
-#include <yt/yt/core/rpc/zeta.h>
+#include <yt/yt_proto/yt/core/rpc/runner.h>
 
 #include <yt/yt_proto/yt/core/rpc/proto/beta.h>
 

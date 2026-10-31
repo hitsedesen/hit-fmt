@@ -6,7 +6,14 @@
 # EmptyBodyShape is independent of nonempty BodyShape.
 # Blank counts measure empty lines; zero retains boundary topology.
 # Exact counts above an explicit MaxEmptyLines cap are invalid.
-# IncludeOrder = Sort enables the following include policies.
+# IncludeDelimiters = Preserve (default) keeps existing quotes/angles.
+# QuotedLocal quotes lexically same-directory paths and angles other
+# paths using IncludePathBase and the input filename, without path edits.
+# Bare names keep their delimiters: local and system names are ambiguous.
+# Explicit ./ and ../ paths are source-relative with either delimiter.
+# Works independently of IncludeOrder, also on single/commented includes.
+# Macro includes, splices and protected directives stay exact.
+# IncludeOrder = Sort enables the following sorting policies.
 # IncludeCategoryOrder = QuotedFirst (default) puts quoted before angled;
 # AngledFirst reverses them. IncludeMatchingHeader = First stays first;
 # IncludeStandardHeaders = Last keeps unclaimed standard headers last.
@@ -892,6 +899,9 @@ IncludeOrder = Preserve
 
 # Values: QuotedFirst | AngledFirst
 IncludeCategoryOrder = QuotedFirst
+
+# Values: Preserve | QuotedLocal
+IncludeDelimiters = Preserve
 
 # Values: Off | First
 IncludeMatchingHeader = Off
