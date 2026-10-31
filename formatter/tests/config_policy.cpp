@@ -860,6 +860,9 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
             "ChainedCallRootNames = [\"ns::\"]\n",
             "AlwaysBreakChainRootNames = [\"Trace\", \"Trace\"]\n",
             "AlwaysBreakChainRootNames = [\"ns::\"]\n",
+            "AlwaysBreakChainCallNames = [\"Then\", \"Then\"]\n",
+            "AlwaysBreakChainCallNames = [\"ns::Then\"]\n",
+            "AlwaysBreakChainCallNames = [\"\"]\n",
             "IndentedCallScopePairs = [\"Start:End\", \"Start:Other\"]\n",
             "IndentedCallScopePairs = [\"Start:End\", \"End:Other\"]\n",
             "IndentedCallScopePairs = [\"Start:Start\"]\n",
@@ -883,6 +886,9 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     style.AlwaysBreakChainRootNames = {"ns::"};
     EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style), std::invalid_argument);
     style.AlwaysBreakChainRootNames.clear();
+    style.AlwaysBreakChainCallNames = {"ns::Then"};
+    EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style), std::invalid_argument);
+    style.AlwaysBreakChainCallNames.clear();
     style.IndentedChainScopePairs = {"Start:Start"};
     EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style), std::invalid_argument);
     style.IndentedChainScopePairs.clear();

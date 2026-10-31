@@ -1649,9 +1649,9 @@ private:
     // Comment attachment fixes topology, not the continuation's indentation.
     // Use one anchor for the comment prefix and its following link, including
     // a line-comment's required terminator.
-    void OwnContinuationBoundary(Index begin, Index owner, document::GapKind broken)
+    void OwnContinuationBoundary(Index begin, Index owner, document::GapKind broken, bool force = false)
     {
-        Own(begin, owner, Boundary::Conditional, broken);
+        Own(begin, owner, force ? Boundary::Hard : Boundary::Conditional, broken);
         OwnCommentLinks(begin, owner, Tree_.TokenCount() + 1);
     }
 
@@ -3386,8 +3386,13 @@ private:
             return {};
         }
         const auto receiver = Region(Syntax_[member]).FirstChild;
-        const auto name = receiver == None ? None : Region(Syntax_[receiver]).NextSibling;
-        if (name == None || Region(Syntax_[name]).Tokens.Size() != 1) {
+        auto name = receiver == None ? None : Region(Syntax_[receiver]).NextSibling;
+        if (name != None && Region(Syntax_[name]).Kind == NodeKind::TemplateIdExpression) {
+            name = Region(Syntax_[name]).FirstChild;
+        }
+        if (name == None || Region(Syntax_[name]).Kind != NodeKind::IdentifierExpression ||
+            Region(Syntax_[name]).Tokens.Size() != 1)
+        {
             return {};
         }
         end = Region(Syntax_[parent]).Tokens.End;
@@ -3396,7 +3401,9 @@ private:
 
     bool PlanAnnotatedChain(Index id, Index group, Index calls)
     {
-        if (ChainScopeNames_.empty() && Annotations_.StickyChainPairs().empty()) {
+        if (ChainScopeNames_.empty() && Annotations_.StickyChainPairs().empty() &&
+            Annotations_.AlwaysBreakChainCalls().empty())
+        {
             return false;
         }
         ChainLinks_.clear();
@@ -3490,6 +3497,7 @@ private:
             auto last = i;
             while (last + 1 < ChainLinks_.size() && first.Owner == ChainLinks_[last + 1].Owner &&
                 !ChainLinks_[last].Name.empty() && !ChainLinks_[last + 1].Name.empty() &&
+                !Annotations_.AlwaysBreakChainCall(ChainLinks_[last + 1].Name) &&
                 Annotations_.IsStickyChainPair(ChainLinks_[last].Name, ChainLinks_[last + 1].Name))
             {
                 ++last;
@@ -3534,7 +3542,8 @@ private:
                 link.Owner,
                 Policies_.Chains.Packing == ListPacking::VerticalWhenBroken && calls > 1 && !link.Sticky
                 ? document::GapKind::Hard
-                : document::GapKind::Soft);
+                : document::GapKind::Soft,
+                Annotations_.AlwaysBreakChainCall(link.Name));
         }
         return true;
     }

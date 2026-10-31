@@ -1,0 +1,8 @@
+Layout = Canonical
+IndentationKind = Spaces
+IndentWidth = 4
+ColumnLimit = 120
+ChainsBreak = IfNeeded
+ChainsPacking = Fill
+FunctionBracePlacement = NextLine
+AlwaysBreakChainCallNames = ["Then", "Finish"]

@@ -484,8 +484,9 @@ ChainsLayout = Inherit
 
 # In control headers, chains break only when needed.
 # Even with Always, prefer non-chain breaks.
-# Lambda bodies and explicit AlwaysBreakChainRootNames keep
-# their ordinary chain policy.
+# Lambda bodies keep their ordinary chain policy.
+# AlwaysBreakChainRootNames and AlwaysBreakChainCallNames
+# still require their configured breaks in control headers.
 # Values: IfNeeded | Always
 ChainsBreak = IfNeeded
 
@@ -796,6 +797,14 @@ ChainedCallRootNames = []
 # Omit the template disambiguator from configured names.
 # Values: [] or ["qualified::name", ...]
 AlwaysBreakChainRootNames = []
+
+# Start matching member calls on a new line, including in control headers.
+# Exact unqualified names; omit template arguments and the template keyword.
+# Obeys ChainsLayout and ChainedCallRootNames; overrides sticky pairs.
+# Safety and protected regions still win.
+# Example: ["Then"] splits before .Then() or ->Then(), not fields or roots.
+# Values: [] or ["name", ...]
+AlwaysBreakChainCallNames = []
 
 # Case and ordinary labels delimit independent sections.
 # Only complete pairs inside one section affect indentation.
