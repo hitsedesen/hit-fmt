@@ -1341,7 +1341,7 @@ public:
                         owner,
                         C::Expressions,
                         3);
-                    // A raw size can contain subscripts. Only the outer
+                    // A size can contain subscripts. Only the outer
                     // bracket is a new array declarator. Retain its boundary
                     // across direct spans interrupted by structured children.
                     state.NewTypeSkip = close + 1;

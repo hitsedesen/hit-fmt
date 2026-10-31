@@ -3881,6 +3881,15 @@ private:
                 auto* convention = MakeNode(NodeKind::CallingConventionSpecifier, i);
                 convention->Tokens.End = i + 1;
                 Append(node, *convention);
+            } else if (node.Kind == NodeKind::NewTypeId && Kind(i) == TK::Operator_OpenBracket) {
+                const auto arrayEnd = FindBalancedEnd(i);
+                if (arrayEnd > end) {
+                    break;
+                }
+                // Bounds are expressions, so their operators and nested
+                // delimiters must not be scanned as type syntax.
+                AddExpressionRange(node, i + 1, arrayEnd - 1);
+                i = arrayEnd - 1;
             } else if (node.Kind == NodeKind::NewTypeId && Kind(i) == TK::Operator_Star) {
                 auto afterPointers = NextSignificant(i + 1);
                 while (Kind(afterPointers) == TK::Operator_Star) {

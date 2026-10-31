@@ -28,7 +28,7 @@ auto evaluate(Values... values) {
     auto left_fold = (... + values);
     auto right_fold = (values + ...);
     auto binary_fold = (0 + ... + values);
-    auto placed = new (arena) Item[count]{1, 2};
+    auto placed = new (arena) Item[count + 1][columns * 2]{1, 2};
     auto direct = new Item(1, 2);
     auto owned = std::unique_ptr<char[]>(new char[count]);
     auto bounded = helpers::Build<const Type*[extent(1, 2)][3]>(source);

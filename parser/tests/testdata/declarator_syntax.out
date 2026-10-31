@@ -335,7 +335,9 @@
                 (new-type-id
                   "const" "Widget"
                   (pointer-operator "*")
-                  "[" "count" "]"
+                  "["
+                  (identifier-expression "count")
+                  "]"
                 )
               )
             )
@@ -358,7 +360,9 @@
                   "Widget"
                   (pointer-operator "*")
                   (pointer-operator "*")
-                  "[" "count" "]"
+                  "["
+                  (identifier-expression "count")
+                  "]"
                 )
               )
             )
