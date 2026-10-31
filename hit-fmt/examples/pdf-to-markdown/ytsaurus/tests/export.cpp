@@ -8,6 +8,8 @@
 
 namespace NPaper::NMarkdown {
 
+////////////////////////////////////////////////////////////////////////////////
+
 class TPreviewObserverMock final
     : public IPreviewObserver
 {
@@ -29,5 +31,7 @@ TEST(TMarkdownExport, RejectsDocumentWithoutPages)
     const TExportJob job{document, {}};
     EXPECT_THROW(job.Run(EExportMode::WholeDocument), std::invalid_argument);
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 } // namespace NPaper::NMarkdown

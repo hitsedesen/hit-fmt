@@ -111,6 +111,9 @@ void ValidatePolicyStyle(const Style& style)
     }
 
     CheckBlankSetting(style.RulerBlankLinesBefore, "RulerBlankLinesBefore");
+    if (static_cast<std::size_t>(style.RulerPlacement) >= ConfigEnumNames<RulerPlacement>::Values.size()) {
+        throw std::invalid_argument("RulerPlacement has invalid value");
+    }
     CheckBlankSetting(style.RulerBlankLinesAfter, "RulerBlankLinesAfter");
     CheckBlankCap(style.RulerBlankLinesBefore, style.MaxEmptyLines, "RulerBlankLinesBefore");
     CheckBlankCap(style.RulerBlankLinesAfter, style.MaxEmptyLines, "RulerBlankLinesAfter");

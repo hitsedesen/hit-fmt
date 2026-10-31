@@ -627,10 +627,8 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
     EXPECT_EQ(
         MaterializeNamespaceComments(output, resolved, file.Memory),
         "namespace a {\nnamespace b::c {} // namespace b::c\n} // namespace " "a\n");
-    // The parser classifies inline namespace as a generic declaration:
-    // a typed keyword only authorizes a diagnostic, never a fabricated
-    // identity.
-    File recovered("inline namespace a {}\n");
+    // A namespace keyword behind an opaque prefix does not prove an identity.
+    File recovered("NAMESPACE_PREFIX namespace a {}\n");
     auto opaque = PlanNamespaceComments(
         recovered.Tree,
         recovered.Safety,

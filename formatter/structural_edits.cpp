@@ -1195,6 +1195,7 @@ StructuralPlan PlanStructuralEdits(
     }
 
     PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory, includes.InputFilePath);
+    PlanRulerEdits(tree, safety, options, plan, fileMemory, scratchMemory);
     Sort(plan);
     (void)Validate(tree.Source(), plan);
     return plan;

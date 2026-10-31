@@ -28,7 +28,11 @@
 
 namespace NPaper::NMarkdown {
 
+////////////////////////////////////////////////////////////////////////////////
+
 namespace {
+
+////////////////////////////////////////////////////////////////////////////////
 
 static_assert(PAPER_EXPORT_ABI_VERSION(1, 2) == 0x0102);
 
@@ -45,6 +49,8 @@ constexpr unsigned ProgressThresholds[] = { 0,  25,  50,  75,  100 };
 // clang-format on
 
 } // namespace
+
+////////////////////////////////////////////////////////////////////////////////
 
 TExportJob::TExportJob(const TDocument& document, TOptions options)
     : Document_(document)
@@ -151,6 +157,8 @@ std::string_view ExportModeLabel(EExportMode mode) noexcept
     return ExportLabels[mode == EExportMode::Selection ? 0 : 1][1];
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 extern "C" {
 
 void paper_export_progress(unsigned page, void* context)
@@ -163,5 +171,7 @@ void paper_export_progress(unsigned page, void* context)
 }
 
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 } // namespace NPaper::NMarkdown

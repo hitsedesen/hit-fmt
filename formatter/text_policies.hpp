@@ -20,4 +20,12 @@ void PlanTextPolicyEdits(
     std::pmr::memory_resource& scratchMemory,
     std::string_view inputFilePath = {});
 
+void PlanRulerEdits(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    StructuralOptions options,
+    StructuralPlan& plan,
+    std::pmr::memory_resource& fileMemory,
+    std::pmr::memory_resource& scratchMemory);
+
 } // namespace formatter

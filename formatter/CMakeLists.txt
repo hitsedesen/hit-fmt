@@ -9,6 +9,7 @@ add_library(lib-formatter STATIC
     naming.cpp
     parameter_names.cpp
     policy.cpp
+    ruler_placement.cpp
     source_analysis.cpp
     structural_edits.cpp
     syntax_layout.cpp

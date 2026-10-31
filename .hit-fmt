@@ -1,6 +1,7 @@
 include = "@/hit-fmt/examples/ytsaurus.hit-fmt"
 
-# Keep this repository's naming, switch cases and lambda calls independent of YTsaurus.
+# Keep this repository's naming, switch cases, lambda calls and ruler placement
+# independent of YTsaurus.
 ClassNameCase = Unchecked
 ClassNamePrefixes = []
 StructNameCase = Unchecked
@@ -12,6 +13,7 @@ NamespaceNameCase = Unchecked
 NamespaceNamePrefixes = []
 CaseBlankLines = Preserve
 LambdaCallSpaceBeforeArguments = NoSpace
+RulerPlacement = Preserve
 
 # Do not scan generated outputs, goldens or benchmarks.
 Exclude = [

@@ -1,0 +1,29 @@
+#if OUTSIDE
+struct TGlobalFirst {};
+struct TGlobalSecond {};
+#endif
+namespace NFences {
+#if FEATURE
+struct TEnabled {};
+struct TAlsoEnabled {};
+#else
+struct TDisabled {};
+#endif
+struct TBefore {};
+// clang-format off
+struct  TProtected{ int  Value; };
+///////////////
+// clang-format on
+// After the protected section.
+struct TAfter {};
+void Run() {
+#if FEATURE
+    ///////////////
+    Start();
+#endif
+    const auto callback = [] {
+        ///////////////
+        Stop();
+    };
+}
+}

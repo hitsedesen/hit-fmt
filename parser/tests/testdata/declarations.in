@@ -81,3 +81,12 @@ TRollingGauge<T, Steps> operator+(const TRollingGauge<T, Steps>& left, const TRo
 template <typename T, int Steps>
     requires std::is_arithmetic_v<T>
 TRollingGauge<T, Steps>& operator+=(TRollingGauge<T, Steps>& left, const TRollingGauge<T, Steps>& right);
+
+inline namespace versioned {
+namespace {
+void helper() {}
+}
+}
+namespace after_versioned {
+struct Record {};
+}

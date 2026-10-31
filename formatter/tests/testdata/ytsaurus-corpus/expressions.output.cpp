@@ -1,5 +1,7 @@
 namespace NYT::NProfileExample {
 
+////////////////////////////////////////////////////////////////////////////////
+
 struct TOptions
 {
     int Capacity;
@@ -85,5 +87,7 @@ void CompleteRequest(TFuture<void> future, TFuture<int> valueFuture, IInvokerPtr
             Cancel();
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 } // namespace NYT::NProfileExample
