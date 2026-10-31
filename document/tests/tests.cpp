@@ -31,6 +31,7 @@ void AppendRender(std::string& actual, const Document& document, std::uint32_t w
     const auto output = document.Render({.Width = width});
     ASSERT_TRUE(output.State);
     actual += std::string(label) + " width=" + std::to_string(width) + ":\n";
+
     // Keep CR visible, as in PhysicalLineBasesGolden.
     for (const char c : output.Text) {
         if (c == '\r') {
@@ -41,6 +42,7 @@ void AppendRender(std::string& actual, const Document& document, std::uint32_t w
             actual += c;
         }
     }
+
     // Mark the end so trailing indentation is visible in the fixture.
     actual += "$\n";
 }
@@ -50,6 +52,7 @@ TEST(GroupLayout, ReindentedSourceColumnsGolden)
     const std::string prefix = "\té中";
     const std::string source = prefix + "/* first\r\n\t * stars\routdented\n\n \t\n\t\tbody\ttext\n\t */";
     std::string actual;
+
     for (const auto outputPrefix : std::array<std::string_view, 4>{"", "  é中", "\té中", "                    "}) {
         Document document(source);
         document.Text(outputPrefix);
@@ -57,8 +60,10 @@ TEST(GroupLayout, ReindentedSourceColumnsGolden)
         ASSERT_TRUE(document.Seal());
         AppendRender(actual, document, 100, "shifted source columns");
     }
+
     // Make retained blank-line whitespace visible in the golden.
     std::string visible;
+
     for (const char c : actual) {
         if (c == '\t') {
             visible += "\\t";
@@ -66,6 +71,7 @@ TEST(GroupLayout, ReindentedSourceColumnsGolden)
             visible += c;
         }
     }
+
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "reindented-source-columns.golden.txt",
         visible);
@@ -74,6 +80,7 @@ TEST(GroupLayout, ReindentedSourceColumnsGolden)
 TEST(GroupLayout, ContinuationStarterLineGolden)
 {
     std::string actual;
+
     for (const bool newLine : {false, true}) {
         Document document("");
         document.Text("value = ");
@@ -96,6 +103,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
         actual.append(output.Text);
         actual += '\n';
     }
+
     {
         Document document("");
         const auto block = document.BeginGroup({GroupMode::Fill, 4});
@@ -125,6 +133,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
         ASSERT_TRUE(document.Seal());
         AppendRender(actual, document, 80, "shared continuation with body");
     }
+
     for (const bool expression : {false, true}) {
         for (const bool realized : {false, true}) {
             Document document("");
@@ -167,6 +176,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
             AppendRender(actual, document, 80, label);
         }
     }
+
     for (const bool inlineLambda : {false, true}) {
         Document document("");
         const auto body = document.BeginGroup({.Indent = 4});
@@ -185,6 +195,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
         const auto innerAnchor =
             document.MarkAnchor({.Offset = 4, .StructuralBase = true, .Continuation = true, .SharedWith = outerAnchor});
         const auto inner = document.BeginGroup({.Indent = 4, .StructuralBase = true, .Continuation = true});
+
         if (inlineLambda) {
             document.Text("[&] {");
             const auto closer = document.MarkAnchor({.StructuralBase = true});
@@ -198,10 +209,12 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
             document.Gap({GapKind::Hard, 0}, innerAnchor);
             document.Text("item))");
         }
+
         document.EndGroup(inner);
         document.EndGroup(outer);
         document.EndGroup(body);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {80u, 9u}) {
             AppendRender(
                 actual,
@@ -210,6 +223,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
                 inlineLambda ? "realized delimiter with lambda" : "realized delimiter with item");
         }
     }
+
     for (const bool rhsLine : {false, true}) {
         for (const bool delimiter : {false, true}) {
             Document document("");
@@ -235,6 +249,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
             ASSERT_TRUE(document.Seal());
             auto label = std::string(rhsLine ? "realized" : "prospective");
             label += delimiter ? " delimiter base" : " block base";
+
             // At width 13 there is no room for the complete atom: delimiter
             // fallback uses the structural base, not the delimiter's column.
             for (const auto width : {80u, 13u}) {
@@ -242,6 +257,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
             }
         }
     }
+
     for (const bool consumer : {false, true}) {
         Document document("");
         auto block = document.BeginGroup({GroupMode::Fill, 4});
@@ -259,6 +275,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
         ASSERT_TRUE(document.Seal());
         AppendRender(actual, document, 80, consumer ? "fenced consumer line" : "propagated expression line");
     }
+
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "continuation-starter-line.expected",
         actual);
@@ -267,6 +284,7 @@ TEST(GroupLayout, ContinuationStarterLineGolden)
 TEST(GroupLayout, PhysicalLineBasesGolden)
 {
     std::string actual;
+
     for (const auto prefix : {std::string("\n            "), std::string("\r\n\t\t")}) {
         for (const bool broken : {false, true}) {
             Document document(prefix);
@@ -292,6 +310,7 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             document.Text("});");
             document.EndGroup(outer);
             ASSERT_TRUE(document.Seal());
+
             for (const auto indent : {IndentationKind::Spaces, IndentationKind::Tabs}) {
                 const Policy policy{
                     .Width = 80,
@@ -303,6 +322,7 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
                 EXPECT_EQ(document.Render(policy).Text, output.Text);
                 actual += broken ? "broken captures\n" : "flat captures\n";
                 actual += indent == IndentationKind::Spaces ? "spaces\n" : "tabs\n";
+
                 for (const char c : output.Text) {
                     if (c == '\r') {
                         actual += "\\r";
@@ -310,10 +330,12 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
                         actual += c;
                     }
                 }
+
                 actual += "\n---\n";
             }
         }
     }
+
     for (const bool broken : {false, true}) {
         const std::string source = "\n        opaque;";
         Document document(source);
@@ -346,6 +368,7 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             80,
             broken ? "fixed body with broken captures" : "fixed body with flat captures");
     }
+
     for (const auto prefix : {std::string(), std::string("\n            ")}) {
         for (const bool inherited : {false, true}) {
             Document document(prefix);
@@ -353,9 +376,11 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             document.Text("body{");
             const auto parent = document
                 .BeginGroup({.Indent = inherited ? 4 : 0, .StructuralBase = inherited, .Continuation = inherited});
+
             if (!prefix.empty()) {
                 document.SourceText(0, prefix.size(), NoIdentity, true);
             }
+
             document.Text(".call(");
             const auto anchor =
                 document.MarkAnchor({.Offset = 4, .StructuralBase = true, .Continuation = true, .LineBase = true});
@@ -372,6 +397,7 @@ TEST(GroupLayout, PhysicalLineBasesGolden)
             AppendRender(actual, document, 80, inherited ? "nested call line base" : "standalone call line base");
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "physical-line-base.expected", actual);
 }
 
@@ -395,14 +421,17 @@ TEST(GroupLayout, SharedContinuationRejectsAnUnrecoverableBase)
 TEST(GroupLayout, FixedExpressionGapRealizesWithoutBecomingEditableBreak)
 {
     const std::string source = "\n    ";
+
     for (const bool split : {false, true}) {
         Document document(source);
         auto outer = document.BeginGroup({GroupMode::Fill, 4, true, true});
+
         if (split) {
             document.SourceLineIndent(0, 1, 1, 5);
         } else {
             document.SourceText(0, 5, NoIdentity, true);
         }
+
         document.ExpressionLine();
         auto base = document.MarkAnchor({AnchorKind::BlockRelative, 0, 0, 0, true});
         auto child = document.BeginGroup({GroupMode::Fill, 0, false, false, true});
@@ -432,6 +461,7 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
         document.EndGroup(group);
         EXPECT_EQ(document.Seal().Code, Error::InvalidLinePrefix);
     }
+
     Document outside("\n");
     outside.SourceText(0, 1, NoIdentity, true);
     outside.ExpressionLine();
@@ -439,6 +469,7 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
     Document negative("");
     negative.BeginGroup({GroupMode::Fill, -1, false, true});
     EXPECT_EQ(negative.Seal().Code, Error::InvalidPolicy);
+
     for (const auto penalty : {4u, 255u}) {
         Document invalid("");
         const auto group = invalid.BeginGroup({.BreakPenalty = static_cast<std::uint8_t>(penalty)});
@@ -448,6 +479,7 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
         invalidShape.BeginGroup({.FlatInBrokenParentPenalty = static_cast<std::uint8_t>(penalty)});
         EXPECT_EQ(invalidShape.Seal().Code, Error::InvalidPolicy);
     }
+
     for (const bool continuation : {false, true}) {
         Document invalidGroup("");
         invalidGroup.BeginGroup({.Continuation = continuation, .LineBase = true});
@@ -456,6 +488,7 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
         invalidAnchor.MarkAnchor({.Continuation = continuation, .LineBase = true});
         EXPECT_EQ(invalidAnchor.Seal().Code, Error::InvalidPolicy);
     }
+
     Document overflow("");
     auto first = overflow.BeginGroup({GroupMode::Fill, INT32_MAX, false, true});
     auto second = overflow.BeginGroup({GroupMode::Fill, INT32_MAX, false, true});
@@ -466,16 +499,19 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
     overflow.EndGroup(first);
     ASSERT_TRUE(overflow.Seal());
     EXPECT_EQ(overflow.Render().State.Code, Error::IndentationOverflow);
+
     for (const bool elided : {false, true}) {
         Document validation("");
         const auto a = validation.BeginGroup({.Indent = INT32_MAX, .ExpressionContinuation = true});
         const auto b = validation.BeginGroup({.Indent = INT32_MAX});
         const auto c = validation.BeginGroup({.Indent = 4});
+
         // Saturation invalidates the prospective base. An unused structural
         // marker and its following Begin must reject exactly the same state.
         if (!elided) {
             validation.MarkAnchor({.StructuralBase = true});
         }
+
         const auto d = validation.BeginGroup({.StructuralBase = true}, elided);
         validation.EndGroup(d);
         validation.EndGroup(c);
@@ -484,6 +520,7 @@ TEST(GroupLayout, GroupMetadataRejectsInvalidOwnersPrefixesAndOverflow)
         ASSERT_TRUE(validation.Seal());
         EXPECT_EQ(validation.Render().State.Code, Error::IndentationOverflow);
     }
+
     Document logicalOverflow("");
     logicalOverflow.BeginGroup({}, InvalidId);
     EXPECT_EQ(logicalOverflow.Seal().Code, Error::TooLarge);
@@ -514,10 +551,12 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
         document.EndGroup(group);
         document.Text(";");
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {18u, 17u}) {
             AppendRender(actual, document, width, "consistent closer and root suffix");
         }
     }
+
     {
         Document document("");
         document.Text("[");
@@ -532,10 +571,12 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
         document.Text("];");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {10u, 20u}) {
             AppendRender(actual, document, width, "packed fill segments and closer");
         }
     }
+
     for (bool segmentFit : {false, true}) {
         Document document("");
         auto header = document.BeginGroup({GroupMode::Fill});
@@ -561,6 +602,7 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
         actual.append(output.Text);
         actual += '\n';
     }
+
     {
         Document document("");
         auto parent = document.BeginGroup();
@@ -573,10 +615,12 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
         document.ConditionalText(parent, "", ",");
         document.EndGroup(parent);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {6u, 5u}) {
             AppendRender(actual, document, width, "broken owner conditional comma");
         }
     }
+
     {
         Document document("");
         document.Text("a\t");
@@ -593,6 +637,7 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
         actual.append(output.Text);
         actual += "$\n";
     }
+
     {
         Document document("");
         auto tabs = document.BeginGroup();
@@ -601,6 +646,7 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
         document.Text("c");
         document.EndGroup(tabs);
         ASSERT_TRUE(document.Seal());
+
         // Worst-case tab expansion can break even when actual expansion fits.
         for (const auto width : {8u, 7u}) {
             const auto output = document.Render({.Width = width, .TabWidth = 4});
@@ -611,6 +657,7 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
             actual += "$\n";
         }
     }
+
     for (const auto suffix : {InvalidId, 0u, 2u}) {
         for (const auto name : {"abc", "variable"}) {
             Document document("");
@@ -619,23 +666,27 @@ TEST(GroupLayout, FillSegmentDemandKeepsIndependentChildBreaks)
             document.Gap();
             document.Text(name);
             document.EndGroup(prefix);
+
             if (suffix == 0) {
                 document.Gap({GapKind::Hard, 0});
                 document.Text("= unbreakable_rhs;");
             } else {
                 document.Text(" = unbreakable_rhs;");
             }
+
             ASSERT_TRUE(document.Seal());
             actual += "prefix suffix=" + std::to_string(suffix) + " name=" + name + ":\n";
             AppendRender(actual, document, 14, "independent prefix fitting");
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "fill-segment-fit.expected", actual);
 }
 
 TEST(GroupLayout, BoundedChildFittingGolden)
 {
     std::string actual;
+
     for (const auto width : {80u, 40u, 36u, 25u, 18u}) {
         for (const auto padding : {0u, 300u}) {
             for (const unsigned mode : {0u, 1u, 2u, 3u, 4u}) {
@@ -649,10 +700,13 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 });
                 document.Text("value =");
                 document.Gap();
+
                 for (unsigned i = 0; i < padding; ++i) {
                     document.Text("");
                 }
+
                 auto outer = document::InvalidId;
+
                 if (mode >= 3) {
                     document.Text("consume(");
                     outer = document.BeginGroup({
@@ -663,6 +717,7 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                     });
                     document.ConditionalGap(outer, {GapKind::Flat, 0}, {GapKind::Hard, 0});
                 }
+
                 const auto chain = document
                     .BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .StructuralBase = true, .Continuation = true});
                 document.Text("source");
@@ -687,30 +742,37 @@ TEST(GroupLayout, BoundedChildFittingGolden)
                 document.Text("})");
                 document.EndGroup(arguments);
                 document.EndGroup(chain);
+
                 if (mode >= 3) {
                     document.Text(",");
                     document.ConditionalGap(outer, {GapKind::Flat, 1}, {GapKind::Hard, 1});
                     document.Text("tabWidth)");
                     document.EndGroup(outer);
                 }
+
                 document.EndGroup(expression);
                 document.Text(";");
                 ASSERT_TRUE(document.Seal());
                 const auto output = document.Render({.Width = width});
                 ASSERT_TRUE(output.State);
+
                 // Oversized groups may overflow with ordinary fitting.
                 // Child-only candidates must fit every line.
                 if (width >= 25 && (padding == 0 || mode < 3)) {
                     std::size_t begin = 0;
+
                     while (begin < output.Text.size()) {
                         auto end = output.Text.find('\n', begin);
+
                         if (end == std::string_view::npos) {
                             end = output.Text.size();
                         }
+
                         EXPECT_LE(end - begin, width);
                         begin = end + 1;
                     }
                 }
+
                 actual += "width=" + std::to_string(width) + " padding=" + std::to_string(padding) + " mode=" +
                     std::to_string(mode) + "\n";
                 actual.append(output.Text);
@@ -718,12 +780,14 @@ TEST(GroupLayout, BoundedChildFittingGolden)
             }
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "bounded-child-fit.expected", actual);
 }
 
 TEST(GroupLayout, ChildFittingCostGolden)
 {
     std::string actual;
+
     for (const bool longCall : {false, true}) {
         Document document("");
         const auto comparison = document.BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .Continuation = true});
@@ -734,10 +798,12 @@ TEST(GroupLayout, ChildFittingCostGolden)
         document.Text("lookup(");
         document.ConditionalGap(call, {GapKind::Flat, 0}, {GapKind::Hard, 0});
         document.Text(longCall ? "firstLongArg," : "tiny");
+
         if (longCall) {
             document.ConditionalGap(call, {GapKind::Flat, 1}, {GapKind::Hard, 0});
             document.Text("secondLongArg");
         }
+
         document.Text(")");
         document.EndGroup(call);
         document.EndGroup(comparison);
@@ -750,6 +816,7 @@ TEST(GroupLayout, ChildFittingCostGolden)
         actual.append(output.Text);
         actual += '\n';
     }
+
     for (const auto penalty : {0u, 2u}) {
         Document document("");
         const auto comparison = document.BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .Continuation = true});
@@ -783,6 +850,7 @@ TEST(GroupLayout, ChildFittingCostGolden)
         actual.append(output.Text);
         actual += '\n';
     }
+
     for (const auto width : {40u, 80u}) {
         for (const auto penalty : {0u, 1u, 2u}) {
             Document document("");
@@ -814,6 +882,7 @@ TEST(GroupLayout, ChildFittingCostGolden)
             actual += '\n';
         }
     }
+
     for (const auto width : {18u, 34u, 80u}) {
         for (const auto [typePenalty, valuePenalty] : {std::pair{0u, 0u}, {3u, 0u}, {3u, 2u}, {2u, 3u}, {3u, 3u}}) {
             for (const bool breakableValue : {false, true}) {
@@ -859,6 +928,7 @@ TEST(GroupLayout, ChildFittingCostGolden)
             }
         }
     }
+
     for (const auto width : {18u, 34u, 80u}) {
         Document document("");
         document.Text("TypeMap<");
@@ -891,6 +961,7 @@ TEST(GroupLayout, ChildFittingCostGolden)
         actual.append(output.Text);
         actual += '\n';
     }
+
     for (const auto width : {28u, 48u, 100u}) {
         for (const auto middlePenalty : {2u, 3u}) {
             for (const bool forceMiddle : {false, true}) {
@@ -931,12 +1002,14 @@ TEST(GroupLayout, ChildFittingCostGolden)
             }
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "child-fit-cost.expected", actual);
 }
 
 TEST(GroupLayout, ChildFittingKeepsConditionalChoicesOwnedShape)
 {
     std::string actual;
+
     for (const bool textChoice : {true, false}) {
         for (const auto width : {80u, 40u, 30u}) {
             Document document("");
@@ -945,15 +1018,19 @@ TEST(GroupLayout, ChildFittingKeepsConditionalChoicesOwnedShape)
             const auto list = document
                 .BeginGroup({.Mode = GroupMode::Fill, .Indent = 4, .StructuralBase = true, .Continuation = true});
             document.Text("{first,");
+
             if (textChoice) {
                 document.Gap();
             } else {
                 document.ConditionalGap(list, {GapKind::Flat, 1}, {GapKind::Soft, 2});
             }
+
             document.Text("second");
+
             if (textChoice) {
                 document.ConditionalText(list, "", ",");
             }
+
             document.Text("}");
             document.EndGroup(list);
             document.Text(",");
@@ -982,12 +1059,14 @@ TEST(GroupLayout, ChildFittingKeepsConditionalChoicesOwnedShape)
             actual += '\n';
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "child-fit-owned-shape.expected", actual);
 }
 
 TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
 {
     std::string actual;
+
     for (bool spacing : {false, true}) {
         for (bool shrinks : {false, true}) {
             for (bool opaque : {false, true}) {
@@ -997,10 +1076,13 @@ TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
                     document.Text("aa");
                     document.Gap();
                     GroupId wrapper = InvalidId;
+
                     if (nested) {
                         wrapper = document.BeginGroup({GroupMode::Fill, 0});
                     }
+
                     auto child = document.BeginGroup();
+
                     if (spacing) {
                         document.ConditionalGap(
                             child,
@@ -1009,6 +1091,7 @@ TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
                     } else {
                         document.ConditionalText(child, shrinks ? "xxxx" : "", shrinks ? "" : "xxxx");
                     }
+
                     if (opaque) {
                         document.SourceText(0, 3, NoIdentity, true);
                     } else {
@@ -1016,26 +1099,33 @@ TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
                         document.Gap({GapKind::Hard, 0});
                         document.Text("c");
                     }
+
                     document.EndGroup(child);
+
                     if (nested) {
                         document.EndGroup(wrapper);
                     }
+
                     document.EndGroup(parent);
                     ASSERT_TRUE(document.Seal());
                     auto output = document.Render({.Width = 5});
                     ASSERT_TRUE(output.State);
                     EXPECT_TRUE(output.Broken[parent]);
                     EXPECT_TRUE(output.Broken[child]);
+
                     if (nested) {
                         EXPECT_TRUE(output.Broken[wrapper]);
                     }
+
                     std::string_view remaining = output.Text;
+
                     while (!remaining.empty()) {
                         const auto end = remaining.find('\n');
                         const auto length = end == std::string_view::npos ? remaining.size() : end;
                         EXPECT_LE(length, 5u);
                         remaining.remove_prefix(length + (end != std::string_view::npos));
                     }
+
                     EXPECT_EQ(document.Render({.Width = 5}).Text, output.Text);
                     actual += spacing ? "gap " : "text ";
                     actual += shrinks ? "shrink " : "grow ";
@@ -1047,6 +1137,7 @@ TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
             }
         }
     }
+
     {
         Document document("");
         auto group = document.BeginGroup({GroupMode::Consistent, 2});
@@ -1058,6 +1149,7 @@ TEST(GroupLayout, ForcedMultilineChildPrefixGolden)
         ASSERT_TRUE(document.Seal());
         AppendRender(actual, document, 200, "opaque multiline bytes");
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "forced-child-prefix.output.txt", actual);
 }
 
@@ -1125,10 +1217,12 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         document.Text("beta)");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {12u, 5u}) {
             AppendRender(actual, document, width, "delimiter alignment");
         }
     }
+
     {
         Document document("");
         document.Text("call(");
@@ -1156,6 +1250,7 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         // fallback.
         EXPECT_TRUE(output.Broken[group]);
     }
+
     for (const bool borrowed : {false, true}) {
         Document document(borrowed ? "\n" : "");
         auto block = document.BeginGroup({GroupMode::Consistent, 3});
@@ -1166,9 +1261,11 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn, -3, 2, 4});
         auto floor = document.MarkAnchor({AnchorKind::DelimiterColumn, -7, 2});
         auto blockAnchor = InvalidId;
+
         if (borrowed) {
             blockAnchor = document.MarkAnchor({AnchorKind::BlockRelative, 1, INT32_MAX, UINT32_MAX});
         }
+
         auto continuation = document.BeginGroup({GroupMode::Consistent, 6});
         const auto line = [&] (AnchorId target, std::uint32_t demand) {
             if (borrowed) {
@@ -1183,10 +1280,12 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         document.Text("abc;");
         line(floor, 1);
         document.Text("z");
+
         if (borrowed) {
             line(blockAnchor, UINT32_MAX);
             document.Text("q");
         }
+
         document.EndGroup(continuation);
         document.EndGroup(block);
         ASSERT_TRUE(document.Seal());
@@ -1195,10 +1294,12 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         // Width 9 permits Minimum + demand 2 exactly, but 8 needs fallback.
         // None uses the continuation group's indentation (3+6=9) as its block.
         AppendRender(actual, document, 9, borrowed ? "borrowed captured block" : "generated captured block");
+
         if (borrowed) {
             AppendRender(actual, document, 8, "borrowed captured block");
         }
     }
+
     for (bool borrowed : {false, true}) {
         Document document("\n");
         auto line = [&] (AnchorId anchor, std::uint32_t demand) {
@@ -1221,6 +1322,7 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         document.Text("z");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {8u, UINT32_MAX - 1}) {
             AppendRender(
                 actual,
@@ -1229,19 +1331,23 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
                 borrowed ? "borrowed saturated demand" : "generated saturated demand");
         }
     }
+
     for (bool borrowed : {false, true}) {
         Document document("\n");
         document.Text("call(");
         auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn, 0, 2, 2});
         auto group = document.BeginGroup({GroupMode::Consistent, 2});
+
         if (borrowed) {
             document.SourceLineIndent(0, 1, 1, 1, anchor, 15);
         } else {
             document.Gap({GapKind::Hard, 0, 15}, anchor);
         }
+
         document.Text("very_long_atom)");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {8u, 20u}) {
             AppendRender(
                 actual,
@@ -1250,6 +1356,7 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
                 borrowed ? "borrowed unbreakable atom" : "generated unbreakable atom");
         }
     }
+
     {
         Document document("");
         auto block = document.BeginGroup({GroupMode::Consistent, 3});
@@ -1267,24 +1374,29 @@ TEST(GroupLayout, DelimiterRequirementsAndAnchorReuseGolden)
         ASSERT_TRUE(document.Seal());
         AppendRender(actual, document, 80, "generated block anchor");
     }
+
     for (bool borrowed : {false, true}) {
         Document document("\n");
         document.Text("call(");
         auto anchor = document.MarkAnchor({AnchorKind::DelimiterColumn, 0, 2});
         auto group = document.BeginGroup();
+
         if (borrowed) {
             document.SourceLineIndent(0, 1, 1, 1, anchor, 0);
         } else {
             document.Gap({GapKind::Hard, 0, 0}, anchor);
         }
+
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         // Zero demand does not permit a delimiter target at the column limit.
         // Positive-demand equality below Width is covered by captured blocks.
         for (const auto width : {5u, 6u}) {
             AppendRender(actual, document, width, borrowed ? "borrowed zero demand" : "generated zero demand");
         }
     }
+
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "alignment-requirements.output.txt",
         actual);
@@ -1310,6 +1422,7 @@ std::string ExpandTabs(std::string_view text, std::uint8_t tabWidth)
 {
     std::string expanded;
     std::size_t column = 0;
+
     for (char c : text) {
         if (c == '\t') {
             const auto spaces = tabWidth - column % tabWidth;
@@ -1320,6 +1433,7 @@ std::string ExpandTabs(std::string_view text, std::uint8_t tabWidth)
             column = c == '\r' || c == '\n' ? 0 : column + 1;
         }
     }
+
     return expanded;
 }
 
@@ -1348,6 +1462,7 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
     ASSERT_TRUE(tabs.State);
     EXPECT_EQ(ExpandTabs(tabs.Text, 4), ExpandTabs(spaces.Text, 4));
     EXPECT_EQ(spaces.Broken, tabs.Broken);
+
     for (std::uint8_t width : {1, 8, 32}) {
         auto otherSpaces = document.Render({.Width = 20, .TabWidth = width, .LineEnding = Newline::CRLF});
         auto otherTabs = document.Render({
@@ -1362,6 +1477,7 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
         EXPECT_EQ(otherSpaces.Broken, otherTabs.Broken);
         EXPECT_EQ(std::string_view(otherTabs.Text).substr(0, source.size()), std::string_view(source));
     }
+
     EXPECT_EQ(std::string_view(spaces.Text).substr(source.size()), "\r\n      c(\r\n         xy;\r\n           next;");
     EXPECT_EQ(std::string_view(tabs.Text).substr(source.size()), "\r\n\t  c(\r\n\t\t xy;\r\n\t\t   next;");
     // Generated tab stops represent the policy's maximum supported IndentWidth.
@@ -1408,9 +1524,11 @@ TEST(GroupLayout, GeneratedTabsPreserveVisualLayoutAndOpaqueSource)
         facts.EndGroup(owner);
         ASSERT_TRUE(facts.Seal());
         const bool multiline = value.find('\n') != value.npos;
+
         for (const std::uint8_t tabWidth : {1, 4, 8, 32}) {
             const std::uint32_t exactWidth =
                 3 + columns + static_cast<std::uint32_t>(std::count(value.begin(), value.end(), '\t')) * tabWidth;
+
             for (const bool narrow : {false, true}) {
                 Policy leafPolicy{.Width = multiline ? 80 : exactWidth - narrow, .TabWidth = tabWidth};
                 const auto mapped = facts.Render(leafPolicy);
@@ -1426,6 +1544,7 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
     constexpr std::string_view source = "// note\r\n";
     constexpr auto tokenEnd = static_cast<std::uint32_t>(source.size() - 1);
     std::string actual;
+
     for (auto global : {Newline::CRLF, Newline::LF}) {
         Document document(source);
         document.SourceText(0, tokenEnd, 100, true);
@@ -1452,6 +1571,7 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
         document.Gap({GapKind::Hard, 0}, InvalidId, {.Identity = 204});
         document.Text("done;", {.Identity = 205});
         ASSERT_TRUE(document.Seal());
+
         for (auto width : {20u, 9u}) {
             const bool broken = width == 9;
             auto output = document
@@ -1471,6 +1591,7 @@ TEST(GroupLayout, SourceCarriageReturnAndLocalGapNewlinesGolden)
             actual += '\n';
         }
     }
+
     test::golden::ExpectGolden(
         std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "source-cr-gap-newlines.output.txt",
         actual);
@@ -1488,6 +1609,7 @@ TEST(GroupLayout, RejectsMalformedGapNewlineOverrides)
             EXPECT_EQ(output.State.Code, Error::InvalidPolicy);
             EXPECT_TRUE(output.Text.empty());
         }
+
         for (bool invalidFlat : {false, true}) {
             Document document("");
             auto group = document.BeginGroup();
@@ -1529,12 +1651,14 @@ TEST(GroupLayout, UnicodeColumnsGolden)
 {
     constexpr std::string_view source = "é中🙂";
     std::string actual;
+
     for (const auto mode : {GroupMode::Consistent, GroupMode::Fill}) {
         for (const auto kind : {"text", "source", "run", "verbatim", "choice"}) {
             Document document(source);
             document.Text("前(");
             const auto group = document.BeginGroup({mode, 2});
             const std::string_view name(kind);
+
             if (name == "text") {
                 document.Text(source);
             } else if (name == "source") {
@@ -1548,16 +1672,19 @@ TEST(GroupLayout, UnicodeColumnsGolden)
             } else {
                 document.ConditionalText(group, source, "é中🙂!");
             }
+
             document.Gap();
             document.Text("x)");
             document.EndGroup(group);
             ASSERT_TRUE(document.Seal());
             const auto label = std::string(mode == GroupMode::Consistent ? "consistent " : "fill ") + kind;
+
             for (const auto width : {8u, 7u}) {
                 AppendRender(actual, document, width, label);
             }
         }
     }
+
     {
         Document document("");
         document.Text("ééééééé\t");
@@ -1568,10 +1695,12 @@ TEST(GroupLayout, UnicodeColumnsGolden)
         document.Text("cd");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {13u, 12u}) {
             AppendRender(actual, document, width, "unicode tab alignment");
         }
     }
+
     {
         Document document("");
         document.Verbatim("é\r\n日本");
@@ -1582,10 +1711,12 @@ TEST(GroupLayout, UnicodeColumnsGolden)
         document.Text("y");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {5u, 4u}) {
             AppendRender(actual, document, width, "unicode CRLF alignment");
         }
     }
+
     {
         Document document("");
         const auto group = document.BeginGroup({GroupMode::Fill, 0});
@@ -1594,10 +1725,12 @@ TEST(GroupLayout, UnicodeColumnsGolden)
         document.Verbatim("é中\r\n🙂");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {4u, 3u}) {
             AppendRender(actual, document, width, "unicode multiline prefix");
         }
     }
+
     {
         Document document("");
         const auto group = document.BeginGroup({GroupMode::Consistent, 0});
@@ -1606,10 +1739,12 @@ TEST(GroupLayout, UnicodeColumnsGolden)
         document.Text("x");
         document.EndGroup(group);
         ASSERT_TRUE(document.Seal());
+
         for (const auto width : {4u, 3u}) {
             AppendRender(actual, document, width, "combining code point");
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "unicode-columns.expected", actual);
 }
 
@@ -1631,6 +1766,7 @@ TEST(GroupLayout, InvalidUTF8ColumnsMatchIndividualBytes)
         build(counterpart, ascii.size());
         ASSERT_TRUE(malformed.Seal());
         ASSERT_TRUE(counterpart.Seal());
+
         for (const auto extra : {3u, 4u}) {
             const Policy policy{.Width = std::uint32_t(invalid.size()) + extra};
             const auto actual = malformed.Render(policy);
@@ -1668,6 +1804,7 @@ void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
                             .LineBase = spec.LineBase,
                         });
                     }
+
                     return document.BeginGroup(spec, compact);
                 };
                 const auto owner =
@@ -1680,12 +1817,14 @@ void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
                 document.Gap({GapKind::Flat, 0}, InvalidId, {2, 2, 91});
                 text(2, 3, 101);
                 text(3, 4, 102);
+
                 for (auto i = 0u; i < repetitions; ++i) {
                     for (auto t = 1u; t < 4u; ++t) {
                         document.Gap({GapKind::Flat, static_cast<std::uint16_t>(t == 1)}, InvalidId, {4, 5});
                         text(t, t + 1, 103 + i * 3 + t);
                     }
                 }
+
                 document.Gap({GapKind::Soft, 1}, InvalidId, {4, 5});
                 document.ConditionalText(owner, "", ",", {5, 5});
                 const auto child =
@@ -1716,6 +1855,7 @@ void ExpectSourceRunsMatchIndividualAtoms(std::string_view source)
             fill(separate, false);
             ASSERT_TRUE(packed.Seal());
             ASSERT_TRUE(separate.Seal());
+
             for (auto tab : {1u, 4u, 8u}) {
                 for (auto width : {3u, 10u, 40u, 80u}) {
                     const Policy policy{.Width = width, .TabWidth = static_cast<std::uint8_t>(tab), .SourceMap = false};
@@ -1746,6 +1886,7 @@ TEST(GroupLayout, BorrowedFlatWhitespaceRespectsLayout)
         spec.FlatSourceEnd = end;
         return spec;
     };
+
     // An unused anchor prevents packing, providing an equivalent two-node
     // representation for checking whitespace layout.
     for (auto tab : {1u, 4u, 8u}) {
@@ -1756,9 +1897,11 @@ TEST(GroupLayout, BorrowedFlatWhitespaceRespectsLayout)
             const auto fill = [&] (Document& document, bool barrier) {
                 const auto owner = document.BeginGroup({GroupMode::Fill, 2});
                 document.Gap(borrowed(GapKind::Flat, 0, 1), InvalidId, {0, 1, 9});
+
                 if (barrier) {
                     document.MarkAnchor({});
                 }
+
                 document.SourceText(1, 5, 7);
                 document.Gap({GapKind::Soft, 1}, InvalidId, {5, 6});
                 document.SourceText(6, 10, 8, true);
@@ -1777,6 +1920,7 @@ TEST(GroupLayout, BorrowedFlatWhitespaceRespectsLayout)
             EXPECT_EQ(a.Broken, b.Broken);
         }
     }
+
     Document mixed(" \t ");
     auto group = mixed.BeginGroup();
     mixed.Text("ab");
@@ -1851,6 +1995,7 @@ TEST(GroupLayout, BorrowedFlatWhitespaceRespectsLayout)
 TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
 {
     constexpr std::array<Provenance, 5> badRanges{{{InvalidId, 0}, {0, InvalidId}, {4, 3}, {0, 8}, {8, 8}}};
+
     for (auto range : badRanges) {
         Document document(" \t ");
         GapSpec spec{GapKind::Flat, 0};
@@ -1859,7 +2004,9 @@ TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
         EXPECT_NO_THROW(document.Gap(spec));
         EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
     }
+
     constexpr std::string_view invalidBytes = "a\n\r\v\xff";
+
     for (std::uint32_t i = 0; i < invalidBytes.size(); ++i) {
         Document document(invalidBytes);
         GapSpec spec;
@@ -1868,6 +2015,7 @@ TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
         document.Gap(spec);
         EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
     }
+
     for (bool badFlat : {false, true}) {
         Document document("\n");
         auto group = document.BeginGroup();
@@ -1879,11 +2027,13 @@ TEST(GroupLayout, RejectsMalformedGapSourcesAndZeroNewlineCounts)
         document.ConditionalGap(group, flat, broken);
         EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
     }
+
     for (auto kind : {GapKind::Flat, GapKind::Soft, GapKind::Hard}) {
         Document document("");
         document.Gap({.Kind = kind, .Spaces = 0, .NewlineCount = 0});
         EXPECT_EQ(document.Seal().Code, Error::InvalidPolicy);
     }
+
     for (bool badFlat : {false, true}) {
         Document document("");
         auto group = document.BeginGroup();
@@ -1942,6 +2092,7 @@ TEST(GroupLayout, SourceLineIndentPrefixesGolden)
 {
     constexpr std::array<std::string_view, 4> prefixes{"\n", "\r\n", " \t\r\n\t\n\n", "\n"};
     std::string actual;
+
     for (std::size_t index = 0; index < prefixes.size(); ++index) {
         const bool commentCR = index == prefixes.size() - 1;
         std::string source = commentCR ? "// note\r" : "";
@@ -1949,30 +2100,36 @@ TEST(GroupLayout, SourceLineIndentPrefixesGolden)
         source += prefixes[index];
         const auto end = static_cast<std::uint32_t>(source.size());
         source += " \t ";
+
         for (auto indent : {0, 6}) {
             Document document(source);
             auto group = document.BeginGroup({GroupMode::Fill, indent});
+
             if (commentCR) {
                 document.SourceText(0, begin, 100, true);
             } else {
                 document.Text("head");
             }
+
             document.SourceLineIndent(begin, end, end, end + 3, InvalidId, 0, 101);
             document.Text("x");
             document.EndGroup(group);
             ASSERT_TRUE(document.Seal());
+
             for (std::uint8_t tabWidth : {1, 4, 32}) {
                 for (auto kind : {IndentationKind::Spaces, IndentationKind::Tabs}) {
                     Policy policy{.Width = 80, .TabWidth = tabWidth, .LineEnding = Newline::CRLF, .Indentation = kind};
                     auto output = document.Render(policy);
                     ASSERT_TRUE(output.State);
                     EXPECT_TRUE(output.Broken[group]);
+
                     if (commentCR) {
                         EXPECT_EQ(
                             std::string_view(output.Text).substr(0, end),
                             std::string_view(source).substr(0, end));
                         EXPECT_EQ(output.Text.find("\r\r\n"), std::string_view::npos);
                     }
+
                     actual += "prefix=" + std::to_string(index) + " indent=" + std::to_string(indent) + " tab=" +
                         std::to_string(tabWidth);
                     actual += kind == IndentationKind::Tabs ? " tabs:\n" : " spaces:\n";
@@ -1982,6 +2139,7 @@ TEST(GroupLayout, SourceLineIndentPrefixesGolden)
             }
         }
     }
+
     test::golden::ExpectGolden(std::filesystem::path(DOCUMENT_TESTDATA_DIR) / "source-line-indent.output.txt", actual);
 }
 
@@ -2021,17 +2179,21 @@ TEST(GroupLayout,
         document.Text("aa");
         document.Gap();
         GroupId wrapper = InvalidId;
+
         if (nested) {
             wrapper = document.BeginGroup({GroupMode::Fill, 0});
         }
+
         auto child = document.BeginGroup({GroupMode::Fill, 4});
         document.ConditionalText(child, "", "bbbb");
         document.SourceLineIndent(0, 1, 1, 1);
         document.Text("x");
         document.EndGroup(child);
+
         if (nested) {
             document.EndGroup(wrapper);
         }
+
         document.EndGroup(parent);
         ASSERT_TRUE(document.Seal());
         ExpectText(document, 7, "aa bbbb\n    x");
@@ -2039,6 +2201,7 @@ TEST(GroupLayout,
         auto output = document.Render({.Width = 5});
         EXPECT_TRUE(output.Broken[parent]);
         EXPECT_TRUE(output.Broken[child]);
+
         if (nested) {
             EXPECT_TRUE(output.Broken[wrapper]);
         }
@@ -2140,6 +2303,7 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
     constexpr std::array<Provenance, 6> badRanges{
         {{InvalidId, InvalidId}, {InvalidId, 0}, {0, InvalidId}, {2, 1}, {0, 4}, {4, 4}},
     };
+
     for (auto range : badRanges) {
         for (bool badPrefix : {false, true}) {
             Document document("\n \t");
@@ -2152,6 +2316,7 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
             EXPECT_TRUE(document.Render().Text.empty());
         }
     }
+
     for (auto prefix : {"", " ", "\n\t", "\r", "\n\r", "x\n", "\v\n"}) {
         Document document(prefix);
         const auto end = static_cast<std::uint32_t>(std::string_view(prefix).size());
@@ -2159,6 +2324,7 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
         EXPECT_EQ(document.Seal().Code, Error::InvalidLinePrefix);
         EXPECT_EQ(document.Render().State.Code, Error::InvalidLinePrefix);
     }
+
     Document horizontal("\nx");
     horizontal.SourceLineIndent(0, 1, 1, 2);
     EXPECT_EQ(horizontal.Seal().Code, Error::InvalidSourceRange);
@@ -2188,6 +2354,7 @@ TEST(GroupLayout, SourceLineIndentRejectsMalformedRangesPrefixesAndAnchors)
 TEST(GroupLayout, RejectsMalformedBorrowedIndentEvenWhenFlat)
 {
     constexpr std::array<Provenance, 5> ranges{{{InvalidId, 0}, {0, InvalidId}, {2, 1}, {0, 4}, {4, 4}}};
+
     for (auto range : ranges) {
         Document document(" \t ");
         GapSpec spec{GapKind::Flat, 0};
@@ -2196,6 +2363,7 @@ TEST(GroupLayout, RejectsMalformedBorrowedIndentEvenWhenFlat)
         EXPECT_NO_THROW(document.Gap(spec));
         EXPECT_EQ(document.Seal().Code, Error::InvalidSourceRange);
     }
+
     for (bool badFlat : {false, true}) {
         Document document("\n");
         auto group = document.BeginGroup();
@@ -2326,6 +2494,7 @@ TEST(GroupLayout, AutomaticSuffixCoversNestedAndTerminalFillBoundaries)
 TEST(GroupLayout, ForceBreakUsesEditableSitesAndPublishesChildShapeGolden)
 {
     std::string actual;
+
     for (auto mode : {GroupMode::Fill, GroupMode::Consistent}) {
         Document document("");
         auto group = document.BeginGroup({mode, 0, true});
@@ -2343,6 +2512,7 @@ TEST(GroupLayout, ForceBreakUsesEditableSitesAndPublishesChildShapeGolden)
         actual.append(output.Text);
         actual += '\n';
     }
+
     Document nested("");
     auto parent = nested.BeginGroup({GroupMode::Fill, 0});
     nested.Text("xx");
@@ -2520,6 +2690,7 @@ TEST(GroupLayout, RejectsMalformedDocumentsAndDependencyCycles)
 TEST(GroupLayout, SourceTextRejectsSentinelOffsetsWithoutThrowing)
 {
     constexpr std::array<Provenance, 3> ranges{{{InvalidId, InvalidId}, {InvalidId, 0}, {0, InvalidId}}};
+
     for (auto source : {std::string_view{}, std::string_view{"abc"}}) {
         for (bool verbatim : {false, true}) {
             for (auto emit : {&Document::SourceText, &Document::AppendSourceText}) {
@@ -2536,6 +2707,7 @@ TEST(GroupLayout, SourceTextRejectsSentinelOffsetsWithoutThrowing)
             }
         }
     }
+
     // Paired sentinels remain valid generated provenance, and an ordinary
     // empty source slice is valid: neither should share SourceText's rejection.
     Document generated("");
@@ -2595,22 +2767,29 @@ TEST(GroupLayout, DeepNestingUsesExplicitStacksAndSublinearAllocationCount)
 {
     constexpr std::uint32_t depth = 100000;
     CountingResource resource;
+
     for (unsigned shape : {0u, 1u, 2u}) {
         const auto allocations = resource.Allocations;
         Document document("\n", &resource);
+
         for (std::uint32_t i = 0; i < depth; ++i) {
             document.BeginGroup({shape == 2 ? GroupMode::Fill : GroupMode::Consistent});
         }
+
         document.Text("leaf");
+
         if (shape == 1) {
             document.SourceLineIndent(0, 1, 1, 1);
         } else {
             document.Gap({shape == 2 ? GapKind::Soft : GapKind::Hard, 0});
         }
+
         document.Text("tail");
+
         for (std::uint32_t i = depth; i != 0; --i) {
             document.EndGroup(i - 1);
         }
+
         ASSERT_TRUE(document.Seal());
         auto output = document.Render({.Width = 6, .SourceMap = false}, &resource);
         ASSERT_TRUE(output.State);
@@ -2625,6 +2804,7 @@ TEST(GroupLayout, DeepNestingUsesExplicitStacksAndSublinearAllocationCount)
         EXPECT_LT(resource.Allocations - allocations, 200u);
         EXPECT_LT(resource.Peak, 128u * 1024u * 1024u);
     }
+
     EXPECT_EQ(resource.Bytes, 0u);
 }
 
@@ -2632,15 +2812,19 @@ TEST(GroupLayout, SaturatesWidthsWithoutRescanningExponentialFlatExpansion)
 {
     Document document("");
     constexpr std::uint32_t depth = 66000;
+
     for (std::uint32_t i = 0; i < depth; ++i) {
         document.BeginGroup();
         document.Text("prefix");
         document.Gap({GapKind::Soft, UINT16_MAX});
     }
+
     document.Text("leaf");
+
     for (std::uint32_t i = depth; i != 0; --i) {
         document.EndGroup(i - 1);
     }
+
     ASSERT_TRUE(document.Seal());
     auto output = document.Render({.Width = 20, .SourceMap = false});
     ASSERT_TRUE(output.State);
@@ -2670,11 +2854,13 @@ TEST(GroupLayout,
     const auto large = expanded.Render();
     ASSERT_TRUE(large.State);
     ASSERT_EQ(large.Text.size(), 140000u);
+
     for (const auto range : {std::pair{0u, 1u}, std::pair{1u, 2u}}) {
         Document half("\r\n");
         half.SourceWhitespace(range.first, range.second, Newline::LF);
         EXPECT_EQ(half.Seal().Code, Error::InvalidSourceRange);
     }
+
     Document token("text\n");
     token.SourceWhitespace(0, 5, Newline::CRLF);
     EXPECT_EQ(token.Seal().Code, Error::InvalidSourceRange);
@@ -2694,6 +2880,7 @@ TEST(GroupLayout, SourceWhitespaceRetainsBareCRAtSourceAndEmittedBoundaries)
             EXPECT_EQ(result.Text, "\r\r\n");
         }
     }
+
     Document separated("\r \r\n");
     separated.SourceText(0, 2, NoIdentity, true);
     separated.SourceWhitespace(2, 4, Newline::LF);
@@ -2711,6 +2898,7 @@ TEST(GroupLayout, SourceWhitespaceZeroChangeLFStillRequiresSafeIncomingBoundary)
         document.SourceWhitespace(2, 3, Newline::LF);
         ASSERT_TRUE(document.Seal());
         const auto result = document.Render();
+
         if (copySeparator) {
             ASSERT_TRUE(result.State);
             EXPECT_EQ(result.Text, "\r \n");
@@ -2724,9 +2912,11 @@ TEST(GroupLayout,
     SourceWhitespaceAlternatingRetentionKeepsLargeBounds)
 {
     std::string source;
+
     for (unsigned i = 0; i < 35000; ++i) {
         source += "\r\r\n \r\n";
     }
+
     Document document(source);
     document.SourceWhitespace(0, source.size(), Newline::LF);
     ASSERT_TRUE(document.Seal());

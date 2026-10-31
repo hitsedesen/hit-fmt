@@ -65,6 +65,7 @@ void WriteExportMetadata(NYT::NYson::IYsonConsumer* consumer, const TResult& res
     consumer->OnBeginMap();
         consumer->OnKeyedItem("offsets");
         consumer->OnBeginList();
+
             for (const auto& [blockId, offset] : result.SourceOffsets) {
                 consumer->OnListItem();
                 consumer->OnBeginMap();
@@ -86,6 +87,7 @@ void ReportExport(const TDocument& document, const TResult& result)
         result.Markdown.size(),
         result.Skipped,
         EExportStage::Rendering);
+
     if (result.Markdown.empty()) {
         THROW_ERROR_EXCEPTION("Markdown export contains no visible blocks for the requested document (Title: %v)",
             document.Title) << NYT::TErrorAttribute("page_count", document.Pages.size());

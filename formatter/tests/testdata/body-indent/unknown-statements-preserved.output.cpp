@@ -1,21 +1,26 @@
 static inline uint64_t Compute(uint64_t value)
 {
     uint64_t rem = value;
+
     for (int i = 0; i < 8; ++i) {
         rem ^= i;
     }
+
     return rem;
 }
 
 void Nested()
 {
     Prepare();
+
     if (Ready()) {
         External value = MakeValue();
+
         for (int i = 0; i < 2; ++i) {
             Use(value, i);
         }
     }
+
     Finish();
 }
 

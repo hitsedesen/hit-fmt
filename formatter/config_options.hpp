@@ -557,6 +557,11 @@
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesBefore, {}) \
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesAfter, {}) \
     OPT(std::optional<std::size_t>, MaxEmptyLines, std::nullopt)              \
+    OPT(std::optional<std::size_t>, MemberGroupMaxEmptyLines, std::nullopt)   \
+    OPT(formatter::BlankLineSetting, BlockBlankLinesAfter, {})              \
+    OPT(formatter::BlankLineSetting, ControlStatementBlankLinesBefore, {})   \
+    OPT(formatter::BlankLineSetting, MacroBlankLinesAround, {})             \
+    OPT(std::vector<std::string>, BlankLineMacroNames, {})                  \
     OPT(std::vector<std::string>, CallLineFirstArgumentNames, {})             \
     OPT(formatter::AttachedStringOverflow, CallLineFirstArgumentOverflow, \
         formatter::AttachedStringOverflow::Wrap) \

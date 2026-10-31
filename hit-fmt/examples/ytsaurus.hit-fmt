@@ -96,10 +96,15 @@ IndentNamespaces = NoIndent
 NamespaceBlankLinesAfterOpen = 1
 NamespaceBlankLinesBeforeClose = 1
 DefinitionBlankLines = 1
-MemberDefinitionBlankLines = 1
-# Two empty lines are allowed for selected member groups; finer scopes and
-# minimum (rather than exact) definition gaps are not currently configurable.
-MaxEmptyLines = 2
+MemberDefinitionBlankLines = Minimum:1
+# Retain authored field/method and method-definition groups; their semantic
+# justification remains a human decision. Other boundaries allow one gap.
+MaxEmptyLines = 1
+MemberGroupMaxEmptyLines = 2
+BlockBlankLinesAfter = 1
+ControlStatementBlankLinesBefore = 1
+MacroBlankLinesAround = 1
+BlankLineMacroNames = ["YT_LOG_*", "YT_TLOG_*", "THROW_ERROR_EXCEPTION", "YT_VERIFY"]
 CaseBlankLines = 1
 # Normalize existing separators; placement still needs human review.
 RulerLength = 80

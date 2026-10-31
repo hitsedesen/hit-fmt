@@ -5,6 +5,7 @@
 #include <cctype>
 #include <charconv>
 #include <fstream>
+#include <iterator>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -22,9 +23,11 @@ std::string_view Trim(std::string_view text)
     while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front()))) {
         text.remove_prefix(1);
     }
+
     while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back()))) {
         text.remove_suffix(1);
     }
+
     return text;
 }
 
@@ -32,8 +35,10 @@ std::string_view StripComment(std::string_view line)
 {
     bool quoted = false;
     bool escaped = false;
+
     for (size_t index = 0; index < line.size(); ++index) {
         char character = line[index];
+
         if (escaped) {
             escaped = false;
         } else if (character == '\\' && quoted) {
@@ -44,6 +49,7 @@ std::string_view StripComment(std::string_view line)
             return line.substr(0, index);
         }
     }
+
     return line;
 }
 
@@ -58,6 +64,7 @@ size_t ArrayDepth(std::string_view text, size_t depth, const std::filesystem::pa
 {
     bool quoted = false;
     bool escaped = false;
+
     for (char character : text) {
         if (escaped) {
             escaped = false;
@@ -71,12 +78,15 @@ size_t ArrayDepth(std::string_view text, size_t depth, const std::filesystem::pa
             if (depth == 0) {
                 ThrowConfigError(path, line, "unexpected closing array bracket");
             }
+
             --depth;
         }
     }
+
     if (quoted) {
         ThrowConfigError(path, line, "unterminated quoted array item");
     }
+
     return depth;
 }
 
@@ -84,9 +94,11 @@ size_t ParseNonnegativeInteger(std::string_view value, const std::filesystem::pa
 {
     size_t result = 0;
     auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), result);
+
     if (error != std::errc{} || end != value.data() + value.size()) {
         ThrowConfigError(path, line, "expected a nonnegative integer");
     }
+
     return result;
 }
 
@@ -96,38 +108,48 @@ T ParseEnum(std::string_view value, const std::filesystem::path& path, size_t li
     if (auto result = DeserializeConfigEnum<T>(value)) {
         return *result;
     }
+
     std::string error = "expected ";
     const auto& names = ConfigEnumNames<T>::Values;
+
     for (size_t index = 0; index < names.size(); ++index) {
         if (index != 0) {
             error += index + 1 == names.size() ? " or " : ", ";
         }
+
         error += names[index];
     }
+
     ThrowConfigError(path, line, error);
 }
 
 std::string ParseString(std::string_view value, const std::filesystem::path& path, size_t line)
 {
     value = Trim(value);
+
     if (value.size() < 2 || value.front() != '"' || value.back() != '"') {
         ThrowConfigError(path, line, "expected a quoted string");
     }
 
     std::string result;
     result.reserve(value.size() - 2);
+
     for (size_t index = 1; index + 1 < value.size(); ++index) {
         char character = value[index];
+
         if (character == '"') {
             ThrowConfigError(path, line, "unescaped quote inside string");
         }
+
         if (character != '\\') {
             result.push_back(character);
             continue;
         }
+
         if (++index + 1 >= value.size()) {
             ThrowConfigError(path, line, "unterminated string escape");
         }
+
         switch (value[index]) {
             case '\\':
             case '"':
@@ -143,29 +165,36 @@ std::string ParseString(std::string_view value, const std::filesystem::path& pat
                 ThrowConfigError(path, line, "unsupported string escape");
         }
     }
+
     return result;
 }
 
 std::vector<std::string> ParseStringList(std::string_view value, const std::filesystem::path& path, size_t line)
 {
     value = Trim(value);
+
     if (value.size() < 2 || value.front() != '[' || value.back() != ']') {
         ThrowConfigError(path, line, "expected an array of quoted strings");
     }
+
     value.remove_prefix(1);
     value.remove_suffix(1);
 
     std::vector<std::string> result;
     while (true) {
         value = Trim(value);
+
         if (value.empty()) {
             return result;
         }
+
         if (value.front() != '"') {
             ThrowConfigError(path, line, "expected a quoted array item");
         }
+
         bool escaped = false;
         size_t end = 1;
+
         for (; end < value.size(); ++end) {
             if (escaped) {
                 escaped = false;
@@ -175,18 +204,23 @@ std::vector<std::string> ParseStringList(std::string_view value, const std::file
                 break;
             }
         }
+
         if (end == value.size()) {
             ThrowConfigError(path, line, "unterminated quoted array item");
         }
+
         result.push_back(ParseString(value.substr(0, end + 1), path, line));
         value.remove_prefix(end + 1);
         value = Trim(value);
+
         if (value.empty()) {
             return result;
         }
+
         if (value.front() != ',') {
             ThrowConfigError(path, line, "expected ',' between array items");
         }
+
         value.remove_prefix(1);
     }
 }
@@ -195,9 +229,11 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
 {
     auto expect = [&] (char character) {
         value = Trim(value);
+
         if (value.empty() || value.front() != character) {
             ThrowConfigError(path, line, "IncludeGroups expected '" + std::string(1, character) + "'");
         }
+
         value.remove_prefix(1);
     };
     auto fieldValue = [&] {
@@ -205,8 +241,10 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
         bool escaped = false;
         size_t depth = 0;
         size_t end = 0;
+
         for (; end < value.size(); ++end) {
             const char character = value[end];
+
             if (escaped) {
                 escaped = false;
             } else if (quoted && character == '\\') {
@@ -220,12 +258,14 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
                     if (!depth) {
                         break;
                     }
+
                     --depth;
                 } else if (!depth && (character == ',' || character == '}')) {
                     break;
                 }
             }
         }
+
         auto result = Trim(value.substr(0, end));
         value.remove_prefix(end);
         return result;
@@ -234,34 +274,43 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
     std::vector<IncludeGroupRule> result;
     while (true) {
         value = Trim(value);
+
         if (!value.empty() && value.front() == ']') {
             value.remove_prefix(1);
+
             if (!Trim(value).empty()) {
                 ThrowConfigError(path, line, "unexpected text after IncludeGroups array");
             }
+
             return result;
         }
+
         expect('{');
         IncludeGroupRule group;
         bool prefixes = false;
         bool standard = false;
         bool depth = false;
         bool priority = false;
+
         while (true) {
             value = Trim(value);
+
             if (!value.empty() && value.front() == '}') {
                 value.remove_prefix(1);
                 break;
             }
+
             const auto end = value.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_");
             const auto name = value.substr(0, end);
             value.remove_prefix(name.size());
             expect('=');
             const auto field = fieldValue();
+
             if (name == "Prefix" || name == "Prefixes") {
                 if (prefixes) {
                     ThrowConfigError(path, line, "IncludeGroups requires at most one Prefix or Prefixes field");
                 }
+
                 prefixes = true;
                 group.Prefixes = name == "Prefix"
                     ? std::vector<std::string>{ParseString(field, path, line)}
@@ -270,17 +319,22 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
                 if (standard) {
                     ThrowConfigError(path, line, "IncludeGroups has duplicate StandardHeaders field");
                 }
+
                 standard = true;
+
                 if (field != "true") {
                     ThrowConfigError(path, line, "IncludeGroups StandardHeaders must be true");
                 }
+
                 group.StandardHeaders = true;
             } else if (name == "Depth") {
                 if (depth) {
                     ThrowConfigError(path, line, "IncludeGroups has duplicate Depth field");
                 }
+
                 depth = true;
                 auto [end, error] = std::from_chars(field.data(), field.data() + field.size(), group.Depth);
+
                 if (error != std::errc{} || end != field.data() + field.size() || group.Depth < 0) {
                     ThrowConfigError(path, line, "IncludeGroups Depth must be an integer " "from 0 to 127");
                 }
@@ -288,28 +342,37 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
                 if (priority) {
                     ThrowConfigError(path, line, "IncludeGroups has duplicate Priority field");
                 }
+
                 priority = true;
                 auto [end, error] = std::from_chars(field.data(), field.data() + field.size(), group.Priority);
+
                 if (error != std::errc{} || end != field.data() + field.size()) {
                     ThrowConfigError(path, line, "IncludeGroups Priority must be an integer " "from -128 to 127");
                 }
             } else {
                 ThrowConfigError(path, line, "unknown IncludeGroups field '" + std::string(name) + "'");
             }
+
             value = Trim(value);
+
             if (!value.empty() && value.front() == '}') {
                 continue;
             }
+
             expect(',');
         }
+
         if (!prefixes && !standard) {
             ThrowConfigError(path, line, "IncludeGroups requires Prefix, Prefixes or StandardHeaders = true");
         }
+
         result.push_back(std::move(group));
         value = Trim(value);
+
         if (!value.empty() && value.front() == ']') {
             continue;
         }
+
         expect(',');
     }
 }
@@ -319,9 +382,11 @@ bool ParseBoolean(std::string_view value, const std::filesystem::path& path, siz
     if (value == "true") {
         return true;
     }
+
     if (value == "false") {
         return false;
     }
+
     ThrowConfigError(path, line, "expected true or false");
 }
 
@@ -331,32 +396,41 @@ std::vector<std::string> ParseNamespaceExemptions(
     size_t line)
 {
     auto names = ParseStringList(value, path, line);
+
     for (const auto& name : names) {
         size_t start = 0;
+
         while (start < name.size()) {
             auto end = name.find("::", start);
+
             if (end == std::string::npos) {
                 end = name.size();
             }
+
             auto part = std::string_view(name).substr(start, end - start);
+
             if (part.empty() || !(std::isalpha(static_cast<unsigned char>(part.front())) || part.front() == '_') ||
                 part.find_first_not_of("abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
                     std::string_view::npos)
             {
                 ThrowConfigError(path, line, "expected qualified namespace names");
             }
+
             start = end == name.size() ? end : end + 2;
         }
+
         if (name.empty() || name.ends_with("::")) {
             ThrowConfigError(path, line, "expected qualified namespace names");
         }
     }
+
     return names;
 }
 
 std::vector<std::string> ParseCallNames(std::string_view value, const std::filesystem::path& path, size_t line)
 {
     auto names = ParseStringList(value, path, line);
+
     for (const auto& name : names) {
         if (name.empty() || !(std::isalpha(static_cast<unsigned char>(name.front())) || name.front() == '_') ||
             name.find_first_not_of("abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
@@ -365,6 +439,7 @@ std::vector<std::string> ParseCallNames(std::string_view value, const std::files
             ThrowConfigError(path, line, "expected call identifier names");
         }
     }
+
     return names;
 }
 
@@ -374,9 +449,11 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
     size_t line)
 {
     auto prefixes = ParseStringList(value, path, line);
+
     if (prefixes.empty()) {
         return std::nullopt;
     }
+
     for (const auto& prefix : prefixes) {
         if (prefix.find_first_not_of("abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") !=
             std::string::npos)
@@ -384,6 +461,7 @@ std::optional<std::vector<std::string>> ParseNamePrefixes(
             ThrowConfigError(path, line, "prefix must contain only identifier characters");
         }
     }
+
     return prefixes;
 }
 
@@ -408,6 +486,7 @@ void ParseField(std::optional<T>& field, std::string_view value, const std::file
         field.reset();
         return;
     }
+
     T parsed{};
     ParseField(parsed, value, path, line);
     field = parsed;
@@ -430,10 +509,12 @@ void ParseField(std::vector<std::string>& field, std::string_view value, const s
 void ParseField(std::vector<std::regex>& field, std::string_view value, const std::filesystem::path& path, size_t line)
 {
     field.clear();
+
     for (const auto& pattern : ParseStringList(value, path, line)) {
         if (pattern.empty()) {
             ThrowConfigError(path, line, "Exclude regex must not be empty");
         }
+
         try {
             field.emplace_back(pattern);
         } catch (const std::regex_error& error) {
@@ -460,7 +541,8 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
     {
         if constexpr (Member == &Style::ChainedCallRootNames || Member == &Style::AlwaysBreakChainRootNames ||
             Member == &Style::IndentedCallScopePairs || Member == &Style::IndentedChainScopePairs ||
-            Member == &Style::StickyChainCallPairs || Member == &Style::ClassMacroNames)
+            Member == &Style::StickyChainCallPairs || Member == &Style::ClassMacroNames ||
+            Member == &Style::BlankLineMacroNames)
         {
             config.FormattingStyle.*Member = ParseStringList(value, path, line);
         } else {
@@ -474,6 +556,7 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
                 value = value == "true" ? "Indent" : "Preserve";
             }
         }
+
         ParseField(config.FormattingStyle.*Member, value, path, line);
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>,
@@ -498,13 +581,18 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
                 ThrowConfigError(path, line, "Inherit is only valid for member blank-line settings");
             }
         } else {
-            config.FormattingStyle.*Member = {BlankLineMode::Exact, ParseNonnegativeInteger(value, path, line)};
+            const bool minimum = value.starts_with("Minimum:");
+            config.FormattingStyle.*Member =
+                {
+                    minimum ? BlankLineMode::Minimum : BlankLineMode::Exact,
+                    ParseNonnegativeInteger(minimum ? Trim(value.substr(8)) : value, path, line),
+                };
         }
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, std::optional<std::
                 size_t>>)
     {
-        if constexpr (Member == &Style::MaxEmptyLines) {
+        if constexpr (Member == &Style::MaxEmptyLines || Member == &Style::MemberGroupMaxEmptyLines) {
             config.FormattingStyle.*Member =
                 value == "Preserve"
                 ? std::nullopt
@@ -576,16 +664,20 @@ void ValidateStyleLimits(
     } catch (const std::invalid_argument& error) {
         const std::string_view reason = error.what();
         std::string message(reason);
+
         for (std::size_t index = 0; index < Options.size(); ++index) {
             if (settingLines[index].Line == 0) {
                 continue;
             }
+
             const auto key = Options[index].Name;
             auto at = reason.find(key);
+
             while (at != std::string_view::npos) {
                 const auto identifier = [] (char value) {
                     return std::isalnum(static_cast<unsigned char>(value)) || value == '_';
                 };
+
                 if ((at == 0 || !identifier(reason[at - 1])) &&
                     (at + key.size() == reason.size() || !identifier(reason[at + key.size()])))
                 {
@@ -593,9 +685,11 @@ void ValidateStyleLimits(
                         std::to_string(settingLines[index].Line) + "]";
                     break;
                 }
+
                 at = reason.find(key, at + key.size());
             }
         }
+
         ThrowConfigError(path, line, message);
     }
 }
@@ -610,12 +704,14 @@ void ApplySetting(
 {
     for (std::size_t index = 0; index < Options.size(); ++index) {
         const auto& option = Options[index];
+
         if (option.Name == key) {
             option.Assign(config, value, path, line);
             settingLines[index] = {path, line};
             return;
         }
     }
+
     ThrowConfigError(path, line, "unknown setting '" + std::string(key) + "'; see --help-config.");
 }
 
@@ -635,12 +731,15 @@ bool AnnotationQualifiedName(std::string_view name)
 {
     while (true) {
         const auto separator = name.find("::");
+
         if (!AnnotationIdentifier(name.substr(0, separator))) {
             return false;
         }
+
         if (separator == std::string_view::npos) {
             return true;
         }
+
         name.remove_prefix(separator + 2);
     }
 }
@@ -648,6 +747,7 @@ bool AnnotationQualifiedName(std::string_view name)
 void RejectDuplicateAnnotations(std::vector<std::string_view>& names, std::string_view key)
 {
     std::sort(names.begin(), names.end());
+
     if (std::adjacent_find(names.begin(), names.end()) != names.end()) {
         throw std::invalid_argument("duplicate " + std::string(key) + " annotation name or scope endpoint");
     }
@@ -660,12 +760,15 @@ void ValidateAnnotationNames(
     bool qualified)
 {
     scratch.clear();
+
     for (const auto& name : input) {
         if (!(qualified ? AnnotationQualifiedName(name) : AnnotationIdentifier(name))) {
             throw std::invalid_argument("invalid " + std::string(key) + " annotation name");
         }
+
         scratch.push_back(name);
     }
+
     RejectDuplicateAnnotations(scratch, key);
 }
 
@@ -675,14 +778,18 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
     bool distinct = true)
 {
     const auto colon = pair.find(':');
+
     if (colon == std::string_view::npos) {
         throw std::invalid_argument(std::string(key) + " expects First:Second identifier pairs");
     }
+
     const auto begin = pair.substr(0, colon);
     const auto end = pair.substr(colon + 1);
+
     if (!AnnotationIdentifier(begin) || !AnnotationIdentifier(end) || (distinct && begin == end)) {
         throw std::invalid_argument(std::string(key) + " expects valid identifier pairs");
     }
+
     return {begin, end};
 }
 
@@ -693,10 +800,12 @@ std::vector<ChainCallPairAnnotation> CompileChainPairs(
 {
     std::vector<ChainCallPairAnnotation> result;
     result.reserve(input.size());
+
     for (const auto& pair : input) {
         const auto [first, second] = AnnotationScopePair(pair, key, distinct);
         result.push_back({std::string(first), std::string(second)});
     }
+
     std::sort(
         result.begin(),
         result.end(),
@@ -725,6 +834,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
                 style.StickyChainCallPairs.size(),
                 style.ClassMacroNames.size() * 2,
                 style.EnumMacroNames.size(),
+                style.BlankLineMacroNames.size(),
             }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
     ValidateAnnotationNames(style.EnumMacroNames, scratch, "EnumMacroNames", false);
@@ -734,31 +844,50 @@ void ValidateLibraryAnnotationStyle(const Style& style)
     ValidateAnnotationNames(style.AlwaysBreakChainRootNames, scratch, "AlwaysBreakChainRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainCallNames, scratch, "AlwaysBreakChainCallNames", false);
     scratch.clear();
+
+    for (std::string_view name : style.BlankLineMacroNames) {
+        if (!AnnotationIdentifier(name.ends_with('*') ? name.substr(0, name.size() - 1) : name)) {
+            throw std::invalid_argument("BlankLineMacroNames expects identifiers or identifier prefixes ending in *");
+        }
+
+        scratch.push_back(name);
+    }
+
+    RejectDuplicateAnnotations(scratch, "BlankLineMacroNames");
+    scratch.clear();
+
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
         scratch.push_back(begin);
         scratch.push_back(end);
     }
+
     RejectDuplicateAnnotations(scratch, "IndentedCallScopePairs");
     scratch.clear();
+
     for (const auto& pair : style.IndentedChainScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair, "IndentedChainScopePairs");
         scratch.push_back(begin);
         scratch.push_back(end);
     }
+
     RejectDuplicateAnnotations(scratch, "IndentedChainScopePairs");
     scratch.clear();
+
     for (const auto& pair : style.StickyChainCallPairs) {
         (void)AnnotationScopePair(pair, "StickyChainCallPairs", false);
         scratch.push_back(pair);
     }
+
     RejectDuplicateAnnotations(scratch, "StickyChainCallPairs");
     scratch.clear();
+
     for (const auto& pair : style.ClassMacroNames) {
         const auto [begin, end] = AnnotationScopePair(pair, "ClassMacroNames");
         scratch.push_back(begin);
         scratch.push_back(end);
     }
+
     RejectDuplicateAnnotations(scratch, "ClassMacroNames");
 }
 
@@ -766,16 +895,44 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
 {
     ValidateLibraryAnnotationStyle(style);
     LibraryAnnotations result;
+
+    for (const auto& name : style.BlankLineMacroNames) {
+        if (name.ends_with('*')) {
+            result.BlankLineMacroPrefixes_.push_back(name.substr(0, name.size() - 1));
+        } else {
+            result.BlankLineMacros_.push_back(name);
+        }
+    }
+
+    std::sort(result.BlankLineMacros_.begin(), result.BlankLineMacros_.end());
+    auto& prefixes = result.BlankLineMacroPrefixes_;
+    std::sort(prefixes.begin(), prefixes.end());
+    std::size_t retained = 0;
+
+    for (std::size_t index = 0; index < prefixes.size(); ++index) {
+        if (retained == 0 || !prefixes[index].starts_with(prefixes[retained - 1])) {
+            if (retained != index) {
+                prefixes[retained] = std::move(prefixes[index]);
+            }
+
+            ++retained;
+        }
+    }
+
+    prefixes.resize(retained);
     result.MessagePins_.reserve(style.CallLineFirstArgumentNames.size() + style.CallLineFirstStringNames.size() +
         style.CallLineMessageNames.size());
+
     for (const auto& name : style.CallLineFirstArgumentNames) {
         result.MessagePins_
             .push_back({name, FirstArgumentAnnotation::PinAnyArgument, style.CallLineFirstArgumentOverflow});
     }
+
     for (const auto& name : style.CallLineFirstStringNames) {
         result.MessagePins_
             .push_back({name, FirstArgumentAnnotation::PinCompleteStringLiteral, style.CallLineFirstStringOverflow});
     }
+
     for (const auto& name : style.CallLineMessageNames) {
         result.MessagePins_.push_back({
             name,
@@ -784,6 +941,7 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
             true,
         });
     }
+
     std::sort(
         result.MessagePins_.begin(),
         result.MessagePins_.end(),
@@ -791,9 +949,11 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
             if (left.Name != right.Name) {
                 return left.Name < right.Name;
             }
+
             if (left.MessageLayout != right.MessageLayout) {
                 return left.MessageLayout;
             }
+
             // Without message layout, the general argument rule wins overlaps.
             return left.FirstArgument == FirstArgumentAnnotation::PinAnyArgument &&
                 right.FirstArgument != FirstArgumentAnnotation::PinAnyArgument;
@@ -813,10 +973,12 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     result.AlwaysBreakChainCalls_ = style.AlwaysBreakChainCallNames;
     std::sort(result.AlwaysBreakChainCalls_.begin(), result.AlwaysBreakChainCalls_.end());
     result.VisualScopes_.reserve(style.IndentedCallScopePairs.size());
+
     for (const auto& pair : style.IndentedCallScopePairs) {
         const auto [begin, end] = AnnotationScopePair(pair);
         result.VisualScopes_.push_back({std::string(begin), std::string(end)});
     }
+
     std::sort(
         result.VisualScopes_.begin(),
         result.VisualScopes_.end(),
@@ -824,9 +986,11 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
             return left.Begin < right.Begin;
         });
     result.ScopeEndOrder_.reserve(result.VisualScopes_.size());
+
     for (std::size_t index = 0; index < result.VisualScopes_.size(); ++index) {
         result.ScopeEndOrder_.push_back(index);
     }
+
     std::sort(
         result.ScopeEndOrder_.begin(),
         result.ScopeEndOrder_.end(),
@@ -903,6 +1067,16 @@ std::span<const std::string> LibraryAnnotations::AlwaysBreakChainCalls() const
     return AlwaysBreakChainCalls_;
 }
 
+bool LibraryAnnotations::IsBlankLineMacro(std::string_view name) const noexcept
+{
+    if (std::binary_search(BlankLineMacros_.begin(), BlankLineMacros_.end(), name)) {
+        return true;
+    }
+
+    const auto prefix = std::upper_bound(BlankLineMacroPrefixes_.begin(), BlankLineMacroPrefixes_.end(), name);
+    return prefix != BlankLineMacroPrefixes_.begin() && name.starts_with(*std::prev(prefix));
+}
+
 bool LibraryAnnotations::AlwaysBreakChainCall(std::string_view name) const noexcept
 {
     return std::binary_search(AlwaysBreakChainCalls_.begin(), AlwaysBreakChainCalls_.end(), name);
@@ -949,28 +1123,39 @@ std::filesystem::path ResolveConfigInclude(std::string_view name, const std::fil
     if (name.empty() || name.find('\0') != std::string_view::npos) {
         ThrowConfigError(path, line, "include expects a nonempty file path");
     }
+
     if (name.starts_with("@/")) {
         const std::filesystem::path relative(name.substr(2));
+
         if (relative.empty() || relative.has_root_path()) {
             ThrowConfigError(path, line, "expected a repository-relative include path");
         }
+
         auto directory = std::filesystem::canonical(std::filesystem::absolute(path).parent_path());
+
         while (true) {
             std::error_code error;
+
             for (const auto name : {".git", ".arc"}) {
                 const auto marker = std::filesystem::status(directory / name, error);
+
                 if (!error && (std::filesystem::is_directory(marker) || std::filesystem::is_regular_file(marker))) {
                     return directory / relative;
                 }
+
                 error.clear();
             }
+
             const auto parent = directory.parent_path();
+
             if (parent == directory) {
                 ThrowConfigError(path, line, "cannot find repository root for include");
             }
+
             directory = parent;
         }
     }
+
     const std::filesystem::path included(name);
     return included.is_absolute() ? included : path.parent_path() / included;
 }
@@ -982,13 +1167,17 @@ size_t LoadConfigSettings(
     std::vector<std::filesystem::path>& active)
 {
     const auto canonical = std::filesystem::weakly_canonical(path);
+
     if (std::find(active.begin(), active.end(), canonical) != active.end()) {
         throw std::runtime_error("configuration include cycle: " + path.string());
     }
+
     if (active.size() >= 64) {
         throw std::runtime_error("configuration include depth exceeds 64: " + path.string());
     }
+
     std::ifstream input(path);
+
     if (!input.is_open()) {
         throw std::runtime_error("cannot open configuration file: " + path.string());
     }
@@ -1000,65 +1189,84 @@ size_t LoadConfigSettings(
         std::string Value;
         size_t Line;
     };
+
     std::vector<Setting> settings;
     std::optional<Setting> include;
     std::string lineText;
     size_t lineNumber = 0;
+
     while (std::getline(input, lineText)) {
         ++lineNumber;
         auto line = Trim(StripComment(lineText));
+
         if (line.empty()) {
             continue;
         }
+
         auto equals = line.find('=');
+
         if (equals == std::string_view::npos) {
             ThrowConfigError(path, lineNumber, "expected Key = Value");
         }
+
         auto key = Trim(line.substr(0, equals));
         auto value = Trim(line.substr(equals + 1));
+
         if (key.empty() || value.empty()) {
             ThrowConfigError(path, lineNumber, "expected Key = Value");
         }
+
         const size_t settingLine = lineNumber;
         std::string arrayValue;
         std::string arrayKey;
         auto arrayDepth = value.front() == '[' ? ArrayDepth(value, 0, path, lineNumber) : 0;
+
         if (arrayDepth != 0) {
             // key and value refer to lineText, which the next getline replaces.
             arrayKey = key;
             arrayValue = value;
+
             while (true) {
                 if (!std::getline(input, lineText)) {
                     if (!input.eof()) {
                         throw std::runtime_error("failed to read configuration file: " + path.string());
                     }
+
                     ThrowConfigError(path, settingLine, "unterminated array");
                 }
+
                 ++lineNumber;
                 auto itemLine = Trim(StripComment(lineText));
                 arrayValue.push_back('\n');
                 arrayValue.append(itemLine);
                 arrayDepth = ArrayDepth(itemLine, arrayDepth, path, lineNumber);
+
                 if (arrayDepth == 0) {
                     break;
                 }
             }
+
             key = arrayKey;
             value = arrayValue;
         }
+
         if (key == "include") {
             if (include) {
                 ThrowConfigError(path, settingLine, "duplicate include setting");
             }
+
             include = Setting{std::string(key), ParseString(value, path, settingLine), settingLine};
         } else {
             settings.push_back({std::string(key), std::string(value), settingLine});
         }
     }
+
     if (!input.eof()) {
         throw std::runtime_error("failed to read configuration file: " + path.string());
     }
+
     input.close();
+
     if (include) {
         const auto included = ResolveConfigInclude(include->Value, path, include->Line);
         try {
@@ -1067,9 +1275,11 @@ size_t LoadConfigSettings(
             ThrowConfigError(path, include->Line, error.what());
         }
     }
+
     for (const auto& setting : settings) {
         ApplySetting(config, setting.Key, setting.Value, path, setting.Line, settingLines);
     }
+
     active.pop_back();
     return lineNumber;
 }
@@ -1088,6 +1298,7 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
     } catch (const std::invalid_argument& error) {
         ThrowConfigError(path, lineNumber, error.what());
     }
+
     return config;
 }
 
@@ -1100,29 +1311,38 @@ std::optional<std::filesystem::path> FindStyleFile(
     auto directory = startDirectory.empty()
         ? std::filesystem::current_path(error)
         : std::filesystem::absolute(startDirectory, error);
+
     if (error) {
         if (onError) {
             onError(startDirectory.empty() ? std::filesystem::path(".") : startDirectory, error);
         }
+
         return std::nullopt;
     }
+
     startDirectory = std::move(directory);
 
     while (!startDirectory.empty()) {
         auto candidate = startDirectory / fileName;
+
         if (std::filesystem::is_regular_file(candidate, error) && !error) {
             return candidate;
         }
+
         if (error && error != std::errc::no_such_file_or_directory && onError) {
             onError(candidate, error);
         }
+
         error.clear();
         auto parent = startDirectory.parent_path();
+
         if (parent == startDirectory) {
             break;
         }
+
         startDirectory = std::move(parent);
     }
+
     return std::nullopt;
 }
 

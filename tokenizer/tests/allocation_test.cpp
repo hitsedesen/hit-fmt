@@ -19,9 +19,11 @@ void* operator new(size_t size)
     if (TrackAllocations) {
         ++AllocationCount;
     }
+
     if (auto* storage = std::malloc(size == 0 ? 1 : size)) {
         return storage;
     }
+
     throw std::bad_alloc();
 }
 
@@ -83,22 +85,27 @@ auto broken = R"missing(raw contents;
             descriptionSize += tokenizer::GetTokenizationErrorDescription(error.Kind).size();
         });
     size_t tokenCount = 0;
+
     for ([[maybe_unused]] const auto& token : tokenizer) {
         ++tokenCount;
     }
+
     TrackAllocations = false;
 
     if (AllocationCount != 0) {
         std::fprintf(stderr, "tokenizer performed %zu allocation(s)\n", AllocationCount);
         return 1;
     }
+
     if (tokenCount == 0) {
         std::fputs("tokenizer produced no tokens\n", stderr);
         return 1;
     }
+
     if (errorCount != 5 || descriptionSize == 0) {
         std::fputs("tokenizer did not report expected errors\n", stderr);
         return 1;
     }
+
     return 0;
 }

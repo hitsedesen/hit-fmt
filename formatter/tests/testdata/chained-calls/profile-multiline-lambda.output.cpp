@@ -180,9 +180,11 @@ void Receive()
                     // Combine the initial data with the transferred data.
                     auto& data = result.Value();
                     TSharedRefArrayBuilder builder(prefix.Size() + data.size());
+
                     for (const auto& part : prefix) {
                         builder.Add(part);
                     }
+
                     for (auto& part : data) {
                         builder.Add(std::move(part));
                     }
@@ -229,12 +231,17 @@ void Events()
 {
     YT_TLOG_TRACE("Queue is active")
         .With("Count", count);
+
     YT_LOG_DEBUG("Queue is idle")
         .With("Count", count);
+
     THROW_ERROR_EXCEPTION("No capacity")
         .With("Capacity", capacity);
+
     LOG_EVENT("Queue is active").With("Count", count);
+
     YT_TLOG_TRACE("No suffix");
+
     auto error = TError("Invalid request")
         .With("Code", code);
 }

@@ -77,11 +77,13 @@ TEST(HunkAdapter, RejectsInvalidOriginalPhysicalLines)
     for (std::string_view text : {"", "int x;", "int x;\n"}) {
         Input input(text);
         auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+
         for (formatter::Hunk hunk : {formatter::Hunk{0, 1}, {2, 1}, {2, 2}}) {
             EXPECT_THROW(
                 (void)formatter::FormatChanged(tree, formatter::Style{}, std::span(&hunk, 1), false),
                 std::invalid_argument) << text;
         }
+
         if (text.empty()) {
             formatter::Hunk hunk{1, 1};
             EXPECT_THROW(
@@ -127,6 +129,7 @@ TEST(HunkAdapter, EmptySelectionAndStrictEOFAuthority)
 {
     EXPECT_EQ(Changed("", {}).Result.Text, "");
     EXPECT_TRUE(Changed("", {}).Incomplete.empty());
+
     for (const std::string source : {"int f( int x );", "int f( int x );\n"}) {
         EXPECT_EQ(Changed(source, {}, true, HunkStyle()).Result.Text, source);
         const formatter::Hunk selected[] = {{1, 1}};
@@ -157,11 +160,13 @@ TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
     const formatter::Hunk selected[] = {{2, 2}};
     std::span<const parser::SourceRange> empty;
     EXPECT_EQ(Changed(source, selected, true, HunkStyle(), {.EditScope = empty}).Result.Text, source);
+
     for (const parser::SourceRange invalid : {parser::SourceRange{0, 0}, {1000, 1001}, {20, 10}}) {
         EXPECT_THROW(
             (void)Changed(source, selected, false, HunkStyle(), {.EditScope = std::span(&invalid, 1)}),
             std::invalid_argument);
     }
+
     const parser::SourceRange reversed[] = {{20, 22}, {11, 13}};
     EXPECT_THROW((void)Changed(source, selected, false, HunkStyle(), {.EditScope = reversed}), std::invalid_argument);
     const parser::SourceRange protectedLine[] = {{11, 24}};
@@ -191,6 +196,7 @@ TEST(HunkAdapter, CallerScopeAndExplicitProtectionOnlyNarrowAuthority)
     generated.CommaSpaceBefore = formatter::GapPolicy::GeneratedNoSpace;
     generated.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
     generated.WhitespaceSensitiveMacros = {"KEEP"};
+
     for (const bool protectedOwner : {false, true}) {
         const std::string prefix = protectedOwner
             ? "void f() {\n  outer  (  KEEP(  before  ) ,\n"
@@ -231,6 +237,7 @@ TEST(HunkAdapter, NamespaceInteriorSelectionIsNotARequestedCommentFailure)
     const auto result = Changed(source, selected, false, style);
     EXPECT_EQ(result.Result.Text, "namespace n {\n    int f(int x);\n}\n");
     EXPECT_TRUE(result.RequiredSkips.empty());
+
     for (const auto& coverage : result.Incomplete) {
         EXPECT_NE(coverage.Reason, formatter::HunkCoverageReason::StructuralEligibility);
     }
@@ -273,17 +280,21 @@ TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
         [] (const auto& record) {
             return record.Reason == formatter::HunkCoverageReason::SemanticProtection;
         }));
+
     for (const size_t count : {200, 201}) {
         source = "void f() {\n  call(\n";
+
         for (size_t i = 0; i < count - 2; ++i) {
             source += "    1,\n";
         }
+
         source += "    2);\n  untouched(  );\n}\n";
         const auto bounded = Changed(source, selected, true, HunkStyle());
         EXPECT_EQ(
             bounded.PermittedLines,
             count == 200 ? (std::vector<formatter::Hunk>{{2, 201}}) : (std::vector<formatter::Hunk>{{3, 3}}));
         EXPECT_TRUE(bounded.Result.Text.find("  untouched(  );") != std::string::npos);
+
         if (count == 201) {
             EXPECT_FALSE(bounded.Incomplete.empty());
         }
@@ -326,11 +337,14 @@ TEST(HunkAdapter, IncludeSpillRetainsTwoHundredLineBoundAndOutsideStatements)
     const formatter::Hunk selected[] = {{1, 1}};
     auto style = HunkStyle();
     style.IncludeOrder = formatter::IncludeOrder::Sort;
+
     for (const size_t count : {200, 201}) {
         std::string source = "#include \"z.h\"\n";
+
         for (size_t i = 1; i < count; ++i) {
             source += "#include \"a.h\"\n";
         }
+
         source += "\nint outside( int x );\n";
         const auto result = Changed(source, selected, true, style);
         EXPECT_EQ(result.PermittedLines, (std::vector<formatter::Hunk>{{1, count == 200 ? 200u : 1u}}));
@@ -416,11 +430,13 @@ TEST(HunkAdapter, OptionalCommaInsertionAndRemovalHaveOriginalAuthority)
     Input input(existing);
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     bool removedIdentity = false;
+
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (tree.Kind(i) == tokenizer::TokenKind::Operator_Comma && tree.TokenPosition(i).Line == 3) {
             removedIdentity = true;
         }
     }
+
     EXPECT_TRUE(removedIdentity);
 }
 

@@ -20,6 +20,7 @@ TEST(ConfigHelp, ReadableLinesAndColorParity)
     hit_fmt::PrintConfigHelp(plain, hit_fmt::Terminal());
     std::istringstream lines(plain.str());
     std::string line;
+
     while (std::getline(lines, line)) {
         EXPECT_LE(line.size(), 80u) << line;
     }
@@ -29,6 +30,7 @@ TEST(ConfigHelp, ReadableLinesAndColorParity)
     const auto text = colored.str();
     EXPECT_NE(text.find("\033["), std::string::npos);
     std::string stripped;
+
     for (std::size_t index = 0; index < text.size(); ++index) {
         if (text[index] == '\033') {
             const auto end = text.find('m', index);
@@ -38,5 +40,6 @@ TEST(ConfigHelp, ReadableLinesAndColorParity)
             stripped += text[index];
         }
     }
+
     EXPECT_EQ(stripped, plain.str());
 }

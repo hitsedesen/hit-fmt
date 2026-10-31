@@ -17,28 +17,34 @@ namespace test::golden {
 inline std::optional<std::string> ReadGoldenFile(const std::filesystem::path& path)
 {
     std::ifstream input(path, std::ios::binary);
+
     if (!input) {
         return std::nullopt;
     }
+
     return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
 inline std::string ReadFile(const std::filesystem::path& path)
 {
     auto contents = ReadGoldenFile(path);
+
     if (!contents) {
         throw std::runtime_error("cannot read fixture: " + path.string());
     }
+
     return std::move(*contents);
 }
 
 inline void WriteGoldenFile(const std::filesystem::path& path, std::string_view contents)
 {
     std::ofstream output(path, std::ios::binary);
+
     if (output) {
         output.write(contents.data(), contents.size());
         output.close();
     }
+
     if (!output) {
         ADD_FAILURE() << "cannot write golden file " << path;
     }

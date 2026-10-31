@@ -34,6 +34,7 @@ void SelectFeature(int value)
         case 1: {
                 HandleOther();
             }
+
             Finish();
             break;
 #endif

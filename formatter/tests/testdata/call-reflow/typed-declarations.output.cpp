@@ -20,12 +20,14 @@ void Sample()
     external::Distribution<int> parameters(
         int firstLongParameterName,
         int secondLongParameterName);
+
     if (external::Range<int> range =
         make(firstLongArgument, secondLongArgument);
         range.ready())
     {
         consume(range);
     }
+
     BufferSize maximumEncodedByteCountForCurrentBuffer = Estimate(
         unencodedByteCountForCurrentBuffer,
         estimatedByteCountForCurrentBuffer);

@@ -1,0 +1,4 @@
+BlockBlankLinesAfter = 0
+ControlStatementBlankLinesBefore = 0
+MacroBlankLinesAround = 0
+BlankLineMacroNames = ["YT_VERIFY", "YT_TLOG_DEBUG", "YT_LOG_INFO"]

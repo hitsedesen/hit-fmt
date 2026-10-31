@@ -25,6 +25,7 @@ void Decode(int mode)
             {
                 Step();
             }
+
             Stop();
             break;
 
@@ -39,6 +40,7 @@ void Decode(int mode)
                 default:
                     break;
             }
+
             break;
         }
 

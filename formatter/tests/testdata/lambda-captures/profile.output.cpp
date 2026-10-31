@@ -77,6 +77,7 @@ public:
             callback.Reset();
             return;
         }
+
         return Target_->Invoke(BIND_WRAPPED([this, keep = Hold(this), callback = std::move(callback)] () mutable {
             auto guard = Detail::MakeGuard(Context_);
 

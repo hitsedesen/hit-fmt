@@ -23,6 +23,7 @@ struct FileInputs
     explicit FileInputs(size_t count)
     {
         std::filesystem::create_directory(Directory);
+
         for (size_t index = 0; index < count; ++index) {
             util::WriteEntireFile(Path(index).string(), "int value;\n");
         }
@@ -57,15 +58,18 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
                     return false;
                 }
             }
+
             return true;
         };
         auto process = [&] (const std::filesystem::path& path, int&) {
             ++processed;
             const auto name = path.stem().string();
             const bool failed = name == "0" || name == "3";
+
             if (!failed) {
                 util::WriteEntireFile(path.string(), "int value = 0;\n");
             }
+
             return hit_fmt::FileResult{.Output = name, .Failed = failed};
         };
         auto print = [&] (const auto& result) {
@@ -98,9 +102,11 @@ TEST(FileDispatch, DiscoveryErrorsDrainDispatchedFiles)
         std::vector<std::string> printed;
         auto discover = [&] (auto visit) -> bool {
             visit(std::filesystem::path("first.cpp"));
+
             if (started.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
                 throw std::runtime_error("worker did not start");
             }
+
             throw std::runtime_error("discovery failed");
         };
         auto process = [&] (const auto& path, int&) {
@@ -142,12 +148,14 @@ TEST(FileDispatch, DispatchFailuresStopWorkersAndDiscovery)
                             return false;
                         }
                     }
+
                     return true;
                 },
                 [&] {
                     if (failResolver) {
                         throw std::runtime_error("resolver failed");
                     }
+
                     return 0;
                 },
                 [] (const auto&, int&) {
@@ -170,21 +178,25 @@ TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
         if (!visit(std::filesystem::path("first.cpp"))) {
             return false;
         }
+
         if (started.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
             throw std::runtime_error("discovery waited for formatting");
         }
+
         return visit(std::filesystem::path("second.cpp"));
     };
     auto process = [&] (const std::filesystem::path& path, int&) {
         if (path == "first.cpp") {
             firstStarted.set_value();
             auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
             while (!secondProcessed.load() && std::chrono::steady_clock::now() < deadline) {
                 std::this_thread::yield();
             }
         } else {
             secondProcessed = true;
         }
+
         return hit_fmt::FileResult{.Output = path.string()};
     };
     std::vector<std::string> printed;

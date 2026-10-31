@@ -15,20 +15,24 @@ void Dispatch(int value)
                     Handle(value);
                 }
             }
+
             Finish();
             {
                 Cleanup();
             }
+
             break;
 
         case 3:
             {
                 Handle(value);
             }
+
             {
                 // Consecutive blocks share the case statement level.
                 Cleanup();
             }
+
             break;
 
         case 4:
@@ -37,6 +41,7 @@ void Dispatch(int value)
             {
                 Handle(value);
             }
+
             break;
 
         case 6: {
@@ -48,6 +53,7 @@ void Dispatch(int value)
             {
                 Handle(value);
             }
+
             {
                 Cleanup();
             }

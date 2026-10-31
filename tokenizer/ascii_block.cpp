@@ -21,14 +21,18 @@ bool HasAvx2() noexcept
 #if defined(_MSC_VER)
     int registers[4];
     __cpuid(registers, 0);
+
     if (registers[0] < 7) {
         return false;
     }
+
     __cpuidex(registers, 1, 0);
     constexpr int AvxAndOsxsave = (1 << 28) | (1 << 27);
+
     if ((registers[2] & AvxAndOsxsave) != AvxAndOsxsave || (_xgetbv(0) & 6) != 6) {
         return false;
     }
+
     __cpuidex(registers, 7, 0);
     // MSVC /arch:AVX2 also emits BMI1/BMI2 scalar instructions.
     constexpr int RequiredFeatures = (1 << 3) | (1 << 5) | (1 << 8);
@@ -198,6 +202,7 @@ void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcep
             default:
                 break;
         }
+
         result.Whitespace |= space ? bit : 0;
         result.Identifiers |= identifier ? bit : 0;
         result.ClosingParentheses |= byte == ')' ? bit : 0;

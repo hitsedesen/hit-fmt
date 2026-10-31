@@ -176,6 +176,7 @@ template <typename T>
             return static_cast<T>(index);
         }
     }
+
     return std::nullopt;
 }
 

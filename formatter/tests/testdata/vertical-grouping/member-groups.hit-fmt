@@ -1,0 +1,6 @@
+Layout = Canonical
+BodyShape = Expanded
+DefinitionBlankLines = Minimum:1
+MemberDefinitionBlankLines = Inherit
+MaxEmptyLines = 1
+MemberGroupMaxEmptyLines = 2

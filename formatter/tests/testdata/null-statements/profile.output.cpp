@@ -12,9 +12,13 @@ void Process(bool ready, int mode)
         default:
             break;
     }
+
     Emit();
+
     if (ready) { }
+
     while (ready) { }
+
     for (;;) { }
     label:
     ;

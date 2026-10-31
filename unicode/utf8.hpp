@@ -23,9 +23,11 @@ struct CodePointWithSize
 [[nodiscard]] constexpr std::optional<CodePointWithSize> GetFirstCodePoint(std::string_view str)
 {
     auto bytes = GetFirstCodePointSize(str);
+
     if (!bytes) {
         return std::nullopt;
     }
+
     return CodePointWithSize{.Value = ValueFromUtf8(str.substr(0, *bytes)), .Size = *bytes};
 }
 
@@ -42,6 +44,7 @@ struct CodePointWithSize
 
     auto first = byte(0);
     short size;
+
     if (first <= 0x7f) {
         size = 1;
     } else if (first >= 0xc2 && first <= 0xdf && isContinuation(1)) {
@@ -66,6 +69,7 @@ struct CodePointWithSize
 {
     auto value = static_cast<uint32_t>(cp);
     std::string bytes;
+
     if (value <= U'\x7f') {
         bytes.push_back(static_cast<char8_t>(value));
     } else if (value <= U'\u07ff') {
@@ -81,6 +85,7 @@ struct CodePointWithSize
         bytes.push_back(static_cast<char8_t>(0x80 | ((value >> 6) & 0x3f)));
         bytes.push_back(static_cast<char8_t>(0x80 | (value & 0x3F)));
     }
+
     return bytes;
 }
 
@@ -100,30 +105,39 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
     };
 
     auto first = byte(0);
+
     if (first <= 0x7f) {
         return 1;
     }
+
     if (first >= 0xc2 && first <= 0xdf) {
         return isContinuation(1) ? std::optional<short>(2) : std::nullopt;
     }
+
     if (first >= 0xe0 && first <= 0xef) {
         if (!isContinuation(1) || !isContinuation(2)) {
             return std::nullopt;
         }
+
         if ((first == 0xe0 && byte(1) < 0xa0) || (first == 0xed && byte(1) > 0x9f)) {
             return std::nullopt;
         }
+
         return 3;
     }
+
     if (first >= 0xf0 && first <= 0xf4) {
         if (!isContinuation(1) || !isContinuation(2) || !isContinuation(3)) {
             return std::nullopt;
         }
+
         if ((first == 0xf0 && byte(1) < 0x90) || (first == 0xf4 && byte(1) > 0x8f)) {
             return std::nullopt;
         }
+
         return 4;
     }
+
     return std::nullopt;
 }
 

@@ -80,12 +80,15 @@ constexpr auto Keywords = [] {
     KeywordLookup table{};
     auto add = [&] (std::string_view text, TokenKind kind) {
         const auto slot = KeywordSlot(IdentifierKey(text));
+
         if (table.Slots[slot] != TokenKind::Invalid) {
             throw "keyword hash collision";
         }
+
         table.Slots[slot] = kind;
         auto& word = table.Words[static_cast<size_t>(kind)];
         word.Length = static_cast<uint8_t>(text.size());
+
         for (size_t i = 0; i < text.size(); ++i) {
             auto& part = i < 8 ? word.First : word.Second;
             part |= static_cast<uint64_t>(text[i]) << ((i % 8) * 8);
@@ -198,31 +201,40 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
     if (identifier.size() < 2 || identifier.size() > 16 || identifier.front() < 'a' || identifier.front() > 'z') {
         return TokenKind::Identifier;
     }
+
     const auto kind = Keywords.Slots[KeywordSlot(IdentifierKey(identifier))];
     const auto& candidate = Keywords.Words[static_cast<size_t>(kind)];
+
     if (candidate.Length != identifier.size()) {
         return TokenKind::Identifier;
     }
+
     uint64_t first;
     // Identifier views borrow the padded source, including short final words.
     std::memcpy(&first, identifier.data(), sizeof(first));
+
     if constexpr (std::endian::native == std::endian::big) {
         first = ((first & 0x00000000000000ffULL) << 56) | ((first & 0x000000000000ff00ULL) << 40) |
             ((first & 0x0000000000ff0000ULL) << 24) | ((first & 0x00000000ff000000ULL) << 8) |
             ((first & 0x000000ff00000000ULL) >> 8) | ((first & 0x0000ff0000000000ULL) >> 24) |
             ((first & 0x00ff000000000000ULL) >> 40) | ((first & 0xff00000000000000ULL) >> 56);
     }
+
     if (identifier.size() <= 8) {
         const auto shift = static_cast<unsigned>((8 - identifier.size()) * 8);
         return ((first ^ candidate.First) << shift) == 0 ? kind : TokenKind::Identifier;
     }
+
     if (first != candidate.First) {
         return TokenKind::Identifier;
     }
+
     uint64_t second = 0;
+
     for (size_t i = 8; i < identifier.size(); ++i) {
         second |= static_cast<uint64_t>(static_cast<unsigned char>(identifier[i])) << ((i - 8) * 8);
     }
+
     return second == candidate.Second ? kind : TokenKind::Identifier;
 }
 
@@ -322,6 +334,7 @@ TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
     if (length == 1) {
         return SingleOperators[*text];
     }
+
     if (length == 3) {
         switch (*text) {
             case '.':
@@ -334,6 +347,7 @@ TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
                 return TokenKind::Operator_RightShiftAssign;
         }
     }
+
     switch (OperatorKey(text[0], text[1])) {
         case OperatorKey(':', ':'):
             return TokenKind::Operator_ScopeResolution;
@@ -393,9 +407,11 @@ TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
     if (IsNonDigit(cp)) {
         return true;
     }
+
     if (cp < AsciiLimit) {
         return false;
     }
+
     return unicode::IsXIDStart(cp);
 }
 
@@ -404,9 +420,11 @@ TokenKind ClassifyOperator(const unsigned char* text, unsigned length)
     if (IsNonDigit(cp) || IsDigit(cp)) {
         return true;
     }
+
     if (cp < AsciiLimit) {
         return false;
     }
+
     return unicode::IsXIDContinue(cp);
 }
 
@@ -443,6 +461,7 @@ constexpr std::array<std::string_view, 11> IntegerSuffixes{
             return false;
         }
     }
+
     return true;
 }
 
@@ -454,9 +473,11 @@ template <typename Owner>
 inline unicode::CodePoint TokenizerCursor<Owner>::CurrentCodePoint()
 {
     auto byte = PeekByte();
+
     if (byte < AsciiLimit) [[likely]] {
         return byte;
     }
+
     return CurrentUnicodeCodePoint();
 }
 
@@ -549,14 +570,17 @@ void TokenizerCursor<Owner>::ConsumeAsciiByte(unsigned char byte, NewlineHandlin
     auto& owner = GetOwner();
     ++owner.CurrentTokenSize_;
     ++CurrentCodePointOffset_;
+
     if (byte == '\n') {
         ++CurrentCodePointPosition_.Line;
         CurrentCodePointPosition_.Column = 1;
+
         if (newlineHandling == NewlineHandling::Track) {
             owner.IsNewLine_ = true;
         }
     } else {
         ++CurrentCodePointPosition_.Column;
+
         if (!IsSpace(byte)) {
             owner.IsNewLine_ = false;
         }
@@ -584,6 +608,7 @@ Tokenizer::Tokenizer(util::PaddedSourceView input, std::function<void(Tokenizati
 void Tokenizer::LoadBlock(SourceOffset offset) noexcept
 {
     const auto blockOffset = offset & ~(detail::AsciiBlock::Size - 1);
+
     if (blockOffset != BlockOffset_) {
         BlockOffset_ = blockOffset;
         ClassifyBlock_(reinterpret_cast<const unsigned char*>(Input_.Data) + blockOffset, Block_);
@@ -596,17 +621,21 @@ inline const unsigned char* Tokenizer::ScanAscii(const unsigned char* cursor, bo
     static_assert(util::SourcePaddingSize >= detail::AsciiBlock::Size);
     const auto* data = reinterpret_cast<const unsigned char*>(Input_.Data);
     auto offset = static_cast<SourceOffset>(cursor - data);
+
     while (true) {
         LoadBlock(offset);
         const auto within = offset - BlockOffset_;
         const auto continuations = Block_[Kind] >> within;
         const auto count = static_cast<SourceOffset>(
             std::countr_one(continuations));
+
         if constexpr (TrackNonSpace) {
             const auto consumed = count == detail::AsciiBlock::Size ? ~uint64_t{0} : (uint64_t{1} << count) - 1;
             *nonSpace |= (consumed & ~(Block_[detail::AsciiRun::Whitespace] >> within)) != 0;
         }
+
         offset += count;
+
         if (count < detail::AsciiBlock::Size - within) {
             return data + offset;
         }
@@ -622,6 +651,7 @@ template <>
 void detail::TokenizerCursor<Tokenizer>::DecodeCurrentUnicodeCodePoint()
 {
     auto first = unicode::utf8::GetFirstCodePointFromPaddedInput(GetOwner().Input_.Data + CurrentCodePointOffset_);
+
     if (!first) {
         GetOwner().OnError(TokenizationErrorKind::InvalidUtf8CodePoint);
         ++EncodingErrorCount_;
@@ -631,6 +661,7 @@ void detail::TokenizerCursor<Tokenizer>::DecodeCurrentUnicodeCodePoint()
         CachedUnicodeValue_ = first->Value;
         CachedUnicodeSize_ = static_cast<uint8_t>(first->Size);
     }
+
     CachedUnicodeOffset_ = CurrentCodePointOffset_;
 }
 
@@ -671,9 +702,11 @@ SourceOffset Tokenizer::FindBlockCommentEnd(SourceOffset offset) noexcept
                 : std::numeric_limits<SourceOffset>::max();
         }
         const auto end = BlockOffset_ + detail::AsciiBlock::Size;
+
         if ((Block_.Stars >> 63) != 0 && ByteAt(end) == '/') {
             return end + 1;
         }
+
         offset = end;
     }
 }
@@ -700,11 +733,14 @@ Token Tokenizer::Refill()
 {
     PendingIndex_ = 0;
     PendingCount_ = 0;
+
     while (true) {
         const bool more = ReadBlock();
+
         if (PendingCount_ != 0) {
             return Pending_[PendingIndex_++];
         }
+
         if (!more) {
             return ReadComplexToken();
         }
@@ -739,6 +775,7 @@ bool Tokenizer::ReadBlock()
     auto remainingLines = newlines & ~LowBits(cursor - base);
     unsigned count = 0;
     auto starts = (wordStarts | (~words & ~whitespace)) & ~LowBits(cursor - base) & LowBits(limit - base);
+
     // A continuation arriving from another block starts at the current cursor.
     if (cursor < limit && (words & (uint64_t{1} << (cursor - base))) != 0) {
         starts |= uint64_t{1} << (cursor - base);
@@ -750,6 +787,7 @@ bool Tokenizer::ReadBlock()
             const auto stop = end - base;
             const auto range = LowBits(stop) & ~LowBits(begin);
             const auto lines = newlines & range;
+
             if (lines != 0) {
                 position.Line += static_cast<uint32_t>(std::popcount(lines));
                 const auto last = 63u - static_cast<unsigned>(std::countl_zero(lines));
@@ -757,10 +795,12 @@ bool Tokenizer::ReadBlock()
                 isNewLine = (range & ~LowBits(last + 1) & ~whitespace) == 0;
             } else {
                 position.Column += stop - begin;
+
                 if ((range & ~whitespace) != 0) {
                     isNewLine = false;
                 }
             }
+
             cursor = end;
             return;
         }
@@ -770,6 +810,7 @@ bool Tokenizer::ReadBlock()
             const auto stop = std::min<SourceOffset>(end - BlockOffset_, Width);
             const auto range = LowBits(stop) & ~LowBits(begin);
             const auto lines = Block_.Newlines & range;
+
             if (lines != 0) {
                 position.Line += static_cast<uint32_t>(std::popcount(lines));
                 const auto last = 63u - static_cast<unsigned>(std::countl_zero(lines));
@@ -777,10 +818,12 @@ bool Tokenizer::ReadBlock()
                 isNewLine = (range & ~LowBits(last + 1) & ~(Block_[AsciiRun::Whitespace] | Block_.Newlines)) == 0;
             } else {
                 position.Column += stop - begin;
+
                 if ((range & ~Block_[AsciiRun::Whitespace]) != 0) {
                     isNewLine = false;
                 }
             }
+
             cursor = BlockOffset_ + stop;
         }
     };
@@ -791,6 +834,7 @@ bool Tokenizer::ReadBlock()
         const auto start = base + index;
         const auto bit = uint64_t{1} << index;
         const auto skippedLines = remainingLines & LowBits(index);
+
         if (skippedLines != 0) {
             remainingLines &= ~skippedLines;
             position.Line += static_cast<uint32_t>(std::popcount(skippedLines));
@@ -799,12 +843,14 @@ bool Tokenizer::ReadBlock()
         } else {
             position.Column += start - cursor;
         }
+
         cursor = start;
         auto end = start;
         auto consumedStarts = starts & (starts - 1);
         TokenKind kind;
         if ((words & bit) != 0) {
             const auto ends = wordEnds;
+
             if (ends != 0) {
                 end = base + FirstBit(ends) + 1;
                 wordEnds &= wordEnds - 1;
@@ -813,17 +859,21 @@ bool Tokenizer::ReadBlock()
                 end = static_cast<SourceOffset>(ScanAscii<AsciiRun::Identifier>(data + end) - data);
             }
             const auto next = data[end];
+
             if (next >= AsciiLimit || next == '"' || next == '\'') {
                 break;
             }
+
             if ((digits & bit) != 0) {
                 // Compound numeric spellings retain their validating path.
                 const auto length = end - start;
+
                 if (end > limit || next == '.' || (data[start] == '0' && length > 1) ||
                     ((digits >> index) & LowBits(length)) != LowBits(length))
                 {
                     break;
                 }
+
                 kind = data[start] == '0' ? TokenKind::Literal_OctalInteger : TokenKind::Literal_DecimalInteger;
             } else {
                 kind = ClassifyIdentifier(Input_.substr(start, end - start));
@@ -834,11 +884,14 @@ bool Tokenizer::ReadBlock()
         } else if ((punctuation & bit) != 0) {
             const auto byte = data[start];
             const auto next = data[start + 1];
+
             if (byte == '/' && (next == '/' || next == '*')) {
                 end = next == '/' ? FindLineCommentEnd(start + 2) : FindBlockCommentEnd(start + 2);
+
                 if (end > Input_.Size) {
                     break;
                 }
+
                 kind = TokenKind::Comment;
             } else {
                 if ((byte == '%' && next == ':' && isNewLine) ||
@@ -846,22 +899,28 @@ bool Tokenizer::ReadBlock()
                 {
                     break;
                 }
+
                 unsigned length = (triples & bit) != 0 ? 3 : (pairs & bit) != 0 ? 2 : 1;
+
                 if (index >= Width - 2) {
                     // Keep compound symbols intact across block boundaries.
                     detail::AsciiBlock boundary;
                     ClassifyBlock_(data + start, boundary);
                     length = (boundary.Triples & 1) != 0 ? 3 : (boundary.Pairs & 1) != 0 ? 2 : 1;
                 }
+
                 if (byte == '<' && next == ':' && data[start + 2] == ':' && data[start + 3] != ':' &&
                     data[start + 3] != '>')
                 {
                     length = 1;
                 }
+
                 end = start + length;
+
                 if (data[end] >= AsciiLimit) {
                     break;
                 }
+
                 kind = ClassifyOperator(data + start, length);
             }
         } else if (((quotes | apostrophes) & bit) != 0) {
@@ -881,6 +940,7 @@ bool Tokenizer::ReadBlock()
             {
                 break;
             }
+
             kind = character ? TokenKind::Literal_Character : TokenKind::Literal_String;
         } else {
             break;
@@ -891,34 +951,42 @@ bool Tokenizer::ReadBlock()
         token.Position = position;
         token.Text.Begin = start;
         token.Text.End = end;
+
         if (kind == TokenKind::Comment) {
             advance(end);
         } else {
             position.Column += end - start;
             isNewLine = false;
         }
+
         cursor = end;
+
         if (end >= limit) {
             break;
         }
+
         if (((words | singles) & bit) == 0) {
             const auto remaining = ~LowBits(end - base);
             consumedStarts &= remaining;
             wordEnds &= remaining;
             remainingLines &= remaining;
         }
+
         starts = consumedStarts;
     }
     PendingCount_ = static_cast<uint8_t>(count);
+
     if (count != 0) {
         const auto& last = Pending_[count - 1];
         CurrentTokenOffset_ = last.Text.Begin;
         CurrentTokenPosition_ = last.Position;
         CurrentTokenSize_ = last.Text.Size();
     }
+
     if (starts == 0 && cursor < limit) {
         advance(limit);
     }
+
     CurrentCodePointOffset_ = cursor;
     CurrentCodePointPosition_ = position;
     IsNewLine_ = isNewLine;
@@ -928,6 +996,7 @@ bool Tokenizer::ReadBlock()
 Token Tokenizer::ReadComplexToken()
 {
     auto byte = PeekByte();
+
     if (byte <= 0x20 || byte >= AsciiLimit || byte == '\\') {
         SkipWhitespace();
         byte = PeekByte();
@@ -942,6 +1011,7 @@ Token Tokenizer::ReadComplexToken()
             IsEndOfFile_ = true;
             return FinishToken(TokenKind::EndOfFile);
         }
+
         ConsumeAsciiByte(byte);
         OnError({
             .Kind = TokenizationErrorKind::UnexpectedNullCharacter,
@@ -951,12 +1021,15 @@ Token Tokenizer::ReadComplexToken()
         });
         return FinishToken(TokenKind::Invalid);
     }
+
     if (IsAsciiIdentifierStart(byte)) {
         return ParseIdentifier();
     }
+
     if (IsDigit(byte)) {
         return ParseNumber();
     }
+
     TokenKind kind;
     switch (byte) {
         case '\'':
@@ -997,17 +1070,23 @@ Token Tokenizer::ReadComplexToken()
             if (byte < AsciiLimit) {
                 return ParseAsciiOperator(byte);
             }
+
             auto cur = CurrentUnicodeCodePoint();
+
             if (unicode::IsXIDStart(cur)) {
                 return ParseIdentifier();
             }
+
             ConsumeUnicodeCodePoint();
+
             if (cur != InvalidCodePoint) {
                 OnError(TokenizationErrorKind::UnexpectedToken);
             }
+
             return FinishToken(TokenKind::Invalid);
         }
     }
+
     ++CurrentCodePointOffset_;
     ++CurrentCodePointPosition_.Column;
     CurrentTokenSize_ = 1;
@@ -1021,15 +1100,18 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
         if (IsNewLine_) {
             return ParsePreprocessingDirective();
         }
+
         ConsumeAsciiByte(byte);
         OnError(TokenizationErrorKind::UnexpectedToken);
         return FinishToken(TokenKind::Invalid);
     }
 
     const auto next = PeekByte(1);
+
     if (byte == '.' && IsDigit(next)) [[unlikely]] {
         return ParseNumber();
     }
+
     if (byte == '/' && (next == '/' || next == '*')) {
         ConsumeAsciiByte(byte);
         return next == '/' ? ParseInlineComment() : ParseMultilineComment();
@@ -1038,6 +1120,7 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
     auto kind = SingleOperators[byte];
     unsigned length = 1;
     unsigned lookahead = kind == TokenKind::Invalid ? 0 : 1;
+
     if (byte == '%' && next == ':' && IsNewLine_) {
         kind = TokenKind::PreprocessingDirective;
         length = 2;
@@ -1047,33 +1130,40 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
         kind = length == 3 ? TokenKind::Operator_Ellipsis : TokenKind::Invalid;
     } else if (kind != TokenKind::Invalid) {
         const auto pair = ClassifyOperator(CurrentByteAddress(), 2);
+
         if (pair != TokenKind::Invalid) {
             kind = pair;
             length = 2;
             switch (pair) {
                 case TokenKind::Operator_IndirectClassMemberAccess:
                     lookahead = 2;
+
                     if (PeekByte(2) == '*') {
                         kind = TokenKind::Operator_IndirectPointerToMemberDereference;
                         length = 3;
                     }
+
                     break;
                 case TokenKind::Operator_LessEquals:
                     lookahead = 2;
+
                     if (PeekByte(2) == '>') {
                         kind = TokenKind::Operator_Spaceship;
                         length = 3;
                     }
+
                     break;
                 case TokenKind::Operator_LeftShift:
                 case TokenKind::Operator_RightShift:
                     lookahead = 2;
+
                     if (PeekByte(2) == '=') {
                         kind = pair == TokenKind::Operator_LeftShift
                             ? TokenKind::Operator_LeftShiftAssign
                             : TokenKind::Operator_RightShiftAssign;
                         length = 3;
                     }
+
                     break;
                 case TokenKind::Operator_OpenBracket:
                     // [lex.pptoken] excludes '<:' from maximal munch in <::
@@ -1082,6 +1172,7 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
                         kind = TokenKind::Operator_Less;
                         length = 1;
                     }
+
                     break;
                 default:
                     break;
@@ -1093,16 +1184,20 @@ Token Tokenizer::ParseAsciiOperator(unsigned char byte)
     CurrentCodePointPosition_.Column += length;
     CurrentTokenSize_ += length;
     IsNewLine_ = false;
+
     if (kind == TokenKind::PreprocessingDirective) {
         return ParsePreprocessingDirective();
     }
+
     // Preserve diagnostics for non-ASCII lookahead without consuming it.
     if (length == lookahead && PeekByte() >= AsciiLimit) {
         LoadCurrentUnicodeCodePoint();
     }
+
     if (kind == TokenKind::Invalid) {
         OnError(byte == '.' ? TokenizationErrorKind::UnfinishedEllipsis : TokenizationErrorKind::UnexpectedToken);
     }
+
     return FinishToken(kind);
 }
 
@@ -1120,13 +1215,16 @@ bool Tokenizer::TrySkipNewline()
     CurrentCodePointOffset_ += size;
     CurrentCodePointPosition_.Column += size;
     CurrentTokenSize_ += size;
+
     if (lastByte == '\n') {
         ConsumeAsciiByte(lastByte, NewlineHandling::Ignore);
         return true;
     }
+
     if (lastByte >= AsciiLimit) {
         LoadCurrentUnicodeCodePoint();
     }
+
     return false;
 }
 
@@ -1143,9 +1241,11 @@ void Tokenizer::SkipWhitespace()
             auto size = static_cast<SourceOffset>(cursor - begin);
             CurrentCodePointOffset_ += size;
             CurrentCodePointPosition_.Column += size;
+
             if (lastByte != '\n') {
                 break;
             }
+
             ++CurrentCodePointOffset_;
             ++CurrentCodePointPosition_.Line;
             CurrentCodePointPosition_.Column = 1;
@@ -1153,12 +1253,14 @@ void Tokenizer::SkipWhitespace()
         }
         if (lastByte >= AsciiLimit) {
             auto cur = CurrentUnicodeCodePoint();
+
             if (IsFileStart() && cur == unicode::utf8::ByteOrderMark) {
                 ConsumeUnicodeCodePoint();
                 skippedNewline = true;
                 continue;
             }
         }
+
         if (lastByte == '\\') {
             ConsumeAsciiByte(lastByte);
             skippedNewline = TrySkipNewline();
@@ -1183,12 +1285,15 @@ Token Tokenizer::ParseIdentifier()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (size != 0) {
             IsNewLine_ = false;
         }
+
         if (lastByte < AsciiLimit || !IsIdContinuation(CurrentUnicodeCodePoint())) {
             break;
         }
+
         ConsumeUnicodeCodePoint();
     }
     auto cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
@@ -1201,6 +1306,7 @@ Token Tokenizer::ParseIdentifier()
         if (std::ranges::find(EncodingPrefixes, CurrentTokenText()) != EncodingPrefixes.end()) {
             return ParseStringLiteral();
         }
+
         if (std::ranges::find(RawEncodingPrefixes, CurrentTokenText()) != RawEncodingPrefixes.end()) {
             return ParseRawStringLiteral();
         }
@@ -1237,6 +1343,7 @@ bool Tokenizer::ConsumeEscapeSequence()
                 ConsumeCodePoint(NewlineHandling::Ignore);
                 return true;
             }
+
             break;
         default:
             break;
@@ -1246,25 +1353,30 @@ bool Tokenizer::ConsumeEscapeSequence()
         for (int count = 0; count < 3 && IsOctalDigit(CurrentCodePoint()); ++count) {
             ConsumeCodePoint();
         }
+
         return true;
     }
 
     auto consumeBracedDigits = [&] (auto isDigit) {
         ConsumeCodePoint();
         bool hasDigits = false;
+
         while (isDigit(CurrentCodePoint())) {
             ConsumeCodePoint();
             hasDigits = true;
         }
+
         if (CurrentCodePoint() != '}') {
             return false;
         }
+
         ConsumeCodePoint();
         return hasDigits;
     };
 
     if (cur == 'x') {
         ConsumeCodePoint();
+
         if (CurrentCodePoint() == '{') {
             if (consumeBracedDigits(IsHexDigit)) {
                 return true;
@@ -1273,17 +1385,21 @@ bool Tokenizer::ConsumeEscapeSequence()
             while (IsHexDigit(CurrentCodePoint())) {
                 ConsumeCodePoint();
             }
+
             return true;
         }
+
         OnError(TokenizationErrorKind::InvalidEscapeSequence);
         return false;
     }
 
     if (cur == 'o') {
         ConsumeCodePoint();
+
         if (CurrentCodePoint() == '{' && consumeBracedDigits(IsOctalDigit)) {
             return true;
         }
+
         OnError(TokenizationErrorKind::InvalidEscapeSequence);
         return false;
     }
@@ -1293,9 +1409,11 @@ bool Tokenizer::ConsumeEscapeSequence()
         ConsumeCodePoint();
         uint32_t value = 0;
         bool valid = true;
+
         if (marker == 'u' && CurrentCodePoint() == '{') {
             ConsumeCodePoint();
             int digits = 0;
+
             while (IsHexDigit(CurrentCodePoint())) {
                 auto digit = CurrentCodePoint();
                 value = value > 0x10ffff / 16
@@ -1307,18 +1425,23 @@ bool Tokenizer::ConsumeEscapeSequence()
                 ConsumeCodePoint();
                 ++digits;
             }
+
             valid = digits != 0 && CurrentCodePoint() == '}';
+
             if (CurrentCodePoint() == '}') {
                 ConsumeCodePoint();
             }
         } else {
             int expectedDigits = marker == 'u' ? 4 : 8;
+
             for (int i = 0; i < expectedDigits; ++i) {
                 auto digit = CurrentCodePoint();
+
                 if (!IsHexDigit(digit)) {
                     valid = false;
                     break;
                 }
+
                 value = value * 16 +
                     (IsDigit(digit)
                         ? static_cast<uint32_t>(digit) - '0'
@@ -1326,27 +1449,33 @@ bool Tokenizer::ConsumeEscapeSequence()
                 ConsumeCodePoint();
             }
         }
+
         if (!valid || value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) {
             OnError(TokenizationErrorKind::InvalidUniversalCharacter);
             return false;
         }
+
         return true;
     }
 
     if (cur == 'N') {
         ConsumeCodePoint();
+
         if (CurrentCodePoint() == '{') {
             ConsumeCodePoint();
             bool hasName = false;
+
             while (CurrentCodePoint() != '}' && CurrentCodePoint() != '\n' && CurrentCodePoint() != '\0') {
                 ConsumeCodePoint();
                 hasName = true;
             }
+
             if (hasName && CurrentCodePoint() == '}') {
                 ConsumeCodePoint();
                 return true;
             }
         }
+
         OnError(TokenizationErrorKind::InvalidUniversalCharacter);
         return false;
     }
@@ -1354,6 +1483,7 @@ bool Tokenizer::ConsumeEscapeSequence()
     if (cur != '\0' && cur != '\n') {
         ConsumeCodePoint();
     }
+
     OnError(TokenizationErrorKind::InvalidEscapeSequence);
     return false;
 }
@@ -1361,6 +1491,7 @@ bool Tokenizer::ConsumeEscapeSequence()
 void Tokenizer::ConsumeLiteralSuffix()
 {
     auto cur = CurrentCodePoint();
+
     if (!IsIdStart(cur)) {
         return;
     }
@@ -1375,12 +1506,15 @@ void Tokenizer::ConsumeLiteralSuffix()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (size != 0) {
             IsNewLine_ = false;
         }
+
         if (lastByte < AsciiLimit || !IsIdContinuation(CurrentUnicodeCodePoint())) {
             break;
         }
+
         ConsumeUnicodeCodePoint();
     }
 }
@@ -1393,6 +1527,7 @@ Token Tokenizer::ParseCharacterLiteral()
     bool valid = true;
     uint32_t characterCount = 0;
     unsigned char lastByte;
+
     while (true) {
         const auto* begin = CurrentByteAddress();
         const auto* cursor = ScanAsciiQuotedLiteral(begin, '\'');
@@ -1402,37 +1537,47 @@ Token Tokenizer::ParseCharacterLiteral()
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
         characterCount += size;
+
         if (size != 0) {
             IsNewLine_ = false;
         }
+
         if (lastByte >= AsciiLimit) {
             LoadCurrentUnicodeCodePoint();
             ConsumeUnicodeCodePoint();
             ++characterCount;
             continue;
         }
+
         if (lastByte == '\\') {
             bool lineSplice = PeekByte(1) == '\n' || (PeekByte(1) == '\r' && PeekByte(2) == '\n');
             valid &= ConsumeEscapeSequence();
             characterCount += !lineSplice;
             continue;
         }
+
         break;
     }
+
     valid &= encodingErrorCount == EncodingErrorCount_;
+
     if (lastByte != '\'') {
         OnError(TokenizationErrorKind::UnterminatedCharacterLiteral);
         return FinishToken(TokenKind::Invalid);
     }
+
     ConsumeAsciiByte(lastByte);
+
     if (characterCount == 0) {
         OnError(TokenizationErrorKind::EmptyCharacterLiteral);
         valid = false;
     }
+
     if ((prefix == "u8" || prefix == "u" || prefix == "U") && characterCount > 1) {
         OnError(TokenizationErrorKind::TooManyCharactersInCharacterLiteral);
         valid = false;
     }
+
     ConsumeLiteralSuffix();
     return FinishToken(valid ? TokenKind::Literal_Character : TokenKind::Invalid);
 }
@@ -1443,6 +1588,7 @@ Token Tokenizer::ParseStringLiteral()
     ConsumeAsciiByte('"');
     bool valid = true;
     unsigned char lastByte;
+
     while (true) {
         const auto* begin = CurrentByteAddress();
         const auto* cursor = ScanAsciiQuotedLiteral(begin, '"');
@@ -1451,25 +1597,32 @@ Token Tokenizer::ParseStringLiteral()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (size != 0) {
             IsNewLine_ = false;
         }
+
         if (lastByte >= AsciiLimit) {
             LoadCurrentUnicodeCodePoint();
             ConsumeUnicodeCodePoint();
             continue;
         }
+
         if (lastByte == '\\') {
             valid &= ConsumeEscapeSequence();
             continue;
         }
+
         break;
     }
+
     valid &= encodingErrorCount == EncodingErrorCount_;
+
     if (lastByte != '"') {
         OnError(TokenizationErrorKind::UnterminatedStringLiteral);
         return FinishToken(TokenKind::Invalid);
     }
+
     ConsumeAsciiByte(lastByte);
     ConsumeLiteralSuffix();
     return FinishToken(valid ? TokenKind::Literal_String : TokenKind::Invalid);
@@ -1490,19 +1643,24 @@ Token Tokenizer::ParseRawStringLiteral()
     bool valid = true;
     bool reportedInvalidDelimiter = false;
     bool reportedLongDelimiter = false;
+
     while (!AtEnd() && cur != '(' && cur != '\n') {
         auto value = static_cast<uint32_t>(cur);
+
         if ((value < 0x21 || value > 0x7e || cur == ')' || cur == '\\') && !reportedInvalidDelimiter) {
             OnError(TokenizationErrorKind::InvalidRawStringDelimiter);
             reportedInvalidDelimiter = true;
             valid = false;
         }
+
         ++delimiterLength;
+
         if (delimiterLength > 16 && !reportedLongDelimiter) {
             OnError(TokenizationErrorKind::RawStringDelimiterTooLong);
             reportedLongDelimiter = true;
             valid = false;
         }
+
         next();
     }
 
@@ -1524,25 +1682,32 @@ Token Tokenizer::ParseRawStringLiteral()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (nonSpace) {
             IsNewLine_ = false;
         }
+
         if (AtEnd()) {
             break;
         }
+
         cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
+
         if (cur == ')') {
             auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
+
             if (suffix.starts_with(delimiter) && suffix.size() > delimiter.size() && suffix[delimiter.size()] == '"') {
                 auto closingDelimiterEnd = CurrentCodePointOffset_ + 2 + static_cast<SourceOffset>(delimiter.size());
                 do {
                     ConsumeCodePoint();
                 } while (CurrentCodePointOffset_ < closingDelimiterEnd);
+
                 valid &= encodingErrorCount == EncodingErrorCount_;
                 ConsumeLiteralSuffix();
                 return FinishToken(valid ? TokenKind::Literal_String : TokenKind::Invalid);
             }
         }
+
         next();
     }
 
@@ -1557,20 +1722,24 @@ Token Tokenizer::ParseNumber()
     bool hexadecimal = *cursor == '0' && (cursor[1] == 'x' || cursor[1] == 'X');
     bool binary = *cursor == '0' && (cursor[1] == 'b' || cursor[1] == 'B');
     bool leadingZero = *cursor == '0';
+
     if (hexadecimal || binary) {
         cursor += 2;
     }
+
     bool valid = true;
     unsigned char digitBits = 0;
     auto parseDigits = [&] (auto isDigit, bool useCachedBlock = false) {
         if (useCachedBlock) {
             const auto offset = static_cast<SourceOffset>(cursor - reinterpret_cast<const unsigned char*>(Input_.Data));
             const auto within = offset - BlockOffset_;
+
             if (within < detail::AsciiBlock::Size) {
                 const auto digits = static_cast<uint32_t>(Block_.Digits >> within);
                 const auto separators = static_cast<uint32_t>(Block_.Apostrophes >> within);
                 const auto available = std::min<unsigned>(32, detail::AsciiBlock::Size - within);
                 const auto full = ~uint32_t{0} >> (32 - available);
+
                 if ((digits | separators) != full) {
                     const auto length = static_cast<unsigned>(std::countr_one(digits | separators));
                     const auto consumed = (uint32_t{1} << length) - 1;
@@ -1582,10 +1751,13 @@ Token Tokenizer::ParseNumber()
                 }
             }
         }
+
         uint32_t count = 0;
         bool separator = false;
+
         while (true) {
             auto byte = *cursor;
+
             if (isDigit(byte)) {
                 digitBits |= byte;
                 ++count;
@@ -1596,8 +1768,10 @@ Token Tokenizer::ParseNumber()
             } else {
                 break;
             }
+
             ++cursor;
         }
+
         valid &= !separator;
         return count;
     };
@@ -1605,19 +1779,25 @@ Token Tokenizer::ParseNumber()
     bool floating = !binary &&
         (*cursor == '.' || (hexadecimal ? *cursor == 'p' || *cursor == 'P' : *cursor == 'e' || *cursor == 'E'));
     TokenKind kind;
+
     if (floating) {
         kind = hexadecimal ? TokenKind::Literal_HexadecimalFloatingPoint : TokenKind::Literal_DecimalFloatingPoint;
+
         if (*cursor == '.') {
             ++cursor;
             digits += hexadecimal ? parseDigits(IsHexDigit) : parseDigits(IsDigit, true);
         }
+
         valid &= digits != 0;
         bool exponent = hexadecimal ? *cursor == 'p' || *cursor == 'P' : *cursor == 'e' || *cursor == 'E';
+
         if (exponent) {
             ++cursor;
+
             if (*cursor == '+' || *cursor == '-') {
                 ++cursor;
             }
+
             auto exponentDigits = parseDigits(IsDigit, true);
             valid &= exponentDigits != 0;
         } else if (hexadecimal) {
@@ -1635,6 +1815,7 @@ Token Tokenizer::ParseNumber()
     } else {
         kind = TokenKind::Literal_DecimalInteger;
     }
+
     if (!valid) [[unlikely]] {
         // A later dot/exponent selects the separator diagnostic kind. Keep
         // exact streaming diagnostics without buffering arbitrary errors:
@@ -1658,9 +1839,11 @@ Token Tokenizer::ParseNumber()
             CurrentCodePointOffset_ += suffixSize;
             CurrentCodePointPosition_.Column += suffixSize;
             CurrentTokenSize_ += suffixSize;
+
             if (suffixSize != 0) {
                 IsNewLine_ = false;
             }
+
             if (lastByte >= AsciiLimit) {
                 if (IsIdContinuation(CurrentUnicodeCodePoint())) {
                     ConsumeUnicodeCodePoint();
@@ -1672,10 +1855,12 @@ Token Tokenizer::ParseNumber()
                 ConsumeAsciiByte(lastByte);
                 continue;
             }
+
             break;
         }
     }
     auto suffix = CurrentTokenText().substr(suffixStart);
+
     if (floating) {
         if (!std::ranges::any_of(
             FloatingPointSuffixes,
@@ -1693,6 +1878,7 @@ Token Tokenizer::ParseNumber()
     {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
+
     return FinishToken(kind);
 }
 
@@ -1708,13 +1894,16 @@ Token Tokenizer::DiagnoseFloatingPoint()
         uint32_t count = 0;
         bool previousSeparator = false;
         bool lastSeparatorReported = false;
+
         while (isDigit(cur) || cur == '\'') {
             if (cur == '\'') {
                 bool invalidSeparator = count == 0 || previousSeparator;
+
                 if (invalidSeparator) {
                     OnError(TokenizationErrorKind::InvalidDigitSeparator);
                     valid = false;
                 }
+
                 previousSeparator = true;
                 lastSeparatorReported = invalidSeparator;
             } else {
@@ -1722,19 +1911,24 @@ Token Tokenizer::DiagnoseFloatingPoint()
                 previousSeparator = false;
                 lastSeparatorReported = false;
             }
+
             next();
         }
+
         if (previousSeparator && !lastSeparatorReported) {
             OnError(TokenizationErrorKind::InvalidDigitSeparator);
             valid = false;
         }
+
         return count;
     };
     auto parseExponent = [&] {
         next();
+
         if (cur == '+' || cur == '-') {
             next();
         }
+
         if (parseDigits(IsDigit) == 0) {
             OnError(TokenizationErrorKind::NoDigitsInFloatingPointExponent);
             valid = false;
@@ -1742,19 +1936,23 @@ Token Tokenizer::DiagnoseFloatingPoint()
     };
 
     TokenKind kind;
+
     if (cur == '0' && (PeekByte(1) == 'x' || PeekByte(1) == 'X')) {
         kind = TokenKind::Literal_HexadecimalFloatingPoint;
         next();
         next();
         auto digitCount = parseDigits(IsHexDigit);
+
         if (cur == '.') {
             next();
             digitCount += parseDigits(IsHexDigit);
         }
+
         if (digitCount == 0) {
             OnError(TokenizationErrorKind::NoDigitsInHexadecimalInteger);
             valid = false;
         }
+
         if (cur == 'p' || cur == 'P') {
             parseExponent();
         } else {
@@ -1764,32 +1962,38 @@ Token Tokenizer::DiagnoseFloatingPoint()
         }
     } else {
         kind = TokenKind::Literal_DecimalFloatingPoint;
+
         if (cur == '.') {
             next();
             parseDigits(IsDigit);
         } else {
             parseDigits(IsDigit);
+
             if (cur == '.') {
                 next();
                 parseDigits(IsDigit);
             }
         }
+
         if (cur == 'e' || cur == 'E') {
             parseExponent();
         }
     }
 
     auto suffixStart = CurrentTokenSize_;
+
     if (IsIdStart(cur)) {
         do {
             next();
         } while (IsIdContinuation(cur));
     }
+
     if (!valid) {
         return FinishToken(TokenKind::Invalid);
     }
 
     auto suffix = CurrentTokenText().substr(suffixStart);
+
     if (!std::ranges::any_of(
         FloatingPointSuffixes,
         [&] (auto candidate) {
@@ -1798,6 +2002,7 @@ Token Tokenizer::DiagnoseFloatingPoint()
     {
         return FinishToken(TokenKind::Literal_UserDefinedFloatingPoint);
     }
+
     return FinishToken(kind);
 }
 
@@ -1814,6 +2019,7 @@ Token Tokenizer::DiagnoseInteger()
         prev = cur;
         cur = CurrentCodePoint();
     };
+
     if (prev == '0') {
         switch (cur) {
             case 'b':
@@ -1821,6 +2027,7 @@ Token Tokenizer::DiagnoseInteger()
                 kind = TokenKind::Literal_BinaryInteger;
                 next();
                 parsedDigits = 0;
+
                 while (cur == '0' || cur == '1' || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
@@ -1835,15 +2042,19 @@ Token Tokenizer::DiagnoseInteger()
                     } else {
                         parsedDigits++;
                     }
+
                     next();
                 }
+
                 if (IsDigit(cur)) {
                     OnError(TokenizationErrorKind::InvalidDigitInBinaryInteger);
                     kind = TokenKind::Invalid;
+
                     while (IsDigit(cur) || cur == '\'') {
                         next();
                     }
                 }
+
                 if (parsedDigits == 0) {
                     OnError(TokenizationErrorKind::NoDigitsInBinaryInteger);
                     kind = TokenKind::Invalid;
@@ -1852,6 +2063,7 @@ Token Tokenizer::DiagnoseInteger()
                             DigitSeparatorAtEndOfBinaryInteger);
                     kind = TokenKind::Invalid;
                 }
+
                 break;
             }
             case 'x':
@@ -1859,6 +2071,7 @@ Token Tokenizer::DiagnoseInteger()
                 kind = TokenKind::Literal_HexadecimalInteger;
                 parsedDigits = 0;
                 next();
+
                 while (IsHexDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
@@ -1873,8 +2086,10 @@ Token Tokenizer::DiagnoseInteger()
                     } else {
                         parsedDigits++;
                     }
+
                     next();
                 }
+
                 if (parsedDigits == 0) {
                     OnError(TokenizationErrorKind::NoDigitsInHexadecimalInteger);
                     kind = TokenKind::Invalid;
@@ -1883,10 +2098,12 @@ Token Tokenizer::DiagnoseInteger()
                             DigitSeparatorAtEndOfHexadecimalInteger);
                     kind = TokenKind::Invalid;
                 }
+
                 break;
             }
             default: {
                 kind = TokenKind::Literal_OctalInteger;
+
                 while (IsOctalDigit(cur) || cur == '\'') {
                     if (cur == '\'') {
                         if (prev == '\'') {
@@ -1897,25 +2114,31 @@ Token Tokenizer::DiagnoseInteger()
                     } else {
                         parsedDigits++;
                     }
+
                     next();
                 }
+
                 if (IsDigit(cur)) {
                     OnError(TokenizationErrorKind::InvalidDigitInOctalInteger);
                     kind = TokenKind::Invalid;
+
                     while (IsDigit(cur) || cur == '\'') {
                         next();
                     }
                 }
+
                 if (prev == '\'') {
                     OnError(TokenizationErrorKind::
                             DigitSeparatorAtEndOfOctalInteger);
                     kind = TokenKind::Invalid;
                 }
+
                 break;
             }
         }
     } else {
         kind = TokenKind::Literal_DecimalInteger;
+
         while (IsDigit(cur) || cur == '\'') {
             if (cur == '\'') {
                 if (prev == '\'') {
@@ -1925,10 +2148,12 @@ Token Tokenizer::DiagnoseInteger()
             } else {
                 parsedDigits++;
             }
+
             ConsumeCodePoint(cur);
             prev = cur;
             cur = CurrentCodePoint();
         }
+
         if (prev == '\'') {
             OnError(TokenizationErrorKind::DigitSeparatorAtEndOfDecimalInteger);
             return FinishToken(TokenKind::Invalid);
@@ -1952,6 +2177,7 @@ Token Tokenizer::DiagnoseInteger()
     }
 
     auto suffix = CurrentTokenText().substr(suffixStart);
+
     if (!std::ranges::any_of(
         IntegerSuffixes,
         [&] (auto candidate) {
@@ -1960,6 +2186,7 @@ Token Tokenizer::DiagnoseInteger()
     {
         return FinishToken(TokenKind::Literal_UserDefinedInteger);
     }
+
     return FinishToken(kind);
 }
 
@@ -1974,12 +2201,15 @@ Token Tokenizer::ParseInlineComment()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (size != 0) {
             IsNewLine_ = false;
         }
+
         if (lastByte < AsciiLimit) {
             break;
         }
+
         LoadCurrentUnicodeCodePoint();
         ConsumeUnicodeCodePoint();
     }
@@ -1998,9 +2228,11 @@ Token Tokenizer::ParseMultilineComment()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (nonSpace) {
             IsNewLine_ = false;
         }
+
         if (lastByte >= AsciiLimit) {
             LoadCurrentUnicodeCodePoint();
             ConsumeUnicodeCodePoint();
@@ -2008,6 +2240,7 @@ Token Tokenizer::ParseMultilineComment()
             ConsumeAsciiByte(lastByte);
         } else if (lastByte == '*') {
             ConsumeAsciiByte(lastByte);
+
             if (PeekByte() == '/') {
                 ConsumeAsciiByte('/');
                 return FinishToken(TokenKind::Comment);
@@ -2039,17 +2272,22 @@ Token Tokenizer::ParsePreprocessingDirective()
         CurrentCodePointOffset_ += size;
         CurrentCodePointPosition_.Column += size;
         CurrentTokenSize_ += size;
+
         if (nonSpace) {
             IsNewLine_ = false;
         }
+
         cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
+
         if (cur == '\0') {
             break;
         }
+
         if (inBlockComment) {
             if (cur == '*') {
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
+
                 if (cur == '/') {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
@@ -2059,12 +2297,14 @@ Token Tokenizer::ParsePreprocessingDirective()
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
             }
+
             continue;
         }
 
         if (cur == '\n') {
             break;
         }
+
         if (cur == '\\') {
             ConsumeCodePoint();
             TrySkipNewline();
@@ -2090,17 +2330,23 @@ Token Tokenizer::ParsePreprocessingDirective()
                     CurrentCodePointOffset_ += commentSize;
                     CurrentCodePointPosition_.Column += commentSize;
                     CurrentTokenSize_ += commentSize;
+
                     if (commentNonSpace) {
                         IsNewLine_ = false;
                     }
+
                     cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
+
                     if (cur == '\n' || cur == '\0') {
                         break;
                     }
+
                     ConsumeCodePoint(cur);
+
                     if (cur == '\\') {
                         TrySkipNewline();
                     }
+
                     cur = CurrentCodePoint();
                 }
             }
@@ -2111,13 +2357,16 @@ Token Tokenizer::ParsePreprocessingDirective()
             ConsumeCodePoint(); // "
             auto delimiterStart = CurrentCodePointOffset_;
             cur = CurrentCodePoint();
+
             while (cur != '(' && cur != '\n' && cur != '\0') {
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
             }
+
             if (cur != '(') {
                 continue;
             }
+
             auto delimiter = Input_.substr(delimiterStart, CurrentCodePointOffset_ - delimiterStart);
             ConsumeCodePoint();
             cur = CurrentCodePoint();
@@ -2130,26 +2379,34 @@ Token Tokenizer::ParsePreprocessingDirective()
                 CurrentCodePointOffset_ += rawSize;
                 CurrentCodePointPosition_.Column += rawSize;
                 CurrentTokenSize_ += rawSize;
+
                 if (rawNonSpace) {
                     IsNewLine_ = false;
                 }
+
                 cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
+
                 if (AtEnd()) {
                     break;
                 }
+
                 if (cur == ')') {
                     auto suffix = Input_.substr(CurrentCodePointOffset_ + 1);
+
                     if (suffix.starts_with(delimiter) && suffix.size() > delimiter.size() &&
                         suffix[delimiter.size()] == '"')
                     {
                         ConsumeCodePoint();
+
                         for (SourceOffset i = 0; i <= delimiter.size(); ++i) {
                             ConsumeCodePoint();
                         }
+
                         cur = CurrentCodePoint();
                         break;
                     }
                 }
+
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
             }
@@ -2157,10 +2414,12 @@ Token Tokenizer::ParsePreprocessingDirective()
         }
         bool digitSeparator = cur == '\'' && CurrentCodePointOffset_ != 0 &&
             IsAlphaNumeric(ByteAt(CurrentCodePointOffset_ - 1)) && IsAlphaNumeric(PeekByte(1));
+
         if ((cur == '\'' && !digitSeparator) || cur == '"') {
             auto quote = cur;
             ConsumeCodePoint();
             cur = CurrentCodePoint();
+
             while (cur != '\0' && cur != quote && cur != '\n') {
                 const auto* literalBegin = CurrentByteAddress();
                 const auto* literalCursor = ScanAsciiQuotedLiteral(literalBegin, static_cast<unsigned char>(quote));
@@ -2169,27 +2428,35 @@ Token Tokenizer::ParsePreprocessingDirective()
                 CurrentCodePointOffset_ += literalSize;
                 CurrentCodePointPosition_.Column += literalSize;
                 CurrentTokenSize_ += literalSize;
+
                 if (literalSize != 0) {
                     IsNewLine_ = false;
                 }
+
                 cur = lastByte < AsciiLimit ? unicode::CodePoint(lastByte) : CurrentUnicodeCodePoint();
+
                 if (cur == '\0' || cur == quote || cur == '\n') {
                     break;
                 }
+
                 if (cur == '\\') {
                     ConsumeCodePoint();
                     cur = CurrentCodePoint();
+
                     if (cur == '\0') {
                         break;
                     }
                 }
+
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
             }
+
             if (cur == quote) {
                 ConsumeCodePoint();
                 cur = CurrentCodePoint();
             }
+
             continue;
         }
 

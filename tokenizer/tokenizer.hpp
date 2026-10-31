@@ -158,6 +158,7 @@ public:
         if (PendingIndex_ != PendingCount_) {
             return Pending_[PendingIndex_++];
         }
+
         return Refill();
     }
 

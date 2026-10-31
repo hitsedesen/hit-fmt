@@ -11,7 +11,8 @@ enum class BlankLineMode : std::uint8_t
 {
     Preserve,
     Inherit,
-    Exact
+    Exact,
+    Minimum
 };
 
 struct BlankLineSetting
@@ -27,13 +28,14 @@ struct BlankLineSetting
     bool operator==(const BlankLineSetting& other) const = default;
 };
 
-// Concrete vertical counts measure empty lines, not newline characters. An
-// Exact positive count requires an applicable boundary break; Exact zero only
-// removes surplus empty lines, retaining its selected inline/broken status.
+// Concrete vertical counts measure empty lines, not newline characters.
+// Positive counts require a boundary break; zero retains inline/broken status.
+// Minimum retains larger source gaps, subject to the applicable empty-line cap.
 enum class VerticalGapMode : std::uint8_t
 {
     Preserve,
-    Exact
+    Exact,
+    Minimum
 };
 
 struct VerticalGapPolicy
@@ -65,6 +67,10 @@ struct VerticalGapPolicies
     EmptyLineCap MaxEmptyLines;
     VerticalGapPolicy StandaloneCommentBlankLinesBefore;
     VerticalGapPolicy StandaloneCommentBlankLinesAfter;
+    VerticalGapPolicy BlockBlankLinesAfter;
+    VerticalGapPolicy ControlStatementBlankLinesBefore;
+    VerticalGapPolicy MacroBlankLinesAround;
+    EmptyLineCap MemberGroupMaxEmptyLines;
 };
 
 } // namespace formatter

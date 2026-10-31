@@ -14,12 +14,15 @@ ConfigPreset ParseConfigPreset(std::string_view name)
     if (name == "ytsaurus") {
         return ConfigPreset::YTsaurus;
     }
+
     if (name == "google") {
         return ConfigPreset::Google;
     }
+
     if (name == "llvm") {
         return ConfigPreset::LLVM;
     }
+
     throw UsageError("unknown config preset: " + std::string(name) + " (expected ytsaurus, google or llvm)");
 }
 
@@ -37,6 +40,7 @@ void ParseChangedHunks(std::optional<std::string>& hunkInput, std::string_view v
     if (hunkInput || value.empty()) {
         throw UsageError(ChangedHunkError);
     }
+
     hunkInput = value;
 }
 
@@ -44,9 +48,11 @@ size_t ParseThreadCount(std::string_view value)
 {
     size_t threads = 0;
     const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), threads);
+
     if (error != std::errc{} || end != value.data() + value.size() || threads == 0) {
         throw UsageError(ThreadsError);
     }
+
     return threads;
 }
 
@@ -68,9 +74,11 @@ void ParseConfigPath(std::optional<std::filesystem::path>& path, std::string_vie
 void ParseExclusion(std::vector<std::regex>& exclusions, std::string_view value)
 {
     const std::string pattern(value);
+
     if (pattern.empty()) {
         throw UsageError(ExclusionError);
     }
+
     try {
         exclusions.emplace_back(pattern);
     }
@@ -84,9 +92,11 @@ void ValidateOptions(const Options& options)
     if (options.HunkInput && !options.Paths.empty()) {
         throw UsageError("--changed-hunks cannot be combined with input paths");
     }
+
     if (!options.Spillover && !options.HunkInput) {
         throw UsageError("--no-spillover requires --changed-hunks");
     }
+
     if (options.GenerateConfig && !options.Paths.empty()) {
         throw UsageError("--generate-config cannot be combined with input paths");
     }

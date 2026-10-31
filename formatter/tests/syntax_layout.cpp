@@ -77,14 +77,18 @@ Output Lower(
         formatter::BuildSyntaxDocument(tree, policies, annotations, safety, spacing, document, scratch, options);
     EXPECT_TRUE(status) << "lowering error " << int(status.Code) << " token " << status.Token << " core "
         << int(status.Core.Code);
+
     if (!status) {
         throw std::runtime_error("failed syntax lowering");
     }
+
     const auto rendered = document.Render(formatter::SyntaxRenderPolicy(policies, options), &file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
+
     if (!rendered.State) {
         throw std::runtime_error("failed rendering");
     }
+
     return {std::string(rendered.Text), {rendered.Broken.begin(), rendered.Broken.end()}, scratch.BytesRequested};
 }
 
@@ -128,6 +132,7 @@ TEST(SyntaxLayout, PartialIndentationRetainsUnselectedText)
     formatter::SourceAnalysisOptions scope;
     scope.EditScope = ranges;
     auto style = Canonical(80);
+
     for (const auto shape : {formatter::BodyShape::Expanded, formatter::BodyShape::CompactIfFits}) {
         style.BodyShape = shape;
         const auto output = Lower(input, style, {}, scope);
@@ -301,6 +306,7 @@ TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
     scope.EditScope = std::span<const parser::SourceRange>{};
     EXPECT_EQ(Lower(input, style, {}, scope).Text, input);
+
     for (const std::string whitespace : {"    ", "\t  ", "\r  ", "\f  ", "\v  "}) {
         const std::string cut = "void f() {\n" + whitespace + "work();\n}\n";
         const auto end = parser::SourceOffset(cut.find("work"));
@@ -308,6 +314,7 @@ TEST(SyntaxLayout, PartialInsertionPointsCutsAndTailRemainFenced)
         scope.EditScope = suffix;
         EXPECT_EQ(Lower(cut, style, {}, scope).Text, cut);
     }
+
     const std::string cutTrim = "void f() {\n  work(); \t \r\n}\n";
     const auto trim = parser::SourceOffset(cutTrim.find(" \t "));
     const parser::SourceRange cutRun[] = {{trim + 1, trim + 3}};
@@ -368,6 +375,7 @@ TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
         "void f() {\n flow.Begin();\n      work();\n other.End();\n}\n",
     };
     style.IndentedCallScopePairs = {"Begin:End"};
+
     for (const auto& protectedInput : protectedInputs) {
         const auto begin = parser::SourceOffset(protectedInput.find("      "));
         const parser::SourceRange ranges[] = {{begin, begin + 6}};
@@ -376,6 +384,7 @@ TEST(SyntaxLayout, PartialPermissionsDoNotBypassRealOrUncertainProtection)
         scope.WhitespaceSensitiveMacros = macros;
         EXPECT_EQ(Lower(protectedInput, style, {}, scope).Text, protectedInput);
     }
+
     // An explicit island in one function must not erase unrelated grammar
     // context in another, whose tokens are merely outside the edit scope.
     const std::string separate = "void first() { blocked(); }\nvoid second() {\n      work();\n}\n";
@@ -398,6 +407,7 @@ TEST(SyntaxLayout, ScopedSyntaxContextCannotAuthorizeExcludedCommaRemoval)
     formatter::SourceAnalysisOptions scope;
     scope.EditScope = ranges;
     auto style = Canonical(80);
+
     for (const auto policy : {formatter::TrailingCommaPolicy::Never, formatter::TrailingCommaPolicy::WhenMultiline}) {
         style.InitializersTrailingComma = policy;
         const auto expectIdentity = [&] (const Output& output) {
@@ -430,6 +440,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
     scope.EditScope = horizontalRange;
     EXPECT_EQ(Lower(horizontal, style, {}, scope).Text.find(','), std::string::npos);
     EXPECT_NE(Lower(horizontal, style).Text.find(','), std::string::npos);
+
     // The comment boundary must already be multiline to render broken.
     for (const std::string input :
         {"void f() { consume({alpha /*note*/\n  }); }\n", "void f() { consume({alpha /*note*/\r\n  }); }\n"})
@@ -458,6 +469,7 @@ TEST(SyntaxLayout, ScopedCloserDoesNotAuthorizeCommaInsertionBeforeComment)
         EXPECT_EQ(Lower(input, style, {}, scope).Text.find(','), std::string::npos);
         scope.ImmutableRanges = {};
     }
+
     const std::string existing = "void f() { consume({alpha /*note*/,\n  }); }\n";
     const auto itemEnd = parser::SourceOffset(existing.find("alpha") + 5);
     const auto commentEnd = parser::SourceOffset(existing.find("*/") + 2);
@@ -482,6 +494,7 @@ TEST(SyntaxLayout, UnscopedAndFullySelectedLoweringAgree)
     const parser::SourceRange all[] = {{0, parser::SourceOffset(input.size())}};
     formatter::SourceAnalysisOptions scope;
     scope.EditScope = all;
+
     for (const auto style : {formatter::Style{}, Canonical(80), Canonical(18)}) {
         EXPECT_EQ(Lower(input, style, {}, scope).Text, Lower(input, style).Text);
     }
@@ -506,9 +519,11 @@ TEST(SyntaxLayout, HeaderDecisionEndsBeforeExpandedBody)
     auto style = Canonical(80);
     style.FunctionBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
     const std::string fitting = "void f(int x) {\n  work();\n}\n";
+
     for (const auto header : {"void f", "void\nf", "void\t f"}) {
         EXPECT_EQ(Lower(std::string(header) + "(int x) { work(); }\n", style).Text, fitting);
     }
+
     const auto output = Lower("void f(int x) { first(); second(); }\n", style).Text;
     EXPECT_NE(output.find("void f(int x) {\n"), std::string::npos);
     style.ColumnLimit = 18;
@@ -541,6 +556,7 @@ TEST(SyntaxLayout, FunctionTryHeaderSpacingIsSourceIndependent)
     auto style = Canonical(80);
     style.FunctionBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
     const auto expected = Lower("void f() try { work(); } catch (...) { recover(); }\n", style).Text;
+
     for (const auto header : {"void\nf()\ntry", "void\tf()\ttry"}) {
         const auto output = Lower(std::string(header) + " { work(); } catch (...) { recover(); }\n", style).Text;
         EXPECT_EQ(output, expected);
@@ -565,9 +581,11 @@ TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
 {
     auto style = Canonical(80);
     style.ControlBracePlacement = formatter::BracePlacement::NextLine;
+
     for (const auto condition : {"ready", "meta::matches<Tag>(entry)"}) {
         const std::string header = "if (" + std::string(condition) + ")";
         const std::string protectedInput = "void f(){ " + header + " { first(); } else { second(); } }\n";
+
         for (const bool protectOpening : {false, true}) {
             const auto space = protectOpening ? protectedInput.find(" { first") : protectedInput.find("else") + 4;
             const parser::SourceRange immutable[] = {{uint32_t(space), uint32_t(space + 1)}};
@@ -605,6 +623,7 @@ TEST(SyntaxLayout, ControlledArmsSkipDescendantElseSeparators)
                         "\n#else\n if (second) " + inner + (innerElse ? " else /* inner */ if (third) " + inner : "") +
                         "\n#endif\n /* parent */ else " + outer + "\n}\n";
                 SCOPED_TRACE(source);
+
                 for (const auto placement :
                     {
                         formatter::BracePlacement::Attached,
@@ -639,9 +658,11 @@ TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
     const parser::Node* outer = nullptr;
     const parser::Node* inner = nullptr;
     std::vector<const parser::Node *> pending{&tree.Root()};
+
     while (!pending.empty()) {
         const auto* node = pending.back();
         pending.pop_back();
+
         if (node->Kind == parser::NodeKind::IfStatement) {
             if (!outer) {
                 outer = node;
@@ -649,23 +670,29 @@ TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
                 inner = node;
             }
         }
+
         for (auto* child = node->FirstChild; child; child = child->NextSibling) {
             pending.push_back(child);
         }
     }
+
     ASSERT_NE(outer, nullptr);
     ASSERT_NE(inner, nullptr);
     EXPECT_EQ(inner->Tokens.End, outer->Tokens.End);
     bool containsElse = false;
+
     for (auto t = inner->Tokens.Begin; t < inner->Tokens.End; ++t) {
         containsElse |= tree.Kind(t) == tokenizer::TokenKind::Keyword_else;
     }
+
     EXPECT_TRUE(containsElse);
+
     for (const auto* child = outer->FirstChild; child; child = child->NextSibling) {
         if (child->Kind == parser::NodeKind::IfStatement) {
             EXPECT_EQ(child, inner);
         }
     }
+
     auto style = Canonical(80);
     const auto output = Lower(source, style);
     EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
@@ -729,6 +756,7 @@ TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
             style.ChainsBreak = formatter::BreakRequirement::Always;
             style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
             style.ChainsAlignment = formatter::ContinuationAlignment::Block;
+
             for (const std::string prefix :
                 {"", "auto result = ", "auto considerablyLongerResult = ", "result = ", "result = first + "})
             {
@@ -744,8 +772,10 @@ TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
                     EXPECT_EQ(Lower(output, style).Text, output);
                 }
             }
+
             style.CallsBreak = formatter::BreakRequirement::Always;
             style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
+
             for (const std::string prefix : {"", "auto result = "}) {
                 for (const std::string argumentPrefix : {"", "first + "}) {
                     SCOPED_TRACE(prefix + argumentPrefix);
@@ -875,6 +905,7 @@ TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)
     EXPECT_EQ(c, d);
     ASSERT_NE(c.find("beta,"), std::string::npos);
     const auto comma = d.find("beta,") + 4;
+
     // Designators belong to the complete element; normalization must use the
     // value endpoint, not the designator or the original trailing comma.
     for (const std::string input :
@@ -978,6 +1009,7 @@ TEST(SyntaxLayout, ListsHeadersLambdasAndControlClausesCompose)
     formatter::Style minimal;
     minimal.Layout = formatter::LayoutMode::Canonical;
     const auto ytsaurus = formatter::LoadConfigFile(directory / "ytsaurus.hit-fmt").FormattingStyle;
+
     for (const auto& policy : {minimal, ytsaurus}) {
         const auto rendered = Lower(qualified, policy).Text;
         EXPECT_EQ(Lower(rendered, policy).Text, rendered);
@@ -1005,6 +1037,7 @@ TEST(SyntaxLayout, ExpressionContinuationDoesNotBecomeChildBlockBase)
         style.CallsPacking = formatter::ListPacking::VerticalWhenBroken;
         style.CallsCloser = formatter::CloserPlacement::OwnLine;
         style.LambdaBodiesLayout = formatter::CategoryLayout::Canonical;
+
         for (const auto prefix : {"", "auto value = "}) {
             SCOPED_TRACE(prefix);
             const std::string call = "void f() {\n    " + std::string(prefix) + "take(1, 2);\n}\n";
@@ -1029,9 +1062,11 @@ TEST(SyntaxLayout, ExpressionsShareRealizedStructuralContinuation)
     style.ControlHeadersFirstItem = formatter::FirstItemPlacement::NextLine;
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
     const std::string input = "void f(){ if(alpha || beta){ return left | right; } }\n";
+
     for (const auto alignment : {formatter::ContinuationAlignment::Block, formatter::ContinuationAlignment::Delimiter})
     {
         style.ControlHeadersAlignment = alignment;
+
         for (const auto side : {formatter::OperatorSide::Leading, formatter::OperatorSide::Trailing}) {
             style.BinaryOperatorSide = side;
             const auto output = Lower(input, style).Text;
@@ -1063,6 +1098,7 @@ TEST(SyntaxLayout, InlineControlPrefixFitsBeforeIndependentExpressionBreaks)
     style.ControlBracePlacement = formatter::BracePlacement::NextLineIfHeaderBroken;
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
     const std::string input = "void f(){ if(alpha || beta){ return left | right; } }\n";
+
     for (const auto side : {formatter::OperatorSide::Leading, formatter::OperatorSide::Trailing}) {
         style.BinaryOperatorSide = side;
         const auto output = Lower(input, style).Text;
@@ -1095,12 +1131,14 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
     style.CallsBreak = formatter::BreakRequirement::Always;
     style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
     const std::string input = "void f() {\n    auto value =\n        take(1);\n}\n";
+
     for (const auto kind : {formatter::IndentationKind::Preserve, formatter::IndentationKind::Spaces}) {
         style.IndentationKind = kind;
         const auto output = Lower(input, style).Text;
         EXPECT_NE(output.find("=\n        take(\n            1)"), std::string::npos) << output;
         EXPECT_EQ(Lower(output, style).Text, output);
     }
+
     for (const std::string_view newline : {"\n", "\r\n"}) {
         for (const auto kind : {formatter::IndentationKind::Spaces, formatter::IndentationKind::Tabs}) {
             SCOPED_TRACE(newline == "\n" ? "LF" : "CRLF");
@@ -1117,9 +1155,11 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
             options.TabWidth = 4;
             const auto output = Lower(continued, style, options, protection);
             auto expected = continued;
+
             if (kind == formatter::IndentationKind::Tabs) {
                 expected.replace(begin, 12, "\t\t\t");
             }
+
             EXPECT_EQ(output.Text, expected);
             const parser::SourceRange repeatedRanges[] =
                 {{begin, begin + (kind == formatter::IndentationKind::Tabs ? 3u : 12u)}};
@@ -1129,6 +1169,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
             const auto parentEnd = continued.find("take(");
         }
     }
+
     for (const std::string_view newline : {"\n", "\r\n"}) {
         for (const auto trailing : {formatter::TrailingWhitespace::Preserve, formatter::TrailingWhitespace::Trim}) {
             for (const bool selectParentIndent : {false, true}) {
@@ -1155,17 +1196,21 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
                 const auto output = Lower(continued, style, {}, protection);
                 auto expected = continued;
                 const bool trim = trailing == formatter::TrailingWhitespace::Trim;
+
                 if (trim) {
                     expected.erase(trimBegin, 2);
                 }
+
                 EXPECT_EQ(output.Text, expected);
                 auto repeatedRanges = ranges;
+
                 for (auto& range : repeatedRanges) {
                     if (trim && range.Begin > trimBegin) {
                         range.Begin -= 2;
                         range.End -= 2;
                     }
                 }
+
                 formatter::SourceAnalysisOptions repeatedScope;
                 repeatedScope.EditScope =
                     std::span(repeatedRanges).subspan(trim ? 1 : 0, (selectParentIndent ? 3 : 2) - (trim ? 1 : 0));
@@ -1173,6 +1218,7 @@ TEST(SyntaxLayout, RealizedExpressionLineRetainsChildContinuationBase)
             }
         }
     }
+
     // A retained prefix before a selected trim already contains an owned LF;
     // the final indentation can remain borrowed rather than generated.
     const std::string blankLine = "void f() {\n    auto value =\n  \n        take(\n" "            item);\n}\n";
@@ -1409,6 +1455,7 @@ TEST(SyntaxLayout, CaseBraceAndLabelIndentAreIndependentOfFollowingBody)
     // A sole block supplies its own level; unbraced cases need one too.
     EXPECT_NE(output.find("\n      first();\n      second();"), std::string::npos) << output;
     EXPECT_NE(output.find("default:\n    break;"), std::string::npos) << output;
+
     for (const auto label : {formatter::BodyIndentation::Indent, formatter::BodyIndentation::NoIndent}) {
         style.IndentWidth = 4;
         style.BlockBodyIndentWidth = 3;
@@ -1467,10 +1514,12 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     EXPECT_NE(output.Text.find("\n  case 1:\n            second();"), std::string::npos) << output.Text;
     EXPECT_NE(output.Text.find("\n\tdefault:\n            break;"), std::string::npos) << output.Text;
     EXPECT_EQ(Lower(output.Text, style).Text, output.Text);
+
     for (const std::string_view name : {"case 0", "case 1", "default"}) {
         const auto end = input.find(name);
         const auto begin = input.rfind('\n', end) + 1;
     }
+
     const auto generated = Lower("void f(){ switch(value){ case 0: first(); default: break; } }\n", style).Text;
     EXPECT_NE(generated.find("\n        case 0:\n            first();"), std::string::npos) << generated;
     EXPECT_EQ(Lower(generated, style).Text, generated);
@@ -1487,6 +1536,7 @@ TEST(SyntaxLayout, CaseLabelPreserveRetainsOnlyExistingIndentation)
     }
 
     style.BodyShape = formatter::BodyShape::Expanded;
+
     // Token-internal LF and an inline token column are not indentation
     // evidence.
     for (const std::string_view comment : {"/* note */", "/* note\n */"}) {
@@ -1726,6 +1776,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         Lower("void f(){\n  wrap(tag, flow.Begin());\n    " "work();\n  wrap(tag, flow.End());\n}\n", style).Text;
     EXPECT_EQ(multi, "void f() {\n  wrap(tag, flow.Begin());\n    " "work();\n  wrap(tag, flow.End());\n}\n");
     EXPECT_EQ(Lower(multi, style).Text, multi);
+
     for (const auto& context :
         std::vector<std::pair<std::string, std::string>>{
             {"wrap(flow.Begin(), tag)", "wrap(flow.End(), tag)"},
@@ -1743,6 +1794,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
             Lower("void f(){\n  " + context.first + ";\n  work();\n  " + context.second + ";\n}\n", style).Text;
         EXPECT_NE(flat.find("\n  work();"), std::string::npos) << flat;
     }
+
     for (const auto& context :
         std::vector<std::pair<std::string, std::string>>{
             {"wrap(tag, flow.Begin())", "wrap(other, flow.End())"},
@@ -1760,6 +1812,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
         EXPECT_NE(uncertainRegion.find("void later() {\n  task();\n}"), std::string::npos) << uncertainRegion;
         EXPECT_EQ(Lower(uncertainRegion, style).Text, uncertainRegion);
     }
+
     for (const auto& context :
         std::vector<std::pair<std::string, std::string>>{
             {"wrap([](){ flow.Begin(); })", "wrap([](){ flow.End(); })"},
@@ -1771,6 +1824,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
             Lower("void f(){\n  " + context.first + ";\n    work();\n  " + context.second + ";\n}\n", style).Text;
         EXPECT_NE(excluded.find("\n  work();"), std::string::npos) << excluded;
     }
+
     const auto nestedWrappers = Lower(
         "void f(){\n  wrap(outer, flow.Begin());\n   " " wrap(inner, flow.Begin());\n      "
         "work();\n    wrap(inner, flow.End());\n  " "wrap(outer, flow.End());\n}\n",
@@ -1945,14 +1999,18 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
 {
     size_t smallFile = 0;
     size_t smallScratch = 0;
+
     for (const int count : {1000, 2000}) {
         std::string input = "void f(){ auto result = call(";
+
         for (int i = 0; i < count; ++i) {
             if (i) {
                 input += ',';
             }
+
             input += "item";
         }
+
         input += "); }\n";
         CountingResource file;
         CountingResource scratch;
@@ -1967,6 +2025,7 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
         RecordProperty("scratch_peak_" + std::to_string(count), int(scratch.Peak));
         RecordProperty("file_allocations_" + std::to_string(count), int(file.Allocations));
         RecordProperty("scratch_allocations_" + std::to_string(count), int(scratch.Allocations));
+
         if (count == 1000) {
             smallFile = file.Peak;
             smallScratch = scratch.Peak;
@@ -1974,6 +2033,7 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
             EXPECT_LT(file.Peak, smallFile * 3);
             EXPECT_LT(scratch.Peak, smallScratch * 3);
         }
+
         EXPECT_LT(output.Text.size(), input.size() * 3);
     }
 }
@@ -1987,6 +2047,7 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
         std::string expected = input;
         std::vector<parser::SourceRange> ranges;
         ranges.reserve(size_t(count) * 2);
+
         for (int i = 0; i < count; ++i) {
             const auto begin = parser::SourceOffset(input.size());
             input += "      work();  \n";
@@ -1995,6 +2056,7 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
             ranges.push_back({trim, trim + 2});
             expected += "  work();\n";
         }
+
         input += "}\n";
         expected += "}\n";
         formatter::SourceAnalysisOptions scope;
@@ -2016,6 +2078,7 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
         RecordProperty("partial_scratch_requested_" + std::to_string(count), int(output.ScratchBytesRequested));
         RecordProperty("partial_file_allocations_" + std::to_string(count), int(file.Allocations));
         RecordProperty("partial_scratch_allocations_" + std::to_string(count), int(scratch.Allocations));
+
         if (count == 1000) {
             smallFile = file.Peak;
             smallScratchRequests = output.ScratchBytesRequested;
@@ -2033,20 +2096,25 @@ TEST(SyntaxLayout, WideAndDeepGroupsHaveBoundedIterativeConstruction)
 {
     auto style = Canonical(60);
     std::string wide = "void f(){ call(";
+
     for (int i = 0; i < 3000; ++i) {
         if (i) {
             wide += ',';
         }
+
         wide += "item";
     }
+
     wide += "); }\n";
     const auto output = Lower(wide, style).Text;
     EXPECT_LT(output.size(), wide.size() * 3);
     EXPECT_EQ(Lower(output, style).Text, output);
     std::string deep = "void f(){ auto result = ";
+
     for (int i = 0; i < 100; ++i) {
         deep += "call(";
     }
+
     deep += "item";
     deep.append(100, ')');
     deep += "; }\n";
@@ -2093,10 +2161,12 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
     size_t separators = 0;
     formatter::GapId afterComma = 0;
+
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         if (tree.Kind(i) != tokenizer::TokenKind::Operator_Comma) {
             continue;
         }
+
         ++separators;
         afterComma = i + 1;
         EXPECT_EQ(tree.Role(i), parser::PunctuationRole::ListSeparator);
@@ -2112,6 +2182,7 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         EXPECT_EQ(gap.Priority, 3);
         EXPECT_EQ(spacing.SpacePreference(i + 1, formatter::GapContext::Preserved, safety), true);
     }
+
     EXPECT_EQ(separators, 1u);
     style.Layout = formatter::LayoutMode::Preserve;
     style.CommaSpaceAfter = formatter::GapPolicy::GeneratedSpace;
@@ -2148,6 +2219,7 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         {"template<auto, auto> struct Pair;\n", "(1<2)"},
         {"template<auto, class> struct Wrap;\n" "template<class, auto> struct Pair;\n", "Wrap<(1>0),int>"},
     };
+
     for (const auto& [declarations, operand] : operands) {
         const auto head = "Pair<" + std::string(operand) + ",";
         const auto input = std::string(declarations) + "template<> struct " + head + "0> {};\n";
@@ -2166,9 +2238,11 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
         protection.ImmutableRanges = blocked;
         auto expected = input;
         const auto nestedComma = expected.find(",int>");
+
         if (nestedComma != std::string::npos) {
             expected.insert(nestedComma + 1, " ");
         }
+
         EXPECT_EQ(Lower(input, style, {}, protection).Text, expected);
     }
 

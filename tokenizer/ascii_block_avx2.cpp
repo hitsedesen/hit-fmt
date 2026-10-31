@@ -12,12 +12,14 @@ template <std::size_t Size>
 constexpr std::array<unsigned char, 16> MakeMembershipTable(const char (&members)[Size]) noexcept
 {
     std::array<unsigned char, 16> table{};
+
     // Printable ASCII uses six high-nibble bits, all below the sign bit.
     for (std::size_t index = 0; index + 1 < Size; ++index) {
         const auto value = static_cast<unsigned char>(members[index]);
         table[value & 0x0f] |= static_cast<unsigned char>(
             1u << ((value >> 4) - 2));
     }
+
     return table;
 }
 

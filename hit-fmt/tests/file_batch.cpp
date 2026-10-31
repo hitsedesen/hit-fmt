@@ -21,6 +21,7 @@ TEST(FileBatch, FlushesOnCountOrEstimatedBytes)
             EXPECT_EQ(batch.Paths[offset], std::to_string(batch.FirstIndex + offset));
             indices.push_back(batch.FirstIndex + offset);
         }
+
         groups.push_back(std::move(indices));
         batch.Paths.clear();
         return true;
@@ -37,9 +38,11 @@ TEST(FileBatch, FlushesOnCountOrEstimatedBytes)
             10,
             flush);
     };
+
     for (auto size : {1, 3, 4, 4, 100, 2, 2, 2, 2, 6, 4}) {
         ASSERT_TRUE(add(size));
     }
+
     EXPECT_EQ(groups, (std::vector<std::vector<size_t>>{{0}, {1, 2}, {3}, {4}, {5, 6, 7, 8}, {9, 10}}));
     EXPECT_TRUE(batch.Paths.empty());
 }

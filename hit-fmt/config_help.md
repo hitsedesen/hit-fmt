@@ -274,8 +274,10 @@ InitializersTrailingComma = WhenMultiline
 ```
 
 # Blank lines
-- Counts accept Preserve or 0..10000. Positive counts force a break;
-  zero adds no break. Existing blank lines stay unless overridden.
+- Counts accept Preserve, 0..10000 or Minimum:N (N in 0..10000).
+  Minimum:N retains larger authored gaps subject to caps.
+  Positive counts force a break; zero adds no break.
+  Existing blank lines stay unless overridden.
 - NamespaceBlankLines* and LinkageBlankLines* apply inside nonempty
   blocks, outside attached comments.
 - AccessSectionBlankLinesBefore separates access sections, including
@@ -292,8 +294,24 @@ InitializersTrailingComma = WhenMultiline
   stay together. The gap follows the whole body, including [[fallthrough]];,
   and precedes attached label comments. Directives and unparsed syntax
   stop grouping. Preserve retains gaps; 0 removes empty lines; 1 adds one.
+- BlockBlankLinesAfter separates a brace-terminated block/control statement
+  from its next sibling, also after braced do/while. It skips body edges,
+  else/catch continuations and initializer braces. Also applies after
+  definitions, namespaces and linkage blocks; declaration counts win.
+- ControlStatementBlankLinesBefore separates sibling if/for/while statements
+  from preceding code, including declarations. It skips body starts and
+  labels; optional semantic grouping with initializations is not inferred.
+- MacroBlankLinesAround separates complete standalone calls selected by
+  BlankLineMacroNames (unqualified identifiers or prefixes ending in *).
+  Consecutive calls of the same name form a group with zero blank lines.
+  Fluent suffixes stay inside their statement. Nested calls and body edges
+  do not get gaps.
 - MaxEmptyLines caps editable blank lines, not inline gaps or tokens.
-  Exact counts above an explicit cap are invalid after inheritance.
+  MemberGroupMaxEmptyLines overrides it between adjacent fields/methods or
+  two method definitions, preserving authored group boundaries. Preserve
+  uses the global cap. Semantic grouping remains the author's decision.
+  Exact/minimum counts above their configured caps are invalid after
+  inheritance. Exact comment/ruler counts override member-group caps.
   Comment attachments, directives and protection can stop these edits.
 
 ## Structural blank lines
@@ -308,9 +326,14 @@ DeclarationBlankLines = 0
 DeclarationCategoryBlankLines = 1
 MemberDeclarationBlankLines = Preserve
 DefinitionBlankLines = 1
-MemberDefinitionBlankLines = 0
+MemberDefinitionBlankLines = Minimum:1
 CaseBlankLines = 1
+BlockBlankLinesAfter = 1
+ControlStatementBlankLinesBefore = 1
+MacroBlankLinesAround = 1
+BlankLineMacroNames = ["CHECK", "LOG_*"]
 MaxEmptyLines = 1
+MemberGroupMaxEmptyLines = 2
 ```
 
 # Spacing

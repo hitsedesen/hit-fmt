@@ -1,0 +1,8 @@
+Layout = Canonical
+IndentWidth = 4
+BodyShape = Expanded
+BlockBlankLinesAfter = 1
+ControlStatementBlankLinesBefore = 1
+MacroBlankLinesAround = 1
+BlankLineMacroNames = ["YT_VERIFY", "YT_TLOG_*", "YT_TLOG_DEBUG*", "YT_LOG_*"]
+MaxEmptyLines = 1

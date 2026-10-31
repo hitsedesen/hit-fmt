@@ -18,12 +18,15 @@ public:
     {
         const auto size = CheckedSourceAnalysisSize(source.size());
         Boundaries_.push_back(0);
+
         for (parser::SourceOffset i = 0; i < size; ++i) {
             BareCR_ |= source[i] == '\r' && (i + 1 == size || source[i + 1] != '\n');
+
             if (source[i] == '\n') {
                 Boundaries_.push_back(i + 1);
             }
         }
+
         if (size && source.back() != '\n') {
             Boundaries_.push_back(size);
         }
@@ -41,6 +44,7 @@ public:
                 return a.Begin != b.Begin ? a.Begin < b.Begin : a.End < b.End;
             });
         size_t count = 0;
+
         for (const auto hunk : result) {
             if (count && hunk.Begin <= result[count - 1].End + 1) {
                 result[count - 1].End = std::max(result[count - 1].End, hunk.End);
@@ -48,6 +52,7 @@ public:
                 result[count++] = hunk;
             }
         }
+
         result.resize(count);
         return result;
     }
@@ -74,6 +79,7 @@ public:
         if (source.Begin >= source.End || source.End > Boundaries_.back()) {
             throw std::invalid_argument("invalid original hunk unit range");
         }
+
         const auto line = [&] (parser::SourceOffset offset) {
             return size_t(std::upper_bound(Boundaries_.begin(), Boundaries_.end(), offset) - Boundaries_.begin());
         };
@@ -102,9 +108,11 @@ inline bool HunkScopeContains(std::span<const parser::SourceRange> scope, parser
         [] (auto begin, const auto range) {
             return begin < range.Begin;
         });
+
     if (it == scope.begin()) {
         return false;
     }
+
     const auto range = *std::prev(it);
     return range.Begin <= source.Begin && source.Begin < range.End && source.End <= range.End;
 }
@@ -114,6 +122,7 @@ inline bool HunkScopeIntersects(std::span<const parser::SourceRange> scope, pars
     if (source.Empty()) {
         return HunkScopeContains(scope, source);
     }
+
     const auto it = std::lower_bound(
         scope.begin(),
         scope.end(),
