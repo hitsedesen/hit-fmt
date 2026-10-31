@@ -287,6 +287,11 @@ InitializersTrailingComma = WhenMultiline
   and variables; aliases are types, templates follow their entity.
 - MemberDeclarationBlankLines and MemberDefinitionBlankLines override
   general counts; Inherit follows them.
+- CaseBlankLines separates a case with statements from the next
+  case/default label, including attributed labels. Empty stacked labels
+  stay together. The gap follows the whole body, including [[fallthrough]];,
+  and precedes attached label comments. Directives and unparsed syntax
+  stop grouping. Preserve retains gaps; 0 removes empty lines; 1 adds one.
 - MaxEmptyLines caps editable blank lines, not inline gaps or tokens.
   Exact counts above an explicit cap are invalid after inheritance.
   Comment attachments, directives and protection can stop these edits.
@@ -304,6 +309,7 @@ DeclarationCategoryBlankLines = 1
 MemberDeclarationBlankLines = Preserve
 DefinitionBlankLines = 1
 MemberDefinitionBlankLines = 0
+CaseBlankLines = 1
 MaxEmptyLines = 1
 ```
 

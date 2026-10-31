@@ -727,6 +727,16 @@ DefinitionBlankLines = Preserve
 # Values: Inherit | Preserve | 0..10000
 MemberDefinitionBlankLines = Inherit
 
+# Between a case with statements and the next case/default label.
+# Stacked empty labels stay together; includes attributed labels.
+# The gap follows the whole body, including [[fallthrough]];.
+# Attached label comments stay with their label.
+# Directives and unparsed syntax stop case grouping.
+# Example: 1 adds an empty line after work(); [[fallthrough]];
+# before the next case. 0 removes empty lines; Preserve retains them.
+# Values: Preserve | 0..10000
+CaseBlankLines = Preserve
+
 # Values: Preserve | 0..10000
 StandaloneCommentBlankLinesBefore = Preserve
 

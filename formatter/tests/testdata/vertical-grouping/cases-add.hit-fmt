@@ -1,0 +1,4 @@
+Layout = Preserve
+IndentWidth = 4
+IndentCaseLabels = NoIndent
+CaseBlankLines = 1

@@ -551,6 +551,7 @@
     OPT(formatter::BlankLineSetting, DefinitionBlankLines, {})                 \
     OPT(formatter::BlankLineSetting, MemberDefinitionBlankLines,              \
         formatter::BlankLineSetting::Inherited())                            \
+    OPT(formatter::BlankLineSetting, CaseBlankLines, {})                      \
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesBefore, {}) \
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesAfter, {}) \
     OPT(std::optional<std::size_t>, MaxEmptyLines, std::nullopt)              \

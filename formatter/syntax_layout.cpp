@@ -4444,12 +4444,56 @@ private:
         }
     }
 
+    void PlanCaseGaps(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+        if (!Syntax_[id].ItemSequence ||
+            (node.Kind != NodeKind::CompoundStatement && node.Kind != NodeKind::PreprocessingBranch))
+        {
+            return;
+        }
+        bool labeled = false;
+        bool content = false;
+        Index contentEnd = 0;
+        for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+            const auto& entry = Syntax_[child];
+            const auto& part = Region(entry);
+            if (part.Tokens.Empty()) {
+                continue;
+            }
+            if (!entry.Safe || part.Kind == NodeKind::PreprocessingDirective ||
+                part.Kind == NodeKind::PreprocessingConditional)
+            {
+                labeled = content = false;
+                continue;
+            }
+            if (part.Kind == NodeKind::Comment) {
+                continue;
+            }
+            if (IsCaseLabel(child)) {
+                // Only the boundary before the next label separates cases.
+                // Attributes on null statements (including fallthrough) are
+                // part of the preceding body, never a boundary themselves.
+                if (content && part.Attached.Begin >= contentEnd) {
+                    ExactVertical(part.Attached.Begin, Policies_.VerticalGaps.CaseBlankLines);
+                }
+                labeled = true;
+                content = false;
+            } else if (labeled) {
+                content = true;
+                contentEnd = part.Tokens.End;
+            }
+        }
+    }
+
     void PlanVerticalGaps()
     {
         const auto& policy = Policies_.VerticalGaps;
         const bool commentRules = policy.StandaloneCommentBlankLinesBefore.Mode == VerticalGapMode::Exact ||
             policy.StandaloneCommentBlankLinesAfter.Mode == VerticalGapMode::Exact;
-        const bool sequenceRules = commentRules || policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
+        const bool caseRules = policy.CaseBlankLines.Mode == VerticalGapMode::Exact;
+        const bool sequenceRules = caseRules || commentRules ||
+            policy.DeclarationBlankLines.Mode == VerticalGapMode::Exact ||
             policy.DeclarationCategoryBlankLines.Mode == VerticalGapMode::Exact ||
             policy.MemberDeclarationBlankLines.Mode == VerticalGapMode::Exact ||
             policy.DefinitionBlankLines.Mode == VerticalGapMode::Exact ||
@@ -4465,6 +4509,9 @@ private:
             std::pmr::vector<Index> following(Syntax_.get_allocator().resource());
             for (Index id = 0; id < Syntax_.size(); ++id) {
                 const auto& node = Region(Syntax_[id]);
+                if (caseRules) {
+                    PlanCaseGaps(id);
+                }
                 if (commentRules) {
                     if (node.Kind == NodeKind::PreprocessingConditional || node.Kind == NodeKind::PreprocessingBranch) {
                         auto& entry = Syntax_[id];

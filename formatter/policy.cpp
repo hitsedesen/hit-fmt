@@ -158,6 +158,7 @@ void ValidatePolicyStyle(const Style& style)
     CheckBlankSetting(style.MemberDeclarationBlankLines, "MemberDeclarationBlankLines", true);
     CheckBlankSetting(style.DefinitionBlankLines, "DefinitionBlankLines");
     CheckBlankSetting(style.MemberDefinitionBlankLines, "MemberDefinitionBlankLines", true);
+    CheckBlankSetting(style.CaseBlankLines, "CaseBlankLines");
     CheckBlankSetting(style.StandaloneCommentBlankLinesBefore, "StandaloneCommentBlankLinesBefore");
     CheckBlankSetting(style.StandaloneCommentBlankLinesAfter, "StandaloneCommentBlankLinesAfter");
     if (style.MaxEmptyLines && *style.MaxEmptyLines > 10000) {
@@ -184,6 +185,7 @@ void ValidatePolicyStyle(const Style& style)
         ? "MemberDefinitionBlankLines (inherited from DefinitionBlankLines)"
         : "MemberDefinitionBlankLines");
     CheckBlankCap(style.DefinitionBlankLines, style.MaxEmptyLines, "DefinitionBlankLines");
+    CheckBlankCap(style.CaseBlankLines, style.MaxEmptyLines, "CaseBlankLines");
     CheckBlankCap(style.StandaloneCommentBlankLinesBefore, style.MaxEmptyLines, "StandaloneCommentBlankLinesBefore");
     CheckBlankCap(style.StandaloneCommentBlankLinesAfter, style.MaxEmptyLines, "StandaloneCommentBlankLinesAfter");
     if (style.IncludeGrouping != IncludeGrouping::Preserve && style.MaxEmptyLines && *style.MaxEmptyLines == 0) {
@@ -399,6 +401,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(ResolveMemberDeclarationBlankLines(style)),
             CompileBlankLines(style.DefinitionBlankLines),
             CompileBlankLines(ResolveMemberBlankLines(style)),
+            CompileBlankLines(style.CaseBlankLines),
             {style.MaxEmptyLines.has_value(), static_cast<std::uint16_t>(
                 style.MaxEmptyLines.value_or(0))},
             CompileBlankLines(style.StandaloneCommentBlankLinesBefore),

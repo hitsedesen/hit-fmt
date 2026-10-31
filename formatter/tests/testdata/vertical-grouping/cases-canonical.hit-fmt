@@ -1,0 +1,8 @@
+Layout = Canonical
+BodiesLayout = Canonical
+BodyShape = Expanded
+IndentationKind = Spaces
+IndentWidth = 4
+IndentCaseLabels = NoIndent
+CaseBlockBracePlacement = NextLine
+CaseBlankLines = 1
