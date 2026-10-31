@@ -34,6 +34,7 @@ void Decode(int mode)
             case 0:
                 Step();
                 break;
+
             // A nested default label.
             default:
                 break;

@@ -1,12 +1,15 @@
 # YTsaurus-inspired approximation for yt/yt, yt/chyt, yt/yql and library/cpp/yt.
 # Not intended for yt/cpp, util or other library/cpp. See --help-config.
+# Based on yt/styleguide/cpp.md at YTsaurus f7d51a676a55 (2026-10-31).
+# https://github.com/ytsaurus/ytsaurus/blob/f7d51a676a55f80aef23354f91021798592b1034/yt/styleguide/cpp.md
 # Fitting calls/parameters and accessor chains flatten; base/constructor lists break.
 # Field paths and single-call chains wrap only when they do not fit.
 # Mixed links (. / -> / invocation) participate in the same call chain.
 # Receiver construction does not count as a chained call.
 # Message pins and paired visual scopes remain explicit library annotations.
 # Chains use general AllSafe selection, including . / -> and repeated invocation.
-# Approximation: no namespace rulers or naming-role enforcement;
+# Approximation: existing rulers normalize, but namespace rulers are not inserted;
+# variable roles, macro languages and semantic grouping are not enforced;
 # protected macro bytes are not style conformance.
 Layout = Canonical
 IndentWidth = 4
@@ -77,6 +80,8 @@ EnumBracePlacement = NextLine
 EnumeratorsBreak = Always
 EnumeratorsCloser = OwnLine
 FunctionBracePlacement = NextLine
+NamespaceBracePlacement = Attached
+LambdaBracePlacement = Attached
 ControlBracePlacement = NextLineIfHeaderBroken
 CaseBlockBracePlacement = Attached
 BodyShape = Expanded
@@ -92,6 +97,14 @@ NamespaceBlankLinesAfterOpen = 1
 NamespaceBlankLinesBeforeClose = 1
 DefinitionBlankLines = 1
 MemberDefinitionBlankLines = 1
+# Two empty lines are allowed for selected member groups; finer scopes and
+# minimum (rather than exact) definition gaps are not currently configurable.
+MaxEmptyLines = 2
+CaseBlankLines = 1
+# Normalize existing separators; placement still needs human review.
+RulerLength = 80
+RulerBlankLinesBefore = 1
+RulerBlankLinesAfter = 1
 IndentCaseLabels = Indent
 StatementAttributeIndent = Block
 NamespaceComments = Fix
@@ -140,6 +153,26 @@ WhitespaceSensitiveMacros = [
     "DEFINE_AMBIGUOUS_ENUM_WITH_UNDERLYING_TYPE", "YT_DEFINE_ERROR_ENUM"
 ]
 
+# Use one space at word boundaries as well as around operators.
+DeclarationSpecifierSpacing = Space
+DeclarationNameSpacing = Space
+ReturnValueSpacing = Space
+CoReturnValueSpacing = Space
+ThrowOperandSpacing = Space
+CoYieldValueSpacing = Space
+CoAwaitOperandSpacing = Space
+GotoLabelSpacing = Space
+CaseValueSpacing = Space
+NewTypeSpacing = Space
+DeleteOperandSpacing = Space
+BaseSpecifierSpacing = Space
+TemplateParameterNameSpacing = Space
+RecordNameSpacing = Space
+EnumKeywordSpacing = Space
+EnumNameSpacing = Space
+NamespaceNameSpacing = Space
+UsingKeywordSpacing = Space
+LinkageLanguageSpacing = Space
 TemplateKeywordSpacing = Space
 TemplateTypeArgumentSpacing = NoSpace
 TemplateTypeArgumentInteriorSpacing = NoSpace
@@ -160,7 +193,7 @@ NoexceptSpaceBeforeSpecifier = Space
 NoexceptSpaceBeforeParentheses = NoSpace
 DecltypeSpaceBeforeParentheses = NoSpace
 LambdaSpaceBeforeParameters = Space
-LambdaCallSpaceBeforeArguments = NoSpace
+LambdaCallSpaceBeforeArguments = Space
 LambdaBraceSpacing = Space
 SpaceInsideLambdaParameters = NoSpace
 SpaceAroundCaptureList = NoSpace
@@ -184,6 +217,8 @@ DeclarationSemicolonSpacing = NoSpace
 InitializerBracesSpacing = NoSpace
 BraceInitializerSpacing = NoSpace
 NewArraySpaceBeforeBrackets = NoSpace
+ArgumentCommentSpacing = Space
+ArgumentNameCommentSpacing = Space
 
 ExpressionsBreak = IfNeeded
 ExpressionsPacking = Fill
@@ -211,10 +246,24 @@ SubscriptOperatorInteriorSpacing = NoSpace
 
 FunctionDeclarationParameterNames = Required
 FunctionDefinitionParameterNames = NameOrCommentedNameRequired
-# General naming checks remain off until role-aware rules exist.
+ClassNameCase = PascalCase
+ClassNamePrefixes = ["T", "I", "E"]
+StructNameCase = PascalCase
+StructNamePrefixes = ["T", "I", "E"]
+EnumNameCase = PascalCase
+EnumNamePrefixes = ["E"]
+FunctionNameCase = PascalCase
+NamespaceNameCase = PascalCase
+NamespaceNamePrefixes = ["N"]
+# VariableNameCase stays unchecked: globals/statics/public fields use PascalCase,
+# locals/parameters use camelCase, private fields have a suffix, and Logger is
+# an exception. The current single variable category cannot express these roles.
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
 
 # Explicit YTsaurus library annotations; syntax lowering owns contextual guards.
+# Pins currently cover a first-argument string only. Code/condition/error
+# prefixes and always-vertical format arguments require additional policies.
+CallLineFirstStringOverflow = KeepInline
 CallLineFirstStringNames = [
     "THROW_ERROR_EXCEPTION",
     "YT_LOG_TRACE",
@@ -236,10 +285,12 @@ CallLineFirstStringNames = [
 ]
 # Empty annotations select AllSafe; ordinary chains wrap when they do not fit.
 ChainedCallRootNames = []
-# Logging/error, callback and YSON builders break even with one suffix call.
+# Logging/error and YSON builders break even with one suffix call.
 # This is independent of pinning their first message argument.
 AlwaysBreakChainRootNames = [
     "THROW_ERROR_EXCEPTION",
+    "THROW_ERROR_EXCEPTION_IF",
+    "THROW_ERROR_EXCEPTION_UNLESS",
     "YT_LOG_TRACE",
     "YT_LOG_DEBUG",
     "YT_LOG_INFO",
@@ -262,8 +313,6 @@ AlwaysBreakChainRootNames = [
     "YT_TLOG_DEBUG_UNLESS",
     "YT_TLOG_EVENT_WITH_STATIC_ANCHOR",
     "TError",
-    "BIND",
-    "BIND_NO_PROPAGATE",
     "BuildYsonFluently",
     "BuildYsonNodeFluently",
     "BuildYsonStringFluently",
@@ -273,6 +322,9 @@ AlwaysBreakChainRootNames = [
     # Registrar is the same library-role convention used by sticky pairs below.
     "registrar",
 ]
+# These calls always start a new line, independently of the chain's root.
+# Via/AsyncVia/Run and WithTag/WithTags may remain inline when they fit.
+AlwaysBreakChainCallNames = ["ThrowOnError", "ValueOrThrow"]
 # Fluent YSON scopes nest; an item selector stays beside its value builder.
 IndentedChainScopePairs = [
     "BeginList:EndList",

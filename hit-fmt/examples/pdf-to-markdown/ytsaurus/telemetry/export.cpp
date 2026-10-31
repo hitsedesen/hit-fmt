@@ -97,8 +97,7 @@ auto MakeExportTask(TDocument document, TOptions options, NYT::IInvokerPtr invok
         const auto result = TExportJob{document, options}.Run(EExportMode::WholeDocument);
         ReportExport(document, result);
         return BuildExportMetadata(document, result);
-    })
-        .AsyncVia(invoker);
+    }).AsyncVia(invoker);
 }
 
 class TExportPolicy

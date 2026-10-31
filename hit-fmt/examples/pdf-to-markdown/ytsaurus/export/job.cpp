@@ -120,7 +120,7 @@ std::string SummarizeExport(const TDocument& document, const TResult& result, TE
         output << ", preview of " << document.Title << ": " << bytes.get() << " (" << status << ", " << exportedBlocks
             << " blocks on " << totalPages << " pages)";
     };
-    preview(/*maximumCharacters=*/80);
+    preview(/*maximumCharacters*/ 80);
     return output.str();
 }
 

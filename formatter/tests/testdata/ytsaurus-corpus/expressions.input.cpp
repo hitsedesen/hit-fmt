@@ -37,4 +37,30 @@ void InspectState(TProvider& provider, TProfiler& profiler, TRegistrar registrar
     registrar.ExternalClassParameter("retry_count", &TOptions::RetryCount).Default(3);
 }
 
+void CompleteRequest(TFuture<void> future, TFuture<int> valueFuture, IInvokerPtr invoker)
+{
+    WaitFor(future).ThrowOnError();
+    auto value = WaitFor(valueFuture).ValueOrThrow();
+    THROW_ERROR_EXCEPTION_IF(value < 0, "Invalid response").With("value", value);
+    THROW_ERROR_EXCEPTION_UNLESS(value < 100, "Response too large").With("value", value);
+    auto logger = Logger.WithTag("Request: %v", value);
+    BIND(&TWorker::Dispatch, worker).Via(invoker).Run();
+    BIND([] { Dispatch(); }).AsyncVia(invoker).Run();
+    auto immediate = [] { return 7; }();
+    Dispatch(/*retryCount*/3, /*force*/true);
+    switch (value) {
+        case 0:
+        case 1:
+            Dispatch();
+            break;
+        case 2: {
+            auto retry = value + 1;
+            Dispatch(retry);
+            break;
+        }
+        default:
+            Cancel();
+    }
+}
+
 } // namespace NYT::NProfileExample

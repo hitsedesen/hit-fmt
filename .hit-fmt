@@ -1,5 +1,18 @@
 include = "@/hit-fmt/examples/ytsaurus.hit-fmt"
 
+# Keep this repository's naming, switch cases and lambda calls independent of YTsaurus.
+ClassNameCase = Unchecked
+ClassNamePrefixes = []
+StructNameCase = Unchecked
+StructNamePrefixes = []
+EnumNameCase = Unchecked
+EnumNamePrefixes = []
+FunctionNameCase = Unchecked
+NamespaceNameCase = Unchecked
+NamespaceNamePrefixes = []
+CaseBlankLines = Preserve
+LambdaCallSpaceBeforeArguments = NoSpace
+
 # Do not scan generated outputs, goldens or benchmarks.
 Exclude = [
     "(^|/)build[^/]*(/|$)", "(^|/)testdata(/|$)", "(^|/)benchmarks(/|$)",

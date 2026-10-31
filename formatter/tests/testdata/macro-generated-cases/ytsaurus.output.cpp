@@ -70,6 +70,7 @@ Handler* BlocksBeforeMacros(int value)
             Consume(0);
             break;
         }
+
         case 1: {
             static Handler handler(true);
             return &handler;

@@ -1360,10 +1360,10 @@ TrailingCommentSpacing = Preserve
 # its leading/trailing block comments, for any value kind.
 # After the last leading and before the first trailing one,
 # and between consecutive block comments in attached runs.
-# Leading /*name=*/ label-to-value gaps use
+# Leading /*name*/ or /*name=*/ label-to-value gaps use
 # ArgumentNameCommentSpacing instead.
-# Space: consume(/* first */ /* second */ value /* note */);
-# NoSpace: consume(/* first *//* second */value/* note */);
+# Space: consume(/* first note */ /* second note */ value /* note */);
+# NoSpace: consume(/* first note *//* second note */value/* note */);
 # Default: Preserve, keeping original horizontal spelling.
 # Choose Space explicitly to normalize horizontal gaps.
 # Generated* applies when the owning list is rebuilt.
@@ -1373,11 +1373,12 @@ TrailingCommentSpacing = Preserve
 # Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
 ArgumentCommentSpacing = Preserve
 
-# After a leading /*name=*/ label before a call argument
-# or braced initializer element. Also accepts /* name = */;
-# name must be an identifier. Contents are unchanged.
-# Space: consume(/*count=*/ size, /* note */ value);
-# NoSpace: consume(/*count=*/size, /* note */ value);
+# After a leading /*name*/ or /*name=*/ label before a call
+# argument or braced initializer element. Surrounding spaces
+# and tabs are accepted, e.g. /* name */ or /* name = */.
+# Any single identifier is a label. Contents are unchanged.
+# Space: consume(/*count*/ size, /*count=*/ size, /* a note */ value);
+# NoSpace: consume(/*count*/size, /*count=*/size, /* a note */ value);
 # Gaps between comments and before trailing comments use
 # ArgumentCommentSpacing, even for label-shaped comments.
 # Default: Preserve. Generated* needs the list rebuilt.

@@ -46,11 +46,10 @@ bool IsArgumentNameComment(std::string_view text)
     }
     text.remove_prefix(first);
     text = text.substr(0, text.find_last_not_of(" \t") + 1);
-    if (!text.ends_with('=')) {
-        return false;
+    if (text.ends_with('=')) {
+        text.remove_suffix(1);
+        text = text.substr(0, text.find_last_not_of(" \t") + 1);
     }
-    text.remove_suffix(1);
-    text = text.substr(0, text.find_last_not_of(" \t") + 1);
     bool start = true;
     while (!text.empty()) {
         const auto cp = unicode::utf8::GetFirstCodePoint(text);

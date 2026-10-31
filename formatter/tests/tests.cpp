@@ -1688,6 +1688,7 @@ std::vector<FormatCase> FormatCases()
         } else if (profile == "comment-elements-preserve") {
             style.Layout = LayoutMode::Preserve;
             style.ArgumentCommentSpacing = GapPolicy::Preserve;
+            style.ArgumentNameCommentSpacing = GapPolicy::Preserve;
         } else if (profile == "comment-elements-tabs") {
             style.IndentationKind = IndentationKind::Tabs;
         } else if (profile == "comment-elements-delimiter") {
@@ -1722,6 +1723,7 @@ std::vector<FormatCase> FormatCases()
             auto style = formatter::LoadConfigFile(callReflow / "comment-elements.hit-fmt").FormattingStyle;
             style.Layout = layout;
             style.ArgumentCommentSpacing = spacing;
+            style.ArgumentNameCommentSpacing = spacing;
             cases.back().Style = std::move(style);
         }
     }

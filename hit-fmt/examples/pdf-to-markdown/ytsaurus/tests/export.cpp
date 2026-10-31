@@ -20,7 +20,7 @@ TEST(TMarkdownExport, RevealsBlockAtExportedOffset)
     TPreviewObserverMock observer;
     const TResult result{.Markdown = "# Notes\n\nText\n", .SourceOffsets = {{10, 0}, {11, 9}}};
     EXPECT_CALL(observer, RevealSource(11));
-    RevealExportOffset(observer, &IPreviewObserver::RevealSource, result, /*offset=*/11);
+    RevealExportOffset(observer, &IPreviewObserver::RevealSource, result, /*offset*/ 11);
 }
 
 TEST(TMarkdownExport, RejectsDocumentWithoutPages)
