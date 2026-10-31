@@ -1,22 +1,26 @@
 DEFINE_ENUM(EChannelSide,
     (Client)
-    (Server));
+    (Server)
+);
 
 DEFINE_ENUM(EReady,
     (Pending)
     (Active)
 );
 
-DEFINE_ENUM(EOne, (Single));
+DEFINE_ENUM(EOne,
+    (Single)
+);
 
 DEFINE_BIT_ENUM(EBitFlags,
-    ((Read) (1))
+    ((Read)  (1))
     ((Write) (2))
 );
 
 DEFINE_BIT_ENUM_WITH_UNDERLYING_TYPE(EBitKinds, unsigned,
     (First)
-    (Second));
+    (Second)
+);
 
 DEFINE_ENUM_WITH_UNDERLYING_TYPE(EPhases, int,
     (Early)
@@ -24,7 +28,7 @@ DEFINE_ENUM_WITH_UNDERLYING_TYPE(EPhases, int,
 );
 
 DEFINE_AMBIGUOUS_ENUM_WITH_UNDERLYING_TYPE(EPhantomStage, unsigned short,
-    ((Queued) (3))
+    ((Queued)  (3))
     ((Running) (7))
 );
 

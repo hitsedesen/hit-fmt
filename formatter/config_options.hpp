@@ -573,6 +573,7 @@
     OPT(std::vector<std::string>, StickyChainCallPairs, {})                    \
     OPT(std::vector<std::string>, CallLikeMacroNames, {})                     \
     OPT(std::vector<std::string>, FunctionBodyMacroNames, {})                 \
+    OPT(std::vector<std::string>, EnumMacroNames, {})                         \
     OPT(std::vector<std::string>, ClassMacroNames, {})                        \
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
     OPT(formatter::BodyIndentation, IndentPreprocessingDirectives, \

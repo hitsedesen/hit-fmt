@@ -734,6 +734,12 @@ IndentRequiresClause = true
   CallLikeMacroNames is currently unsupported.
 - ClassMacroNames uses Begin:End pairs of unqualified function-like macros.
   Endpoints must be distinct and unique; nested pairs must match.
+- EnumMacroNames formats YT-style enum sequences in the final argument.
+  Entries may be (Name) or ((Name)(value)). Each gets an indented line;
+  value fields align with at least one space, and the closer gets its
+  own line. Optional header arguments give the enum name and underlying
+  type. Headers stay inline; value expressions keep their internal
+  spelling. Unknown forms and explicit protection stay intact.
 - Brace insertion, null statement/declaration removal and namespace-comment
   changes are opt-in. Required semicolons, uncertain macro syntax and
   commented placeholders stay; no transform crosses protection.
@@ -753,8 +759,17 @@ IndentRequiresClause = true
 HonorClangFormatDirectives = true
 CallLikeMacroNames = []
 FunctionBodyMacroNames = ["DEFINE_CASE", "DEFINE_METHOD"]
+EnumMacroNames = ["DEFINE_ENUM", "DEFINE_BIT_ENUM"]
 ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]
 WhitespaceSensitiveMacros = ["STRINGIZE_TEXT"]
+```
+
+```config
+# With EnumMacroNames enabled:
+# DEFINE_ENUM(EPhase,
+#     ((Waiting) (0))
+#     ((Running) (1))
+# );
 ```
 
 ## Optional transforms

@@ -1,0 +1,81 @@
+(translation-unit
+  (macro-enum-declaration
+    (macro-enum-header "DEFINE_ENUM" "(" "EStage" ",")
+    (macro-enum-entry "(" "(" "Waiting" ")" "(" "0" ")" ")")
+    (macro-enum-entry "(" "(" "Ready" ")" "(" "1" ")" ")")
+    ")" ";"
+  )
+  (macro-enum-declaration
+    (macro-enum-header "DEFINE_ENUM_WITH_UNDERLYING_TYPE" "(" "ECode" "," "unsigned" "long" ",")
+    (macro-enum-entry "(" "Zero" ")")
+    (macro-enum-entry "(" "(" "Other" ")" "(" "Choose" "(" "1" "," "2" ")" ")" ")")
+    ")" ";"
+  )
+  (unparsed-syntax "DEFINE_ENUM" "(" "EBad" "," "(" "(" "Name" ")" "(" "0" ")" "(" "\"extra\"" ")" ")" ")" ";")
+  (unparsed-syntax "DEFINE_ENUM" "(" "EBadComma" "," "(" "(" "First" ")" "(" "0" ")" ")" "," "(" "(" "Second" ")" "(" "1" ")" ")" ")" ";")
+  (function-declaration
+    (declaration-specifiers "OTHER_ENUM")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "EKeep")
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (nested-declarator
+                        "(" "("
+                        (declarator-name "Name")
+                        ")" "(" "0" ")" ")"
+                      )
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "TContainer" "{"
+    (macro-enum-declaration
+      (macro-enum-header "DEFINE_ENUM" "(" "ENested" ",")
+      (macro-enum-entry "(" "A" ")")
+      (macro-enum-entry "(" "B" ")")
+      ")" ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Execute")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (macro-enum-declaration
+        (macro-enum-header "DEFINE_ENUM" "(" "ELocal" ",")
+        (macro-enum-entry "(" "(" "A" ")" "(" "0" ")" ")")
+        ")" ";"
+      )
+      "}"
+    )
+  )
+)

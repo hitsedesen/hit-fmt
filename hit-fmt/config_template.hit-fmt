@@ -843,6 +843,17 @@ CallLikeMacroNames = []
 # Values: [] or ["name", ...]
 FunctionBodyMacroNames = []
 
+# YT-style enum macros: the final argument is a sequence of (Name) or
+# ((Name)(value)) entries. Optional header arguments give the enum name
+# and underlying type. Keep header arguments inline, put each entry
+# on its own indented line, align value fields with one minimum space,
+# and put the closing parenthesis on its own line.
+# Value expressions retain their internal spelling. Unrecognized forms
+# and WhitespaceSensitiveMacros stay protected.
+# Example: EnumMacroNames = ["DEFINE_ENUM", "DEFINE_BIT_ENUM"]
+# Values: [] or ["name", ...]
+EnumMacroNames = []
+
 # Begin:End pairs of unqualified function-like macro names.
 # Endpoints must be distinct and unique across pairs.
 # Nested classes close with their configured matching end.

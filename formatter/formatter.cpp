@@ -634,6 +634,7 @@ PreparedFormat::PreparedFormat(const Style& style)
     , WhitespaceSensitiveMacros(style.WhitespaceSensitiveMacros)
     , FunctionBodyMacroNames(style.FunctionBodyMacroNames)
     , ClassMacroNames(style.ClassMacroNames)
+    , EnumMacroNames(style.EnumMacroNames)
 { }
 
 FormatResult Format(const parser::SyntaxTree& original, const PreparedFormat& prepared, const FormatRequest& request)
@@ -658,6 +659,7 @@ FormatResult Format(const parser::SyntaxTree& original, const PreparedFormat& pr
         {
             .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
             .WhitespaceSensitiveMacros = sensitive,
+            .EnumMacroNames = prepared.EnumMacroNames,
             .ImmutableRanges = request.ImmutableRanges,
             .EditScope = request.EditScope,
         },
@@ -717,6 +719,7 @@ FormatResult detail::FormatWithAnalysis(
             {
                 .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
                 .WhitespaceSensitiveMacros = sensitive,
+                .EnumMacroNames = prepared.EnumMacroNames,
                 .InheritedProtection = inherited,
                 .EditScope = currentScope,
             },

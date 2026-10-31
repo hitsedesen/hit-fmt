@@ -1096,6 +1096,13 @@ public:
 
     void Direct(const SourceRegion& node, Context& state, TI begin, TI end)
     {
+        // Enum macro fields are a preprocessor sequence, not C++ expressions.
+        // Its layout planner owns only the validated tuple boundaries.
+        if (node.Kind == NK::MacroEnumDeclaration || node.Kind == NK::MacroEnumHeader ||
+            node.Kind == NK::MacroEnumEntry)
+        {
+            return;
+        }
         // Capture initializer ranges are raw, not parsed expression children.
         // Capture() handles their confirmed prefix and preserves internals.
         if (node.Kind == NK::LambdaCapture && !state.UncertainSyntax) {

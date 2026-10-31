@@ -30,6 +30,9 @@ struct ParseOptions
     // nested classes must close with their configured matching end macro.
     // Arguments stay opaque; no expanded class/type bindings are inferred.
     std::span<const std::string> ClassMacroNames = {};
+    // Invocations whose final argument is a YT-style sequence of (Name) or
+    // ((Name)(value)) entries. Other arguments and value expressions stay raw.
+    std::span<const std::string> EnumMacroNames = {};
 };
 
 // Build a recovery-oriented, lossless C++ syntax tree. The parser recognizes

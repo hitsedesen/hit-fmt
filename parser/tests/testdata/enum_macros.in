@@ -1,0 +1,11 @@
+DEFINE_ENUM(EStage, ((Waiting)(0)) ((Ready)(1)));
+DEFINE_ENUM_WITH_UNDERLYING_TYPE(ECode, unsigned long, (Zero)((Other)(Choose(1, 2))));
+DEFINE_ENUM(EBad, ((Name)(0)("extra")));
+DEFINE_ENUM(EBadComma, ((First)(0)), ((Second)(1)));
+OTHER_ENUM(EKeep, ((Name)(0)));
+struct TContainer {
+    DEFINE_ENUM(ENested, (A)(B));
+};
+void Execute() {
+    DEFINE_ENUM(ELocal, ((A)(0)));
+}

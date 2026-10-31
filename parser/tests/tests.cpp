@@ -221,6 +221,7 @@ struct GoldenCase
     bool HasPunctuationRoles = false;
     std::vector<std::string> FunctionBodyMacroNames;
     std::vector<std::string> ClassMacroNames;
+    std::vector<std::string> EnumMacroNames;
 };
 
 std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
@@ -243,7 +244,11 @@ TEST_P(FileTest, Golden)
         [&] (parser::ParseError error) {
             errors.push_back(std::move(error));
         },
-        {.FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames, .ClassMacroNames = GetParam().ClassMacroNames});
+        {
+            .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
+            .ClassMacroNames = GetParam().ClassMacroNames,
+            .EnumMacroNames = GetParam().EnumMacroNames,
+        });
     auto actual = Serialize(tree);
     if (GetParam().HasErrors) {
         EXPECT_FALSE(errors.empty());
@@ -2121,6 +2126,7 @@ INSTANTIATE_TEST_SUITE_P(
         },
         GoldenCase{"function_body_macros", false, true, {"DEFINE_METHOD", "DEFINE_CASE", "DEFINE_CASE"}},
         GoldenCase{"function_body_macros_recovery", true, false, {"DEFINE_CASE"}},
+        GoldenCase{"enum_macros", false, false, {}, {}, {"DEFINE_ENUM", "DEFINE_ENUM_WITH_UNDERLYING_TYPE"}},
         GoldenCase{"lambda_argument_ownership"},
         GoldenCase{"lambda_argument_tail_recovery"},
         GoldenCase{"template_argument_tail"},

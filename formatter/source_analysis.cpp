@@ -527,6 +527,14 @@ SourceAnalysis BuildSourceAnalysis(
         options.WhitespaceSensitiveMacros.end(),
         &scratchMemory);
     std::sort(names.begin(), names.end());
+    std::pmr::vector<std::string_view> enumNames(&scratchMemory);
+    enumNames.reserve(options.EnumMacroNames.size());
+    for (const auto& name : options.EnumMacroNames) {
+        enumNames.push_back(name);
+    }
+    std::sort(enumNames.begin(), enumNames.end());
+    std::pmr::vector<ProtectedSourceRange> enumInvocations(&scratchMemory);
+    std::pmr::vector<Offset> parsedEnumBegins(&scratchMemory);
     std::pmr::vector<uint32_t> recoveryPrefix(&scratchMemory);
     std::pmr::vector<uint32_t> ambiguousPrefix(&scratchMemory);
     recoveryPrefix.reserve(static_cast<size_t>(count) + 1);
@@ -538,6 +546,7 @@ SourceAnalysis BuildSourceAnalysis(
     // An outer configured invocation already protects all inner invocations.
     parser::TokenIndex macroEnd = 0;
     parser::TokenIndex pendingMacro = NoToken;
+    bool pendingEnum = false;
     for (parser::TokenIndex i = 0; i <= count; ++i) {
         const auto begin = i ? tree.Token(i - 1).Text.End : 0;
         const auto end = i < count ? tree.Token(i).Text.Begin : size;
@@ -667,20 +676,24 @@ SourceAnalysis BuildSourceAnalysis(
             macroEnd = balanced ? close + 1 : count;
             // An unclosed invocation has no trustworthy local end; retain its
             // suffix, not the unrelated prefix or a whole-file rollback.
-            protect(
-                tree.Token(pendingMacro).Text.Begin,
-                balanced ? tree.Token(close).Text.End : size,
-                balanced
+            const auto begin = tree.Token(pendingMacro).Text.Begin;
+            const auto end = balanced ? tree.Token(close).Text.End : size;
+            const auto reason = balanced
                 ? ProtectionReason::SensitiveMacro
-                : ProtectionReason::SensitiveMacro | ProtectionReason::Recovery);
+                : ProtectionReason::SensitiveMacro | ProtectionReason::Recovery;
+            if (pendingEnum) {
+                enumInvocations.push_back({{begin, end}, reason});
+            } else {
+                protect(begin, end, reason);
+            }
         }
         if (token.Kind != TK::Comment) {
             // Comments are preprocessing whitespace between a macro name and
             // its opening parenthesis; directives and other tokens are not.
-            pendingMacro =
-                i >= macroEnd && token.Kind == TK::Identifier && std::binary_search(names.begin(), names.end(), text)
-                ? i
-                : NoToken;
+            const bool candidate = i >= macroEnd && token.Kind == TK::Identifier;
+            const bool sensitive = candidate && std::binary_search(names.begin(), names.end(), text);
+            pendingEnum = candidate && !sensitive && std::binary_search(enumNames.begin(), enumNames.end(), text);
+            pendingMacro = sensitive || pendingEnum ? i : NoToken;
         }
     }
     if (disabledDepth) {
@@ -717,6 +730,9 @@ SourceAnalysis BuildSourceAnalysis(
         const auto tokens = node.Tokens;
         const auto begin = tokens.Begin < count ? tree.Token(tokens.Begin).Text.Begin : size;
         const auto end = tokens.Empty() ? begin : tree.Token(tokens.End - 1).Text.End;
+        if (node.Kind == parser::NodeKind::MacroEnumDeclaration) {
+            parsedEnumBegins.push_back(begin);
+        }
         const bool recovery = Recovery(node.Kind);
         const bool ambiguous = node.Kind == parser::NodeKind::AmbiguousStatement;
         const auto hasRecovery = recovery || recoveryPrefix[tokens.End] != recoveryPrefix[tokens.Begin];
@@ -938,6 +954,17 @@ SourceAnalysis BuildSourceAnalysis(
                 auto& parent = result.Regions_[region.Parent];
                 parent.Status = Combine(parent.Status, region.Status);
             }
+        }
+    }
+    // Both lists follow source order. Defer these protections until the
+    // existing tree walk proves which invocations own the enum grammar.
+    size_t parsedEnum = 0;
+    for (const auto& range : enumInvocations) {
+        while (parsedEnum < parsedEnumBegins.size() && parsedEnumBegins[parsedEnum] < range.Source.Begin) {
+            ++parsedEnum;
+        }
+        if (parsedEnum == parsedEnumBegins.size() || parsedEnumBegins[parsedEnum] != range.Source.Begin) {
+            protect(range.Source.Begin, range.Source.End, range.Reasons);
         }
     }
     for (const auto& range : result.Protection_) {
