@@ -252,3 +252,19 @@ value =
                 startingOffset,
                 endingOffset,}),
         tabWidth);
+consistent wrappers=1 width=28:
+result =
+    assemble({firstValue,
+        secondValue,
+        thirdValue,});$
+consistent wrappers=1 width=48:
+result = assemble({firstValue, secondValue,
+        thirdValue,});$
+consistent wrappers=4 width=28:
+result =
+    assemble({firstValue,
+        secondValue,
+        thirdValue,});$
+consistent wrappers=4 width=48:
+result = assemble({firstValue, secondValue,
+        thirdValue,});$

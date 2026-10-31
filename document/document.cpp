@@ -2328,6 +2328,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             constexpr std::size_t MaxProbeDepth = 4;
             bool eligible = Nodes_[node.Group.Match].End.LogicalPosition - node.Group.LogicalPosition < MaxProbeNodes;
             bool child = false;
+            std::uint32_t childLayoutLevels = 0;
             std::size_t candidateDepth = 1;
             std::size_t nesting = 1;
 
@@ -2340,6 +2341,10 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
 
                         if (groupCache[Group(part).Reference].ChildLayoutAllowed) {
                             candidateDepth = std::max(candidateDepth, std::min(MaxProbeDepth, nesting + 1));
+
+                            if (nesting < MaxProbeDepth) {
+                                childLayoutLevels |= 1u << nesting;
+                            }
                         }
 
                         ++nesting;
@@ -2376,6 +2381,13 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
                 // trials retain successively shallower owned-flat prefixes.
                 for (std::size_t trial = 0; trial <= candidateDepth; ++trial) {
                     const auto depth = trial == 0 ? 0 : candidateDepth - trial + 1;
+
+                    // Limits d and d+1 differ only for eligible groups at
+                    // level d. Keep the earlier, deeper trial on ties.
+                    if (trial > 1 && !(childLayoutLevels & (1u << depth))) {
+                        continue;
+                    }
+
                     childLayoutDepth = depth;
                     probeBrokenGroups = 0;
                     probeBreakPenalty = 0;
