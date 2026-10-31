@@ -6,7 +6,8 @@ DEFINE_CASE( Known , Nested(/* argument */ 1+2,(3+4)))
     if (total > 0) {
         Send(total, firstArgument, secondArgument,
             thirdArgument);
-    } TOKEN_TEXT(alpha   +  beta);
+    }
+    TOKEN_TEXT(alpha   +  beta);
 }
 DEFINE_CASE()
 {

@@ -3228,10 +3228,10 @@ private:
                 Syntax_[child].PreservedIndentGroup = scope;
                 HasPreservedIndentGroups_ = true;
             }
-            // Hinted definitions have protected opaque delimiters, but their
-            // editable leading gap still belongs to the enclosing sequence.
-            if (!Syntax_[child].Safe && part.Kind != NodeKind::MacroRecordDeclaration &&
-                part.Kind != NodeKind::MacroFunctionDefinition)
+            // Proven statement edges and hinted definitions retain their
+            // sequence layout even when their interiors are opaque.
+            if (!Syntax_[child].Safe && !(canonical && part.StatementBoundary) &&
+                part.Kind != NodeKind::MacroRecordDeclaration && part.Kind != NodeKind::MacroFunctionDefinition)
             {
                 // Uncertain interiors do not own an editable statement's
                 // leading indentation. Retain its topology; final slice
