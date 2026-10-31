@@ -177,8 +177,8 @@ Document::Document(std::string_view source, std::pmr::memory_resource* resource)
 
 Document::Node::Node(Kind kind, bool prefixed)
     : Type(kind)
-    , HasPrefix(prefixed)
 {
+    Flags.Set(NodeFlag::HasPrefix, prefixed);
     switch (kind) {
         case Kind::Begin:
         case Kind::End:
@@ -194,7 +194,7 @@ Document::Node::Node(Kind kind, bool prefixed)
             std::construct_at(&Run);
             break;
         default:
-            if (HasPrefix) {
+            if (Flags.Has(NodeFlag::HasPrefix)) {
                 std::construct_at(&Prefix);
             } else {
                 std::construct_at(&Text);
@@ -209,12 +209,9 @@ inline Document::Atom Document::Pack(const Node& node)
     Atom atom(node.Type);
     atom.Origin = node.Origin;
     atom.Owner = node.Owner;
-    atom.Exact = node.Exact;
-    atom.HasPrefix = node.HasPrefix;
-    atom.Compact = node.Compact;
-    atom.Plain = node.Plain;
+    atom.Flags = node.Flags;
 
-    if (node.HasPrefix) {
+    if (node.Flags.Has(NodeFlag::HasPrefix)) {
         if (PrefixPayloads_.empty()) {
             PrefixPayloads_.reserve(Nodes_.capacity() / 16);
         }
@@ -238,10 +235,11 @@ inline Document::Atom Document::Pack(const Node& node)
     } else if (node.Type == Kind::Gap || node.Type == Kind::ConditionalGap || node.Type == Kind::SourceLineIndent) {
         RenderGaps_ += node.Type != Kind::SourceLineIndent;
         const auto& gap = node.Gaps.Flat;
-        atom.ComplexGap =
-            node.Type != Kind::Gap || gap.FlatSourceBegin != InvalidId || gap.IndentSourceBegin != InvalidId;
+        atom.Flags.Set(
+            NodeFlag::ComplexGap,
+            node.Type != Kind::Gap || gap.FlatSourceBegin != InvalidId || gap.IndentSourceBegin != InvalidId);
 
-        if (atom.ComplexGap) {
+        if (atom.Flags.Has(NodeFlag::ComplexGap)) {
             if (GapPayloads_.empty()) {
                 GapPayloads_.reserve(Nodes_.capacity() / 8);
             }
@@ -251,9 +249,9 @@ inline Document::Atom Document::Pack(const Node& node)
         } else {
             atom.GapType = gap.Kind;
             atom.LineEnding = gap.LineEnding;
-            atom.FitNextSegment = gap.FitNextSegment;
-            atom.FitNextSegmentIfOverflow = gap.FitNextSegmentIfOverflow;
-            atom.FitFlatTail = gap.FitFlatTail;
+            atom.Flags.Set(NodeFlag::FitNextSegment, gap.FitNextSegment);
+            atom.Flags.Set(NodeFlag::FitNextSegmentIfOverflow, gap.FitNextSegmentIfOverflow);
+            atom.Flags.Set(NodeFlag::FitFlatTail, gap.FitFlatTail);
             atom.Gap = {gap.RequiredWidth, node.Gaps.Anchor, gap.Spaces, gap.NewlineCount};
         }
     } else {
@@ -266,7 +264,7 @@ inline Document::Atom Document::Pack(const Node& node)
 
 inline GapSpec Document::GapFor(const Atom& atom, bool broken) const
 {
-    if (atom.ComplexGap) {
+    if (atom.Flags.Has(NodeFlag::ComplexGap)) {
         const auto& gaps = GapPayloads_[atom.Payload];
         return broken ? gaps.Broken : gaps.Flat;
     }
@@ -276,16 +274,16 @@ inline GapSpec Document::GapFor(const Atom& atom, bool broken) const
     gap.Spaces = atom.Gap.Spaces;
     gap.RequiredWidth = atom.Gap.RequiredWidth;
     gap.LineEnding = atom.LineEnding;
-    gap.FitNextSegment = atom.FitNextSegment;
-    gap.FitNextSegmentIfOverflow = atom.FitNextSegmentIfOverflow;
-    gap.FitFlatTail = atom.FitFlatTail;
+    gap.FitNextSegment = atom.Flags.Has(NodeFlag::FitNextSegment);
+    gap.FitNextSegmentIfOverflow = atom.Flags.Has(NodeFlag::FitNextSegmentIfOverflow);
+    gap.FitFlatTail = atom.Flags.Has(NodeFlag::FitFlatTail);
     gap.NewlineCount = atom.Gap.NewlineCount;
     return gap;
 }
 
 inline AnchorId Document::GapAnchor(const Atom& atom) const
 {
-    return atom.ComplexGap ? GapPayloads_[atom.Payload].Anchor : atom.Gap.Anchor;
+    return atom.Flags.Has(NodeFlag::ComplexGap) ? GapPayloads_[atom.Payload].Anchor : atom.Gap.Anchor;
 }
 
 const Document::GroupData& Document::Group(const Atom& atom) const
@@ -346,7 +344,7 @@ std::string_view Document::FlatText(const Atom& node) const
         case Kind::Verbatim:
         case Kind::SourceWhitespace:
         case Kind::ReindentedText:
-            return TextView(node.HasPrefix ? SourceTextId : node.Text.Flat, node.Origin);
+            return TextView(node.Flags.Has(NodeFlag::HasPrefix) ? SourceTextId : node.Text.Flat, node.Origin);
         default:
             return {};
     }
@@ -602,7 +600,7 @@ void Document::StartSourceRun()
     run.Run.Begin = run.Run.End = static_cast<std::uint32_t>(RunParts_.size());
     Nodes_.back() = Pack(run);
 
-    if (previous.HasPrefix) {
+    if (previous.Flags.Has(NodeFlag::HasPrefix)) {
         AppendRunPart(FlatRunPart(Prefix(previous).Gap, Prefix(previous).Origin), false);
 
         if (previous.Payload + 1 == PrefixPayloads_.size()) {
@@ -611,7 +609,12 @@ void Document::StartSourceRun()
     }
 
     AppendRunPart(
-        {previous.Origin, 0, previous.Type == Kind::Verbatim ? RunKind::Verbatim : RunKind::Text, previous.Plain},
+        {
+            previous.Origin,
+            0,
+            previous.Type == Kind::Verbatim ? RunKind::Verbatim : RunKind::Text,
+            previous.Flags.Has(NodeFlag::Plain),
+        },
         false);
 }
 
@@ -673,8 +676,8 @@ void Document::EmitSourceText(std::uint32_t begin, std::uint32_t end, Identity i
 
         if ((!gap || Nodes_.size() > 1) && Nodes_[first].Owner == owner &&
             (Nodes_[first].Type == Kind::Text || Nodes_[first].Type == Kind::Verbatim) &&
-            (Nodes_[first].HasPrefix || Nodes_[first].Text.Flat == SourceTextId) &&
-            (Nodes_[first].Plain || !Multiline(FlatText(Nodes_[first]))))
+            (Nodes_[first].Flags.Has(NodeFlag::HasPrefix) || Nodes_[first].Text.Flat == SourceTextId) &&
+            (Nodes_[first].Flags.Has(NodeFlag::Plain) || !Multiline(FlatText(Nodes_[first]))))
         {
             if (LogicalNodes_ >= InvalidId || RunParts_.size() > InvalidId - 5) {
                 Fail(Error::TooLarge);
@@ -713,9 +716,9 @@ void Document::EmitSourceText(std::uint32_t begin, std::uint32_t end, Identity i
         node.Prefix = {prefix, prefixOrigin};
         node.Origin = origin;
         node.Owner = owner;
-        node.Exact = true;
-        node.Compact = compact && !multiline;
-        node.Plain = plain;
+        node.Flags.Set(NodeFlag::Exact, true);
+        node.Flags.Set(NodeFlag::Compact, compact && !multiline);
+        node.Flags.Set(NodeFlag::Plain, plain);
         --RenderGaps_;
         Nodes_.back() = Pack(node);
         ++LogicalNodes_;
@@ -723,9 +726,9 @@ void Document::EmitSourceText(std::uint32_t begin, std::uint32_t end, Identity i
         Node node(verbatim ? Kind::Verbatim : Kind::Text);
         node.Text.Flat = SourceTextId;
         node.Origin = origin;
-        node.Exact = true;
-        node.Compact = compact && !multiline;
-        node.Plain = plain;
+        node.Flags.Set(NodeFlag::Exact, true);
+        node.Flags.Set(NodeFlag::Compact, compact && !multiline);
+        node.Flags.Set(NodeFlag::Plain, plain);
         Add(node);
     }
 }
@@ -742,7 +745,7 @@ void Document::ReindentedSourceText(std::uint32_t begin, std::uint32_t end, Iden
     node.Text.Flat = SourceTextId;
     node.Text.Detail = newline == std::string_view::npos ? 0 : newline + 1;
     node.Origin = {begin, end, identity};
-    node.Exact = true;
+    node.Flags.Set(NodeFlag::Exact, true);
     Add(node);
 }
 
@@ -803,9 +806,9 @@ void Document::Verbatim(std::string_view borrowed, Provenance origin)
     Node node(Kind::Verbatim);
     node.Text.Flat = BorrowText(borrowed);
     node.Origin = origin;
-    node.Exact = origin.Begin != InvalidId;
+    node.Flags.Set(NodeFlag::Exact, origin.Begin != InvalidId);
 
-    if (node.Exact && borrowed != Source_.substr(origin.Begin, origin.End - origin.Begin)) {
+    if (node.Flags.Has(NodeFlag::Exact) && borrowed != Source_.substr(origin.Begin, origin.End - origin.Begin)) {
         Fail(Error::InvalidSourceRange);
         return;
     }
@@ -831,7 +834,7 @@ void Document::Gap(GapSpec spec, AnchorId anchor, Provenance origin)
 
     if (!Sealed_ && State_ && !Nodes_.empty() && spec.Kind == GapKind::Flat &&
         Nodes_.back().Owner == (Open_.empty() ? InvalidId : Open_.back()) &&
-        (Nodes_.back().Type == Kind::SourceRun || Nodes_.back().Compact))
+        (Nodes_.back().Type == Kind::SourceRun || Nodes_.back().Flags.Has(NodeFlag::Compact)))
     {
         if (LogicalNodes_ >= InvalidId || RunParts_.size() > InvalidId - 4) {
             Fail(Error::TooLarge);
@@ -1186,7 +1189,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             node.Type != Kind::Begin && node.Type != Kind::End && node.Type != Kind::Anchor &&
             node.Type != Kind::ExpressionLine && node.Type != Kind::SourceRun)
         {
-            mappingCount += node.HasPrefix &&
+            mappingCount += node.Flags.Has(NodeFlag::HasPrefix) &&
                 (policy.SourceMap || !policy.TrackSource.empty() || Prefix(node).Origin.Identity != NoIdentity)
                 ? 2
                 : 1;
@@ -1204,7 +1207,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             }
 
             if (node.Type == Kind::SourceLineIndent || ((node.Type == Kind::Gap || node.Type == Kind::
-                    ConditionalGap) && node.ComplexGap &&
+                    ConditionalGap) && node.Flags.Has(NodeFlag::ComplexGap) &&
                 (GapPayloads_[node.Payload].Flat.IndentSourceBegin != InvalidId ||
                     GapPayloads_[node.Payload].Broken.IndentSourceBegin != InvalidId)))
             {
@@ -1305,7 +1308,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
             // Fixed prefixes establish shape like Verbatim, but never publish
             // lastBreak/ownedBreak. Their indentation follows a guaranteed
             // line, and emission counts it before any following child fit.
-            flat = node.Plain
+            flat = node.Flags.Has(NodeFlag::Plain)
                 ? Measure{node.Origin.End - node.Origin.Begin, false, false}
                 : MeasureText(FlatText(node), policy.TabWidth);
 
@@ -1316,7 +1319,7 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
 
             broken = node.Type == Kind::ConditionalText ? MeasureText(BrokenText(node), policy.TabWidth) : flat;
 
-            if (node.HasPrefix) {
+            if (node.Flags.Has(NodeFlag::HasPrefix)) {
                 const auto prefix = MeasureFlatGap(Prefix(node).Gap, Source_, policy.TabWidth);
                 flat = Join(prefix, flat);
                 broken = Join(prefix, broken);
@@ -1934,10 +1937,10 @@ Result Document::Render(Policy policy, std::pmr::memory_resource* resource) cons
 
         auto outputBegin = static_cast<std::uint32_t>(result.Text.size());
         auto emittedOrigin = node.Origin;
-        bool exact = node.Exact;
+        bool exact = node.Flags.Has(NodeFlag::Exact);
         const bool ownerBroken = node.Owner != InvalidId && result.Broken[node.Owner];
 
-        if (node.HasPrefix) {
+        if (node.Flags.Has(NodeFlag::HasPrefix)) {
             const auto& gap = Prefix(node).Gap;
             auto prefixOrigin = Prefix(node).Origin;
             const bool continuingIndent = frame.RealizedContinuationLine && column == frame.RealizedContinuationIndent;

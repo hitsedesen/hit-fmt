@@ -880,6 +880,13 @@ TEST(SyntaxLayout,
     EXPECT_NE(Lower("void f(){ call(alpha\t,beta); }\n", style).Text.find("alpha\t,"), std::string::npos);
     style.CallsLayout = formatter::CategoryLayout::Preserve;
     EXPECT_NE(Lower("void f(){ call(alpha,\tbeta); }\n", style).Text.find(",\tbeta"), std::string::npos);
+
+    style.CallsLayout = formatter::CategoryLayout::Canonical;
+    style.ColumnLimit = 40;
+    const auto comment = Lower("void f(){ call(alpha, /* keep */\tbeta, gamma); }\n", style).Text;
+    EXPECT_NE(comment.find("/* keep */\tbeta"), std::string::npos) << comment;
+    EXPECT_NE(comment.find("beta,\n    gamma"), std::string::npos) << comment;
+    EXPECT_EQ(Lower(comment, style).Text, comment);
 }
 
 TEST(SyntaxLayout, InitializerCommaFollowsOutputShapeNotInputComma)

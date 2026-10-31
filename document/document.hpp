@@ -447,16 +447,45 @@ private:
         std::uint8_t FlatInBrokenParentPenalty : 2 = 0;
     };
 
+    // Drafts and retained atoms share a fully initialized flag byte so packing
+    // can copy it directly instead of rebuilding individual bit fields.
+    enum class NodeFlag : std::uint8_t
+    {
+        Exact = 1 << 0,
+        HasPrefix = 1 << 1,
+        Compact = 1 << 2,
+        Plain = 1 << 3,
+        ComplexGap = 1 << 4,
+        FitNextSegment = 1 << 5,
+        FitNextSegmentIfOverflow = 1 << 6,
+        FitFlatTail = 1 << 7
+    };
+
+    struct NodeFlags
+    {
+        std::uint8_t Value = 0;
+
+        bool Has(NodeFlag flag) const
+        {
+            return (Value & std::uint8_t(flag)) != 0;
+        }
+
+        void Set(NodeFlag flag, bool value = true)
+        {
+            const auto mask = std::uint8_t(flag);
+            Value = std::uint8_t((Value & ~mask) | (value ? mask : 0));
+        }
+    };
+
+    static_assert(sizeof(NodeFlags) == 1);
+
     struct Node
     {
         explicit Node(Kind kind, bool prefixed = false);
         Provenance Origin;
         GroupId Owner = InvalidId;
         Kind Type;
-        bool Exact : 1 = false;
-        bool HasPrefix : 1 = false;
-        bool Compact : 1 = false;
-        bool Plain : 1 = false;
+        NodeFlags Flags;
 
         // The constructor activates the kind's payload. All alternatives are
         // trivially copyable; SourceLineIndent uses GapData plus Origin.
@@ -506,14 +535,7 @@ private:
         Kind Type;
         GapKind GapType = GapKind::Flat;
         GapNewline LineEnding = GapNewline::Inherit;
-        bool Exact : 1 = false;
-        bool HasPrefix : 1 = false;
-        bool Compact : 1 = false;
-        bool ComplexGap : 1 = false;
-        bool FitNextSegment : 1 = false;
-        bool FitNextSegmentIfOverflow : 1 = false;
-        bool FitFlatTail : 1 = false;
-        bool Plain : 1 = false;
+        NodeFlags Flags;
 
         union
         {

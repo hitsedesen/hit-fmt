@@ -96,8 +96,9 @@ struct Gap
 };
 
 // Compact, densely accessed finalized facts, separate from planning metadata.
-// Preferences depend only on immutable spacing/source analysis; widths and
-// permissions are cached only after safety fixes the gap shape.
+// Preferences depend only on immutable spacing/source analysis. Widths and
+// permissions are cached after planning and invalidated when safety changes
+// the gap shape.
 struct GapFacts
 {
     Index RequiredWidth = 0;
@@ -607,8 +608,8 @@ public:
             return State_;
         }
 
-        ResolveSafety();
         GapCacheReady_ = true;
+        ResolveSafety();
         SummarizeSegments();
         SortForest();
 
@@ -5799,6 +5800,7 @@ private:
                 continue;
             }
 
+            const auto shape = gap.Shape;
             const bool flat = Allows(i, document::GapKind::Flat);
             const bool line = Allows(i, document::GapKind::Hard);
 
@@ -5808,6 +5810,13 @@ private:
                 gap.Shape = Boundary::Hard;
             } else if (!line && !(gap.Shape == Boundary::Conditional && gap.Broken == document::GapKind::Flat)) {
                 gap.Shape = Boundary::Flat;
+            }
+
+            if (gap.Shape != shape) {
+                auto& facts = Facts_[i];
+                facts.WidthKnown = false;
+                facts.FlatKnown = false;
+                facts.LineKnown = false;
             }
         }
     }
@@ -6592,7 +6601,6 @@ private:
         }
 
         const auto anchor = IndentAnchor(gap);
-        const auto flat = Spec(i, document::GapKind::Flat);
         const bool flatOK = Allows(i, document::GapKind::Flat);
         const bool lineOK = Allows(i, document::GapKind::Hard);
 
@@ -6613,13 +6621,13 @@ private:
 
             Document_.ConditionalGap(
                 Groups_[gap.Owner].Id,
-                flat,
+                Spec(i, document::GapKind::Flat),
                 Spec(i, gap.Broken, true, gap.BrokenAdjacency),
                 anchor,
                 GapOrigin(i),
                 gap.BraceIndentOffset);
         } else if (!lineOK || gap.Shape == Boundary::Flat) {
-            Document_.Gap(flat, anchor, GapOrigin(i));
+            Document_.Gap(Spec(i, document::GapKind::Flat), anchor, GapOrigin(i));
         } else {
             Document_.Gap(
                 Spec(i, gap.Shape == Boundary::Hard ? document::GapKind::Hard : document::GapKind::Soft),
