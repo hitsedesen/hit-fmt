@@ -4,9 +4,15 @@ void Execute()
         Schedule(BIND([&] {
             auto nested = [&] {
                 auto guard = Guard(lock);
-                EXPECT_THROW(WaitFor(pipelineReady.ToFuture()).ThrowOnError(), TQuotaExpiredException);
+                EXPECT_THROW(
+                    WaitFor(pipelineReady.ToFuture())
+                        .ThrowOnError(),
+                    TQuotaExpiredException);
                 EXPECT_THROW(CheckQuota(), TQuotaExpiredException);
-                OTHER_ASSERT(WaitFor(pipelineReady.ToFuture()).ThrowOnError(), TQuotaExpiredException);
+                OTHER_ASSERT(
+                    WaitFor(pipelineReady.ToFuture())
+                        .ThrowOnError(),
+                    TQuotaExpiredException);
                 auto outstanding = started - completed;
                 THROW_ERROR_EXCEPTION_UNLESS(
                     outstanding <= configuredLimit,
@@ -67,8 +73,7 @@ void CheckSignal(bool active)
 
 void RejectMissing()
 {
-    THROW_ERROR_EXCEPTION(
-        "A synthetic archive lookup could not locate the requested segment at revision %v for channel %v",
+    THROW_ERROR_EXCEPTION("A synthetic archive lookup could not locate the requested segment at revision %v for channel %v",
         revision,
         channel);
 }

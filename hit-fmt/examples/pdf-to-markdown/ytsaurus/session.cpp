@@ -121,11 +121,13 @@ void TSession::Run()
                 Dirty_ = true;
                 break;
             }
+
             case EEventKind::Options:
                 Options_.KeepImages = window.Toolbar().Checked("Images");
                 Options_.IncludePageBreaks = window.Toolbar().Checked("Page markers");
                 Dirty_ = true;
                 break;
+
             case EEventKind::ExportFile:
                 if (auto path = Desktop_.Dialogs().SaveFile("Export Markdown", "notes.md", {"*.md", "*.markdown"});
                     path)
@@ -133,8 +135,10 @@ void TSession::Run()
                     ExportTo(*path, event->ShiftPressed() ? EExportMode::WholeDocument : EExportMode::Selection);
                 }
                 break;
+
             case EEventKind::Close:
                 return;
+
             default:
                 break;
         }

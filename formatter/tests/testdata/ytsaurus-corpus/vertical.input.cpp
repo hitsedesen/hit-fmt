@@ -50,6 +50,9 @@ void Clear()
     ResetQueue();
 }
 void Schedule();
+
+
+
 void Cancel();
 void Visit()
 {

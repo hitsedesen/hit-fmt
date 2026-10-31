@@ -5,7 +5,7 @@ void Dispatch()
     }
     if ([] {
         return true;
-    }())
+    } ())
     {
         Act();
     }

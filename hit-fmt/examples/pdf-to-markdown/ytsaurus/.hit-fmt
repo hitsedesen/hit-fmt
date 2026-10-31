@@ -1,1 +1,4 @@
 include = "../../ytsaurus.hit-fmt"
+
+# The C callback keeps its external ABI name; per-function exemptions are unavailable.
+FunctionNameCase = Unchecked

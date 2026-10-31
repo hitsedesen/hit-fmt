@@ -22,7 +22,7 @@ void SaveBatch()
         Bundle<long>{
             [] {
                 return 2;
-            }(),
+            } (),
         },
         last);
     Submit(ready ? Bundle<long>{first, second} : Bundle<long>{}, finish());

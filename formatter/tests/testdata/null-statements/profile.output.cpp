@@ -4,9 +4,11 @@ void Process(bool ready, int mode)
         case 1:
             Emit();
             break;
+
         case 2:
             ;
             break;
+
         default:
             break;
     }

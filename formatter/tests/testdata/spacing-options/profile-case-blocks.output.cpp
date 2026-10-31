@@ -5,6 +5,7 @@ void Dispatch(int value)
             Handle(value);
             break;
         }
+
         case 2:
             Verify(value);
             {
@@ -19,6 +20,7 @@ void Dispatch(int value)
                 Cleanup();
             }
             break;
+
         case 3:
             {
                 Handle(value);
@@ -28,6 +30,7 @@ void Dispatch(int value)
                 Cleanup();
             }
             break;
+
         case 4:
         case 5:
             Verify(value);
@@ -35,10 +38,12 @@ void Dispatch(int value)
                 Handle(value);
             }
             break;
+
         case 6: {
             Handle(value);
             break;
         } // Still a sole case block.
+
         case 7:
             {
                 Handle(value);
@@ -46,6 +51,7 @@ void Dispatch(int value)
             {
                 Cleanup();
             }
+
         default: {
             HandleOther();
             break;

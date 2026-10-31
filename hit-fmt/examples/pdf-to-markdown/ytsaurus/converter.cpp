@@ -61,8 +61,10 @@ std::string TConverter::Render(const TContent& content) const
                 switch (item.Role) {
                     case ETextRole::Heading:
                         return std::string(std::clamp(item.Level, 1u, 6u), '#') + " " + body + "\n\n";
+
                     case ETextRole::Caption:
                         return "> " + body + "\n\n";
+
                     default:
                         return body + "\n\n";
                 }

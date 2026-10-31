@@ -12,9 +12,11 @@ int SelectPlatform(int value)
         {
             return 1;
         }
+
         case 3:
         case 4:
         { }
+
         default:
             return -1;
     }
@@ -66,9 +68,11 @@ void SelectInLambda()
                 Handle();
                 break;
             }
+
             case 2:
             case 3:
             { }
+
             case 4:
             default:
             {
