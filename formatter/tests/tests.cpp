@@ -2414,6 +2414,14 @@ std::vector<FormatCase> FormatCases()
     for (const auto* name : {"nested", "messages"}) {
         cases.push_back({data / "group-syntax", name, std::string(name) + ".input.cpp"});
     }
+    {
+        const auto directory = data / "message-layout";
+        cases.push_back({directory, "enabled", "input.cpp"});
+        for (const auto* name : {"default", "all-or-vertical", "always", "preserve", "narrow", "unlimited"}) {
+            cases.push_back({directory, name, "policy.input.cpp"});
+        }
+        cases.push_back({directory, "ytsaurus", "ytsaurus.input.cpp", profile});
+    }
     for (const bool anyArgument : {false, true}) {
         const auto directory = data / (anyArgument ? "attached-argument-overflow" : "attached-string-overflow");
         for (const auto overflow :

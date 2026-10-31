@@ -716,6 +716,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
             std::max({
                 style.CallLineFirstArgumentNames.size(),
                 style.CallLineFirstStringNames.size(),
+                style.CallLineMessageNames.size(),
                 style.ChainedCallRootNames.size(),
                 style.AlwaysBreakChainRootNames.size(),
                 style.AlwaysBreakChainCallNames.size(),
@@ -726,6 +727,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
             }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
     ValidateAnnotationNames(style.CallLineFirstStringNames, scratch, "CallLineFirstStringNames", false);
+    ValidateAnnotationNames(style.CallLineMessageNames, scratch, "CallLineMessageNames", false);
     ValidateAnnotationNames(style.ChainedCallRootNames, scratch, "ChainedCallRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainRootNames, scratch, "AlwaysBreakChainRootNames", true);
     ValidateAnnotationNames(style.AlwaysBreakChainCallNames, scratch, "AlwaysBreakChainCallNames", false);
@@ -762,7 +764,8 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
 {
     ValidateLibraryAnnotationStyle(style);
     LibraryAnnotations result;
-    result.MessagePins_.reserve(style.CallLineFirstArgumentNames.size() + style.CallLineFirstStringNames.size());
+    result.MessagePins_.reserve(style.CallLineFirstArgumentNames.size() + style.CallLineFirstStringNames.size() +
+        style.CallLineMessageNames.size());
     for (const auto& name : style.CallLineFirstArgumentNames) {
         result.MessagePins_
             .push_back({name, FirstArgumentAnnotation::PinAnyArgument, style.CallLineFirstArgumentOverflow});
@@ -771,6 +774,14 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         result.MessagePins_
             .push_back({name, FirstArgumentAnnotation::PinCompleteStringLiteral, style.CallLineFirstStringOverflow});
     }
+    for (const auto& name : style.CallLineMessageNames) {
+        result.MessagePins_.push_back({
+            name,
+            FirstArgumentAnnotation::PinCompleteStringLiteral,
+            AttachedStringOverflow::KeepInline,
+            true,
+        });
+    }
     std::sort(
         result.MessagePins_.begin(),
         result.MessagePins_.end(),
@@ -778,7 +789,10 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
             if (left.Name != right.Name) {
                 return left.Name < right.Name;
             }
-            // The general argument rule wins when both lists name a call.
+            if (left.MessageLayout != right.MessageLayout) {
+                return left.MessageLayout;
+            }
+            // Without message layout, the general argument rule wins overlaps.
             return left.FirstArgument == FirstArgumentAnnotation::PinAnyArgument &&
                 right.FirstArgument != FirstArgumentAnnotation::PinAnyArgument;
         });
