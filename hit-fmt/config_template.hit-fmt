@@ -952,6 +952,14 @@ ThrowOperandSpacing = Preserve
 # Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
 CoYieldValueSpacing = Preserve
 
+# Space between co_await and its ordinary operand.
+# CoAwaitSpaceBeforeParentheses controls parenthesized operands.
+# Example: co_await task;
+# Preserve retains horizontal spelling; layout still controls line breaks.
+# Lexical safety and protected/opaque syntax override spacing preferences.
+# Values: Preserve | Space | NoSpace | GeneratedSpace | GeneratedNoSpace
+CoAwaitOperandSpacing = Preserve
+
 # Space between goto and its label.
 # Example: goto done;
 # Preserve retains horizontal spelling; layout still controls line breaks.

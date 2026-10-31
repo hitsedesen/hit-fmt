@@ -316,6 +316,9 @@ Additional syntax boundaries
   Example: throw value; Default: Preserve.
 - CoYieldValueSpacing: Space between co_yield and its operand.
   Example: co_yield value; Default: Preserve.
+- CoAwaitOperandSpacing: Space between co_await and its ordinary operand.
+  CoAwaitSpaceBeforeParentheses controls parenthesized operands.
+  Example: co_await task; Default: Preserve.
 - GotoLabelSpacing: Space between goto and its label.
   Example: goto done; Default: Preserve.
 - CaseValueSpacing: Space between case and its expression.

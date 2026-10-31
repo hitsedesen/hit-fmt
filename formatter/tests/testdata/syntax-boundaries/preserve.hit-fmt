@@ -4,6 +4,7 @@ ReturnValueSpacing = Preserve
 CoReturnValueSpacing = Preserve
 ThrowOperandSpacing = Preserve
 CoYieldValueSpacing = Preserve
+CoAwaitOperandSpacing = Preserve
 GotoLabelSpacing = Preserve
 CaseValueSpacing = Preserve
 NewTypeSpacing = Preserve

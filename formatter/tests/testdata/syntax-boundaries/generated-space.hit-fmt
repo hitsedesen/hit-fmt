@@ -4,6 +4,7 @@ ReturnValueSpacing = GeneratedSpace
 CoReturnValueSpacing = GeneratedSpace
 ThrowOperandSpacing = GeneratedSpace
 CoYieldValueSpacing = GeneratedSpace
+CoAwaitOperandSpacing = GeneratedSpace
 GotoLabelSpacing = GeneratedSpace
 CaseValueSpacing = GeneratedSpace
 NewTypeSpacing = GeneratedSpace
