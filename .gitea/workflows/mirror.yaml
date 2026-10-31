@@ -1,0 +1,53 @@
+name: Push mirrors
+
+on:
+  push:
+    branches: [main]
+    tags: ['v**']
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */8 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: push-mirrors
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: hit-fmt
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - destination: GitHub
+            url: https://github.com/hitsedesen/hit-fmt.git
+            token: MIRROR_GITHUB_TOKEN
+          - destination: SourceCraft
+            url: https://git.sourcecraft.dev/hitsedesen/hit-fmt.git
+            token: MIRROR_SOURCECRAFT_TOKEN
+    name: Mirror to ${{ matrix.destination }}
+    steps:
+      - uses: builtin:checkout
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Push main and version tags
+        env:
+          MIRROR_URL: ${{ matrix.url }}
+          MIRROR_TOKEN: ${{ secrets[matrix.token] }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          set -eu
+          : "${MIRROR_TOKEN:?Set the MIRROR token secret for this destination}"
+          git fetch --no-tags --prune origin \
+            '+refs/heads/main:refs/mirror/main' \
+            '+refs/tags/v*:refs/mirror/tags/v*'
+          git -c credential.helper= \
+            -c 'credential.helper=!f() { if [ "$1" = get ]; then printf "%s\n" "username=x-access-token" "password=$MIRROR_TOKEN"; fi; }; f' \
+            push --prune "$MIRROR_URL" \
+            '+refs/mirror/main:refs/heads/main' \
+            '+refs/mirror/tags/v*:refs/tags/v*'
