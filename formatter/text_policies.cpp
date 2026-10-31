@@ -169,12 +169,14 @@ void PlanTextPolicyEdits(
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
-    if ((options.IndentPreprocessingDirectives && (options.IndentWidth == 0 || options.IndentWidth > 32)) ||
+    const bool indentDirectives = options.IndentPreprocessingDirectives == BodyIndentation::Indent;
+    const bool rewriteDirectives = options.IndentPreprocessingDirectives != BodyIndentation::Preserve;
+    if ((indentDirectives && (options.IndentWidth == 0 || options.IndentWidth > 32)) ||
         (options.RulerLength != 0 && (options.RulerLength < 3 || options.RulerLength > 10000)))
     {
         throw std::invalid_argument("invalid directive indent width or ruler length");
     }
-    if (!options.IndentPreprocessingDirectives && !options.AlignMacroBackslashes && options.RulerLength == 0) {
+    if (!rewriteDirectives && !options.AlignMacroBackslashes && options.RulerLength == 0) {
         return;
     }
     struct MovedAtom
@@ -228,9 +230,9 @@ void PlanTextPolicyEdits(
         if (close && depth) {
             --depth;
         }
-        const auto level = branch && depth ? depth - 1 : depth;
+        const auto level = indentDirectives ? (branch && depth ? depth - 1 : depth) : 0;
         bool indent = false;
-        if (options.IndentPreprocessingDirectives && level <= 10000 / options.IndentWidth) {
+        if (rewriteDirectives && (!indentDirectives || level <= 10000 / options.IndentWidth)) {
             // Own only the horizontal prefix, never the preceding newline.
             // Replacing it with the token keeps the marker and directive at
             // the same nesting level, including in sorted include atoms.

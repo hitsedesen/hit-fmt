@@ -570,7 +570,8 @@
     OPT(std::vector<std::string>, FunctionBodyMacroNames, {})                 \
     OPT(std::vector<std::string>, ClassMacroNames, {})                        \
     OPT(std::vector<std::string>, WhitespaceSensitiveMacros, {})              \
-    OPT(bool, IndentPreprocessingDirectives, false) \
+    OPT(formatter::BodyIndentation, IndentPreprocessingDirectives, \
+        formatter::BodyIndentation::Preserve) \
     OPT(bool, AlignMacroBackslashes, false) \
     /* Zero preserves spelling; length counts slashes, not indentation. */ \
     OPT(std::size_t, RulerLength, 0) \

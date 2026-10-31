@@ -653,9 +653,12 @@ Safety and checks
 - Brace insertion, null statement/declaration removal and namespace-comment
   changes are opt-in. Required semicolons, uncertain macro syntax and
   commented placeholders stay; no transform crosses protection.
-- IndentPreprocessingDirectives indents whole directives by conditional
-  depth using IndentWidth, removes space after # or %:, and aligns
-  else/elif/endif with their if. AlignMacroBackslashes aligns existing
+- IndentPreprocessingDirectives accepts Preserve (default), Indent and
+  NoIndent. Preserve keeps directive indentation and space after # or %:.
+  Indent moves whole directives by conditional depth using IndentWidth;
+  else/elif/endif align with their if. NoIndent puts directives at column
+  one. Indent and NoIndent remove space after # or %:. Legacy true means
+  Indent; false means Preserve. AlignMacroBackslashes aligns existing
   continuations after the longest prefix; tokens/spliced text stay intact.
 - Naming/parameter-name checks report issues without renaming code.
   Exclude filters paths; NamingNamespaceExemptions exempts namespaces.
@@ -674,7 +677,7 @@ Optional transforms
     RemoveNullDeclarations = false
     IncludeOrder = Preserve
     NamespaceComments = Preserve
-    IndentPreprocessingDirectives = false
+    IndentPreprocessingDirectives = Preserve
     AlignMacroBackslashes = false
 
 Naming checks and excluded paths

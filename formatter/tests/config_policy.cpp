@@ -952,6 +952,11 @@ TEST(ConfigPolicy, InvalidEnumValuesAndOffsetsAreRejected)
     EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
     const TemporaryConfig requiresPosition("RequiresClausePosition = Unknown\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(requiresPosition.Path), std::runtime_error);
+    const TemporaryConfig directiveIndent("IndentPreprocessingDirectives = Unknown\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(directiveIndent.Path), std::runtime_error);
+    style.RequiresClausePosition = formatter::RequiresClausePosition::Preserve;
+    style.IndentPreprocessingDirectives = static_cast<formatter::BodyIndentation>(255);
+    EXPECT_THROW((void)formatter::CompilePolicies(style), std::invalid_argument);
 }
 
 TEST(ConfigPolicy, StagedOptionsResolveFinalInheritance)

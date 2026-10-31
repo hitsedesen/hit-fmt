@@ -288,6 +288,11 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, newOptions, {"syntax", "unlimited", "preserve", "always"});
     AddCases(cases, newOptions, {"text", "sorted-text"}, "text.input.cpp");
     AddCases(cases, newOptions, {"crlf"}, "crlf.input.cpp");
+    const auto directives = data / "directive-indent";
+    AddCases(cases, directives, {"preserve", "indent", "no-indent", "legacy-true", "legacy-false"});
+    ShareExpected(cases, directives, "preserve.output.cpp", "input.cpp");
+    ShareExpected(cases, directives, "legacy-false.output.cpp", "input.cpp");
+    ShareExpected(cases, directives, "legacy-true.output.cpp", "indent.output.cpp");
     AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
     AddCases(cases, data / "single-statement-body", {"single"});
     AddCases(cases, data / "single-statement-body", {"compact", "preserve", "lambda-override"}, "lambdas.input.cpp");

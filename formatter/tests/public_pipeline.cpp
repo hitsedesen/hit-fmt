@@ -1987,52 +1987,62 @@ TEST(PublicPipeline, ClassMacroHintsSurviveNormalizationAndScopedFormatting)
 
 TEST(PublicPipeline, TextPoliciesRespectOriginalScopeAndProtection)
 {
-    formatter::Style style;
-    style.IndentPreprocessingDirectives = true;
-    style.AlignMacroBackslashes = true;
-    style.RulerLength = 16;
-    style.RulerBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
-    style.RulerBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
-    const formatter::PreparedFormat prepared(style);
-    const std::string source = "#if OUTER\n\t # if INNER\n" "#define VALUE first \\\n    second    \\\n    third\n"
-        "# endif\n# endif\n/////\nint item;\n";
-    const auto begin = parser::SourceOffset(source.find('\t'));
-    const auto end = parser::SourceOffset(source.find('\n', begin));
-    const std::array selected{parser::SourceRange{begin, end}};
-    const auto limited = FormatInput(source, prepared, {.EditScope = selected});
-    EXPECT_NE(limited.Text.find("    #if INNER"), std::string::npos);
-    const std::array partial{parser::SourceRange{begin + 1, end}};
-    const auto denied = FormatInput(source, prepared, {.EditScope = partial});
-    EXPECT_EQ(denied.Text, source);
-    // Selecting the token alone does not authorize moving its leading prefix.
-    const std::array tokenOnly{parser::SourceRange{begin + 2, end}};
-    const auto tokenDenied = FormatInput(source, prepared, {.EditScope = tokenOnly});
-    EXPECT_EQ(tokenDenied.Text, source);
-    const std::array prefix{parser::SourceRange{begin, begin + 2}};
-    const auto prefixProtected = FormatInput(source, prepared, {.ImmutableRanges = prefix});
-    EXPECT_NE(prefixProtected.Text.find("\t # if INNER"), std::string::npos);
-    const std::array immutable{parser::SourceRange{0, parser::SourceOffset(source.size())}};
-    EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
-    const auto disabled = "// hit-fmt off\n" + source + "// hit-fmt on\n";
-    EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
-    const auto result = FormatInput(source, prepared);
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    for (const auto mode : {formatter::BodyIndentation::Indent, formatter::BodyIndentation::NoIndent}) {
+        SCOPED_TRACE(formatter::SerializeConfigEnum(mode));
+        formatter::Style style;
+        style.IndentPreprocessingDirectives = mode;
+        style.AlignMacroBackslashes = true;
+        style.RulerLength = 16;
+        style.RulerBlankLinesBefore = {formatter::BlankLineMode::Exact, 1};
+        style.RulerBlankLinesAfter = {formatter::BlankLineMode::Exact, 1};
+        const formatter::PreparedFormat prepared(style);
+        const std::string source = "#if OUTER\n\t # if INNER\n" "#define VALUE first \\\n    second    \\\n    third\n"
+            "# endif\n# endif\n/////\nint item;\n";
+        const auto begin = parser::SourceOffset(source.find('\t'));
+        const auto end = parser::SourceOffset(source.find('\n', begin));
+        const std::array selected{parser::SourceRange{begin, end}};
+        const auto limited = FormatInput(source, prepared, {.EditScope = selected});
+        EXPECT_NE(
+            limited.Text.find(mode == formatter::BodyIndentation::Indent ? "    #if INNER" : "\n#if INNER"),
+            std::string::npos);
+        const std::array partial{parser::SourceRange{begin + 1, end}};
+        const auto denied = FormatInput(source, prepared, {.EditScope = partial});
+        EXPECT_EQ(denied.Text, source);
+        // Selecting the token alone does not authorize moving its leading prefix.
+        const std::array tokenOnly{parser::SourceRange{begin + 2, end}};
+        const auto tokenDenied = FormatInput(source, prepared, {.EditScope = tokenOnly});
+        EXPECT_EQ(tokenDenied.Text, source);
+        const std::array prefix{parser::SourceRange{begin, begin + 2}};
+        const auto prefixProtected = FormatInput(source, prepared, {.ImmutableRanges = prefix});
+        EXPECT_NE(prefixProtected.Text.find("\t # if INNER"), std::string::npos);
+        const std::array immutable{parser::SourceRange{0, parser::SourceOffset(source.size())}};
+        EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
+        const auto disabled = "// hit-fmt off\n" + source + "// hit-fmt on\n";
+        EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
+        const auto result = FormatInput(source, prepared);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
 }
 
 TEST(PublicPipeline, SortedDirectiveWhitespaceProjectsSelectedIncludeAtoms)
 {
-    formatter::Style style;
-    style.IndentPreprocessingDirectives = true;
-    style.IncludeOrder = formatter::IncludeOrder::Sort;
-    const formatter::PreparedFormat prepared(style);
-    const std::string source = "#if OUTER\n\t #include \"zeta.h\"\n" "  #include \"alpha.h\"\n#endif\nint tail;\n";
-    const auto begin = parser::SourceOffset(source.find('\t'));
-    const auto end = parser::SourceOffset(source.find("#endif"));
-    const std::array selected{parser::SourceRange{begin, end}};
-    const auto result = FormatInput(source, prepared, {.EditScope = selected});
-    EXPECT_LT(result.Text.find("alpha.h"), result.Text.find("zeta.h"));
-    EXPECT_NE(result.Text.find("    #include"), std::string::npos);
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    for (const auto mode : {formatter::BodyIndentation::Indent, formatter::BodyIndentation::NoIndent}) {
+        SCOPED_TRACE(formatter::SerializeConfigEnum(mode));
+        formatter::Style style;
+        style.IndentPreprocessingDirectives = mode;
+        style.IncludeOrder = formatter::IncludeOrder::Sort;
+        const formatter::PreparedFormat prepared(style);
+        const std::string source = "#if OUTER\n\t #include \"zeta.h\"\n" "  #include \"alpha.h\"\n#endif\nint tail;\n";
+        const auto begin = parser::SourceOffset(source.find('\t'));
+        const auto end = parser::SourceOffset(source.find("#endif"));
+        const std::array selected{parser::SourceRange{begin, end}};
+        const auto result = FormatInput(source, prepared, {.EditScope = selected});
+        EXPECT_LT(result.Text.find("alpha.h"), result.Text.find("zeta.h"));
+        EXPECT_NE(
+            result.Text.find(mode == formatter::BodyIndentation::Indent ? "    #include" : "\n#include"),
+            std::string::npos);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
 }
 
 TEST(PublicPipeline, UnlimitedWidthHasNoHiddenTenThousandColumnLimit)
