@@ -105,8 +105,8 @@ ControlStatementBlankLinesBefore = 1
 MacroBlankLinesAround = 1
 BlankLineMacroNames = ["YT_LOG_*", "YT_TLOG_*", "THROW_ERROR_EXCEPTION", "YT_VERIFY"]
 CaseBlankLines = 1
-# Separate namespace boundaries and declaration blocks; free functions stay grouped.
-RulerPlacement = DeclarationBlocks
+# Add namespace boundary rulers; declaration grouping stays with the author.
+RulerPlacement = NamespaceBoundaries
 RulerLength = 80
 RulerBlankLinesBefore = 1
 RulerBlankLinesAfter = 1

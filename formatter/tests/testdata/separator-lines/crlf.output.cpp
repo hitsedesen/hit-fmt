@@ -7,8 +7,6 @@ using namespace NCore;
 struct TFirst
 { };
 
-////////////
-
 struct TSecond
 { };
 

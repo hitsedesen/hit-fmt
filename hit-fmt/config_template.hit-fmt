@@ -927,13 +927,12 @@ AlignMacroBackslashes = false
 # Values: 0 (preserve) or 3..10000
 RulerLength = 0
 
-# DeclarationBlocks separates namespace boundaries and top-level declaration
-# blocks. Initial using namespace directives stay with the opening; consecutive
-# free functions, aliases or variables stay grouped. Functions following types
-# share their block. Existing rulers keep finer
-# grouping; standalone rulers inside records/functions are removed. New rulers
-# use RulerLength, or 80 when it is 0. Protection and directives take precedence.
-# Values: Preserve | DeclarationBlocks
+# NamespaceBoundaries adds rulers inside namespace openings and before closings.
+# Initial using namespace directives stay with the opening. Existing ruler
+# placement is preserved, including between declarations and inside bodies.
+# New rulers use RulerLength, or 80 when it is 0. Protection and directives
+# take precedence.
+# Values: Preserve | NamespaceBoundaries
 RulerPlacement = Preserve
 
 # Values: Preserve | 0..10000 | Minimum:0..10000
