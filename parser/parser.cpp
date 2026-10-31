@@ -6485,7 +6485,10 @@ private:
     [[nodiscard]] bool LooksLikeTypeId(size_t begin, size_t end) const
     {
         auto first = SkipAttributeSpecifiers(begin);
-        if (first >= end || (!IsTypeKeyword(Kind(first)) && !IsKnownType(first))) {
+        const auto second = NextSignificant(first + 1);
+        const bool trailingQualifier = second < end && Kind(first) == TK::Identifier &&
+            (Kind(second) == TK::Keyword_const || Kind(second) == TK::Keyword_volatile);
+        if (first >= end || (!IsTypeKeyword(Kind(first)) && !IsKnownType(first) && !trailingQualifier)) {
             return false;
         }
         for (auto i = first; i < end; ++i) {
@@ -7280,13 +7283,26 @@ private:
 
     [[nodiscard]] bool IsTypeTemplateArgument(TokenIndex firstArgument, TokenIndex following) const
     {
-        while (Kind(firstArgument) == TK::Keyword_const || Kind(firstArgument) == TK::Keyword_volatile) {
-            firstArgument = NextSignificant(firstArgument + 1);
-        }
+        const auto firstKind = Kind(firstArgument);
         auto afterArgument = NextSignificant(firstArgument + 1);
+        // These specifiers cannot start a comparison operand, even when the
+        // type name comes from an include or a constrained template parameter.
+        if (firstKind == TK::Keyword_const || firstKind == TK::Keyword_volatile || firstKind == TK::Keyword_typename ||
+            firstKind == TK::Keyword_struct || firstKind == TK::Keyword_class || firstKind == TK::Keyword_union ||
+            firstKind == TK::Keyword_enum ||
+            (firstKind == TK::Identifier &&
+                (Kind(afterArgument) == TK::Keyword_const || Kind(afterArgument) == TK::Keyword_volatile)))
+        {
+            return true;
+        }
         const bool knownTypeArgument = IsKnownType(firstArgument);
-        if (!knownTypeArgument && !IsFundamentalTypeKeyword(Kind(firstArgument))) {
+        if (!knownTypeArgument && !IsFundamentalTypeKeyword(firstKind)) {
             return false;
+        }
+        if (!knownTypeArgument) {
+            while (afterArgument < following && IsFundamentalTypeKeyword(Kind(afterArgument))) {
+                afterArgument = NextSignificant(afterArgument + 1);
+            }
         }
         bool sharedCloser = false;
         if (knownTypeArgument && Kind(afterArgument) == TK::Operator_Less) {

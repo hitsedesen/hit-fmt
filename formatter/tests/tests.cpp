@@ -313,6 +313,14 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
     AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});
     AddCases(cases, data / "interword-spacing", {"canonical", "preserve", "headers-preserve"});
+    for (const auto* profile : {"space", "specifier-preserve", "preserve"}) {
+        cases.push_back({
+            data / "interword-spacing",
+            std::string("constrained-") + profile,
+            "constrained.input.cpp",
+            profile,
+        });
+    }
     AddCases(
         cases,
         data / "syntax-boundaries",

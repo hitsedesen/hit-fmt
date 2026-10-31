@@ -108,9 +108,10 @@ private:
 
     ConfigEntry& DefaultConfig()
     {
-        if (!DefaultConfig_.Settings)
+        if (!DefaultConfig_.Settings) {
             DefaultConfig_.Settings =
                 std::make_unique<const hit_fmt::PreparedConfiguration>(formatter::Configuration{});
+        }
         return DefaultConfig_;
     }
 

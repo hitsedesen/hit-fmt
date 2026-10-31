@@ -921,7 +921,16 @@
                     "("
                     (argument
                       (call-expression
-                        (unparsed-syntax "Build" "<" "const" "Schema" "::" "Key" ">")
+                        (template-id-expression
+                          (identifier-expression "Build")
+                          (template-argument-list
+                            "<"
+                            (template-argument
+                              (type-id "const" "Schema" "::" "Key")
+                            )
+                            ">"
+                          )
+                        )
                         (argument-list
                           "("
                           (argument

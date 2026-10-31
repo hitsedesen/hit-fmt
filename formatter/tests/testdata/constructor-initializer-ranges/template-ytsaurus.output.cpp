@@ -67,6 +67,7 @@ struct Pending
             Error(static_cast<const Error&>(value)))...
     { }
 };
+
 Owned::Owned()
     : Value(Build<const Schema::Key>(
         0,

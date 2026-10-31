@@ -22,7 +22,7 @@ template<Constraint...Ts>struct ConstrainedPack {
 };
 template<Constraint T = Box<const int>>struct Defaulted {
 };
-template<Constraint T>requires Constraint<const   T&> void Required(T value) {
+template<Constraint T>requires Constraint<const T&> void Required(T value) {
 }
 template<template<class>class C, typename...Ts>void F(Ts...args) {
     auto fn = [args...]() {
