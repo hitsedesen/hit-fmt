@@ -669,7 +669,10 @@ public:
         return Tokens_.Size();
     }
 
-    [[nodiscard]] tokenizer::Token Token(TokenIndex index) const;
+    [[nodiscard]] tokenizer::Token Token(TokenIndex index) const
+    {
+        return {.Kind = Kind(index), .Position = TokenPosition(index), .Text = Tokens_[index].Text};
+    }
 
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
@@ -697,7 +700,10 @@ public:
         return Tokens_.MatchingDelimiter(index);
     }
 
-    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node) const;
+    [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node) const
+    {
+        return node.TriviaIndex_ == std::numeric_limits<uint32_t>::max() ? nullptr : &Trivia_[node.TriviaIndex_];
+    }
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
 

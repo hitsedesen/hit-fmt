@@ -749,10 +749,21 @@ namespace {
 
 bool AnnotationIdentifier(std::string_view name)
 {
-    constexpr std::string_view first = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
-    constexpr std::string_view rest = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
-    return !name.empty() && first.find(name.front()) != std::string_view::npos &&
-        name.find_first_not_of(rest) == std::string_view::npos;
+    const auto letter = [] (unsigned char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    };
+
+    if (name.empty() || !letter(name.front())) {
+        return false;
+    }
+
+    for (unsigned char c : name.substr(1)) {
+        if (!letter(c) && (c < '0' || c > '9')) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool AnnotationQualifiedName(std::string_view name)

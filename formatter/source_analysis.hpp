@@ -231,7 +231,34 @@ public:
     // Specialized opt-in directive whitespace authority. Ignores only native
     // Directive/LineSplice protection, never real fences or edit-scope bytes.
     [[nodiscard]] bool CanRewriteDirective(parser::SourceRange source) const;
-    [[nodiscard]] bool CanReplaceGap(GapId gap, std::string_view replacement) const;
+
+    [[nodiscard]] bool CanReplaceGap(GapId id, std::string_view replacement) const
+    {
+        if (id >= Gaps_.size()) {
+            return false;
+        }
+
+        const auto& gap = Gaps_[id];
+
+        if (replacement == Original(gap)) {
+            return true;
+        }
+
+        if (gap.Preserve || replacement.find_first_not_of(" \t\r\n\f\v") != std::string_view::npos ||
+            (gap.Separation == GapSeparation::Required && replacement.empty()))
+        {
+            return false;
+        }
+
+        if (gap.MustStartWithLineFeed && !replacement.starts_with('\n')) {
+            return false;
+        }
+
+        const auto newline = replacement.find('\n') != std::string_view::npos;
+        return (gap.LineBoundary != GapLineBoundary::Required || newline) &&
+            (gap.LineBoundary != GapLineBoundary::Forbidden || !newline);
+    }
+
     // Spelling-only authority for the ENTIRE nonempty original whitespace gap.
     // Full byte coverage can permit existing atom replacement at scope End/EOF
     // even when generic replacement lacks insertion-point ownership. No empty

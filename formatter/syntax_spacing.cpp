@@ -3,6 +3,7 @@
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 
 namespace formatter {
@@ -70,18 +71,6 @@ bool IsArgumentNameComment(std::string_view text)
     }
 
     return !start;
-}
-
-GapPolicy PolicyFor(const GapPolicies& policies, F field)
-{
-    switch (field) {
-        #define SYNTAX_SPACING_POLICY(type, name, initial) \
-        case F::name: return policies.name;
-        FORMATTER_GAP_OPTIONS(SYNTAX_SPACING_POLICY)
-#undef SYNTAX_SPACING_POLICY
-        default:
-            return GapPolicy::Preserve;
-    }
 }
 
 bool IsControl(NK kind)
@@ -166,7 +155,13 @@ public:
         std::span<SyntaxGapPreference> gaps,
         std::span<const SourceRegion> regions)
         : Tree_(tree)
-        , Policies_(policies)
+        , Policies_{
+            GapPolicy::Preserve,
+#define SYNTAX_SPACING_POLICY(type, name, initial) policies.name,
+            FORMATTER_GAP_OPTIONS(SYNTAX_SPACING_POLICY)
+#undef SYNTAX_SPACING_POLICY
+            GapPolicy::Preserve,
+        }
         , Binding_(binding)
         , Gaps_(gaps)
         , Regions_(regions)
@@ -236,7 +231,7 @@ public:
             Id(owner),
             field,
             category,
-            PolicyFor(Policies_, field),
+            Policies_[size_t(field)],
             fallback,
             priority,
             SpacingConstraint::None,
@@ -495,14 +490,14 @@ public:
         }
     }
 
-    Context Enter(const SourceRegion& node, const SourceRegion* parent, Context state, RegionStatus status)
+    void Enter(const SourceRegion& node, const SourceRegion* parent, Context& state, RegionStatus status)
     {
         const auto kind = node.Kind;
         const auto begin = node.Tokens.Begin;
         const auto end = node.Tokens.End;
 
         if (begin >= Tree_.TokenCount() || end > Tree_.TokenCount() || begin == end) {
-            return state;
+            return;
         }
 
         if (kind == NK::NewExpression) {
@@ -521,7 +516,15 @@ public:
         if (state.UncertainSyntax) {
             state.Owner = Id(node);
             state.Category = C::None;
-            return state;
+            return;
+        }
+
+        // These productions inherit context without defining spacing edges.
+        // Direct() still classifies their tokens, including qualified names.
+        if (kind == NK::IdentifierExpression || kind == NK::LiteralExpression || kind == NK::Expression ||
+            kind == NK::DeclaratorName)
+        {
+            return;
         }
 
         const auto statementCategory = state.Category == C::LambdaBodies ? C::LambdaBodies : C::Bodies;
@@ -1191,7 +1194,6 @@ public:
             }
         }
 
-        return state;
     }
 
     void Direct(const SourceRegion& node, Context& state, TI begin, TI end)
@@ -1226,6 +1228,18 @@ public:
 
             const auto kind = Tree_.Kind(i);
             const auto role = Tree_.Role(i);
+
+            if ((node.Kind == NK::IdentifierExpression || node.Kind == NK::LiteralExpression ||
+                node.Kind == NK::Expression) && kind >= TK::Identifier && kind <= TK::Literal_String &&
+                role == PR::None)
+            {
+                if (i != 0 && Gaps_[i].Priority == 0) {
+                    Gaps_[i].Owner = Id(owner);
+                    Gaps_[i].Category = state.Category;
+                }
+
+                continue;
+            }
 
             if (node.Kind == NK::AsmDeclaration && state.TypeOperandEnd == 0) {
                 if (kind == TK::Operator_OpenParenthesis) {
@@ -1556,7 +1570,9 @@ public:
                     3);
             }
 
-            KeywordAt(node, state, i);
+            if (kind >= TK::Keyword_alignas) {
+                KeywordAt(node, state, i);
+            }
 
             if (kind == TK::Operator_Ellipsis &&
                 (node.Kind == NK::TemplateParameter || node.Kind == NK::Declarator ||
@@ -2088,7 +2104,7 @@ private:
     }
 
     const parser::SyntaxTree& Tree_;
-    const GapPolicies& Policies_;
+    std::array<GapPolicy, size_t(F::Count)> Policies_;
     PointerReferenceDeclaratorLocation Binding_;
     std::span<SyntaxGapPreference> Gaps_;
     std::span<const SourceRegion> Regions_;
@@ -2281,7 +2297,7 @@ SyntaxSpacing BuildSyntaxSpacing(
         const auto* parentNode = frame.Parent == NoRegion ? nullptr : &regions[frame.Parent];
 
         if (!frame.Entered) {
-            frame.State = classifier.Enter(node, parentNode, frame.State, node.Status);
+            classifier.Enter(node, parentNode, frame.State, node.Status);
             frame.Complete =
                 node.Status == RegionStatus::Complete && !frame.State.UncertainSyntax && !frame.State.UncertainOperands;
             frame.Entered = true;
@@ -2311,6 +2327,28 @@ SyntaxSpacing BuildSyntaxSpacing(
             const bool previousComplete = frame.PreviousChildComplete;
             frame.PreviousChild = childId;
             const auto parent = frame.Node;
+
+            if (child.FirstChild == NoRegion) {
+                classifier.Enter(child, &node, state, child.Status);
+                const bool complete =
+                    child.Status == RegionStatus::Complete && !state.UncertainSyntax && !state.UncertainOperands;
+
+                if (!child.Tokens.Empty()) {
+                    classifier.Direct(child, state, child.Tokens.Begin, child.Tokens.End);
+                }
+
+                classifier.Finish(child);
+
+                if (complete && previous != NoRegion && previousComplete) {
+                    classifier.SequenceBoundary(node, regions[previous], child);
+                    classifier.DeclarationBoundary(node, regions[previous], child);
+                }
+
+                frame.Complete &= complete;
+                frame.PreviousChildComplete = complete;
+                continue;
+            }
+
             stack.push_back({childId, parent, child.FirstChild, state, child.Tokens.Begin});
             stack.back().PreviousSibling = previous;
             stack.back().PreviousSiblingComplete = previousComplete;

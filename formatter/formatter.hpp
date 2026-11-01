@@ -4,12 +4,11 @@
 #include "config_enum.hpp"
 #include "config_options.hpp"
 #include "format_changes.hpp"
+#include "formatter/layout_types.hpp"
 #include "policy.hpp"
 #include "structural_edits.hpp"
 
 #include <util/input.hpp>
-
-#include <document/document.hpp>
 
 #include <parser/parser.hpp>
 
@@ -112,7 +111,7 @@ struct FormatMapping
     // Exact copied range, or a non-exact source association/insertion anchor.
     // Zero-width syntax anchors have affinity to the preceding source piece.
     parser::SourceRange Original;
-    document::Identity OriginalToken = document::NoIdentity;
+    layout::Identity OriginalToken = layout::NoIdentity;
     // Index into FormatResult::StructuralOperations for normalization/comment
     // associations, including exact moved include bytes.
     StructuralActionId Action = NoStructuralAction;

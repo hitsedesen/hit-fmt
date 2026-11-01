@@ -1,4 +1,5 @@
 #include <formatter/config.hpp>
+#include <formatter/layout_plan.hpp>
 #include <formatter/syntax_layout.hpp>
 
 #include <gtest/gtest.h>
@@ -72,9 +73,9 @@ Output Lower(
     const auto annotations = formatter::CompileLibraryAnnotations(style);
     auto safety = formatter::BuildSourceAnalysis(tree, protection, file, scratch);
     auto spacing = formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
-    document::Document document(tree.Source(), &file);
+    formatter::detail::LayoutPlan layout(tree, file);
     const auto status =
-        formatter::BuildSyntaxDocument(tree, policies, annotations, safety, spacing, document, scratch, options);
+        formatter::BuildSyntaxLayout(tree, policies, annotations, safety, spacing, layout, scratch, options);
     EXPECT_TRUE(status) << "lowering error " << int(status.Code) << " token " << status.Token << " core "
         << int(status.Core.Code);
 
@@ -82,7 +83,7 @@ Output Lower(
         throw std::runtime_error("failed syntax lowering");
     }
 
-    const auto rendered = document.Render(formatter::SyntaxRenderPolicy(policies, options), &file);
+    const auto rendered = layout.Render(formatter::SyntaxRenderPolicy(policies, options), file);
     EXPECT_TRUE(rendered.State) << "core " << int(rendered.State.Code);
 
     if (!rendered.State) {
@@ -206,7 +207,7 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
     style.TrailingWhitespace = formatter::TrailingWhitespace::Trim;
     style.MaxEmptyLines = 0; // Partial permissions cannot collapse topology.
     formatter::SyntaxLayoutOptions crlf;
-    crlf.LineEnding = document::Newline::CRLF;
+    crlf.LineEnding = formatter::layout::Newline::CRLF;
     record("mixed trim plus indentation", mixed, style, selected, crlf);
     style.TrailingWhitespace = formatter::TrailingWhitespace::Preserve;
     record("mixed whitespace preserve", mixed, style, selected);
@@ -860,7 +861,7 @@ TEST(SyntaxLayout, CRLFCommentOwnsCRAndGapStartsWithLF)
 {
     auto style = Canonical(18);
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = document::Newline::CRLF;
+    options.LineEnding = formatter::layout::Newline::CRLF;
     const auto output = Lower("void f(){ call(alpha, // note\r\n beta, gamma); }\r\n", style, options);
     EXPECT_EQ(output.Text.find("\r\r\n"), std::string::npos);
     EXPECT_NE(output.Text.find("// note\r\n"), std::string::npos);
@@ -941,7 +942,7 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
     auto style = Canonical(24);
     style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = document::Newline::CRLF;
+    options.LineEnding = formatter::layout::Newline::CRLF;
     const auto comment = Lower("int values[] = {alpha // note\r\n,};\r\n", style, options).Text;
     EXPECT_NE(comment.find("// note\r\n"), std::string::npos) << comment;
     EXPECT_NE(comment.find(",}"), std::string::npos) << comment;
@@ -1679,7 +1680,7 @@ TEST(SyntaxLayout, ExactVerticalGapsCapAndPreservedIndentation)
     const std::string source = "namespace Demo {\r\n\tint first;\r\n\r\n\r\n\r\n\tvoid f(){}\r\n"
         "\t/// documented\r\n\t/// " "complete\r\n\t[[nodiscard]] int g(){return " "0;}\r\n}\r\n";
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = document::Newline::CRLF;
+    options.LineEnding = formatter::layout::Newline::CRLF;
     const auto mapped = Lower(source, style, options);
     const auto& output = mapped.Text;
     EXPECT_NE(output.find("{\r\n\r\n\tint first;"), std::string::npos) << output;
@@ -1962,7 +1963,7 @@ TEST(SyntaxLayout, VerticalCountsAfterCommentCRAndDirectiveBarriersStaySafe)
     style.DefinitionBlankLines = {formatter::BlankLineMode::Exact, 1};
     style.MaxEmptyLines = 1;
     formatter::SyntaxLayoutOptions options;
-    options.LineEnding = document::Newline::CRLF;
+    options.LineEnding = formatter::layout::Newline::CRLF;
     const std::string source =
         "void first(){} // note\r\nvoid " "second(){}\r\n#define RAW(x) x ## x\r\nvoid " "third(){}\r\n";
     const auto mapped = Lower(source, style, options);
@@ -2265,4 +2266,56 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     protection = {};
     const std::string malformed = "template<auto,auto> struct Pair;\n" "template<> struct Pair<(1<2],0> {};\n";
     EXPECT_NE(Lower(malformed, style, {}, protection).Text.find("Pair<(1<2],0>"), std::string::npos);
+}
+
+TEST(SyntaxLayout, RenderTablesOutliveScratchAndKeepIndexedMappings)
+{
+    const test::Input input("void f(){ auto result = wrap(alpha, nested(beta, gamma), delta); /* keep */ }\n");
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    std::pmr::monotonic_buffer_resource file;
+    formatter::detail::LayoutPlan plan(tree, file);
+    const auto policies = formatter::CompilePolicies(Canonical(36));
+    const auto annotations = formatter::CompileLibraryAnnotations(Canonical(36));
+    {
+        std::pmr::monotonic_buffer_resource scratch;
+        const auto safety = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
+        const auto spacing = formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
+        ASSERT_TRUE(formatter::BuildSyntaxLayout(tree, policies, annotations, safety, spacing, plan, scratch));
+    }
+
+    auto policy = formatter::SyntaxRenderPolicy(policies);
+
+    // Probe/replay decisions must be local to each render, including when a
+    // later width chooses a different shape and a different mapping mode.
+    for (const auto width : {36u, 100u, 22u, 36u}) {
+        std::pmr::monotonic_buffer_resource memory;
+        policy.Width = width;
+        policy.SourceMap = true;
+        policy.IndexedTokenMap = false;
+        const auto full = plan.Render(policy, memory);
+        ASSERT_TRUE(full.State);
+        policy.SourceMap = false;
+        policy.IndexedTokenMap = true;
+        policy.TokenCount = tree.TokenCount();
+        const auto indexed = plan.Render(policy, memory);
+        ASSERT_TRUE(indexed.State);
+        EXPECT_EQ(indexed.Text, full.Text);
+        EXPECT_EQ(indexed.Broken, full.Broken);
+        EXPECT_TRUE(indexed.Map.empty());
+        ASSERT_EQ(indexed.Tokens.size(), tree.TokenCount());
+
+        for (const auto& map : full.Map) {
+            if (map.Source.Identity == formatter::layout::NoIdentity) {
+                continue;
+            }
+
+            const auto& token = indexed.Tokens[map.Source.Identity];
+            ASSERT_TRUE(token.Present);
+            EXPECT_EQ(token.Begin, map.OutputBegin);
+            EXPECT_EQ(token.End, map.OutputEnd);
+            EXPECT_EQ(
+                std::string_view(indexed.Text).substr(token.Begin, token.End - token.Begin),
+                tree.TokenText(map.Source.Identity));
+        }
+    }
 }

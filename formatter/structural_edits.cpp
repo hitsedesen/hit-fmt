@@ -189,6 +189,12 @@ void Walk(
             status,
             trailingLabel,
             previousTrailingLabel);
+        const auto* child = node->Child();
+
+        if (!child) {
+            return;
+        }
+
         bool sequence = node->Kind == NK::TranslationUnit || node->Kind == NK::NamespaceDeclaration;
 
         if (node->Kind == NK::ExportDeclaration || node->Kind == NK::LinkageSpecification) {
@@ -202,7 +208,7 @@ void Walk(
                 tree.MatchingDelimiter(header) < node->Tokens.End;
         }
 
-        stack.push_back({node, node->Child(), NK::Error, sequence});
+        stack.push_back({node, child, NK::Error, sequence});
     };
     enter(&tree.Root(), NK::Error, NK::Error, false);
 
@@ -972,11 +978,14 @@ StructuralPlan PlanStructuralEdits(
 {
     StructuralPlan plan(fileMemory);
     // Prefix summaries avoid rescanning nested control bodies.
+    const bool controlEdits = options.AddMissingControlBraces || options.EmptyControlBody;
     std::pmr::vector<uint32_t> barriers(&scratchMemory);
-    barriers.resize(tree.TokenCount() + 1);
+    if (controlEdits) {
+        barriers.resize(tree.TokenCount() + 1);
 
-    for (TI i = 0; i < tree.TokenCount(); ++i) {
-        barriers[i + 1] = barriers[i] + (tree.Kind(i) == TK::Comment || tree.Kind(i) == TK::PreprocessingDirective);
+        for (TI i = 0; i < tree.TokenCount(); ++i) {
+            barriers[i + 1] = barriers[i] + (tree.Kind(i) == TK::Comment || tree.Kind(i) == TK::PreprocessingDirective);
+        }
     }
 
     // Labels stop at their colon in this parser. A control containing an
@@ -984,20 +993,31 @@ StructuralPlan PlanStructuralEdits(
     // a sibling of the whole control. Propagate this once in region postorder;
     // compound boundaries stop propagation, rather than poisoning the file.
     auto regions = safety.Regions();
-    std::pmr::vector<uint8_t> trailingLabels(regions.size(), 0, &scratchMemory);
-    for (size_t i = regions.size(); i > 0; --i) {
-        const auto& region = regions[i - 1];
-        trailingLabels[i - 1] |= region.Kind == NK::LabelStatement || region.Kind == NK::CaseLabel;
+    std::pmr::vector<uint8_t> trailingLabels(&scratchMemory);
+    if (controlEdits || options.RemoveNullStatements) {
+        trailingLabels.resize(regions.size());
 
-        if (trailingLabels[i - 1] && region.Parent != NoRegion && Control(regions[region.Parent].Kind)) {
-            trailingLabels[region.Parent] = true;
+        for (size_t i = regions.size(); i > 0; --i) {
+            const auto& region = regions[i - 1];
+            trailingLabels[i - 1] |= region.Kind == NK::LabelStatement || region.Kind == NK::CaseLabel;
+
+            if (trailingLabels[i - 1] && region.Parent != NoRegion && Control(regions[region.Parent].Kind)) {
+                trailingLabels[region.Parent] = true;
+            }
         }
     }
 
     TI namespaceSuffixEnd = tree.TokenCount();
-    auto nullContexts = options.RemoveNullStatements || options.RemoveNullDeclarations
-        ? NullRemovalContexts(tree, regions, scratchMemory)
-        : std::pmr::vector<uint8_t>(&scratchMemory);
+    std::pmr::vector<uint8_t> nullContexts(&scratchMemory);
+    const auto hasNullContext = [&] (size_t region, uint8_t required) {
+        // Most files have no removable null syntax. Build the neighboring
+        // syntax summaries only when a complete candidate needs them.
+        if (nullContexts.empty()) {
+            nullContexts = NullRemovalContexts(tree, regions, scratchMemory);
+        }
+
+        return (nullContexts[region] & required) == required;
+    };
     size_t regionIndex = 0;
     Walk(
         tree,
@@ -1015,7 +1035,7 @@ StructuralPlan PlanStructuralEdits(
             bool previousTrailingLabel) {
                 const auto region = regionIndex++;
 
-                if (Control(node.Kind)) {
+                if (controlEdits && Control(node.Kind)) {
                     bool attributes = false, labels = false, directives = false;
 
                     for (auto* child = node.Child(); child; child = child->NextSibling) {
@@ -1129,7 +1149,7 @@ StructuralPlan PlanStructuralEdits(
                     ? KnownSyntax | KnownAfter
                     : KnownSyntax | KnownBefore | KnownAfter;
 
-                if (status != RegionStatus::Complete || (nullContexts[region] & requiredContext) != requiredContext) {
+                if (status != RegionStatus::Complete || !hasNullContext(region, requiredContext)) {
                     Skip(plan, action, tokens, StructuralSkip::Incomplete);
                 } else if ((nullDeclaration && !declarationSequence) ||
                     (nullStatement && (grandparent == NK::Argument || grandparent == NK::StatementExpression)))
@@ -1337,10 +1357,11 @@ NamespaceCommentPlan PlanNamespaceComments(
     if (options.Policy == NamespaceCommentPolicy::Preserve) {
         return plan;
     }
-    std::pmr::vector<uint32_t> namespaceKeywords(
-        original.TokenCount() + 1, 0, &scratchMemory);
+    std::pmr::vector<TI> namespaceKeywords(&scratchMemory);
     for (TI i = 0; i < original.TokenCount(); ++i) {
-        namespaceKeywords[i + 1] = namespaceKeywords[i] + (original.Kind(i) == TK::Keyword_namespace);
+        if (original.Kind(i) == TK::Keyword_namespace) {
+            namespaceKeywords.push_back(i);
+        }
     }
 
     Walk(
@@ -1352,11 +1373,14 @@ NamespaceCommentPlan PlanNamespaceComments(
                 // A keyword in opaque/generic grammar is evidence to SKIP,
                 // never permission to invent a namespace identity or
                 // inspect its text.
-                if ((node.Kind == NK::Declaration || node.Kind == NK::UnparsedSyntax) &&
-                    namespaceKeywords[node.Tokens.End] != namespaceKeywords[node.Tokens.Begin])
-                {
-                    plan.Skipped
-                        .push_back({StructuralAction::NamespaceComments, node.Tokens, StructuralSkip::Incomplete});
+                if (node.Kind == NK::Declaration || node.Kind == NK::UnparsedSyntax) {
+                    const auto keyword =
+                        std::lower_bound(namespaceKeywords.begin(), namespaceKeywords.end(), node.Tokens.Begin);
+
+                    if (keyword != namespaceKeywords.end() && *keyword < node.Tokens.End) {
+                        plan.Skipped
+                            .push_back({StructuralAction::NamespaceComments, node.Tokens, StructuralSkip::Incomplete});
+                    }
                 }
 
                 return;
@@ -1470,42 +1494,40 @@ StructuralPlan ResolveNamespaceComments(
 
         previousEnd = r.End;
     }
-    std::pmr::vector<parser::SourceOffset> lines(&scratchMemory);
-    lines.push_back(0);
 
-    for (size_t i = 0; i < output.size(); ++i) {
-        if (output[i] == '\n') {
-            lines.push_back(static_cast<parser::SourceOffset>(i + 1));
-        }
+    if (plan.Namespaces.empty()) {
+        return resolved;
     }
 
+    std::pmr::vector<parser::SourceOffset> lines(&scratchMemory);
     auto line = [&] (parser::SourceOffset offset) {
+        if (lines.empty()) {
+            lines.push_back(0);
+
+            for (auto i = output.find('\n'); i != std::string_view::npos; i = output.find('\n', i + 1)) {
+                lines.push_back(static_cast<parser::SourceOffset>(i + 1));
+            }
+        }
+
         return static_cast<size_t>(std::upper_bound(lines.begin(), lines.end(), offset) - lines.begin() - 1);
     };
     const auto count = original.TokenCount();
-    std::pmr::vector<uint8_t> mappedValid(count, 0, &scratchMemory);
-    std::pmr::vector<TI> before(count + 1, count, &scratchMemory);
-    std::pmr::vector<TI> after(count + 1, count, &scratchMemory);
-    for (TI token = 0; token < count; ++token) {
-        auto r = mapping[token].Output;
-
-        if (mapping[token].Present && r.Begin <= r.End && r.End <= output.size()) {
-            const auto sourceText = original.TokenText(token);
-            const auto outputText = output.substr(r.Begin, r.End - r.Begin);
-            mappedValid[token] = outputText == sourceText ||
-                (original.Kind(token) == TK::Comment && sourceText.starts_with("/*") &&
-                    ReindentedCommentMatches(sourceText, outputText));
+    auto valid = [&] (TI token) {
+        if (token >= count || !mapping[token].Present) {
+            return false;
         }
 
-        before[token + 1] = mapping[token].Present ? token : before[token];
-    }
+        const auto r = mapping[token].Output;
 
-    for (TI token = count; token > 0; --token) {
-        after[token - 1] = mapping[token - 1].Present ? token - 1 : after[token];
-    }
+        if (r.Begin > r.End || r.End > output.size()) {
+            return false;
+        }
 
-    auto valid = [&] (TI token) {
-        return token < count && mappedValid[token];
+        const auto sourceText = original.TokenText(token);
+        const auto outputText = output.substr(r.Begin, r.End - r.Begin);
+        return outputText == sourceText ||
+            (original.Kind(token) == TK::Comment && sourceText.starts_with("/*") &&
+                ReindentedCommentMatches(sourceText, outputText));
     };
     struct Interior
     {
@@ -1587,8 +1609,23 @@ StructuralPlan ResolveNamespaceComments(
         }
 
         const auto& interior = interiors[namespaceIndex];
-        auto previous = before[ns.Header.Begin];
-        auto following = after[ns.Close + 1];
+        // Search only the adjacent deleted runs. Valid namespace headers and
+        // closers stop neighboring queries, so nested namespaces do not
+        // repeatedly scan their interiors.
+        auto previous = count;
+
+        for (auto token = ns.Header.Begin; token > 0;) {
+            if (mapping[--token].Present) {
+                previous = token;
+                break;
+            }
+        }
+
+        auto following = ns.Close + 1;
+
+        while (following < count && !mapping[following].Present) {
+            ++following;
+        }
 
         if (interior.Invalid ||
             (interior.Begin != UINT32_MAX &&
@@ -1643,18 +1680,20 @@ StructuralPlan ResolveNamespaceComments(
                 continue;
             }
 
-            auto openLine = line(mapping[ns.Open].Output.Begin);
-            auto closeLine = line(mapping[ns.Close].Output.Begin);
-            auto interior = closeLine > openLine ? closeLine - openLine - 1 : 0;
+            if (plan.Options.ShortNamespaceLines) {
+                const auto openLine = line(mapping[ns.Open].Output.Begin);
+                const auto closeLine = line(mapping[ns.Close].Output.Begin);
+                const auto interior = closeLine > openLine ? closeLine - openLine - 1 : 0;
 
-            if (plan.Options.ShortNamespaceLines && interior <= plan.Options.ShortNamespaceLines) {
-                skip(StructuralSkip::ShortNamespace);
-                continue;
+                if (interior <= plan.Options.ShortNamespaceLines) {
+                    skip(StructuralSkip::ShortNamespace);
+                    continue;
+                }
             }
 
-            auto lineEnd = closeLine + 1 < lines.size()
-                ? lines[closeLine + 1] - 1
-                : static_cast<parser::SourceOffset>(output.size());
+            const auto newline = output.find('\n', begin);
+            const auto lineEnd = static_cast<parser::SourceOffset>(
+                newline == std::string_view::npos ? output.size() : newline);
             auto suffix = output.substr(begin, lineEnd - begin);
 
             if (suffix.ends_with('\r') &&

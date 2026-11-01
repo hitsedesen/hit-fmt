@@ -530,7 +530,7 @@ inline FormatResult ProjectHunkFormat(
             result.Map.push_back({
                 piece.Output,
                 piece.Input,
-                document::NoIdentity,
+                layout::NoIdentity,
                 NoStructuralAction,
                 true,
                 true,

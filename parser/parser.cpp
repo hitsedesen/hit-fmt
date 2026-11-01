@@ -196,19 +196,6 @@ const Node& SyntaxTree::Root() const
     return *Root_;
 }
 
-tokenizer::Token SyntaxTree::Token(TokenIndex index) const
-{
-    return {.Kind = Kind(index), .Position = TokenPosition(index), .Text = Tokens_[index].Text};
-}
-
-const TriviaAttachments* SyntaxTree::AssociatedTrivia(const Node& node) const
-{
-    if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
-        return nullptr;
-    }
-    return &Trivia_[node.TriviaIndex_];
-}
-
 std::string_view SyntaxTree::SourceText(TokenRange range) const
 {
     ASSERT(range.Begin <= range.End && range.End <= TokenCount())
