@@ -13,10 +13,6 @@ using TK = tokenizer::TokenKind;
 
 using Offset = parser::SourceOffset;
 constexpr auto NoToken = std::numeric_limits<parser::TokenIndex>::max();
-bool Whitespace(std::string_view text)
-{
-    return text.find_first_not_of(" \t\r\n\f\v") == std::string_view::npos;
-}
 
 bool Covered(std::span<const parser::SourceRange> ranges, parser::SourceRange source)
 {
@@ -165,14 +161,8 @@ bool PunctuationNeedsSeparation(std::string_view first, std::string_view second)
 // without allocating/retokenizing each pair. Template > > still needs
 // separation: accepting >> would relax exact lexical identity, even if C++ can
 // split that token contextually. Roles are used separately for grammar safety.
-bool NeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
+bool NeedsSeparation(TK a, std::string_view first, TK b, std::string_view second)
 {
-    const auto left = right - 1;
-    const auto a = tree.Kind(left);
-    const auto b = tree.Kind(right);
-    const auto first = tree.TokenText(left);
-    const auto second = tree.TokenText(right);
-
     if ((Word(a, first) || Literal(a)) && (Word(b, second) || Literal(b))) {
         return true;
     }
@@ -253,7 +243,7 @@ RegionStatus Combine(RegionStatus a, RegionStatus b)
 bool TokenGapNeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex right)
 {
     assert(right > 0 && right < tree.TokenCount());
-    return NeedsSeparation(tree, right);
+    return NeedsSeparation(tree.Kind(right - 1), tree.TokenText(right - 1), tree.Kind(right), tree.TokenText(right));
 }
 
 parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
@@ -321,32 +311,6 @@ bool SourceAnalysis::CanRewriteDirective(parser::SourceRange source) const
             return range.Source.End <= begin;
         });
     return first == DirectiveFences_.end() || first->Source.Begin >= source.End;
-}
-
-bool SourceAnalysis::CanReplaceGap(GapId id, std::string_view replacement) const
-{
-    if (id >= Gaps_.size()) {
-        return false;
-    }
-
-    const auto& gap = Gaps_[id];
-
-    if (replacement == Original(gap)) {
-        return true;
-    }
-
-    if (gap.Preserve || !Whitespace(replacement) || (gap.Separation == GapSeparation::Required && replacement.empty()))
-    {
-        return false;
-    }
-
-    if (gap.MustStartWithLineFeed && !replacement.starts_with('\n')) {
-        return false;
-    }
-
-    const auto newline = replacement.find('\n') != std::string_view::npos;
-    return (gap.LineBoundary != GapLineBoundary::Required || newline) &&
-        (gap.LineBoundary != GapLineBoundary::Forbidden || !newline);
 }
 
 bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
@@ -522,6 +486,7 @@ SourceAnalysis BuildSourceAnalysis(
     result.Source_ = source;
     const auto count = tree.TokenCount();
     result.Gaps_.reserve(static_cast<size_t>(count) + 1);
+    result.Regions_.reserve(size_t(count) + count / 2 + 1);
     auto protect = [&] (Offset begin, Offset end, ProtectionReason reason) {
         if (begin > end || end > size) {
             throw std::invalid_argument("invalid immutable source range");
@@ -540,44 +505,51 @@ SourceAnalysis BuildSourceAnalysis(
     };
 
     std::pmr::vector<Line> lines(&scratchMemory);
-    lines.push_back({0, size, 0, false});
     Offset logicalBegin = 0;
     bool splice = false;
+    bool continuedFromPrevious = false;
+    Offset begin = 0;
+    const auto horizontal = [] (char c) {
+        return c == ' ' || (c >= '\t' && c <= '\r');
+    };
 
-    for (Offset i = 0; i < size; ++i) {
-        auto& line = lines.back();
+    for (;;) {
+        const auto newline = source.find('\n', begin);
+        const auto end = newline == std::string_view::npos ? size : Offset(newline);
+        auto first = begin;
 
-        if (source[i] != '\n') {
-            // Matches Tokenizer::TrySkipNewline's horizontal whitespace.
-            // Cache both marker boundaries once; candidate comments must not
-            // rescan a shared, arbitrarily long physical-line prefix/suffix.
-            // LF was handled above; the remaining horizontal whitespace is
-            // space or one of the contiguous ASCII control codes HT..CR.
-            const auto c = source[i];
-
-            if (c != ' ' && (c < '\t' || c > '\r')) {
-                if (line.FirstContent == size) {
-                    line.FirstContent = i;
-                }
-
-                line.ContentEnd = i + 1;
-            }
-
-            continue;
+        // Only the line edges matter to marker and splice recognition.
+        // Newline search skips the interior without classifying every byte.
+        while (first < end && horizontal(source[first])) {
+            ++first;
         }
 
-        const auto continued = line.ContentEnd > line.Begin && source[line.ContentEnd - 1] == '\\';
+        auto last = first == end ? begin : end;
+
+        while (last > first && horizontal(source[last - 1])) {
+            --last;
+        }
+
+        lines.push_back({begin, first == end ? size : first, last, continuedFromPrevious});
+
+        if (newline == std::string_view::npos) {
+            break;
+        }
+
+        const auto continued = last > begin && source[last - 1] == '\\';
         splice |= continued;
-        lines.push_back({i + 1, size, i + 1, continued});
 
         if (!continued) {
             if (splice) {
-                protect(logicalBegin, i + 1, ProtectionReason::LineSplice);
+                protect(logicalBegin, end + 1, ProtectionReason::LineSplice);
             }
 
-            logicalBegin = i + 1;
+            logicalBegin = end + 1;
             splice = false;
         }
+
+        continuedFromPrevious = continued;
+        begin = end + 1;
     }
 
     if (splice) {
@@ -601,12 +573,30 @@ SourceAnalysis BuildSourceAnalysis(
     std::sort(enumNames.begin(), enumNames.end());
     std::pmr::vector<ProtectedSourceRange> enumInvocations(&scratchMemory);
     std::pmr::vector<Offset> parsedEnumBegins(&scratchMemory);
-    std::pmr::vector<uint32_t> recoveryPrefix(&scratchMemory);
-    std::pmr::vector<uint32_t> ambiguousPrefix(&scratchMemory);
-    recoveryPrefix.reserve(static_cast<size_t>(count) + 1);
-    ambiguousPrefix.reserve(static_cast<size_t>(count) + 1);
-    recoveryPrefix.push_back(0);
-    ambiguousPrefix.push_back(0);
+    struct TokenMarkers
+    {
+        std::pmr::vector<parser::TokenIndex> Positions;
+        size_t Next = 0;
+        parser::TokenIndex Begin = 0;
+
+        bool Intersects(parser::TokenRange range)
+        {
+            // Syntax preorder normally advances through the source. Keep
+            // overlapping/backward ranges correct without a per-token table.
+            if (range.Begin < Begin) {
+                Next = std::lower_bound(Positions.begin(), Positions.end(), range.Begin) - Positions.begin();
+            } else {
+                while (Next < Positions.size() && Positions[Next] < range.Begin) {
+                    ++Next;
+                }
+            }
+
+            Begin = range.Begin;
+            return Next < Positions.size() && Positions[Next] < range.End;
+        }
+    };
+    TokenMarkers recoveryTokens{std::pmr::vector<parser::TokenIndex>(&scratchMemory)};
+    TokenMarkers ambiguousTokens{std::pmr::vector<parser::TokenIndex>(&scratchMemory)};
     Offset disabledBegin = 0;
     size_t disabledDepth = 0;
     // An outer configured invocation already protects all inner invocations.
@@ -614,48 +604,68 @@ SourceAnalysis BuildSourceAnalysis(
     parser::TokenIndex pendingMacro = NoToken;
     bool pendingEnum = false;
 
+    TK previousKind = TK::Invalid;
+    std::string_view previousText;
+    auto previousRole = parser::PunctuationRole::None;
+    Offset previousEnd = 0;
+
     for (parser::TokenIndex i = 0; i <= count; ++i) {
-        const auto begin = i ? tree.Token(i - 1).Text.End : 0;
-        const auto end = i < count ? tree.Token(i).Text.Begin : size;
+        const auto token = i < count ? tree.Token(i) : tokenizer::Token{};
+        const auto text = i < count
+            ? source.substr(token.Text.Begin, token.Text.End - token.Text.Begin)
+            : std::string_view{};
+        const auto role = i < count ? tree.Role(i) : parser::PunctuationRole::None;
+        const auto begin = previousEnd;
+        const auto end = i < count ? token.Text.Begin : size;
         const auto original = source.substr(begin, end - begin);
         SourceGap gap{.Source = {begin, end}};
 
         // Classify bare CR in the existing whitespace validation walk.
         for (size_t offset = begin; offset < end; ++offset) {
             const auto c = source[offset];
-            gap.Preserve |= c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f' && c != '\v';
-            gap.HasBareCR |= c == '\r' && (offset + 1 == source.size() || source[offset + 1] != '\n');
-            gap.HasLineFeed |= c == '\n';
-            gap.Horizontal &= c == ' ' || c == '\t';
+
+            if (c == ' ' || c == '\t') {
+                continue;
+            }
+
+            gap.Horizontal = false;
+
+            if (c == '\n') {
+                gap.HasLineFeed = true;
+            } else if (c == '\r') {
+                gap.HasBareCR |= offset + 1 == source.size() || source[offset + 1] != '\n';
+            } else if (c != '\f' && c != '\v') {
+                gap.Preserve = true;
+            }
         }
 
-        if (i && i < count && TokenGapNeedsSeparation(tree, i)) {
+        if (i && i < count && NeedsSeparation(previousKind, previousText, token.Kind, text)) {
             // C++ permits adjacent template closers to be retokenized as >>.
             // Only confirmed delimiters may relax maximal-munch separation;
             // comparison/shift operators and unparsed syntax remain lexical.
-            const auto templateCloser = [&] (parser::TokenIndex index) {
-                return tree.Role(index) == parser::PunctuationRole::TemplateDelimiter &&
-                    (tree.Kind(index) == TK::Operator_Greater || tree.Kind(index) == TK::Operator_RightShift);
+            const auto templateCloser = [] (TK kind, parser::PunctuationRole role) {
+                return role == parser::PunctuationRole::TemplateDelimiter &&
+                    (kind == TK::Operator_Greater || kind == TK::Operator_RightShift);
             };
 
-            if (!templateCloser(i - 1) || !templateCloser(i)) {
+            if (!templateCloser(previousKind, previousRole) || !templateCloser(token.Kind, role)) {
                 gap.Separation = GapSeparation::Required;
             }
         }
 
         // Preserve comment attachment topology, not its surrounding whitespace.
         // In particular a line comment must not swallow the following token.
-        const auto commentOrDirective = [&] (parser::TokenIndex index) {
-            return tree.Kind(index) == TK::Comment || tree.Kind(index) == TK::PreprocessingDirective;
+        const auto commentOrDirective = [] (TK kind) {
+            return kind == TK::Comment || kind == TK::PreprocessingDirective;
         };
 
-        if ((i && commentOrDirective(i - 1)) || (i < count && commentOrDirective(i))) {
+        if ((i && commentOrDirective(previousKind)) || (i < count && commentOrDirective(token.Kind))) {
             gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
         }
 
         if (i &&
-            (tree.Kind(i - 1) == TK::PreprocessingDirective ||
-                (tree.Kind(i - 1) == TK::Comment && tree.TokenText(i - 1).starts_with("//"))))
+            (previousKind == TK::PreprocessingDirective ||
+                (previousKind == TK::Comment && previousText.starts_with("//"))))
         {
             gap.MustStartWithLineFeed = true;
 
@@ -666,27 +676,27 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
 
-        if (i < count && tree.Kind(i) == TK::Operator_Remainder) {
+        if (i < count && token.Kind == TK::Operator_Remainder) {
             // %: is a directive only at the beginning of a line in our lexer.
             gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
         }
 
-        if (i && i < count && Literal(tree.Kind(i - 1)) && Word(tree.Kind(i), tree.TokenText(i)) && original.empty()) {
+        if (i && i < count && Literal(previousKind) && Word(token.Kind, text) && original.empty()) {
             // The tokenizer leaves string/character user-defined suffixes as
             // identifiers. Adding whitespace changes grammar, not token kinds.
             gap.ContextSensitive = true;
             gap.Preserve = true;
         }
 
-        if (i && (tree.TokenText(i - 1).ends_with("\\") || tree.TokenText(i - 1).ends_with("\\\r"))) {
+        if (i && (previousText.ends_with("\\") || previousText.ends_with("\\\r"))) {
             gap.Preserve = true;
             gap.Reasons = ProtectionReason::LineSplice;
         }
 
         if (i && i < count &&
-            ((tree.Kind(i - 1) == TK::Operator_OpenBracket && tree.Kind(i) == TK::Operator_OpenBracket) ||
-                (tree.Kind(i - 1) == TK::Operator_CloseBracket && tree.Kind(i) == TK::Operator_CloseBracket &&
-                    !OrdinaryBracket(tree.Role(i - 1)) && !OrdinaryBracket(tree.Role(i)))))
+            ((previousKind == TK::Operator_OpenBracket && token.Kind == TK::Operator_OpenBracket) ||
+                (previousKind == TK::Operator_CloseBracket && token.Kind == TK::Operator_CloseBracket &&
+                    !OrdinaryBracket(previousRole) && !OrdinaryBracket(role))))
         {
             // Uncertain bracket pairs may belong to attribute syntax. A
             // proven ordinary closer, such as a capture after a subscript,
@@ -701,30 +711,35 @@ SourceAnalysis BuildSourceAnalysis(
             break;
         }
 
-        const auto token = tree.Token(i);
-        const auto text = tree.TokenText(i);
+        const auto tokenLine = [&] {
+            while (lineIndex + 1 < lines.size() && lines[lineIndex + 1].Begin <= token.Text.Begin) {
+                ++lineIndex;
+            }
 
-        while (lineIndex + 1 < lines.size() && lines[lineIndex + 1].Begin <= token.Text.Begin) {
-            ++lineIndex;
-        }
+            while (endLineIndex + 1 < lines.size() && lines[endLineIndex + 1].Begin <= token.Text.End) {
+                ++endLineIndex;
+            }
 
-        while (endLineIndex + 1 < lines.size() && lines[endLineIndex + 1].Begin <= token.Text.End) {
-            ++endLineIndex;
-        }
-
-        const parser::SourceRange tokenLine{
-            lines[lineIndex].Begin,
-            endLineIndex + 1 < lines.size() ? lines[endLineIndex + 1].Begin : size,
+            return parser::SourceRange{
+                lines[lineIndex].Begin,
+                endLineIndex + 1 < lines.size() ? lines[endLineIndex + 1].Begin : size,
+            };
         };
-        recoveryPrefix.push_back(recoveryPrefix.back() + (token.Kind == TK::Invalid));
-        ambiguousPrefix
-            .push_back(ambiguousPrefix.back() + (tree.Role(i) == parser::PunctuationRole::AmbiguousOperator));
+
+        if (token.Kind == TK::Invalid) {
+            recoveryTokens.Positions.push_back(i);
+        }
+
+        if (role == parser::PunctuationRole::AmbiguousOperator) {
+            ambiguousTokens.Positions.push_back(i);
+        }
 
         if (token.Kind == TK::PreprocessingDirective) {
-            protect(tokenLine.Begin, tokenLine.End, ProtectionReason::Directive);
+            const auto line = tokenLine();
+            protect(line.Begin, line.End, ProtectionReason::Directive);
         }
 
-        if (token.Kind == TK::Invalid || tree.Role(i) == parser::PunctuationRole::AmbiguousOperator) {
+        if (token.Kind == TK::Invalid || role == parser::PunctuationRole::AmbiguousOperator) {
             protect(
                 begin,
                 i + 1 < count ? tree.Token(i + 1).Text.Begin : size,
@@ -748,7 +763,7 @@ SourceAnalysis BuildSourceAnalysis(
                     (marker == "// clang-format on" || marker == "/* clang-format on */"));
 
             if (off || on) {
-                const auto range = tokenLine;
+                const auto range = tokenLine();
 
                 if (lineIndex == endLineIndex && !lines[lineIndex].Continued &&
                     token.Text.Begin == lines[lineIndex].FirstContent && token.Text.End >= lines[lineIndex].ContentEnd)
@@ -789,6 +804,11 @@ SourceAnalysis BuildSourceAnalysis(
             pendingEnum = candidate && !sensitive && std::binary_search(enumNames.begin(), enumNames.end(), text);
             pendingMacro = sensitive || pendingEnum ? i : NoToken;
         }
+
+        previousKind = token.Kind;
+        previousText = text;
+        previousRole = role;
+        previousEnd = token.Text.End;
     }
 
     if (disabledDepth) {
@@ -823,6 +843,8 @@ SourceAnalysis BuildSourceAnalysis(
     };
 
     std::pmr::vector<Frame> stack(&scratchMemory);
+    const bool hasRecoveryTokens = !recoveryTokens.Positions.empty();
+    const bool hasAmbiguousTokens = !ambiguousTokens.Positions.empty();
     auto visit = [&] (const parser::Node& node, RegionId parent) {
         if (result.Regions_.size() >= NoRegion) {
             throw std::length_error("too many source regions");
@@ -830,8 +852,8 @@ SourceAnalysis BuildSourceAnalysis(
 
         const auto id = static_cast<RegionId>(result.Regions_.size());
         const auto tokens = node.Tokens;
-        const auto begin = tokens.Begin < count ? tree.Token(tokens.Begin).Text.Begin : size;
-        const auto end = tokens.Empty() ? begin : tree.Token(tokens.End - 1).Text.End;
+        const auto begin = tokens.Begin < count ? result.Gaps_[tokens.Begin].Source.End : size;
+        const auto end = tokens.Empty() ? begin : result.Gaps_[tokens.End].Source.Begin;
 
         if (node.Kind == parser::NodeKind::MacroEnumDeclaration) {
             parsedEnumBegins.push_back(begin);
@@ -839,8 +861,8 @@ SourceAnalysis BuildSourceAnalysis(
 
         const bool recovery = Recovery(node.Kind);
         const bool ambiguous = node.Kind == parser::NodeKind::AmbiguousStatement;
-        const auto hasRecovery = recovery || recoveryPrefix[tokens.End] != recoveryPrefix[tokens.Begin];
-        const auto hasAmbiguity = ambiguous || ambiguousPrefix[tokens.End] != ambiguousPrefix[tokens.Begin];
+        const auto hasRecovery = recovery || (hasRecoveryTokens && recoveryTokens.Intersects(tokens));
+        const auto hasAmbiguity = ambiguous || (hasAmbiguousTokens && ambiguousTokens.Intersects(tokens));
         const auto status = Combine(
             hasRecovery ? RegionStatus::Recovery : RegionStatus::Complete,
             hasAmbiguity ? RegionStatus::Ambiguous : RegionStatus::Complete);
@@ -858,9 +880,9 @@ SourceAnalysis BuildSourceAnalysis(
 
         const auto boundaryParent = parent == NoRegion ? NoRegion : stack.back().StatementParent;
         const auto enclosingStatement = parent == NoRegion ? NoRegion : stack.back().EnclosingStatement;
-        result.Regions_.push_back({
+        result.Regions_.emplace_back(
             tokens,
-            {begin, end},
+            parser::SourceRange{begin, end},
             attached,
             parent,
             NoRegion,
@@ -868,8 +890,7 @@ SourceAnalysis BuildSourceAnalysis(
             node.Kind,
             status,
             node.GetFunctionKind(),
-            boundaryParent != NoRegion && SimpleStatementBoundary(tree, node, result.Regions_[boundaryParent].Kind),
-        });
+            boundaryParent != NoRegion && SimpleStatementBoundary(tree, node, result.Regions_[boundaryParent].Kind));
 
         if (parent != NoRegion) {
             auto& frame = stack.back();
@@ -1061,21 +1082,30 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
 
-        stack
-            .push_back({
-                node.Child(),
-                id,
-                node.Kind == parser::NodeKind::PreprocessingConditional ||
-                    node.Kind == parser::NodeKind::PreprocessingBranch
-                    ? boundaryParent
-                    : id,
-                result.Regions_[id].StatementBoundary
-                    ? id
-                    : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
-                        node.Kind == parser::NodeKind::RequirementBody
-                        ? NoRegion
-                        : enclosingStatement,
-            });
+        const auto* child = node.Child();
+
+        if (!child) {
+            if (parent != NoRegion) {
+                result.Regions_[parent].Status = Combine(result.Regions_[parent].Status, status);
+            }
+
+            return;
+        }
+
+        stack.push_back({
+            child,
+            id,
+            node.Kind == parser::NodeKind::PreprocessingConditional ||
+                node.Kind == parser::NodeKind::PreprocessingBranch
+                ? boundaryParent
+                : id,
+            result.Regions_[id].StatementBoundary
+                ? id
+                : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
+                    node.Kind == parser::NodeKind::RequirementBody
+                    ? NoRegion
+                    : enclosingStatement,
+        });
     };
     visit(tree.Root(), NoRegion);
 

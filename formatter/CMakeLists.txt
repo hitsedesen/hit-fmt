@@ -3,6 +3,7 @@ add_library(lib-formatter STATIC
     diagnostic_locations.cpp
     format_changes.cpp
     formatter.cpp
+    layout_render.cpp
     hunk_format.cpp
     hunks.cpp
     include_policy.cpp
@@ -21,8 +22,7 @@ target_include_directories(lib-formatter
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(lib-formatter
-    lib-parser
-    lib-document)
+    lib-parser)
 
 if(HIT_FMT_BENCHMARK)
     add_subdirectory(benchmarks)

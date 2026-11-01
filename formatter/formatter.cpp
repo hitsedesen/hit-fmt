@@ -3,8 +3,11 @@
 #include "diagnostic_locations.hpp"
 #include "format_changes_internal.hpp"
 #include "format_pipeline.hpp"
+#include "layout_plan.hpp"
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
+
+#include <util/ascii.hpp>
 
 #include <unicode/utf8.hpp>
 
@@ -182,6 +185,9 @@ std::pmr::vector<GapId> GeneratedGaps(
     std::pmr::vector<GapId>& reassembled,
     std::pmr::memory_resource& scratch)
 {
+    if (adjacency.empty()) {
+        return std::pmr::vector<GapId>(&scratch);
+    }
     std::pmr::vector<Range> ranges(&scratch);
 
     for (const auto& a : adjacency) {
@@ -240,58 +246,65 @@ std::pmr::vector<GapId> GeneratedGaps(
     return result;
 }
 
-struct CurrentIdentity
-{
-    Range Source;
-    document::Identity Original = document::NoIdentity;
-};
-
-std::pmr::vector<document::Identity> OriginalIdentities(
+std::pmr::vector<layout::Identity> OriginalIdentities(
     const parser::SyntaxTree& tree,
+    const parser::SyntaxTree& original,
     const StructuralMaterialization* normalized,
     std::pmr::memory_resource& scratch)
 {
-    std::pmr::vector<document::Identity> identities(
-        tree.TokenCount(), document::NoIdentity, &scratch);
+    std::pmr::vector<layout::Identity> identities(&scratch);
     if (!normalized) {
-        for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
-            identities[i] = i;
-        }
-
+        // Empty storage represents unchanged original token numbering.
         return identities;
     }
 
-    std::pmr::vector<CurrentIdentity> surviving(&scratch);
-    surviving.reserve(normalized->OriginalTokens.size());
+    identities.resize(tree.TokenCount(), layout::NoIdentity);
 
-    for (parser::TokenIndex i = 0; i < normalized->OriginalTokens.size(); ++i) {
-        const auto& token = normalized->OriginalTokens[i];
+    parser::TokenIndex next = 0;
 
-        if (token.Present) {
-            surviving.push_back({token.Output, i});
+    // Copied provenance is already in output order, including include
+    // permutations. Recover identities in that order instead of sorting a
+    // second full-file survivor table.
+    for (const auto& piece : normalized->Provenance) {
+        if (piece.Generated) {
+            continue;
         }
-    }
 
-    std::sort(
-        surviving.begin(),
-        surviving.end(),
-        [] (const auto& a, const auto& b) {
-            return a.Source.Begin < b.Source.Begin;
-        });
-    size_t next = 0;
+        parser::TokenIndex first = 0, last = original.TokenCount();
 
-    for (parser::TokenIndex i = 0; i < tree.TokenCount() && next < surviving.size(); ++i) {
-        const auto range = tree.Token(i).Text;
+        while (first < last) {
+            const auto middle = first + (last - first) / 2;
 
-        if (range.Begin == surviving[next].Source.Begin && range.End == surviving[next].Source.End) {
-            identities[i] = surviving[next++].Original;
-        } else if (range.End > surviving[next].Source.Begin) {
-            throw std::runtime_error("normalization changed an original token identity");
+            if (original.Token(middle).Text.Begin < piece.Original.Begin) {
+                first = middle + 1;
+            } else {
+                last = middle;
+            }
         }
-    }
 
-    if (next != surviving.size()) {
-        throw std::runtime_error("normalization lost an original token identity");
+        for (auto id = first; id < original.TokenCount(); ++id) {
+            if (original.Token(id).Text.Begin >= piece.Original.End) {
+                break;
+            }
+
+            const auto& expected = normalized->OriginalTokens[id];
+
+            while (next < tree.TokenCount() && tree.Token(next).Text.End <= expected.Output.Begin) {
+                ++next;
+            }
+
+            if (!expected.Present || next == tree.TokenCount()) {
+                throw std::runtime_error("normalization lost an original token identity");
+            }
+
+            const auto range = tree.Token(next).Text;
+
+            if (range.Begin != expected.Output.Begin || range.End != expected.Output.End) {
+                throw std::runtime_error("normalization changed an original token identity");
+            }
+
+            identities[next++] = id;
+        }
     }
 
     return identities;
@@ -319,28 +332,30 @@ void MergeProtection(std::vector<ProtectedSourceRange>& ranges)
     ranges.resize(count);
 }
 
-document::Identity RecordRenderAnchors(
+layout::Identity RecordRenderAnchors(
     FormatResult& result,
-    const document::Mapping& map,
+    const layout::Mapping& map,
     Range output,
     const SourceAnalysis& safety,
-    std::span<const document::Identity> identities)
+    std::span<const layout::Identity> identities)
 {
-    document::Identity original = document::NoIdentity;
+    layout::Identity original = layout::NoIdentity;
 
-    if (map.Source.Identity != document::NoIdentity) {
-        if (map.Source.Identity >= identities.size()) {
+    if (map.Source.Identity != layout::NoIdentity) {
+        const auto count = identities.empty() ? result.OriginalTokens.size() : identities.size();
+
+        if (map.Source.Identity >= count) {
             throw std::runtime_error("invalid rendered token identity");
         }
 
-        original = identities[map.Source.Identity];
+        original = identities.empty() ? map.Source.Identity : identities[map.Source.Identity];
 
-        if (original != document::NoIdentity) {
+        if (original != layout::NoIdentity) {
             result.OriginalTokens[original] = {output, true};
         }
     }
 
-    if (map.Exact && map.Source.Begin != document::InvalidId) {
+    if (map.Exact && map.Source.Begin != layout::InvalidId) {
         const auto source = Range{map.Source.Begin, map.Source.End};
 
         if (output.End - output.Begin != source.End - source.Begin) {
@@ -368,9 +383,9 @@ document::Identity RecordRenderAnchors(
 
 void ComposeNamespaceAnchors(
     FormatResult& result,
-    const document::Result& rendered,
+    const layout::Result& rendered,
     const SourceAnalysis& safety,
-    std::span<const document::Identity> identities)
+    std::span<const layout::Identity> identities)
 {
     for (const auto& map : rendered.Map) {
         const auto output = Range{CheckedSourceAnalysisSize(map.OutputBegin), CheckedSourceAnalysisSize(map.OutputEnd)};
@@ -382,9 +397,9 @@ void ComposeNamespaceAnchors(
 
 void ComposeMaps(
     FormatResult& result,
-    const document::Result& rendered,
+    const layout::Result& rendered,
     const SourceAnalysis& safety,
-    std::span<const document::Identity> identities,
+    std::span<const layout::Identity> identities,
     std::span<const StructuralProvenance> provenance)
 {
     result.Map.reserve(rendered.Map.size());
@@ -393,7 +408,7 @@ void ComposeMaps(
         const auto output = Range{CheckedSourceAnalysisSize(map.OutputBegin), CheckedSourceAnalysisSize(map.OutputEnd)};
         const auto original = RecordRenderAnchors(result, map, output, safety, identities);
 
-        if (map.Source.Begin == document::InvalidId) {
+        if (map.Source.Begin == layout::InvalidId) {
             result.Map.push_back({output, {}, original, NoStructuralAction, false, map.Exact, map.Protected, true});
             continue;
         }
@@ -435,7 +450,7 @@ void ComposeMaps(
                 true,
                 map.Exact && !it->Generated,
                 map.Protected,
-                original == document::NoIdentity && (!map.Exact || it->Generated),
+                original == layout::NoIdentity && (!map.Exact || it->Generated),
             });
             added = true;
 
@@ -524,7 +539,7 @@ void ApplyComments(
                 generated.push_back({
                     {begin, output},
                     {anchor, anchor},
-                    document::NoIdentity,
+                    layout::NoIdentity,
                     StructuralActionId(actionBase + edit.Operation),
                     true,
                     false,
@@ -611,8 +626,8 @@ void ApplyComments(
 
             // A comment edit may retain token-owned CR while consuming
             // the rest of that token. The byte remains exact, not the ID.
-            if (next.OriginalToken != document::NoIdentity && !result.OriginalTokens[next.OriginalToken].Present) {
-                next.OriginalToken = document::NoIdentity;
+            if (next.OriginalToken != layout::NoIdentity && !result.OriginalTokens[next.OriginalToken].Present) {
+                next.OriginalToken = layout::NoIdentity;
             }
 
             maps.push_back(next);
@@ -654,6 +669,27 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
     };
 
     for (size_t i = 0; i < result.Text.size(); ++i) {
+        const auto plain = util::PlainAsciiPrefix(std::string_view(result.Text).substr(i));
+
+        if (plain) {
+            if constexpr (locations) {
+                if (!overflow && width + plain > policies.ColumnLimit) {
+                    const auto remaining = policies.ColumnLimit > width ? policies.ColumnLimit - width : 0;
+                    overflow = CheckedSourceAnalysisSize(i + remaining);
+                    caretColumn = codePointColumn + uint32_t(remaining);
+                }
+
+                codePointColumn += uint32_t(plain);
+            }
+
+            width += plain;
+            i += plain;
+
+            if (i == result.Text.size()) {
+                break;
+            }
+        }
+
         const auto c = result.Text[i];
 
         if (c == '\n' || c == '\r') {
@@ -850,12 +886,12 @@ FormatResult detail::FormatWithAnalysis(
     SyntaxLayoutOptions options;
 
     if (prepared.Policies.LineEnding == LineEnding::CRLF) {
-        options.LineEnding = document::Newline::CRLF;
+        options.LineEnding = layout::Newline::CRLF;
     } else if (prepared.Policies.LineEnding == LineEnding::Preserve) {
         const auto lf = original.Source().find('\n');
 
         if (lf != std::string_view::npos && lf && original.Source()[lf - 1] == '\r') {
-            options.LineEnding = document::Newline::CRLF;
+            options.LineEnding = layout::Newline::CRLF;
         }
     }
     std::pmr::vector<GapId> reassembled(&scratch);
@@ -869,14 +905,14 @@ FormatResult detail::FormatWithAnalysis(
         scratch);
     options.GeneratedAdjacencies = gaps;
     options.ReassembledGaps = reassembled;
-    document::Document document(tree->Source(), &file);
-    const auto built = BuildSyntaxDocument(
+    detail::LayoutPlan layout(*tree, file);
+    const auto built = BuildSyntaxLayout(
         *tree,
         prepared.Policies,
         prepared.Annotations,
         *currentSafety,
         spacing,
-        document,
+        layout,
         scratch,
         options);
 
@@ -899,7 +935,7 @@ FormatResult detail::FormatWithAnalysis(
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = sourceMap;
     auto rendered = [&] {
-        std::pmr::vector<document::Provenance> tracked(&scratch);
+        std::pmr::vector<layout::Provenance> tracked(&scratch);
         renderPolicy.IndexedTokenMap = !sourceMap && needMaps;
         renderPolicy.TokenCount = tree->TokenCount();
 
@@ -939,16 +975,18 @@ FormatResult detail::FormatWithAnalysis(
             renderPolicy.TrackSource = tracked;
         }
 
-        auto output = document.Render(renderPolicy, &file);
+        auto output = layout.Render(renderPolicy, file);
         renderPolicy.TrackSource = {};
         return output;
     }();
     if (!rendered.State) {
-        throw std::runtime_error(
-            std::format("layout rendering failed: code {} node {}", int(rendered.State.Code), rendered.State.Node));
+        throw std::runtime_error(std::format(
+            "layout rendering failed: code {} position {}",
+            int(rendered.State.Code),
+            rendered.State.Position));
     }
 
-    result.Text.assign(rendered.Text);
+    result.Text = std::move(rendered.Text);
 
     if (prepared.NamespaceComments.Policy != NamespaceCommentPolicy::Preserve) {
         (void)CheckedSourceAnalysisSize(result.Text.size());
@@ -959,16 +997,16 @@ FormatResult detail::FormatWithAnalysis(
         }
 
         result.OriginalTokens.resize(original.TokenCount());
-        auto identities = OriginalIdentities(*tree, normalized ? &*normalized : nullptr, scratch);
+        auto identities = OriginalIdentities(*tree, original, normalized ? &*normalized : nullptr, scratch);
 
         if (sourceMap) {
             ComposeMaps(result, rendered, *currentSafety, identities, provenance);
         } else {
             for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
                 const auto& token = rendered.Tokens[id];
-                const auto originalId = identities[id];
+                const auto originalId = identities.empty() ? id : identities[id];
 
-                if (token.Present && originalId != document::NoIdentity) {
+                if (token.Present && originalId != layout::NoIdentity) {
                     result.OriginalTokens[originalId] = {{token.Begin, token.End}, true};
                 }
             }

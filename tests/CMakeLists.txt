@@ -3,7 +3,6 @@ add_executable(tests
     ../parser/tests/tests.cpp
     ../formatter/tests/hunks.cpp
     ../formatter/tests/hunk_scope.cpp
-    ../document/tests/tests.cpp
     ../formatter/tests/source_analysis_tests.cpp
     ../formatter/tests/structural_edits_tests.cpp
     ../formatter/tests/tests.cpp
@@ -24,7 +23,6 @@ target_compile_definitions(tests PRIVATE
     TOKENIZER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/tokenizer/tests/testdata"
     PARSER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/parser/tests/testdata"
     FORMATTER_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/style"
-    DOCUMENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/document/tests/testdata/group-layout"
     BRACE_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/brace-placement"
     BRACE_SPACING_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/brace-spacing"
     LAMBDA_SPACING_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/formatter/tests/testdata/lambda-spacing"

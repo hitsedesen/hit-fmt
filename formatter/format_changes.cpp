@@ -320,7 +320,7 @@ void BuildDetailedChanges(
     // Verbatim atoms can copy many original tokens without per-token renderer
     // records. Recover those identities from the few tracked exact copies.
     for (const auto& map : result.Map) {
-        if (!map.Exact || !map.HasOriginal || map.OriginalToken != document::NoIdentity || map.Original.Empty() ||
+        if (!map.Exact || !map.HasOriginal || map.OriginalToken != layout::NoIdentity || map.Original.Empty() ||
             map.Output.End - map.Output.Begin != map.Original.End - map.Original.Begin)
         {
             continue;
