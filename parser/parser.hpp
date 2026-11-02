@@ -16,6 +16,8 @@ struct ParseError
 {
     std::string Message;
     util::Position Position;
+    // A protected continuation prevents certifying formatting conformance.
+    bool CheckingIncomplete = false;
 };
 
 using ErrorHandler = std::function<void(ParseError)>;

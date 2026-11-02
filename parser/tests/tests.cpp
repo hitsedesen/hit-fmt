@@ -635,6 +635,21 @@ TEST(Parser, ConditionalSharedScopesKeepEnclosingDelimiters)
     }
 }
 
+TEST(Parser, SharedConditionalBodyReportsSkippedChecking)
+{
+    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "conditional_shared_headers"};
+    PaddedInput input(fixture.InputNamed(".in"));
+    const std::array<std::string, 1> macros{"UTEST"};
+    bool reported = false;
+    const auto tree = parser::Parse(
+        input.View(),
+        [&] (parser::ParseError error) {
+            reported |= error.CheckingIncomplete;
+        },
+        {.FunctionBodyMacroNames = macros});
+    EXPECT_TRUE(reported);
+}
+
 TEST(Parser, ConditionalFragmentProofIsBounded)
 {
     for (const bool nesting : {false, true}) {
@@ -2518,7 +2533,8 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"expressions"},
         GoldenCase{"separated_lists"},
         GoldenCase{"template_parameters_recovery", true},
-        GoldenCase{"preprocessing"},
+        GoldenCase{"preprocessing", true},
+        GoldenCase{"conditional_shared_headers", true, false, {"UTEST"}},
         GoldenCase{"preprocessing_fragments"},
         GoldenCase{"modules_and_concepts"},
         GoldenCase{"requires_clause_boundaries"},

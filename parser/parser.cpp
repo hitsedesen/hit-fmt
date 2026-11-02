@@ -1553,7 +1553,7 @@ private:
         }
     }
 
-    void ErrorAt(TokenIndex index, std::string message)
+    void ErrorAt(TokenIndex index, std::string message, bool checkingIncomplete = false)
     {
         if (BranchParseDepth_ != 0) {
             return;
@@ -1565,7 +1565,7 @@ private:
             position = Tree_.TokenPosition(std::min(index, Tree_.Tokens_.Size() - 1));
         }
 
-        OnError({.Message = std::move(message), .Position = position});
+        OnError({.Message = std::move(message), .Position = position, .CheckingIncomplete = checkingIncomplete});
     }
 
     void AddMissingToken(Node& parent, TokenIndex index)
@@ -1957,6 +1957,7 @@ private:
         // A scope opened in alternative branches has no single owning node.
         // Keep its shared continuation opaque rather than indenting its
         // statements as direct children of the surrounding body.
+        ErrorAt(Cursor_, "shared continuation of preprocessing branches cannot be checked safely", true);
         auto* tail = MakeNode(NodeKind::UnparsedSyntax, Cursor_);
 
         while (!AtEnd() && ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] != 0) {
@@ -7986,7 +7987,7 @@ private:
             RecordParsedBodyDelimiters(start, PunctuationRole::BlockDelimiter);
             ++Cursor_;
         } else {
-            ErrorAt(start, "unterminated compound statement");
+            ErrorAt(start, "unterminated compound statement; formatting checking is incomplete", true);
             AddMissingToken(*node, Cursor_);
         }
 

@@ -1,0 +1,24 @@
+UTEST(Poll, Read) check
+fail: shared continuation of preprocessing branches cannot be checked safely
+  --> sample.cpp:6:5 [original source]
+summary: fail: shared continuation of preprocessing branches cannot be checked safely
+UTEST(Poll, Read) fix
+fail: shared continuation of preprocessing branches cannot be checked safely
+  --> sample.cpp:6:5 [written output]
+summary: fail: shared continuation of preprocessing branches cannot be checked safely
+void Read() check
+fail: shared continuation of preprocessing branches cannot be checked safely
+  --> sample.cpp:6:5 [original source]
+summary: fail: shared continuation of preprocessing branches cannot be checked safely
+void Read() fix
+fail: shared continuation of preprocessing branches cannot be checked safely
+  --> sample.cpp:6:5 [written output]
+summary: fail: shared continuation of preprocessing branches cannot be checked safely
+struct Read check
+fail: shared continuation of preprocessing branches cannot be checked safely
+  --> sample.cpp:6:5 [original source]
+summary: fail: shared continuation of preprocessing branches cannot be checked safely
+struct Read fix
+fail: shared continuation of preprocessing branches cannot be checked safely
+  --> sample.cpp:6:5 [written output]
+summary: fail: shared continuation of preprocessing branches cannot be checked safely
