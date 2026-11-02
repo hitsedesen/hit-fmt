@@ -1139,7 +1139,10 @@ public:
 
                 if (kind == NK::LambdaBody) {
                     Mark(begin, F::LambdaBraceSpacing, parent ? *parent : node, C::DeclarationHeaders, 3, true);
-                } else if (parent && (parent->Kind == NK::FunctionDefinition || parent->Kind == NK::FunctionTryBlock)) {
+                } else if (parent &&
+                    (parent->Kind == NK::FunctionDefinition || parent->Kind == NK::MacroFunctionDefinition ||
+                        parent->Kind == NK::FunctionTryBlock))
+                {
                     Mark(begin, F::FunctionBraceSpacing, *parent, C::DeclarationHeaders, 3, true);
                 } else if (parent && IsControl(parent->Kind)) {
                     Mark(begin, F::ControlBlockSpaceBeforeBrace, *parent, C::ControlHeaders, 3, true);
