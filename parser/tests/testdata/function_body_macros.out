@@ -435,4 +435,91 @@
       "}"
     )
   )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "OpenScope"
+  )
+  (preprocessing-conditional
+    (preprocessing-branch
+      (preprocessing-directive "#if FEATURE")
+      (macro-function-definition
+        (macro-function-header "static" "DEFINE_CASE" "(" "Suite" "," "Conditional" ")")
+        (compound-statement
+          "{"
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "pointer")
+                )
+                (initializer
+                  "="
+                  (unary-expression
+                    "&"
+                    (identifier-expression "object")
+                  )
+                )
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#else")
+      (macro-function-definition
+        (macro-function-header "DEFINE_METHOD" "(" "Alternative" ")")
+        (compound-statement "{" "}")
+      )
+    )
+    (preprocessing-directive "#endif")
+  )
+  (unparsed-syntax "CloseScope")
+  (namespace-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "namespace" "Types" "{"
+    (function-declaration
+      (declaration-specifiers "Result")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            "#if FEATURE"
+            (pointer-operator "*")
+            (declarator-name "Select")
+            (function-declarator
+              (parameter-list "(" ")")
+              (exception-specification "noexcept")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (preprocessing-directive "#else")
+    (function-declaration
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (pointer-operator "&")
+            (declarator-name "Select")
+            (function-declarator
+              (parameter-list "(" ")")
+              (exception-specification "noexcept")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (preprocessing-directive "#endif")
+    "}"
+  )
 )
