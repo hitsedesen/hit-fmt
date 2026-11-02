@@ -1615,8 +1615,11 @@ private:
             // boundary can stay inline, while conditional separator Hard gaps
             // couple every subsequent item to the list's actual shape.
             auto firstItem = policy.FirstItem;
+            bool soleLambdaInline = false;
 
-            if (node.Kind == NodeKind::ArgumentList && Policies_.CallsSoleArgumentFirstItem != firstItem) {
+            if (node.Kind == NodeKind::ArgumentList &&
+                (Policies_.CallsSoleArgumentFirstItem != firstItem || Policies_.CallsSoleLambdaArgumentInline))
+            {
                 // Count syntax arguments, not commas inside their expressions
                 // or trivia. Stop as soon as the sole-argument override cannot
                 // apply. A string's multiple fragments keep the ordinary
@@ -1630,12 +1633,15 @@ private:
                 {
                     if (Region(Syntax_[child]).Kind == NodeKind::Argument) {
                         if (++argumentCount == 2) {
+                            soleLambdaInline = false;
                             break;
                         }
 
                         const auto expression = Region(Syntax_[child]).FirstChild;
                         stringSequence = Policies_.StringLiteralFragmentsAsArguments && expression != None &&
                             Syntax_[expression].String && Region(Syntax_[expression]).Tokens.Size() > 1;
+                        soleLambdaInline = Policies_.CallsSoleLambdaArgumentInline && expression != None &&
+                            Region(Syntax_[expression]).Kind == NodeKind::LambdaExpression;
                     }
                 }
 
@@ -1652,7 +1658,12 @@ private:
                 ? layout::GapKind::Hard
                 : layout::GapKind::Soft;
 
-            if (pin && !messageLayout && pin->Overflow == AttachedStringOverflow::KeepInline &&
+            if (soleLambdaInline) {
+                // Only the call boundaries attach. The lambda header and body
+                // retain their independent layout and width decisions.
+                firstKind = layout::GapKind::Flat;
+                GroupSpecs_[group].ForceBreak = false;
+            } else if (pin && !messageLayout && pin->Overflow == AttachedStringOverflow::KeepInline &&
                 policy.Break != BreakRequirement::Always)
             {
                 // Attach the first argument's opening piece; its nested
@@ -1672,6 +1683,7 @@ private:
             }
 
             Own(begin + 1, group, Boundary::Conditional, firstKind);
+            Gaps_[begin + 1].Attached = soleLambdaInline;
 
             if (messageHeader != group && Policies_.ColumnLimit != 0) {
                 // The opener must fit the complete header, including optional
@@ -1752,8 +1764,11 @@ private:
                     closer,
                     group,
                     Boundary::Conditional,
-                    policy.Closer == CloserPlacement::OwnLine ? layout::GapKind::Hard : layout::GapKind::Flat,
+                    !soleLambdaInline && policy.Closer == CloserPlacement::OwnLine
+                    ? layout::GapKind::Hard
+                    : layout::GapKind::Flat,
                     true);
+                Gaps_[closer].Attached = soleLambdaInline;
             }
         } else {
             Own(begin + 1, group, Boundary::Preserve);
@@ -5851,7 +5866,7 @@ private:
         for (Index i = 0; i < Gaps_.size(); ++i) {
             const auto& gap = Gaps_[i];
 
-            if (gap.Owner == None || !GapMutable(i) || gap.Shape == Boundary::Preserve) {
+            if (gap.Owner == None || !GapMutable(i) || gap.Shape == Boundary::Preserve || gap.Attached) {
                 continue;
             }
 

@@ -1,0 +1,12 @@
+Layout = Canonical
+IndentWidth = 4
+IndentationKind = Spaces
+ColumnLimit = 72
+CallsBreak = Always
+CallsFirstItem = NextLine
+CallsSoleArgumentFirstItem = NextLine
+CallsCloser = OwnLine
+CallsPacking = VerticalWhenBroken
+CallsSoleLambdaArgumentInline = true
+BodyShape = Expanded
+LambdaBodyShape = Expanded

@@ -221,6 +221,7 @@ struct CompiledPolicies
     // Resolved from Calls.FirstItem unless explicitly overridden. Applies to
     // exactly one parsed argument unless fragment-as-arguments layout applies.
     const FirstItemPlacement CallsSoleArgumentFirstItem;
+    const bool CallsSoleLambdaArgumentInline;
     const ListPolicy Parameters;
     const ListPolicy TemplateParameters;
     const ListPolicy TemplateArguments;

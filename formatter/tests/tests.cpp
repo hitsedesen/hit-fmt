@@ -3581,6 +3581,18 @@ std::vector<FormatCase> FormatCases()
     }
 
     AddCases(cases, callReflow, {"balanced-vertical", "balanced-preserve"}, "balanced-fill.input.cpp");
+    AddCases(
+        cases,
+        callReflow,
+        {
+            "sole-lambda-inline",
+            "sole-lambda-disabled",
+            "sole-lambda-compact",
+            "sole-lambda-kept",
+            "sole-lambda-preserve-body",
+            "sole-lambda-preserve-call",
+        },
+        "sole-lambda.input.cpp");
 
     // Name, input, config override, read-only expectation alias.
     for (const auto& [name, input, config, expected] :

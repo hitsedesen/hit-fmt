@@ -1,0 +1,2 @@
+include = "sole-lambda-inline.hit-fmt"
+CallsSoleLambdaArgumentInline = false

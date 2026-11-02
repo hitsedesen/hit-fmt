@@ -423,6 +423,7 @@
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Calls)                     \
     OPT(std::optional<formatter::FirstItemPlacement>,                        \
         CallsSoleArgumentFirstItem, std::nullopt)                            \
+    OPT(bool, CallsSoleLambdaArgumentInline, false)                          \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Parameters)                \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, TemplateParameters)        \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, TemplateArguments)         \

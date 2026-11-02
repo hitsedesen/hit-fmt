@@ -217,6 +217,16 @@ CallsCloser = Inherit
 # Values: Inherit | InlineIfFits | NextLine
 CallsSoleArgumentFirstItem = Inherit
 
+# In canonical calls, attach a direct sole lambda to both parentheses:
+# Call([] {
+#     Work();
+# });
+# Overrides CallsBreak, CallsFirstItem, CallsSoleArgumentFirstItem and
+# CallsCloser. Lambda header/body rules and protected comments still apply.
+# KeepMultiline does not split these attached call boundaries.
+# false uses ordinary call rules. Values: false | true
+CallsSoleLambdaArgumentInline = false
+
 # Values: Inherit | Preserve | Canonical
 ParametersLayout = Inherit
 
