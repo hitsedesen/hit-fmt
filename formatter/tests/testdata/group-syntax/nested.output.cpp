@@ -31,9 +31,8 @@ struct Derived: Base {
       consume(
         first,
         callback(second),
-        factory()(
-          first
-        ).finish()
+        factory()(first)
+          .finish()
       );
     }
     return value;

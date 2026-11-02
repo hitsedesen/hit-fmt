@@ -28,7 +28,7 @@ void Write() {
       .BeginMap()
       .Item(
           "wide").Value(
-              aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
+          aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
       .EndMap();
   Builder()
       .BeginMap()

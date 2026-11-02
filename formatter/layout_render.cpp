@@ -132,6 +132,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool ShapeSensitive : 1 = false;
         bool ProbeEligible : 1 = true;
         bool HasChild : 1 = false;
+        bool HasConsistentAlternative : 1 = false;
         // Physical preservation is separate from flat geometry and fit tails.
         bool KeptChild : 1 = false;
         // Eligible layout depths 0..3, with all deeper levels in bit 4.
@@ -164,6 +165,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool OwnedShapeChoice = false;
         bool ProbeEligible = true;
         bool HasChild = false;
+        bool HasConsistentAlternative = false;
         bool KeptLine = false;
         uint8_t ProbeLayouts = 0;
     };
@@ -293,12 +295,15 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         entry.ProbeEligible = summary.ProbeEligible;
         entry.HasChild = summary.HasChild;
+        entry.HasConsistentAlternative = summary.HasConsistentAlternative || group.ProbeConsistent;
         const auto levels = unsigned(summary.ProbeLayouts) << 1;
         entry.ProbeLayouts = uint8_t((levels & 31) | (levels & 32 ? 16 : 0) | entry.ChildLayoutAllowed);
         summary = summaries.back();
         summaries.pop_back();
         summary.ProbeEligible &= entry.ProbeEligible;
         summary.HasChild = true;
+        summary.HasConsistentAlternative |=
+            entry.HasConsistentAlternative && !(group.StructuralBase && !group.Continuation);
         summary.KeptLine = summary.KeptLine || groupEntry.KeptChild || group.KeepMultiline;
         summary.ProbeLayouts |= entry.ProbeLayouts;
         summaryOwner = Groups_[id].Parent;
@@ -496,12 +501,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool OwnedFlat = false;
         bool ForceOwned = false;
         bool OwnedLine = false;
+        bool ConsistentChain = false;
         std::uint32_t PendingExpressionIndent = 0;
         bool ExpressionContinuation = false;
         bool StructuralBase = false;
         bool RealizedExpressionLine = false;
         bool ReversibleIndent = true;
         std::uint32_t ContinuationBase = 0;
+        std::uint32_t OpeningLineIndent = 0;
         bool HasContinuation = false;
         bool RealizedContinuationLine = false;
         std::uint32_t RealizedContinuationIndent = 0;
@@ -519,6 +526,10 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     std::uint64_t lines = 0;
     std::uint32_t lineIndent = 0;
     bool linePrefix = true;
+    std::uint32_t resumedLineIndent = InvalidId;
+    const auto continuationLineIndent = [&] {
+        return resumedLineIndent == InvalidId ? lineIndent : resumedLineIndent;
+    };
     auto realizeContinuation = [&] {
         if (current->HasContinuation) {
             current->RealizedContinuationLine = true;
@@ -539,7 +550,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     current->HasContinuation
                     ? current->ContinuationBase
                     : current->Indent - current->PendingExpressionIndent,
-                    lineIndent)
+                    continuationLineIndent())
                 : lineIndent;
         }
 
@@ -597,6 +608,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 column = 0;
                 lineIndent = 0;
                 linePrefix = true;
+                resumedLineIndent = InvalidId;
                 ++lines;
             } else if (c == '\t') {
                 column = AddWidth(column, policy.TabWidth - column % policy.TabWidth);
@@ -665,8 +677,10 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     };
     bool probing = false;
     bool layoutSelected = false;
+    bool consistentLayout = false;
     std::size_t probeBrokenGroups = 0;
     std::size_t probeBreakPenalty = 0;
+    std::uint32_t probeMaxIndent = 0;
     std::size_t childLayoutEnd = 0;
     std::size_t childLayoutBase = 0;
     std::size_t childLayoutDepth = 0;
@@ -713,6 +727,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     auto emitIndent = [&] (std::uint32_t indent) {
         lineIndent = indent;
         linePrefix = true;
+        resumedLineIndent = InvalidId;
 
         if (probing) {
             column = indent;
@@ -759,8 +774,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             current->Mandatory <= Groups_[id].EndOrder && lines == current->StartLine;
         const bool broken = spec.KeepMultiline || mandatory ||
             (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
-        const bool keepOwnedFlat = broken && !spec.KeepMultiline && childLayoutDepth && groupEntry.ChildLayoutAllowed &&
-            i <= childLayoutEnd && frames.size() - childLayoutBase < childLayoutDepth;
+        const bool coupledChain = consistentLayout && spec.ProbeConsistent;
+        // Keep the receiver prefix and call openers inline while chains
+        // supply the alternative's breaks. Forced list topology still wins.
+        const bool inlineForChain = consistentLayout && (spec.LineBase || (!current->ConsistentChain && !coupledChain));
+        const bool keepOwnedFlat =
+            broken && !spec.KeepMultiline && groupEntry.ChildLayoutAllowed && i <= childLayoutEnd &&
+                (inlineForChain ||
+                    (childLayoutDepth && frames.size() - childLayoutBase < childLayoutDepth && !coupledChain));
         result.Broken[id] = broken;
         // Ordinary authored owner breaks stay stable when descendants later
         // wrap. Only a newly promoted compact boundary may defer to a kept child.
@@ -788,9 +809,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             spec.Continuation && !shared && current->HasContinuation && lines != current->ContinuationStartLine;
 
         if (newLineBase) {
-            // A new starter uses this physical line, not an unrealized
-            // ancestor offset or a previous child's continuation line.
-            base = lineIndent;
+            // A new starter uses its enclosing line after closed children,
+            // independently of their deeper physical continuation lines.
+            base = continuationLineIndent();
             pending = 0;
         }
 
@@ -843,12 +864,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 !broken || keepOwnedFlat,
                 forceOwned,
                 false,
+                current->ConsistentChain || coupledChain,
                 pending,
                 spec.ExpressionContinuation,
                 spec.StructuralBase,
                 false,
                 reversible,
                 spec.Continuation ? base : current->ContinuationBase,
+                continuationLineIndent(),
                 spec.Continuation || (!spec.StructuralBase && current->HasContinuation),
                 (shared || (!spec.Continuation && !spec.StructuralBase)) && current->RealizedContinuationLine,
                 current->RealizedContinuationIndent,
@@ -886,6 +909,13 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const bool realized = current->RealizedExpressionLine && !current->StructuralBase;
         const bool continuationRealized = current->RealizedContinuationLine && !current->StructuralBase;
         const auto continuationIndent = current->RealizedContinuationIndent;
+
+        if (multiline && GroupSpecs_[id].LineBase && GroupSpecs_[id].Continuation) {
+            // Closing an independent line-based continuation resumes the
+            // enclosing line where it opened.
+            resumedLineIndent = current->OpeningLineIndent;
+        }
+
         frames.pop_back();
         current = &frames.back();
 
@@ -932,7 +962,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         auto sharedOffset = InvalidId;
 
         if (spec.Continuation && !shared && current->HasContinuation && lines != current->ContinuationStartLine) {
-            base = lineIndent;
+            base = continuationLineIndent();
         }
 
         if (shared) {
@@ -1258,7 +1288,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             bool line = gap.Kind == GapKind::Hard;
 
             if (gap.Kind == GapKind::Soft && ownerBroken && !current->OwnedFlat) {
-                if (GroupSpecs_[activeGroup].Mode == GroupMode::Consistent) {
+                if (GroupSpecs_[activeGroup].Mode == GroupMode::Consistent ||
+                    (consistentLayout && GroupSpecs_[activeGroup].ProbeConsistent))
+                {
                     line = true;
                 } else {
                     const auto tail = tailWidth(gapEntry.FitTail);
@@ -1325,11 +1357,16 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                         column = 0;
                         lineIndent = 0;
                         linePrefix = true;
+                        resumedLineIndent = InvalidId;
                         advance(text);
                         exact = true;
                     }
                 } else {
                     emitIndent(resolveIndent(anchor, gap.RequiredWidth));
+                }
+
+                if (probing) {
+                    probeMaxIndent = std::max(probeMaxIndent, column);
                 }
             } else {
                 renderFlat(gapPlan, gap.Spaces, {gap.FlatSourceBegin, gap.FlatSourceEnd}, emittedOrigin, exact);
@@ -1394,6 +1431,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         if (layoutSelected && Groups_[id].BeginOrder > childLayoutEnd) {
             layoutSelected = false;
             childLayoutDepth = 0;
+            consistentLayout = false;
         }
 
         if (!layoutSelected && groupEntry.ChildLayoutAllowed && groupEntry.OwnedLastBreak != NoOrder &&
@@ -1416,33 +1454,49 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 const auto savedLines = lines;
                 const auto savedLineIndent = lineIndent;
                 const auto savedLinePrefix = linePrefix;
+                const auto savedResumedLineIndent = resumedLineIndent;
                 const auto savedDepth = frames.size();
                 const auto tail = groupTail(spec, groupEntry);
                 childLayoutBase = savedDepth;
                 childLayoutEnd = Groups_[id].EndOrder;
-                std::size_t bestCost = 0;
-                std::size_t bestLines = 0;
-                std::size_t bestGroups = 0;
+                std::array<std::uint64_t, 4> bestCost{};
                 std::size_t bestDepth = 0;
+                bool bestConsistent = false;
+                const auto cost = [&] () -> std::array<std::uint64_t, 4> {
+                    const auto count = lines - savedLines;
 
+                    // Compare complete chain layouts by line count and depth
+                    // before applying local boundary preferences.
+                    if (groupEntry.HasConsistentAlternative) {
+                        return {count, probeMaxIndent, count + probeBreakPenalty, probeBrokenGroups};
+                    }
+
+                    return {count + probeBreakPenalty, 0, count, probeBrokenGroups};
+                };
                 const auto withinCost = [&] {
-                    return !layoutSelected || lines - savedLines + probeBreakPenalty <= bestCost;
+                    return !layoutSelected || cost() <= bestCost;
                 };
 
-                // Trial zero is the normal parent-breaking layout. The other
-                // trials retain successively shallower owned-flat prefixes.
-                for (std::size_t trial = 0; trial <= candidateDepth; ++trial) {
-                    const auto depth = trial == 0 ? 0 : candidateDepth - trial + 1;
+                // Trial zero uses ordinary Fill. Prefix trials retain more
+                // enclosing groups inline; the final alternative couples
+                // eligible chain boundaries instead of breaking deeper calls.
+                const auto consistentTrial = candidateDepth + 1;
+                const auto trials = candidateDepth + groupEntry.HasConsistentAlternative;
+
+                for (std::size_t trial = 0; trial <= trials; ++trial) {
+                    consistentLayout = trial == consistentTrial;
+                    const auto depth = trial == 0 || consistentLayout ? 0 : candidateDepth - trial + 1;
 
                     // Limits d and d+1 differ only for eligible groups at
                     // level d. Keep the earlier, deeper trial on ties.
-                    if (trial > 1 && !(childLayoutLevels & (1u << depth))) {
+                    if (trial > 1 && !consistentLayout && !(childLayoutLevels & (1u << depth))) {
                         continue;
                     }
 
                     childLayoutDepth = depth;
                     probeBrokenGroups = 0;
                     probeBreakPenalty = 0;
+                    probeMaxIndent = 0;
                     probing = true;
                     bool fitsCandidate = true;
 
@@ -1461,20 +1515,13 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                         renderGap);
 
                     fitsCandidate = fitsCandidate && fits(tail);
-                    const auto candidateLines = lines - savedLines;
-                    const auto candidateCost = candidateLines + probeBreakPenalty;
+                    const auto candidateCost = cost();
 
-                    if (fitsCandidate &&
-                        (!layoutSelected || candidateCost < bestCost ||
-                            (candidateCost == bestCost &&
-                                (candidateLines < bestLines ||
-                                    (candidateLines == bestLines && probeBrokenGroups < bestGroups)))))
-                    {
+                    if (fitsCandidate && (!layoutSelected || candidateCost < bestCost)) {
                         layoutSelected = true;
                         bestCost = candidateCost;
-                        bestLines = candidateLines;
-                        bestGroups = probeBrokenGroups;
                         bestDepth = depth;
+                        bestConsistent = consistentLayout;
                     }
 
                     // All touched decisions and anchors belong to not-yet-
@@ -1495,12 +1542,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     lines = savedLines;
                     lineIndent = savedLineIndent;
                     linePrefix = savedLinePrefix;
+                    resumedLineIndent = savedResumedLineIndent;
                     probing = false;
                 }
 
                 // Replay even a selected depth-zero layout without nested
                 // replanning, so the measured cost describes emitted output.
                 childLayoutDepth = layoutSelected ? bestDepth : 0;
+                consistentLayout = layoutSelected && bestConsistent;
 
             }
         }
@@ -1511,6 +1560,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         if (layoutSelected && order > childLayoutEnd) {
             layoutSelected = false;
             childLayoutDepth = 0;
+            consistentLayout = false;
         }
     };
 
