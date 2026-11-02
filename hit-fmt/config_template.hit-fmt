@@ -2090,9 +2090,12 @@ EnumeratorNameExemptions = []
 # Exempt the entry-point name main and standard library extension function
 # names from case, affix and acronym checks: begin, end, cbegin, cend,
 # rbegin, rend, crbegin, crend, size, ssize, empty, data, swap, get,
-# iter_move and iter_swap.
+# iter_move, iter_swap, what, lock, unlock, try_lock, try_lock_for,
+# try_lock_until, lock_shared, unlock_shared, try_lock_shared,
+# try_lock_shared_for and try_lock_shared_until.
 # Applies to member and free function definitions by exact name only;
-# signatures are not verified. Other categories and parameter-name presence
+# signatures and inheritance are not verified. Other categories and
+# parameter-name presence
 # checks are unaffected. Custom exemptions work with either setting.
 NamingStandardLibraryExemptions = false
 

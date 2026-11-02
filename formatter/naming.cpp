@@ -74,6 +74,17 @@ bool StandardLibraryFunction(std::string_view name)
         "get",
         "iter_move",
         "iter_swap",
+        "what",
+        "lock",
+        "unlock",
+        "try_lock",
+        "try_lock_for",
+        "try_lock_until",
+        "lock_shared",
+        "unlock_shared",
+        "try_lock_shared",
+        "try_lock_shared_for",
+        "try_lock_shared_until",
     };
     return std::ranges::find(names, name) != std::end(names);
 }

@@ -35,3 +35,22 @@ int main() { return 0; }
 int main(int argc, char** argv) { return 0; }
 void main_extra() { }
 void DoMain_() { int main; }
+class Error : public std::exception {
+public:
+    const char* what() const noexcept override { return "failure"; }
+};
+struct Mutex {
+    void lock() { }
+    void unlock() { }
+    void try_lock() { }
+    void try_lock_for() { }
+    void try_lock_until() { }
+    void lock_shared() { }
+    void unlock_shared() { }
+    void try_lock_shared() { }
+    void try_lock_shared_for() { }
+    void try_lock_shared_until() { }
+};
+void hash_value() { }
+void what_extra() { }
+void DoCheck_() { int lock; }
