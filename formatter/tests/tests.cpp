@@ -1847,6 +1847,28 @@ std::vector<FormatCase> FormatCases()
         .push_back({BODY_INDENT_TESTDATA_DIR, "lambda-comments-profile", "lambda-leading-comments.input.cpp", profile});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-trailing-return", "lambda-trailing-return.input.cpp"});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-wrapped-parameters", "lambda-wrapped-parameters.input.cpp"});
+    cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-expression-comments", "lambda-expression-comments.input.cpp"});
+    {
+        const auto directory = std::filesystem::path(BODY_INDENT_TESTDATA_DIR);
+        const auto base = formatter::LoadConfigFile(directory / "lambda-expression-comments.hit-fmt").FormattingStyle;
+
+        for (const bool preserve : {false, true}) {
+            cases.push_back({
+                directory,
+                preserve ? "lambda-expression-comments-preserve" : "lambda-expression-comments-leading",
+                "lambda-expression-comments.input.cpp",
+            });
+            cases.back().Style = base;
+
+            if (preserve) {
+                cases.back().Style->ExpressionsLayout = CategoryLayout::Preserve;
+                cases.back().Style->IndentationKind = IndentationKind::Spaces;
+            } else {
+                cases.back().Style->BinaryOperatorSide = OperatorSide::Leading;
+            }
+        }
+    }
+
     addProfileCase("../lambda-captures", "profile");
     addProfileCase("../lambda-captures", "nested-init-capture");
 

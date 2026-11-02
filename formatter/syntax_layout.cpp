@@ -2113,14 +2113,16 @@ private:
 
     // Carry the boundary's indentation through trivia without reflowing its
     // links. The end gap belongs to the list closer, not its next item.
-    void OwnCommentLinks(Index begin, Index owner, Index end)
+    // Canonical expressions demand indentation even when trivia keeps the
+    // authored topology under IndentationKind::Preserve.
+    void OwnCommentLinks(Index begin, Index owner, Index end, bool forceIndent = false)
     {
         for (auto token = begin;
             token < Tree_.TokenCount() && token + 1 < end && Tree_.Kind(token) == TokenKind::Comment;
             ++token)
         {
             Own(token + 1, owner, Boundary::Preserve);
-            Reindent(token + 1, owner);
+            Reindent(token + 1, owner, false, forceIndent);
         }
     }
 
@@ -2491,6 +2493,11 @@ private:
                     const auto side = Policies_.Expressions.Binary;
                     Own(side == OperatorSide::Leading ? t : t + 1, group, Boundary::Conditional, layout::GapKind::Hard);
                     Own(side == OperatorSide::Leading ? t + 1 : t, group, Boundary::Flat);
+                    OwnCommentLinks(
+                        t + 1,
+                        group,
+                        node.Tokens.End,
+                        Policies_.Expressions.Layout == LayoutMode::Canonical);
                 });
             return;
         }
@@ -2626,6 +2633,8 @@ private:
                     : role == PunctuationRole::ShiftOperator
                         ? policy.Shift
                         : role == PunctuationRole::ConditionalDelimiter ? policy.Ternary : policy.Binary;
+
+                OwnCommentLinks(t + 1, group, node.Tokens.End, canonical);
 
                 if (canonical) {
                     if (role == PunctuationRole::AssignmentOperator &&

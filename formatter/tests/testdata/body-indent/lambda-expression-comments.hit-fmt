@@ -1,0 +1,5 @@
+Layout = Canonical
+ContinuationOffset = 4
+ListFirstItem = NextLine
+ListCloser = OwnLine
+CallsPacking = VerticalWhenBroken
