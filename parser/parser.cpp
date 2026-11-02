@@ -7361,6 +7361,20 @@ private:
         while (!AtEnd()) {
             auto kind = CurrentKind();
 
+            // A standalone object-like macro does not own the following
+            // namespace. Same-line prefixes still have unknown header grammar.
+            if (Cursor_ != start &&
+                (kind == TK::Keyword_namespace ||
+                    (kind == TK::Keyword_inline && SignificantKind(Cursor_ + 1) == TK::Keyword_namespace)) &&
+                Kind(start) == TK::Identifier && Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
+                SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_))
+            {
+                auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
+                node->Tokens.End = Cursor_;
+                AddDirectiveChildrenInGap(*node, start, Cursor_);
+                return node;
+            }
+
             // Directives delimit header fragments; they are never suffix
             // operands. The suffix builder proves conditional initializer
             // lists.

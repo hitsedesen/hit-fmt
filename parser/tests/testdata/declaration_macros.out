@@ -213,4 +213,90 @@
     )
     "}"
   )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "MACRO_NAMESPACE_BEGIN"
+  )
+  (namespace-declaration
+    "namespace" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+          (initializer
+            "="
+            (literal-expression "1")
+          )
+        )
+      )
+      ";"
+    )
+    "}"
+    (trailing-trivia
+      (comment "// namespace")
+    )
+  )
+  (comment "// namespace")
+  (unparsed-syntax
+    "MACRO_NAMESPACE_END" "OpenScope" "/* namespace boundary */"
+    (dangling-trivia
+      (comment "/* namespace boundary */")
+    )
+  )
+  (namespace-declaration
+    "namespace" "Detail" "{"
+    (function-definition
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Call")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "1")
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "2")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    "}"
+  )
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (namespace-declaration
+    "inline" "namespace" "Version" "{"
+    (using-declaration "using" "namespace" "Detail" ";")
+    "}"
+  )
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (namespace-declaration "namespace" "Alias" "=" "Detail" ";")
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (namespace-declaration "namespace" "{" "}")
+  (declaration
+    (declaration-specifiers "CloseScope")
+  )
 )
