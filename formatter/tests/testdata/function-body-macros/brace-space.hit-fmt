@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentationKind = Spaces
+FunctionBodyMacroNames = ["TEST_F", "DEFINE_CASE"]
+FunctionBracePlacement = Attached
+FunctionBraceSpacing = Space
+FunctionCallSpaceBeforeParameters = NoSpace
+CommaSpaceAfter = Space
