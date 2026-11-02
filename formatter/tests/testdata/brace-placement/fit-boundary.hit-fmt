@@ -1,0 +1,12 @@
+Layout = Canonical
+ColumnLimit = 40
+WidthDiagnostics = Report
+IndentationKind = Spaces
+IndentWidth = 4
+ListBreak = IfNeeded
+ListPacking = Fill
+ListFirstItem = InlineIfFits
+ListCloser = SameLine
+ListAlignment = Block
+FunctionBracePlacement = NextLineIfHeaderIndented
+BodyShape = Expanded

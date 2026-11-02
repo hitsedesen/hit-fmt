@@ -867,6 +867,29 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, BRACE_TESTDATA_DIR, {"last-line-indent"}, "last-line-indent.input.cpp");
     {
         const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
+        const auto base = formatter::LoadConfigFile(directory / "fit-boundary.hit-fmt").FormattingStyle;
+
+        for (const auto placement :
+            {
+                BracePlacement::Attached,
+                BracePlacement::NextLineIfHeaderBroken,
+                BracePlacement::NextLineIfHeaderIndented,
+                BracePlacement::NextLine,
+            })
+        {
+            const auto name = "fit-boundary-" + std::string(formatter::ConfigEnumNames<BracePlacement>::Values[
+                static_cast<std::size_t>(placement)]);
+            cases.push_back({directory, name, "fit-boundary.input.cpp"});
+            cases.back().Style = base;
+            cases.back().Style->FunctionBracePlacement = placement;
+        }
+
+        cases.push_back({directory, "fit-boundary-own-closer", "fit-boundary.input.cpp"});
+        cases.back().Style = base;
+        cases.back().Style->ParametersCloser = CloserPlacement::OwnLine;
+    }
+    {
+        const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
         auto style = formatter::LoadConfigFile(directory / "last-line-indent.hit-fmt").FormattingStyle;
         style.ConstructorBracePlacement.reset();
         style.ParametersCloser = CloserPlacement::SameLine;
@@ -4564,6 +4587,32 @@ TEST(Formatter, ExpressionLayout_ChecksPipelineMismatchAndEmittedWidth)
     const auto mismatchOnly = formatter::Format(tree, formatter::PreparedFormat(style));
     EXPECT_EQ(mismatchOnly.Text, result.Text);
     EXPECT_TRUE(mismatchOnly.Diagnostics.empty());
+}
+
+TEST(Formatter, HeaderBraceFittingResolvesWidthDiagnostics)
+{
+    const auto directory = std::filesystem::path(BRACE_TESTDATA_DIR);
+    const Input source(ReadFile(directory / "fit-boundary.input.cpp"));
+    auto style = formatter::LoadConfigFile(directory / "fit-boundary.hit-fmt").FormattingStyle;
+
+    for (const auto placement :
+        {
+            BracePlacement::Attached,
+            BracePlacement::NextLineIfHeaderBroken,
+            BracePlacement::NextLineIfHeaderIndented,
+            BracePlacement::NextLine,
+        })
+    {
+        SCOPED_TRACE(int(placement));
+        style.FunctionBracePlacement = placement;
+
+        for (const auto closer : {CloserPlacement::SameLine, CloserPlacement::OwnLine}) {
+            SCOPED_TRACE(int(closer));
+            style.ParametersCloser = closer;
+            const auto result = formatter::Format(source.View(), formatter::PreparedFormat(style));
+            EXPECT_TRUE(result.Diagnostics.empty()) << result.Text;
+        }
+    }
 }
 
 TEST(Formatter, InitializedDeclaratorBreaksResolveWidthDiagnostics)
