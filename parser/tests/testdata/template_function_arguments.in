@@ -32,3 +32,12 @@ void external_types()
     Setter<T, R()>::Run(promise, callback);
     Setter<T, R(ErrorOr<U>&&)>::Run(promise, callback, move(value));
 }
+void default_arguments()
+{
+    Channel<>::Send();
+    ::scope::Channel< /* defaults */ >::Send(1);
+    Channel<int>::Send();
+    Dispatch<>(1);
+    object.Send<>(1);
+    left < right > ::Send();
+}

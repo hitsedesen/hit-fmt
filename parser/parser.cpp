@@ -9688,6 +9688,11 @@ private:
         TokenIndex name,
         TokenIndex opening) const
     {
+        // Empty template arguments cannot form a comparison expression.
+        if (Kind(NextSignificant(opening + 1)) == TK::Operator_Greater) {
+            return true;
+        }
+
         // Local type bindings rule out the competing comparison expression.
         // Included or dependent names alone still do not prove template use.
         const bool unqualifiedTypeName = NextSignificant(name + 1) == opening && IsKnownType(name);
