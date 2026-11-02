@@ -16,8 +16,8 @@ template <class Element>
 }
 class Reader {
     public:
-    [[nodiscard]] virtual const ResultWithSize& ReadResultFromCurrentStorage()
-    const noexcept = 0;
+    [[nodiscard]] virtual const ResultWithSize&
+    ReadResultFromCurrentStorage() const noexcept = 0;
     [[nodiscard]] static auto GetResultFromCurrentStorage() noexcept
         -> std::optional<ResultWithSize>;
     Reader() noexcept;

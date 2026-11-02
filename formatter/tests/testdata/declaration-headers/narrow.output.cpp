@@ -28,11 +28,10 @@ class Reader {
     public:
     [[nodiscard]] virtual const
     ResultWithSize&
-    ReadResultFromCurrentStorage()
-    const noexcept = 0;
+    ReadResultFromCurrentStorage() const noexcept =
+        0;
     [[nodiscard]] static auto
-    GetResultFromCurrentStorage()
-    noexcept
+    GetResultFromCurrentStorage() noexcept
         -> std::optional<
             ResultWithSize>;
     Reader() noexcept;
@@ -44,8 +43,8 @@ struct Reclaimer {
     }
 };
 struct Annotated {
-    virtual NO_CACHE ~Annotated()
-    noexcept;
+    virtual NO_CACHE
+    ~Annotated() noexcept;
 };
 struct Plain {
     ~Plain();
