@@ -296,7 +296,239 @@
   (namespace-declaration "namespace" "Alias" "=" "Detail" ";")
   (unparsed-syntax "CloseScope" "OpenScope")
   (namespace-declaration "namespace" "{" "}")
+  (unparsed-syntax "CloseScope" "ScopeBegin")
+  (record-declaration
+    "class" "Metadata" "{"
+    (access-specifier "public" ":")
+    (function-definition
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Get")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (identifier-expression "value")
+          ";"
+        )
+        "}"
+      )
+    )
+    (access-specifier "private" ":")
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "stored")
+          )
+          (initializer
+            "="
+            (literal-expression "2")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (unparsed-syntax
+    "ScopeEnd" "OpenScope" "// independent record"
+    (dangling-trivia
+      (comment "// independent record")
+    )
+  )
+  (record-declaration
+    "struct" "Data" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "first")
+          )
+          (initializer
+            "="
+            (literal-expression "1")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "second")
+          )
+          (initializer
+            "="
+            (literal-expression "2")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (record-declaration
+    "union" "Payload" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "number")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "float")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "fraction")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (record-declaration
+      "class" "Wrapper" "{"
+      (declaration
+        (declaration-specifiers "T")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "value")
+            )
+          )
+        )
+        ";"
+      )
+      "}" ";"
+    )
+  )
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (enum-declaration
+    "enum" "class" "State"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "First")
+      )
+      (list-separator ",")
+      (enumerator
+        (enumerator-name "Second")
+      )
+      "}"
+    )
+    ";"
+  )
+  (unparsed-syntax "CloseScope" "OpenScope")
+  (record-declaration "class" "Forward" ";")
   (declaration
     (declaration-specifiers "CloseScope")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "EXPORT")
+          "class" "SameLine"
+        )
+        (initializer
+          (unparsed-syntax "{" "int" "member" "=" "3" ";" "}")
+        )
+      )
+    )
+    ";"
+  )
+  (typedef-declaration
+    "typedef"
+    (declaration-specifiers "struct" "Alias")
+    (init-declarator-list
+      (init-declarator
+        (abstract-declarator)
+        (initializer
+          (unparsed-syntax "{" "int" "member" ";" "}")
+          (unparsed-syntax "Alias")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "const" "struct" "Data")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "pointer")
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "Data")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "make")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "class" "Forward")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    ";"
   )
 )
