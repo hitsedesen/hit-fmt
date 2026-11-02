@@ -54,3 +54,33 @@ Result annotated(int value) { return value; }
 Declare(First)
 Declare(Second) { opaque(); }
 }
+
+MACRO_NAMESPACE_BEGIN
+namespace {
+int value = 1;
+} // namespace
+MACRO_NAMESPACE_END
+
+OpenScope
+/* namespace boundary */
+namespace Detail {
+void Run( ) {
+    Call(1, 2);
+}
+}
+CloseScope
+
+OpenScope
+inline namespace Version {
+using namespace Detail;
+}
+CloseScope
+
+OpenScope
+namespace Alias = Detail;
+CloseScope
+
+OpenScope
+namespace {
+}
+CloseScope

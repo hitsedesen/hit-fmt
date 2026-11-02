@@ -6,3 +6,5 @@ StructBracePlacement = NextLine
 UnionBracePlacement = NextLine
 EnumBracePlacement = NextLine
 BodyShape = Expanded
+EmptyBodyShape = Expanded
+AssignmentOperatorSpacing = Space
