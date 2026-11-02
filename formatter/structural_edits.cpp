@@ -1116,6 +1116,8 @@ StructuralPlan PlanStructuralEditsImpl(
                             : StructuralAction::AddMissingControlBraces;
                         auto range = Range(tree, tokens);
 
+                        // Replacing a null body's semicolon cannot capture comments
+                        // elsewhere in the control; only directly attached comments fence it.
                         if (status != RegionStatus::Complete) {
                             Skip(plan, action, tokens, StructuralSkip::Incomplete);
                         } else if (attributes) {
@@ -1126,7 +1128,7 @@ StructuralPlan PlanStructuralEditsImpl(
                             Skip(plan, action, tokens, StructuralSkip::LabelBody);
                         } else if (directives) {
                             Skip(plan, action, tokens, StructuralSkip::DirectiveBoundary);
-                        } else if (hasBarrier(node.Tokens) || AdjacentComment(tree, tokens)) {
+                        } else if ((!null && hasBarrier(node.Tokens)) || AdjacentComment(tree, tokens)) {
                             Skip(plan, action, tokens, StructuralSkip::CommentAttached);
                         } else if (safety.IntersectsImmutable(range) ||
                             // Null bodies replace only the semicolon.

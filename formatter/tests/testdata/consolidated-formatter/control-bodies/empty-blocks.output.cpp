@@ -37,3 +37,20 @@ void template_conditions() {
         ;
     while (Ready(limits<int>::max(), true)) /* keep */ ;
 }
+
+void commented_conditions(bool ready) {
+    while (/* comment */ true) { }
+    while (ready /* trailing condition */) { }
+    while (Check(/* argument */ ready)) { }
+    while (// condition
+        ready)
+    { }
+    if (/* then condition */ ready) { } else { }
+    for (; /* loop condition */ ready; ) { }
+    do { } while (/* do condition */ ready);
+    while (/* condition */ ready) /* body attachment */ ;
+    while (/* condition */ ready)
+        ; // trailing body attachment
+    while (/* condition */ ready)
+        Work();
+}
