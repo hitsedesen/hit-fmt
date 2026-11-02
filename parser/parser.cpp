@@ -2585,6 +2585,38 @@ private:
 
     void AddSeparatedElementSyntax(Node& element, NodeKind kind, size_t begin, size_t end)
     {
+        if (kind == NodeKind::LambdaCapture) {
+            auto name = NextSignificant(begin);
+
+            if (Kind(name) == TK::Operator_Ampersand) {
+                name = NextSignificant(name + 1);
+            }
+
+            if (Kind(name) == TK::Operator_Ellipsis) {
+                name = NextSignificant(name + 1);
+            }
+
+            if (name < end && Kind(name) == TK::Identifier) {
+                const auto initializer = NextSignificant(name + 1);
+
+                if (initializer < end &&
+                    (Kind(initializer) == TK::Operator_Assign || Kind(initializer) == TK::Operator_OpenParenthesis ||
+                        Kind(initializer) == TK::Operator_OpenBrace))
+                {
+                    if (CaptureInitializerDepth_ >= 64) {
+                        AddUnparsedSyntax(element, initializer, end);
+                        return;
+                    }
+
+                    ++CaptureInitializerDepth_;
+                    AddInitializerExpression(element, initializer, end);
+                    --CaptureInitializerDepth_;
+                }
+            }
+
+            return;
+        }
+
         if (kind == NodeKind::BaseSpecifier) {
             auto typeBegin = begin;
 
@@ -2608,6 +2640,26 @@ private:
         if (kind == NodeKind::TemplateArgument || kind == NodeKind::TemplateParameter) {
             const auto first = NextSignificant(begin);
             const auto second = NextSignificant(first + 1);
+
+            if (kind == NodeKind::TemplateArgument) {
+                auto operand = first;
+
+                while (operand < end &&
+                    (Kind(operand) == TK::Operator_OpenParenthesis || IsPrefixOperator(Kind(operand))))
+                {
+                    operand = NextSignificant(operand + 1);
+                }
+
+                // A lambda-led argument is an expression, including through
+                // unary and parenthesized operands. Its body needs syntax
+                // ownership rather than the opaque interiors of type scanning.
+                if (operand < end && Kind(operand) == TK::Operator_OpenBracket &&
+                    Kind(NextSignificant(operand + 1)) != TK::Operator_OpenBracket)
+                {
+                    AddExpressionRange(element, begin, end);
+                    return;
+                }
+            }
 
             // Multiword type prefixes need an owner for specifier spacing.
             // Nested type syntax already contributes its own nodes.
@@ -3738,7 +3790,21 @@ private:
         while (!AtEnd() && CurrentKind() != TK::Operator_OpenBrace && CurrentKind() != TK::Operator_Semicolon &&
             CurrentKind() != TK::Operator_CloseBrace)
         {
-            ++Cursor_;
+            if (CurrentKind() == TK::Operator_OpenBracket && Kind(Cursor_ + 1) == TK::Operator_OpenBracket) {
+                auto begin = Cursor_;
+                ConsumeBalanced();
+                auto* attribute = MakeNode(NodeKind::AttributeSpecifier, begin);
+                attribute->Tokens.End = Cursor_;
+                Append(*node, *attribute);
+            } else if (IsExtensionAttribute(Cursor_)) {
+                auto begin = Cursor_;
+                Cursor_ = FindExtensionAttributeEnd(begin, ParseLimit_);
+                auto* attribute = MakeNode(NodeKind::ExtensionAttributeSpecifier, begin);
+                attribute->Tokens.End = Cursor_;
+                Append(*node, *attribute);
+            } else {
+                ++Cursor_;
+            }
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
             auto bodyStart = Cursor_;
@@ -7285,7 +7351,13 @@ private:
                 } else {
                     i = *after - 1;
                 }
-            } else if (kind == TK::Operator_Less && Kind(PreviousSignificant(i)) == TK::Identifier) {
+            } else if (kind == TK::Operator_Less) {
+                const auto previous = Kind(PreviousSignificant(i));
+
+                if (previous != TK::Identifier && !IsNamedCast(previous)) {
+                    continue;
+                }
+
                 const auto after = ArgumentTemplateEnd(i, end, work);
 
                 if (after) {
@@ -7406,12 +7478,32 @@ private:
             auto kind = CurrentKind();
 
             // A standalone object-like macro does not own the following
-            // independent declaration or hinted declaration macro.
-            // Same-line prefixes still have unknown header grammar.
+            // independent declaration or its leading directives. Same-line
+            // prefixes still have unknown header grammar.
+            auto declarationStart = Cursor_;
+            bool independentDeclaration = false;
+
+            if (kind == TK::PreprocessingDirective && Kind(start) == TK::Identifier &&
+                Kind(PreviousSignificant(Cursor_)) == TK::Identifier)
+            {
+                do {
+                    declarationStart = NextSignificant(declarationStart + 1);
+                } while (Kind(declarationStart) == TK::PreprocessingDirective);
+
+                auto specifier = declarationStart;
+
+                while (IsDeclarationSpecifier(Kind(specifier)) && !IsFundamentalTypeKeyword(Kind(specifier))) {
+                    specifier = NextSignificant(specifier + 1);
+                }
+
+                independentDeclaration =
+                    IsFundamentalTypeKeyword(Kind(specifier)) || IsHintedDeclarationMacro(specifier);
+            }
+
             if (Cursor_ != start && kind != TK::Comment && Kind(start) == TK::Identifier &&
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
                 SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_) &&
-                IsIndependentDeclarationStart(Cursor_))
+                (independentDeclaration || IsIndependentDeclarationStart(declarationStart)))
             {
                 auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
                 node->Tokens.End = Cursor_;
@@ -8294,10 +8386,19 @@ private:
         initializer->Tokens.End = semicolons[0];
 
         if (begin < semicolons[0]) {
-            if (ClassifySimpleStatement(begin) == NodeKind::DeclarationStatement) {
+            const auto kind = ClassifySimpleStatement(begin);
+
+            if (kind == NodeKind::DeclarationStatement) {
                 AddDeclarationSyntax(*initializer, begin, semicolons[0]);
-            } else {
+            } else if (kind == NodeKind::ExpressionStatement) {
                 AddExpressionRange(*initializer, begin, semicolons[0]);
+            } else {
+                // Missing type bindings leave the initializer head ambiguous,
+                // just as in a block statement. Only its assignment RHS is shared.
+                auto* statement = MakeNode(kind, begin);
+                statement->Tokens.End = semicolons[0];
+                AddAmbiguousAssignmentRhs(*statement, semicolons[0]);
+                Append(*initializer, *statement);
             }
         }
 
@@ -10349,9 +10450,8 @@ private:
         unambiguous = false;
         bool hasTemplateArguments = false;
         bool typeEvidence = false;
-        bool hasQualifiedType = Kind(first) == TK::Operator_ScopeResolution;
 
-        if (hasQualifiedType) {
+        if (Kind(first) == TK::Operator_ScopeResolution) {
             first = NextSignificant(first + 1);
 
             if (first >= end || Kind(first) != TK::Identifier) {
@@ -10376,7 +10476,6 @@ private:
                 hasTemplateArguments = true;
                 typeEvidence |= HasTypeTemplateArgument(cursor, templateEnd);
                 cursor = NextSignificant(templateEnd);
-                hasQualifiedType = true;
                 continue;
             }
 
@@ -10395,11 +10494,6 @@ private:
             }
 
             cursor = NextSignificant(cursor + 1);
-            hasQualifiedType = true;
-        }
-
-        if (!hasQualifiedType) {
-            return false;
         }
 
         bool pointerOrReference = false;
@@ -10476,26 +10570,10 @@ private:
             return NodeKind::ExpressionStatement;
         }
 
-        auto next = NextSignificant(name + 1);
-
-        if (Kind(next) == TK::Identifier) {
-            // Adjacent type and declarator names cannot form an expression,
-            // even when the type's declaration is outside this input file.
-            return NodeKind::DeclarationStatement;
-        }
-
         bool unambiguous = false;
 
         if (LooksLikeUnknownTypeDeclaration(first, Tree_.Tokens_.Size(), unambiguous)) {
             return unambiguous ? NodeKind::DeclarationStatement : NodeKind::AmbiguousStatement;
-        }
-
-        if (Kind(next) == TK::Operator_Star || Kind(next) == TK::Operator_Ampersand || Kind(next) == TK::Operator_And) {
-            auto name = NextSignificant(next + 1);
-
-            if (Kind(name) == TK::Identifier) {
-                return NodeKind::AmbiguousStatement;
-            }
         }
 
         return NodeKind::ExpressionStatement;
@@ -11321,6 +11399,7 @@ private:
     TokenIndex ParseLimit_ = 0;
     size_t BranchParseDepth_ = 0;
     unsigned TemplateListDepth_ = 0;
+    unsigned CaptureInitializerDepth_ = 0;
     unsigned TypeSyntaxDepth_ = 0;
     unsigned RequiresSyntaxDepth_ = 0;
     static constexpr size_t MaximumParseDepth = 256;

@@ -51,3 +51,20 @@ DEFINE_METHOD(Suite) {
     auto result = DEFINE_CASE(value);
     UNLISTED_CASE(Opaque) { untouched = left+right; }
 }
+
+OpenScope
+#if FEATURE
+static DEFINE_CASE(Suite, Conditional) { auto* pointer = &object; }
+#else
+DEFINE_METHOD(Alternative) {}
+#endif
+CloseScope
+
+namespace Types {
+Result
+#if FEATURE
+* Select() noexcept;
+#else
+& Select() noexcept;
+#endif
+}

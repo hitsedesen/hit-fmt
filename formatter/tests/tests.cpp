@@ -315,7 +315,13 @@ std::vector<FormatCase> FormatCases()
     ShareExpected(cases, directives, "legacy-false.output.cpp", "input.cpp");
     ShareExpected(cases, directives, "legacy-true.output.cpp", "indent.output.cpp");
     AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
+    AddCases(
+        cases,
+        data / "function-body-macros",
+        {"brace-space", "brace-no-space", "brace-generated-space", "brace-preserve"},
+        "brace-spacing.input.cpp");
     AddCases(cases, data / "function-body-macros", {"namespace-boundaries"}, "namespace-boundaries.input.cpp");
+    AddCases(cases, data / "function-body-macros", {"conditional"}, "conditional.input.cpp");
     AddCases(cases, data / "single-statement-body", {"single"});
     AddCases(cases, data / "single-statement-body", {"compact", "preserve", "lambda-override"}, "lambdas.input.cpp");
     AddCases(
@@ -337,6 +343,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "declarator-macro-spacing", {"space", "no-space"});
     AddCases(cases, data / "alias-assignment", {"space", "no-space", "preserve"});
     ShareExpected(cases, data / "alias-assignment", "preserve.output.cpp", "input.cpp");
+    AddCases(cases, data / "enum-attributes", {"canonical", "space", "no-space", "preserve"});
     AddCases(cases, data / "class-body-macros", {"hinted", "preserve", "unhinted"});
     AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
     AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});
@@ -1841,6 +1848,15 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-trailing-return", "lambda-trailing-return.input.cpp"});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-wrapped-parameters", "lambda-wrapped-parameters.input.cpp"});
     addProfileCase("../lambda-captures", "profile");
+    addProfileCase("../lambda-captures", "nested-init-capture");
+
+    {
+        const auto directory = data / "lambda-captures";
+        auto style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        style.LambdaBodiesLayout = CategoryLayout::Preserve;
+        cases.push_back({directory, "nested-init-capture-preserve", "nested-init-capture.input.cpp"});
+        cases.back().Style = style;
+    }
 
     for (const auto* name : {"generic-header", "generic-header-fitting", "generic-header-forced"}) {
         addProfileCase("../lambda-captures", name);
@@ -2948,6 +2964,22 @@ std::vector<FormatCase> FormatCases()
 
     ShareExpected(cases, data / "uncertain-layout", "preserve.output.cpp", "input.cpp");
     AddCases(cases, data / "template-arguments", {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
+    cases.push_back({
+        data / "template-arguments",
+        "lambdas",
+        "lambdas.input.cpp",
+        "../../../../hit-fmt/examples/ytsaurus",
+    });
+    {
+        auto preserved = cases.back();
+        preserved.Name = "lambdas-preserve";
+        preserved.Expected = "lambdas.output.cpp";
+        preserved.Style =
+            formatter::LoadConfigFile(preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
+        preserved.Style->TemplateArgumentsLayout = CategoryLayout::Preserve;
+        cases.push_back(std::move(preserved));
+    }
+
     cases.push_back({
         data / "template-arguments",
         "function-types",

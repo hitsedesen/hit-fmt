@@ -185,7 +185,10 @@
           (lambda-expression
             (lambda-capture-list
               "["
-              (lambda-capture "seed" "=" "2")
+              (lambda-capture
+                "seed" "="
+                (literal-expression "2")
+              )
               "]"
             )
             (parameter-list
@@ -444,7 +447,22 @@
                     "<"
                     (template-argument "int")
                     (list-separator ",")
-                    (template-argument "[" "]" "(" ")" "->" "int" "{" "return" "1" ";" "}")
+                    (template-argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (parameter-list "(" ")")
+                        (trailing-return-type "->" "int")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                    )
                     (list-separator ",")
                     (template-argument "int")
                     ">"
@@ -484,7 +502,22 @@
                     (list-separator ",")
                     (template-argument "int")
                     (list-separator ",")
-                    (template-argument "[" "]" "(" ")" "->" "int" "{" "return" "1" ";" "}")
+                    (template-argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (parameter-list "(" ")")
+                        (trailing-return-type "->" "int")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                    )
                     ">"
                   )
                 )
@@ -529,7 +562,22 @@
                             "<"
                             (template-argument "int")
                             (list-separator ",")
-                            (template-argument "[" "]" "(" ")" "->" "int" "{" "return" "1" ";" "}")
+                            (template-argument
+                              (lambda-expression
+                                (lambda-capture-list "[" "]")
+                                (parameter-list "(" ")")
+                                (trailing-return-type "->" "int")
+                                (lambda-body
+                                  "{"
+                                  (return-statement
+                                    "return"
+                                    (literal-expression "1")
+                                    ";"
+                                  )
+                                  "}"
+                                )
+                              )
+                            )
                             (list-separator ",")
                             (template-argument "int")
                             ">"
@@ -576,7 +624,22 @@
                             (list-separator ",")
                             (template-argument "int")
                             (list-separator ",")
-                            (template-argument "[" "]" "(" ")" "->" "int" "{" "return" "1" ";" "}")
+                            (template-argument
+                              (lambda-expression
+                                (lambda-capture-list "[" "]")
+                                (parameter-list "(" ")")
+                                (trailing-return-type "->" "int")
+                                (lambda-body
+                                  "{"
+                                  (return-statement
+                                    "return"
+                                    (literal-expression "1")
+                                    ";"
+                                  )
+                                  "}"
+                                )
+                              )
+                            )
                             ">"
                           )
                         )
@@ -610,7 +673,22 @@
                     "<"
                     (template-argument "int")
                     (list-separator ",")
-                    (template-argument "[" "]" "(" ")" "->" "int" "{" "return" "1" ";" "}")
+                    (template-argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (parameter-list "(" ")")
+                        (trailing-return-type "->" "int")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                    )
                     (list-separator ",")
                     (template-argument "int")
                     ">"
@@ -628,6 +706,95 @@
             )
           )
         )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "auto" "...")
+      ">"
+    )
+    (record-declaration "struct" "Callbacks" "{" "}" ";")
+  )
+  (using-declaration
+    "using" "Selected" "="
+    (type-id
+      "Callbacks"
+      (template-argument-list
+        "<"
+        (template-argument
+          (unary-expression
+            "+"
+            (lambda-expression
+              (lambda-capture-list "[" "]")
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (lambda-body
+                "{"
+                (return-statement
+                  "return"
+                  (identifier-expression "value")
+                  ";"
+                )
+                "}"
+              )
+            )
+          )
+        )
+        (list-separator ",")
+        (template-argument
+          (parenthesized-expression
+            "("
+            (lambda-expression
+              (lambda-capture-list "[" "]")
+              (template-parameter-list
+                "<"
+                (template-parameter "class" "T")
+                ">"
+              )
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+              (lambda-body
+                "{"
+                (return-statement
+                  "return"
+                  (identifier-expression "value")
+                  ";"
+                )
+                "}"
+              )
+            )
+            ")"
+          )
+        )
+        ">"
       )
     )
     ";"

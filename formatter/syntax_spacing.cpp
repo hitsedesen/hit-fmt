@@ -1035,6 +1035,12 @@ public:
                         (Tree_.Kind(previous - 1) == TK::Keyword_const ||
                             Tree_.Kind(previous - 1) == TK::Keyword_volatile);
                     field = cv ? F::FunctionCvRefQualifierSpacing : F::FunctionRefQualifierSpacing;
+
+                    // An opaque macro suffix is still separate from the
+                    // ref-qualifier, even without an attribute production.
+                    if (parent && end < parent->Tokens.End && Tree_.Kind(end) == TK::Identifier) {
+                        Mark(end, F::FunctionSuffixSpecifierSpacing, *parent, C::DeclarationHeaders, 1, true);
+                    }
                 }
 
                 Mark(begin, field, parent ? *parent : node, C::DeclarationHeaders, 3, true);
@@ -1133,7 +1139,10 @@ public:
 
                 if (kind == NK::LambdaBody) {
                     Mark(begin, F::LambdaBraceSpacing, parent ? *parent : node, C::DeclarationHeaders, 3, true);
-                } else if (parent && (parent->Kind == NK::FunctionDefinition || parent->Kind == NK::FunctionTryBlock)) {
+                } else if (parent &&
+                    (parent->Kind == NK::FunctionDefinition || parent->Kind == NK::MacroFunctionDefinition ||
+                        parent->Kind == NK::FunctionTryBlock))
+                {
                     Mark(begin, F::FunctionBraceSpacing, *parent, C::DeclarationHeaders, 3, true);
                 } else if (parent && IsControl(parent->Kind)) {
                     Mark(begin, F::ControlBlockSpaceBeforeBrace, *parent, C::ControlHeaders, 3, true);
@@ -1237,8 +1246,7 @@ public:
             return;
         }
 
-        // Capture initializer ranges are raw, not parsed expression children.
-        // Capture() handles their confirmed prefix and preserves internals.
+        // Capture() owns the prefix; initializer children own their internals.
         if (node.Kind == NK::LambdaCapture && !state.UncertainSyntax) {
             return;
         }
@@ -1886,9 +1894,8 @@ private:
             if (cursor < end && Tree_.Kind(cursor) == TK::Operator_Assign && next(cursor + 1) < end && parent &&
                 parent->Kind == NK::LambdaCaptureList)
             {
-                Pair(cursor, F::SpaceAroundCaptureAssignment, F::SpaceAroundCaptureAssignment, *parent, C::Captures, 1);
-                // The separator's right edge is owned; everything after the
-                // first initializer token is unparsed, including later '='.
+                Pair(cursor, F::SpaceAroundCaptureAssignment, F::SpaceAroundCaptureAssignment, *parent, C::Captures, 3);
+                // Keep the separator's right edge out of raw-gap protection.
                 unknown = cursor + 2;
             } else if (cursor < end && Tree_.Kind(cursor) == TK::Operator_Ellipsis && next(cursor + 1) == end) {
                 PackEllipsis(node, {.Owner = Id(node), .Category = C::Captures}, cursor);
@@ -1897,9 +1904,20 @@ private:
             }
         }
 
-        // This disjoint raw range is visited once, never searched for '=' or
-        // parsed speculatively. Unknown internals cannot borrow outer policies.
+        // Preserve only raw gaps outside initializer children. Parsed syntax
+        // must retain its own spacing and indentation policies.
+        auto* child = Child(node);
+
         for (TI i = unknown; i < end; ++i) {
+            while (child && child->Tokens.End <= i) {
+                child = Next(*child);
+            }
+
+            if (child && child->Tokens.Begin <= i) {
+                i = child->Tokens.End - 1;
+                continue;
+            }
+
             PreserveUncertain(i, node);
         }
     }

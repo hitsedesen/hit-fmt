@@ -1,0 +1,508 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Schedule")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "auto")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "values")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "wrapped")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture
+                    "guard" "="
+                    (call-expression
+                      (identifier-expression "Guard")
+                      (argument-list
+                        "("
+                        (argument
+                          (lambda-expression
+                            (lambda-capture-list
+                              "["
+                              (lambda-capture "&" "values")
+                              "]"
+                            )
+                            (parameter-list "(" ")")
+                            (exception-specification "noexcept")
+                            (lambda-body
+                              "{"
+                              (expression-statement
+                                (call-expression
+                                  (member-expression
+                                    (identifier-expression "values")
+                                    "."
+                                    (identifier-expression "push_back")
+                                  )
+                                  (argument-list
+                                    "("
+                                    (argument
+                                      (literal-expression "1")
+                                    )
+                                    ")"
+                                  )
+                                )
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "guard")
+                      (argument-list "(" ")")
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "direct")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture
+                    "callback" "="
+                    (lambda-expression
+                      (lambda-capture-list
+                        "["
+                        (lambda-capture "&" "values")
+                        "]"
+                      )
+                      (lambda-body
+                        "{"
+                        (expression-statement
+                          (call-expression
+                            (member-expression
+                              (identifier-expression "values")
+                              "."
+                              (identifier-expression "clear")
+                            )
+                            (argument-list "(" ")")
+                          )
+                          ";"
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  (list-separator ",")
+                  (lambda-capture
+                    "count" "="
+                    (literal-expression "2")
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "callback")
+                      (argument-list "(" ")")
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "reference")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture
+                    "&" "callback" "="
+                    (call-expression
+                      (identifier-expression "Store")
+                      (argument-list
+                        "("
+                        (argument
+                          (lambda-expression
+                            (lambda-capture-list
+                              "["
+                              (lambda-capture "&" "values")
+                              "]"
+                            )
+                            (parameter-list
+                              "("
+                              (parameter-declaration
+                                (declaration-specifiers "int")
+                                (init-declarator-list
+                                  (init-declarator
+                                    (declarator
+                                      (declarator-name "value")
+                                    )
+                                  )
+                                )
+                              )
+                              ")"
+                            )
+                            (lambda-body
+                              "{"
+                              (expression-statement
+                                (call-expression
+                                  (member-expression
+                                    (identifier-expression "values")
+                                    "."
+                                    (identifier-expression "push_back")
+                                  )
+                                  (argument-list
+                                    "("
+                                    (argument
+                                      (identifier-expression "value")
+                                    )
+                                    ")"
+                                  )
+                                )
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "callback")
+                      (argument-list
+                        "("
+                        (argument
+                          (literal-expression "2")
+                        )
+                        ")"
+                      )
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "paren")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture
+                    "callback"
+                    (argument-list
+                      "("
+                      (argument
+                        (lambda-expression
+                          (lambda-capture-list
+                            "["
+                            (lambda-capture "&" "values")
+                            "]"
+                          )
+                          (lambda-body
+                            "{"
+                            (expression-statement
+                              (call-expression
+                                (member-expression
+                                  (identifier-expression "values")
+                                  "."
+                                  (identifier-expression "clear")
+                                )
+                                (argument-list "(" ")")
+                              )
+                              ";"
+                            )
+                            "}"
+                          )
+                        )
+                      )
+                      ")"
+                    )
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "callback")
+                      (argument-list "(" ")")
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "brace")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture
+                    "callback"
+                    (braced-initializer
+                      (initializer-list
+                        "{"
+                        (initializer-element
+                          (lambda-expression
+                            (lambda-capture-list
+                              "["
+                              (lambda-capture "&" "values")
+                              "]"
+                            )
+                            (lambda-body
+                              "{"
+                              (expression-statement
+                                (call-expression
+                                  (member-expression
+                                    (identifier-expression "values")
+                                    "."
+                                    (identifier-expression "clear")
+                                  )
+                                  (argument-list "(" ")")
+                                )
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "callback")
+                      (argument-list "(" ")")
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "recursive")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture
+                    "callback" "="
+                    (lambda-expression
+                      (lambda-capture-list
+                        "["
+                        (lambda-capture
+                          "nested" "="
+                          (lambda-expression
+                            (lambda-capture-list
+                              "["
+                              (lambda-capture "&" "values")
+                              "]"
+                            )
+                            (lambda-body
+                              "{"
+                              (expression-statement
+                                (call-expression
+                                  (member-expression
+                                    (identifier-expression "values")
+                                    "."
+                                    (identifier-expression "clear")
+                                  )
+                                  (argument-list "(" ")")
+                                )
+                                ";"
+                              )
+                              "}"
+                            )
+                          )
+                        )
+                        "]"
+                      )
+                      (lambda-body
+                        "{"
+                        (expression-statement
+                          (call-expression
+                            (identifier-expression "nested")
+                            (argument-list "(" ")")
+                          )
+                          ";"
+                        )
+                        "}"
+                      )
+                    )
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "callback")
+                      (argument-list "(" ")")
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "simple")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture "&")
+                  (list-separator ",")
+                  (lambda-capture
+                    "count" "="
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (lambda-capture
+                    "copy" "="
+                    (parenthesized-expression
+                      "("
+                      (assignment-expression
+                        (identifier-expression "count")
+                        "="
+                        (literal-expression "2")
+                      )
+                      ")"
+                    )
+                  )
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (return-statement
+                    "return"
+                    (identifier-expression "copy")
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

@@ -1,0 +1,9 @@
+void Schedule(auto& values) {
+    auto wrapped = [guard = Guard([&values]() noexcept { values.push_back(1); })] { guard(); };
+    auto direct = [callback = [&values] { values.clear(); }, count = 2] { callback(); };
+    auto reference = [&callback = Store([&values](int value) { values.push_back(value); })] { callback(2); };
+    auto paren = [callback([&values] { values.clear(); })] { callback(); };
+    auto brace = [callback{[&values] { values.clear(); }}] { callback(); };
+    auto recursive = [callback = [nested = [&values] { values.clear(); }] { nested(); }] { callback(); };
+    auto simple = [&, count = 1, copy = (count = 2)] { return copy; };
+}

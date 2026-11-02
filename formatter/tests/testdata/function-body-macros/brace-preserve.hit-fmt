@@ -1,0 +1,2 @@
+include = "brace-space.hit-fmt"
+FunctionBraceSpacing = Preserve
