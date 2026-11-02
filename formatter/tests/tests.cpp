@@ -2701,6 +2701,7 @@ std::vector<FormatCase> FormatCases()
         }
 
         cases.push_back({directory, "ytsaurus", "ytsaurus.input.cpp", profile});
+        cases.push_back({directory, "overflow", "overflow.input.cpp"});
     }
 
     for (const bool anyArgument : {false, true}) {

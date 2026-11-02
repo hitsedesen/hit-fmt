@@ -519,8 +519,8 @@ Call annotations
   string literal beside the opener, then puts each following format argument
   on its own line even if the call fits. Default: []. Exact unqualified
   names, including members; overrides both first-argument pin lists.
-  The header's opening pieces stay inline even past ColumnLimit; nested
-  expressions and concatenated literals may wrap. Calls without a complete
+  Overflowing headers wrap at argument boundaries before splitting nested
+  expressions or concatenated literals. Calls without a complete
   literal use ordinary layout. Preserve/Always and protection still win.
 - CallLineFirstArgumentNames pins any first argument beside the opener;
   CallLineFirstStringNames pins string literals only. Both default to [].

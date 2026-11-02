@@ -1521,6 +1521,20 @@ private:
             return;
         }
 
+        const auto messageHeader = canonical && messageLayout && policy.Break != BreakRequirement::Always
+            ? GroupAt(
+                TokenPosition(begin + 1),
+                GapPosition(messageEnd),
+                policy.Packing == ListPacking::Fill ? layout::GroupMode::Fill : layout::GroupMode::Consistent)
+            : group;
+
+        if (messageHeader != group) {
+            // Fitting headers stay beside the opener independently of format
+            // arguments. Overflow uses list boundaries before nested breaks.
+            Groups_[messageHeader].IndentGroup = group;
+            GroupSpecs_[messageHeader].ChildBreaks = false;
+        }
+
         GroupSpecs_[group].StructuralBase = true;
         // An opaque callee spine may have no chain group to provide its level.
         // Arguments still continue from the call's physical opening line.
@@ -1638,7 +1652,8 @@ private:
                 ? layout::GapKind::Hard
                 : layout::GapKind::Soft;
 
-            if (pin && pin->Overflow == AttachedStringOverflow::KeepInline && policy.Break != BreakRequirement::Always)
+            if (pin && !messageLayout && pin->Overflow == AttachedStringOverflow::KeepInline &&
+                policy.Break != BreakRequirement::Always)
             {
                 // Attach the first argument's opening piece; its nested
                 // syntax (including literal concatenation) may still wrap.
@@ -1657,6 +1672,14 @@ private:
             }
 
             Own(begin + 1, group, Boundary::Conditional, firstKind);
+
+            if (messageHeader != group && Policies_.ColumnLimit != 0) {
+                // The opener must fit the complete header, including optional
+                // nested breaks, before deciding to keep it on the call line.
+                GroupSpecs_[group].ChildBreaks = false;
+                Gaps_[begin + 1].FitNextSegment = true;
+                Gaps_[begin + 1].FitThrough = messageEnd;
+            }
 
             if (pin && pin->Overflow == AttachedStringOverflow::BreakBefore && Policies_.ColumnLimit != 0) {
                 // Demand the complete argument, not a prefix shortened by
@@ -1865,13 +1888,11 @@ private:
 
                     Own(
                         split,
-                        items,
+                        messagePrefix ? messageHeader : items,
                         Boundary::Conditional,
-                        messagePrefix
-                        ? layout::GapKind::Flat
-                        : formatArgument || policy.Packing == ListPacking::VerticalWhenBroken
-                            ? layout::GapKind::Hard
-                            : layout::GapKind::Soft);
+                        formatArgument || policy.Packing == ListPacking::VerticalWhenBroken
+                        ? layout::GapKind::Hard
+                        : layout::GapKind::Soft);
                 }
 
                 Own(side == OperatorSide::Leading ? t + 1 : t, group, Boundary::Flat);
