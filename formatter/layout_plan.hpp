@@ -100,6 +100,8 @@ struct Gap
     GapAdjacency BrokenAdjacency = GapAdjacency::Source;
     bool Closing : 1 = false;
     bool BodyOpening : 1 = false;
+    // Explicit attachment takes precedence over KeepMultiline fallback.
+    bool Attached : 1 = false;
     bool Generated : 1 = false;
     bool Reindent : 1 = false;
     // Style-owned indentation demand survives a scope fence on topology.

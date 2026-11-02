@@ -408,6 +408,7 @@ CompiledPolicies CompilePolicies(const Style& style)
         .KeepMultiline = style.KeepMultiline,
         .CallsSoleArgumentFirstItem =
             style.CallsSoleArgumentFirstItem.value_or(Calls.FirstItem),
+        .CallsSoleLambdaArgumentInline = style.CallsSoleLambdaArgumentInline,
         .Parameters = Parameters,
         .TemplateParameters = TemplateParameters,
         .TemplateArguments = TemplateArguments,
