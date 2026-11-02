@@ -3074,8 +3074,7 @@ private:
             const bool boundaryEligible = constraintMayEnd || recoveredBoundary;
             bool startsDeclaration = angleDepth == 0 &&
                 ((boundaryEligible &&
-                    (IsTypeKeyword(kind) || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
-                        kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_using ||
+                    (IsDeclarationSpecifier(kind) || kind == TK::Keyword_operator || kind == TK::Keyword_using ||
                         kind == TK::Keyword_concept)) ||
                     (constraintMayEnd && kind == TK::Identifier &&
                         (Kind(next) == TK::Identifier || Kind(next) == TK::Keyword_operator ||

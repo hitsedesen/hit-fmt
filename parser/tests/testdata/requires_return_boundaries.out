@@ -353,6 +353,170 @@
       )
     )
   )
+  (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "struct" "Converter" "{"
+    (template-declaration
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (requires-clause
+        "requires"
+        (constraint-expression
+          (parenthesized-expression
+            "("
+            (binary-expression
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument "T")
+                  ">"
+                )
+              )
+              "&&"
+              (unary-expression
+                "!"
+                (template-id-expression
+                  (identifier-expression "Blocked")
+                  (template-argument-list
+                    "<"
+                    (template-argument "T")
+                    ">"
+                  )
+                )
+              )
+            )
+            ")"
+          )
+        )
+      )
+      (function-definition
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (operator-function-name "operator" "T")
+              (function-declarator
+                (parameter-list "(" ")")
+                (function-qualifier "const")
+                (exception-specification "noexcept")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (type-construction-expression
+              (identifier-expression "T")
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+    (template-declaration
+      (leading-trivia
+        (whitespace "\n\n    ")
+      )
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (requires-clause
+        "requires"
+        (constraint-expression
+          (template-id-expression
+            (identifier-expression "Ready")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+          )
+        )
+      )
+      (function-declaration
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (operator-function-name "operator" "const" "T" "&")
+              (function-declarator
+                (parameter-list "(" ")")
+                (function-qualifier "const")
+              )
+            )
+          )
+        )
+        ";"
+      )
+    )
+    (template-declaration
+      (leading-trivia
+        (whitespace "\n\n    ")
+      )
+      "template"
+      (template-parameter-list
+        "<"
+        (template-parameter "class" "T")
+        ">"
+      )
+      (requires-clause
+        "requires"
+        (constraint-expression
+          (requires-expression
+            "requires"
+            (requirement-body
+              "{"
+              (type-requirement
+                "typename"
+                (type-id "T" "::" "value_type")
+              )
+              (list-separator ";")
+              "}"
+            )
+          )
+        )
+      )
+      (function-definition
+        (declaration-specifiers "explicit")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (operator-function-name "operator" "T" "*")
+              (function-declarator
+                (parameter-list "(" ")")
+                (function-qualifier "const")
+                (exception-specification "noexcept")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (return-statement
+            "return"
+            (literal-expression "nullptr")
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+    "}" ";"
+  )
   (declaration
     (leading-trivia
       (whitespace "\n\n")

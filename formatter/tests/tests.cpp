@@ -2984,6 +2984,12 @@ std::vector<FormatCase> FormatCases()
             "headers-preserve",
             "brace-next-line",
         });
+    cases.push_back({
+        data / "requires-clause",
+        "return-boundaries",
+        (std::filesystem::path(PARSER_TESTDATA_DIR) / "requires_return_boundaries.in").string(),
+        "own-line",
+    });
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
     cases.push_back({data / "requires-lambdas", "continuation", "continuation.input.cpp"});
     cases.push_back({data / "requires-lambdas", "continuation-own-line", "continuation.input.cpp"});
