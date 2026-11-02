@@ -29,8 +29,8 @@ void Inspect()
         {.Name = "after_lambda", .Values = {1, 2}});
     Factory::Make(
         {
-        .Name = "protected_argument",
-    }, YT_DEFINE_ERROR_ENUM((Opaque, 1)), [] (Options* value) { if (external::Handle* current = Acquire(value)) {
+            .Name = "protected_argument",
+        }, YT_DEFINE_ERROR_ENUM((Opaque, 1)), [] (Options* value) { if (external::Handle* current = Acquire(value)) {
             value->SetCurrent(current);
         } });
 }

@@ -28,3 +28,26 @@ void SaveBatch()
     Submit(ready ? Bundle<long>{first, second} : Bundle<long>{}, finish());
     Submit(left < middle, right > (value), finish());
 }
+
+template <class... Values>
+Result BuildResult(Processor& processor, Values&&... values)
+{
+    return factory::Build<Result>(
+        factory::Settings{
+            .processor = &processor,
+            .fallback_processor = &fallback_processor,
+            .scheduling_priority = SchedulingPriority::Inherited,
+        },
+        {values...});
+}
+
+Result BuildPlainResult(Processor& processor)
+{
+    return factory::Build(
+        factory::Settings{
+            .processor = &processor,
+            .fallback_processor = &fallback_processor,
+            .scheduling_priority = SchedulingPriority::Inherited,
+        },
+        MakeCallback());
+}
