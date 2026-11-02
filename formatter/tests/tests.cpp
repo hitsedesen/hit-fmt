@@ -2376,6 +2376,11 @@ std::vector<FormatCase> FormatCases()
     }
 
     cases.push_back({data / "control-braces-after-wrap", "reflow", "reflow.input.cpp"});
+    AddCases(
+        cases,
+        data / "keep-multiline",
+        {"disabled", "fill", "vertical", "all-or-vertical", "legacy", "next-line-brace"},
+        "constructs.input.cpp");
     const auto strings = data / "concat-strings";
     AddCases(cases, strings, {"overflow", "preserve"});
     AddCases(

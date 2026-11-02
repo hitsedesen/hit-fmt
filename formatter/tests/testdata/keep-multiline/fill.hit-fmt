@@ -1,0 +1,4 @@
+include = "base.hit-fmt"
+KeepMultiline = true
+StringLiteralFragmentsAsArguments = true
+CallsPacking = Fill

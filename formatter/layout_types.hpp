@@ -130,7 +130,11 @@ struct GroupSpec
     GroupMode Mode = GroupMode::Consistent;
     std::int32_t Indent = 0;
     // Require an editable owned break, not merely a multiline child.
-    bool ForceBreak = false;
+    bool ForceBreak : 1 = false;
+    // Retain an authored multiline shape without changing its flat fit cost.
+    bool KeepMultiline : 1 = false;
+    // A compact/pinned owner had no legal break until one was promoted.
+    bool KeepMultilineFallback : 1 = false;
     // Prospective visual continuation, realized only by this group's line gaps.
     // Contributors require nonnegative Indent and cannot be structural
     // consumers.

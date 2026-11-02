@@ -217,6 +217,7 @@ struct CompiledPolicies
     const IndentationControls Indentation;
     const ListPolicy Calls;
     const bool StringLiteralFragmentsAsArguments;
+    const bool KeepMultiline;
     // Resolved from Calls.FirstItem unless explicitly overridden. Applies to
     // exactly one parsed argument unless fragment-as-arguments layout applies.
     const FirstItemPlacement CallsSoleArgumentFirstItem;

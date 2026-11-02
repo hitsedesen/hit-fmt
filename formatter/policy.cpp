@@ -405,6 +405,7 @@ CompiledPolicies CompilePolicies(const Style& style)
                 ResolveOffset(style.LinkageIndentWidth, style.IndentWidth))}},
         .Calls = Calls,
         .StringLiteralFragmentsAsArguments = style.StringLiteralFragmentsAsArguments,
+        .KeepMultiline = style.KeepMultiline,
         .CallsSoleArgumentFirstItem =
             style.CallsSoleArgumentFirstItem.value_or(Calls.FirstItem),
         .Parameters = Parameters,
