@@ -7246,7 +7246,13 @@ private:
                 } else {
                     i = *after - 1;
                 }
-            } else if (kind == TK::Operator_Less && Kind(PreviousSignificant(i)) == TK::Identifier) {
+            } else if (kind == TK::Operator_Less) {
+                const auto previous = Kind(PreviousSignificant(i));
+
+                if (previous != TK::Identifier && !IsNamedCast(previous)) {
+                    continue;
+                }
+
                 const auto after = ArgumentTemplateEnd(i, end, work);
 
                 if (after) {

@@ -23,4 +23,19 @@ void Convert()
         ));
     consume(static_cast<int>(value));
     consume((int)value);
+    consume(static_cast<Id<bool, T>>(value));
+    consume(first, static_cast<Id<bool, T>>(value), last);
+    consume(const_cast<Id<bool, T>*>(pointer));
+    consume(reinterpret_cast<Id<bool, T>*>(pointer));
+    consume(dynamic_cast<Id<bool, T>*>(pointer));
+    consume(static_cast<Outer<Id<bool, T>>>(value));
+    consume(static_cast /* type */<Id<bool, T>>(value));
+    consume(static_cast<Id<bool, T>>(value) > limit, last);
+    consume(left < right, middle >> shift);
+    consume(left < middle, right > (value));
+}
+
+auto ConvertValue()
+{
+    return static_cast<Id<bool, T>>(value);
 }
