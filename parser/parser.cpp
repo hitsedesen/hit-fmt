@@ -7363,12 +7363,13 @@ private:
             auto kind = CurrentKind();
 
             // A standalone object-like macro does not own the following
-            // namespace, type declaration, or hinted declaration macro.
+            // namespace, type declaration, linkage block, or hinted declaration macro.
             // Same-line prefixes still have unknown header grammar.
             if (Cursor_ != start &&
                 (kind == TK::Keyword_namespace || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
                     kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_template ||
                     (kind == TK::Keyword_inline && SignificantKind(Cursor_ + 1) == TK::Keyword_namespace) ||
+                    (kind == TK::Keyword_extern && LooksLikeLinkageSpecification(Cursor_)) ||
                     IsHintedDeclarationMacro(Cursor_)) && Kind(start) == TK::Identifier &&
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
                 SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_))

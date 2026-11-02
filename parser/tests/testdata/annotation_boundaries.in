@@ -28,3 +28,16 @@ Vec NOTE(0) load(int n) noexcept(true) try { return n; } /* first */ catch(int T
 RAW(int n) & noexcept try { return n; } catch(...) { return 0; }
 int genuine(int n) try { return n; } catch(int code) { return code; } catch(...) { return 0; }
 int tail;
+#define WRAPPER_BEGIN
+#define WRAPPER_END
+WRAPPER_BEGIN
+extern "C" {
+#if defined(ENABLE_ATTRIBUTE)
+__attribute__((visibility("default")))
+#endif
+int entry(int value);
+}
+WRAPPER_END;
+#define OPTIONAL_ANNOTATION
+OPTIONAL_ANNOTATION
+extern int counter;
