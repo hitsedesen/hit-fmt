@@ -1156,7 +1156,8 @@ public:
                 break;
             case NK::ReturnStatement:
             case NK::ThrowStatement:
-                if (Child(node) && Child(node)->Kind == NK::ParenthesizedExpression &&
+                if (Child(node) &&
+                    (Child(node)->Kind == NK::ParenthesizedExpression || Child(node)->Kind == NK::FoldExpression) &&
                     Child(node)->Tokens.Begin == begin + 1)
                 {
                     Mark(
