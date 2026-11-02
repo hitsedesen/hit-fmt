@@ -364,6 +364,13 @@ std::vector<FormatCase> FormatCases()
         cases,
         data / "syntax-boundaries",
         {"space", "no-space", "preserve", "generated-space", "generated-no-space"});
+    AddCases(
+        cases,
+        data / "syntax-boundaries",
+        {"wrapper-space", "wrapper-no-space", "wrapper-preserve", "wrapper-space-canonical"},
+        "wrapper.input.cpp");
+    ShareExpected(cases, data / "syntax-boundaries", "wrapper-preserve.output.cpp", "wrapper.input.cpp");
+    ShareExpected(cases, data / "syntax-boundaries", "wrapper-space-canonical.output.cpp", "wrapper-space.output.cpp");
     ShareExpected(cases, data / "interword-spacing", "preserve.output.cpp", "input.cpp");
     AddCases(
         cases,

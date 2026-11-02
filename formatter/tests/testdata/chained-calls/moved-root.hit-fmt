@@ -1,6 +1,7 @@
 IndentWidth = 4
 IndentationKind = Spaces
 BodiesLayout = Canonical
+IndentNamespaces = Indent
 ChainedCallRootNames = ["MAKE_TASK"]
 ChainsLayout = Canonical
 ChainsBreak = Always

@@ -34,3 +34,16 @@ enum [[deprecated]] [[vendor::tag(Token{3})]] Flag { Set };
 enum [[deprecated]] : unsigned { Anonymous };
 enum class [[nodiscard]] Forward : unsigned;
 enum __attribute__((deprecated)) Extension { Extended };
+#define WRAPPER_BEGIN
+#define WRAPPER_END
+WRAPPER_BEGIN
+extern "C" {
+#if defined(ENABLE_ATTRIBUTE)
+__attribute__((visibility("default")))
+#endif
+int entry(int value);
+}
+WRAPPER_END;
+#define OPTIONAL_ANNOTATION
+OPTIONAL_ANNOTATION
+extern int counter;

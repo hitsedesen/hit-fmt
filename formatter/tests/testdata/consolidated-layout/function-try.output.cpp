@@ -25,3 +25,21 @@ void bridge(int value) try {
 }
 }
 }
+
+void static_calls() {
+  try {
+    Channel<>::Send();
+    ::scope::Channel< /* defaults */ >::Send(1);
+    Channel<int>::Send();
+    Dispatch<>(1);
+    object.Send<>(1);
+  } catch (...) {
+    Channel<>::Report();
+  }
+}
+
+void default_call() try {
+  Channel<>::Send();
+} catch (...) {
+  Report();
+}

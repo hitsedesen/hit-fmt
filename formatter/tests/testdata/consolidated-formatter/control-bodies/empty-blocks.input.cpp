@@ -22,3 +22,15 @@ void retry() {
     while (ready()) work();
     PendingItem afterWork;
 }
+
+void template_conditions() {
+    while (TryProcessRequests(std::numeric_limits<int>::max(), true))
+        ;
+    if (Ready(limits<unsigned long>::max(), enabled));
+    for (; Ready(factory<const Item*>::make(), true); );
+    do; while (Ready(limits<int>::max(), true));
+    while (Ready(limits<int>::max(), true)) Work();
+    while (Ready(left < right > ::value(), true))
+        ;
+    while (Ready(limits<int>::max(), true)) /* keep */ ;
+}

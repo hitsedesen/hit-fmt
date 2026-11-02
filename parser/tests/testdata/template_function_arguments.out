@@ -1076,4 +1076,133 @@
       "}"
     )
   )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "default_arguments")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (member-expression
+            (template-id-expression
+              (identifier-expression "Channel")
+              (template-argument-list "<" ">")
+            )
+            "::"
+            (identifier-expression "Send")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (member-expression
+              (identifier-expression "::" "scope")
+              "::"
+              (template-id-expression
+                (identifier-expression "Channel")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    "/* defaults */"
+                    (dangling-trivia
+                      (comment "/* defaults */")
+                    )
+                  )
+                  ">"
+                )
+              )
+            )
+            "::"
+            (identifier-expression "Send")
+          )
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (template-id-expression
+              (identifier-expression "Channel")
+              (template-argument-list
+                "<"
+                (template-argument "int")
+                ">"
+              )
+            )
+            "::"
+            (identifier-expression "Send")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (template-id-expression
+            (identifier-expression "Dispatch")
+            (template-argument-list "<" ">")
+          )
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (identifier-expression "object")
+            "."
+            (template-id-expression
+              (identifier-expression "Send")
+              (template-argument-list "<" ">")
+            )
+          )
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (unparsed-syntax "left" "<" "right" ">")
+            "::"
+            (identifier-expression "Send")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

@@ -329,7 +329,110 @@
       "}"
     )
   )
-  (declaration
-    (declaration-specifiers "CloseScope")
+  (unparsed-syntax "CloseScope")
+  (macro-function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-function-header "DEFINE_METHOD" "(" "Suite" ")")
+    (compound-statement
+      "{"
+      (using-declaration
+        "using" "Local" "="
+        (type-id "int")
+        ";"
+      )
+      (macro-function-definition
+        (macro-function-header
+          "DEFINE_CASE" "/* nested header */" "(" "Shared" "," "Nested" "(" "1" "," "(" "2" "+" "3" ")" ")" ")"
+          (dangling-trivia
+            (comment "/* nested header */")
+          )
+        )
+        (compound-statement
+          "{"
+          (declaration-statement
+            (declaration-specifiers "Local")
+            (init-declarator-list
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "pointer")
+                )
+              )
+            )
+            ";"
+          )
+          (expression-statement
+            (call-expression
+              (identifier-expression "Write")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "pointer")
+                )
+                ")"
+              )
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+      (macro-function-definition
+        (macro-function-header "DEFINE_METHOD" "(" "NestedSuite" ")")
+        (compound-statement
+          "{"
+          (macro-function-definition
+            (macro-function-header "DEFINE_CASE" "(" "Second" ")")
+            (compound-statement
+              "{"
+              (return-statement "return" ";")
+              "}"
+            )
+          )
+          "}"
+        )
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "DEFINE_CASE")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "DeclarationOnly")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "result")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "DEFINE_CASE")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (unparsed-syntax "UNLISTED_CASE" "(" "Opaque" ")" "{" "untouched" "=" "left" "+" "right" ";" "}")
+      "}"
+    )
   )
 )

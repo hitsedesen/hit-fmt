@@ -7268,7 +7268,11 @@ private:
                     const bool parenthesizedSuffix = following < end &&
                         Kind(following) == TK::Operator_OpenParenthesis && ArgumentPairEnd(following, end).has_value();
 
-                    if (ArgumentTemplateUse(following, end) || parenthesizedSuffix) {
+                    // Definite type arguments prove template use even before a
+                    // qualified member; its trailing comma still separates arguments.
+                    if (ArgumentTemplateUse(following, end) || parenthesizedSuffix ||
+                        HasTypeTemplateArgument(i, following))
+                    {
                         // A nonempty suffix can still be a comparison operand,
                         // so expression parsing retains the ambiguous angles.
                         // Either interpretation ends before the comma after
@@ -7377,12 +7381,13 @@ private:
             auto kind = CurrentKind();
 
             // A standalone object-like macro does not own the following
-            // namespace, type declaration, or hinted declaration macro.
+            // namespace, type declaration, linkage block, or hinted declaration macro.
             // Same-line prefixes still have unknown header grammar.
             if (Cursor_ != start &&
                 (kind == TK::Keyword_namespace || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
                     kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_template ||
                     (kind == TK::Keyword_inline && SignificantKind(Cursor_ + 1) == TK::Keyword_namespace) ||
+                    (kind == TK::Keyword_extern && LooksLikeLinkageSpecification(Cursor_)) ||
                     IsHintedDeclarationMacro(Cursor_)) && Kind(start) == TK::Identifier &&
                 Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
                 SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_))
@@ -8012,6 +8017,11 @@ private:
     Node* ParseStatement()
     {
         if (auto* macro = TryParseEnumMacro()) {
+            return macro;
+        }
+
+        // Registered body macros can nest inside another macro's compound body.
+        if (auto* macro = TryParseFunctionBodyMacro()) {
             return macro;
         }
 
@@ -9697,6 +9707,11 @@ private:
         TokenIndex name,
         TokenIndex opening) const
     {
+        // Empty template arguments cannot form a comparison expression.
+        if (Kind(NextSignificant(opening + 1)) == TK::Operator_Greater) {
+            return true;
+        }
+
         // Local type bindings rule out the competing comparison expression.
         // Included or dependent names alone still do not prove template use.
         const bool unqualifiedTypeName = NextSignificant(name + 1) == opening && IsKnownType(name);

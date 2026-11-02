@@ -2,6 +2,7 @@ Layout = Canonical
 ColumnLimit = 10000
 IndentWidth = 4
 IndentationKind = Spaces
+IndentNamespaces = Indent
 ContinuationOffset = 4
 ChainsBreak = Always
 ChainsPacking = VerticalWhenBroken
