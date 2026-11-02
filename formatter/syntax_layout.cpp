@@ -1533,6 +1533,9 @@ private:
             // arguments. Overflow uses list boundaries before nested breaks.
             Groups_[messageHeader].IndentGroup = group;
             GroupSpecs_[messageHeader].ChildBreaks = false;
+            // Literal fragments share the header's shape, independently of
+            // the following format arguments and their forced line breaks.
+            Syntax_[pinned.Argument].ListGroup = messageHeader;
         }
 
         GroupSpecs_[group].StructuralBase = true;
@@ -2321,7 +2324,9 @@ private:
         const bool argument = parent != None && Region(Syntax_[parent]).Kind == NodeKind::Argument;
         const bool initializer = parent != None && Region(Syntax_[parent]).Kind == NodeKind::Initializer;
         const auto enclosing = argument && Region(Syntax_[parent]).Parent != None
-            ? Syntax_[Region(Syntax_[parent]).Parent].ListGroup
+            ? Syntax_[parent].ListGroup != None
+                ? Syntax_[parent].ListGroup
+                : Syntax_[Region(Syntax_[parent]).Parent].ListGroup
             : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
 
         if (enclosing != None && (canonical || argument) && !Policies_.KeepMultiline) {
