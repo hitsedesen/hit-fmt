@@ -1,0 +1,6 @@
+Layout = Canonical
+ContinuationOffset = 4
+ChainsAlignment = Block
+IndentNamespaces = Indent
+NamespaceIndentWidth = 4
+IndentationKind = Spaces

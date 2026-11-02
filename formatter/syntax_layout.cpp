@@ -4494,9 +4494,9 @@ private:
         }
     }
 
-    // Unselected or opaque chains keep their breaks and relative indentation, but
-    // their source-owned continuation lines still follow the realized root.
-    void PlanPreservedChain(Index id)
+    // Unselected or opaque chains keep their breaks, but their source-owned
+    // continuation lines still follow the realized root.
+    void PlanPreservedChain(Index id, bool canonicalIndent = false)
     {
         if (Policies_.IndentationKind == IndentationKind::Preserve) {
             return;
@@ -4504,6 +4504,9 @@ private:
 
         const auto& entry = Syntax_[id];
         const auto begin = Region(entry).Tokens.Begin;
+        const auto minimum = canonicalIndent && Policies_.Chains.Indent.Alignment == ContinuationAlignment::Block
+            ? int64_t(Policies_.Chains.Indent.ContinuationOffset)
+            : INT64_MIN;
         Index base = None;
         Index group = None;
 
@@ -4522,7 +4525,9 @@ private:
                     base = SourceLineIndent(begin);
                 }
 
-                const auto delta = int64_t(indent) - int64_t(base);
+                // Canonical block continuations need a level even when an
+                // enclosing call moves an own-line receiver back inline.
+                const auto delta = std::max(int64_t(indent) - int64_t(base), minimum);
 
                 if (delta >= INT32_MIN && delta <= INT32_MAX) {
                     if (group == None) {
@@ -4608,7 +4613,7 @@ private:
             return; // Only the maximal callee/member spine owns link gaps.
         }
 
-        if (!entry.ChainSafe || Policies_.Chains.Layout != LayoutMode::Canonical) {
+        if (Policies_.Chains.Layout != LayoutMode::Canonical) {
             PlanPreservedChain(id);
             return;
         }
@@ -4635,6 +4640,11 @@ private:
                 PlanPreservedChain(id);
                 return;
             }
+        }
+
+        if (!entry.ChainSafe) {
+            PlanPreservedChain(id, true);
+            return;
         }
 
         Index links = 0;

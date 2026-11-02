@@ -1427,6 +1427,27 @@ std::vector<FormatCase> FormatCases()
 
     cases.push_back({chains, "comparison-fitting", "comparison-fitting.input.cpp", "child-fitting"});
     cases.push_back({chains, "structural-base", "structural-base.input.cpp"});
+    cases.push_back({chains, "namespace-continuation", "namespace-continuation.input.cpp"});
+
+    for (const auto* profile :
+        {"namespace-continuation-widths", "namespace-continuation-preserve", "namespace-continuation-selected"})
+    {
+        cases.push_back({chains, profile, "namespace-continuation.input.cpp"});
+        auto style = formatter::LoadConfigFile(chains / "namespace-continuation.hit-fmt").FormattingStyle;
+
+        if (std::string_view(profile) == "namespace-continuation-widths") {
+            style.NamespaceIndentWidth = 2;
+            style.ContinuationOffset = 6;
+        } else if (std::string_view(profile) == "namespace-continuation-preserve") {
+            style.ChainsLayout = CategoryLayout::Preserve;
+        } else {
+            style.ChainedCallRootNames = {"Other"};
+            cases.back().Expected = "namespace-continuation-preserve.output.cpp";
+        }
+
+        cases.back().Style = std::move(style);
+    }
+
     cases.push_back({chains, "closed-calls", "closed-calls.input.cpp"});
 
     for (const auto* profile : {"template-roots-selected", "template-roots-forced", "template-roots-preserve"}) {
