@@ -14,3 +14,13 @@ void f() {
             .Open<Type>(alpha, beta)
             .Finish(gamma, delta));
 }
+
+namespace Outer {
+namespace Inner {
+void nested() {
+    outer(
+        builder().Configure<Entry>(argument)
+            .Finish());
+}
+}
+}

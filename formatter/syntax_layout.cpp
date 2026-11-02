@@ -467,7 +467,8 @@ public:
                 PlanPreservedIndentation(i, node.Tokens.Begin);
             }
 
-            if (!entry.Safe && !(IsSpine(node.Kind) ? entry.ChainSafe : CanPlanAroundOpaqueChildren(i))) {
+            // Chain planning rebases opaque spines through its preservation fallback.
+            if (!entry.Safe && !IsSpine(node.Kind) && !CanPlanAroundOpaqueChildren(i)) {
                 if (ListFor(node.Kind)) {
                     PreserveUnplannedListContext(i);
                 }
@@ -4477,7 +4478,7 @@ private:
         }
     }
 
-    // Unselected chains keep their breaks and relative indentation, but
+    // Unselected or opaque chains keep their breaks and relative indentation, but
     // their source-owned continuation lines still follow the realized root.
     void PlanPreservedChain(Index id)
     {
@@ -4487,7 +4488,7 @@ private:
 
         const auto& entry = Syntax_[id];
         const auto begin = Region(entry).Tokens.Begin;
-        const auto base = SourceLineIndent(begin);
+        Index base = None;
         Index group = None;
 
         for (Index spine = id; spine != entry.Root;) {
@@ -4501,6 +4502,10 @@ private:
             const auto indent = SourceIndent(gap);
 
             if (IsChainLink(spine) && GapMutable(gap) && indent != None && Gaps_[gap].Owner == None) {
+                if (base == None) {
+                    base = SourceLineIndent(begin);
+                }
+
                 const auto delta = int64_t(indent) - int64_t(base);
 
                 if (delta >= INT32_MIN && delta <= INT32_MAX) {
@@ -4587,7 +4592,7 @@ private:
             return; // Only the maximal callee/member spine owns link gaps.
         }
 
-        if (Policies_.Chains.Layout != LayoutMode::Canonical) {
+        if (!entry.ChainSafe || Policies_.Chains.Layout != LayoutMode::Canonical) {
             PlanPreservedChain(id);
             return;
         }
