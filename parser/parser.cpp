@@ -3966,6 +3966,45 @@ private:
             kind == TK::Keyword_friend || kind == TK::Keyword_virtual;
     }
 
+    [[nodiscard]] bool IsIndependentDeclarationStart(TokenIndex index) const
+    {
+        const auto first = index;
+        auto kind = Kind(index);
+
+        // A type-constraint can precede a placeholder type.
+        if (kind == TK::Keyword_auto ||
+            (kind == TK::Keyword_decltype && SignificantKind(index + 1) == TK::Operator_OpenParenthesis &&
+                SignificantKind(NextSignificant(index + 1) + 1) == TK::Keyword_auto))
+        {
+            return false;
+        }
+
+        if (kind == TK::Keyword_extern) {
+            return LooksLikeLinkageSpecification(index);
+        }
+
+        // Storage, function and cv specifiers can follow a named type.
+        // A subsequent type keyword proves an independent declaration.
+        while (IsDeclarationSpecifier(kind) || kind == TK::Keyword_typedef) {
+            if (IsFundamentalTypeKeyword(kind) || kind == TK::Keyword_typename || kind == TK::Keyword_class ||
+                kind == TK::Keyword_struct || kind == TK::Keyword_union || kind == TK::Keyword_enum)
+            {
+                return true;
+            }
+
+            index = NextSignificant(index + 1);
+            kind = Kind(index);
+        }
+
+        if (index != first) {
+            return Kind(first) == TK::Keyword_inline && kind == TK::Keyword_namespace;
+        }
+
+        return kind == TK::Keyword_namespace || kind == TK::Keyword_template || kind == TK::Keyword_using ||
+            kind == TK::Keyword_static_assert || kind == TK::Keyword_concept || kind == TK::Keyword_export ||
+            IsHintedDeclarationMacro(index);
+    }
+
     [[nodiscard]] size_t SkipTemplateArguments(
         size_t index,
         size_t end,
@@ -7477,18 +7516,10 @@ private:
                     IsFundamentalTypeKeyword(Kind(specifier)) || IsHintedDeclarationMacro(specifier);
             }
 
-            const auto declarationKind = declarationStart == Cursor_ ? kind : Kind(declarationStart);
-
-            if (Cursor_ != start &&
-                (declarationKind == TK::Keyword_namespace || declarationKind == TK::Keyword_class ||
-                    declarationKind == TK::Keyword_struct || declarationKind == TK::Keyword_union ||
-                    declarationKind == TK::Keyword_enum || declarationKind == TK::Keyword_template ||
-                    (declarationKind == TK::Keyword_inline &&
-                        SignificantKind(declarationStart + 1) == TK::Keyword_namespace) ||
-                    (declarationKind == TK::Keyword_extern && LooksLikeLinkageSpecification(declarationStart)) ||
-                    IsHintedDeclarationMacro(declarationStart) || independentDeclaration) &&
-                Kind(start) == TK::Identifier && Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
-                SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_))
+            if (Cursor_ != start && kind != TK::Comment && Kind(start) == TK::Identifier &&
+                Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
+                SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_) &&
+                (independentDeclaration || IsIndependentDeclarationStart(declarationStart)))
             {
                 auto* node = MakeNode(NodeKind::UnparsedSyntax, start);
                 node->Tokens.End = Cursor_;

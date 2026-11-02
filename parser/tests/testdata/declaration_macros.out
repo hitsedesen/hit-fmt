@@ -462,8 +462,189 @@
   )
   (unparsed-syntax "CloseScope" "OpenScope")
   (record-declaration "class" "Forward" ";")
+  (unparsed-syntax "CloseScope")
+  (namespace-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "namespace" "Aliases" "{"
+    (unparsed-syntax "PROJECT_NAMESPACE_BEGIN")
+    (using-declaration
+      "using" "Value" "="
+      (type-id "int")
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "PROJECT_NAMESPACE_END")
+    )
+    "}"
+  )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "OpenScope"
+  )
+  (using-declaration "using" "namespace" "Detail" ";")
+  (unparsed-syntax "CloseScope")
+  (namespace-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "namespace" "Functions" "{"
+    (unparsed-syntax "ScopeBegin")
+    (function-declaration
+      (declaration-specifiers "void")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "ScopeEnd")
+    )
+    "}"
+  )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "OpenScope"
+  )
+  (function-definition
+    (declaration-specifiers "inline" "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "RunInline")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Call")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "1")
+            )
+            (list-separator ",")
+            (argument
+              (literal-expression "2")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax "CloseScope" "ScopeBegin")
   (declaration
-    (declaration-specifiers "CloseScope")
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "count")
+        )
+        (initializer
+          "="
+          (literal-expression "1")
+        )
+      )
+    )
+    ";"
+  )
+  (unparsed-syntax "ScopeEnd" "OpenScope")
+  (declaration
+    (declaration-specifiers "constexpr" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "limit")
+        )
+        (initializer
+          "="
+          (literal-expression "2")
+        )
+      )
+    )
+    ";"
+  )
+  (unparsed-syntax "CloseScope" "ScopeBegin")
+  (declaration
+    (declaration-specifiers "const" "volatile" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "flags")
+        )
+        (initializer
+          "="
+          (literal-expression "3")
+        )
+      )
+    )
+    ";"
+  )
+  (unparsed-syntax "ScopeEnd" "ScopeBegin")
+  (typedef-declaration
+    "typedef"
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
+        )
+      )
+    )
+    ";"
+  )
+  (unparsed-syntax "ScopeEnd" "OpenScope")
+  (static-assert-declaration
+    "static_assert"
+    (parenthesized-expression
+      "("
+      (literal-expression "true")
+      ")"
+    )
+    ";"
+  )
+  (unparsed-syntax
+    "CloseScope" "ScopeBegin" "// declaration boundary"
+    (dangling-trivia
+      (comment "// declaration boundary")
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Commented")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "ScopeEnd")
     (init-declarator-list
       (init-declarator
         (declarator
@@ -472,6 +653,119 @@
         )
         (initializer
           (unparsed-syntax "{" "int" "member" "=" "3" ";" "}")
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "EXPORT" "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "SameLineFunction")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "EXPORT" "inline" "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "SameLineInline")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (template-declaration
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (concept-declaration
+      "concept"
+      (concept-name "Any")
+      "="
+      (constraint-expression
+        (literal-expression "true")
+      )
+      ";"
+    )
+  )
+  (function-declaration
+    (declaration-specifiers "Any" "auto")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Constrained")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "Any" "decltype" "(" "auto" ")")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "ConstrainedReference")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "Aliases" "::" "Value")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "inline"
+          (declarator-name "NamedReturn")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "Aliases" "::" "Value")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "typedef"
+          (declarator-name "NamedAlias")
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "Aliases" "::" "Value")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          "const"
+          (pointer-operator "*")
+          (declarator-name "pointerToConst")
         )
       )
     )
