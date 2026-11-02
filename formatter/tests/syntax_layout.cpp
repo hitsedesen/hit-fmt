@@ -744,6 +744,54 @@ TEST(SyntaxLayout, FluentCalleeSpineIncludesRepeatedInvocation)
         Lower("void f(){ factory()(alpha)(beta); }\n", ordinary).Text);
 }
 
+TEST(SyntaxLayout, FittingAnnotatedChainsRetainOwnershipDiagnostics)
+{
+    const test::Input source("void f(){stream.Item(1).Value(2);}\n");
+    auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
+    auto style = Canonical(80);
+    style.IndentationKind = formatter::IndentationKind::Spaces;
+    style.BodiesLayout = formatter::CategoryLayout::Canonical;
+    style.BodyShape = formatter::BodyShape::Expanded;
+    style.FunctionBodyShape = formatter::BodyShape::Expanded;
+    style.ExpressionsLayout = style.CallsLayout = style.ChainsLayout = formatter::CategoryLayout::Canonical;
+    style.ExpressionsBreak = formatter::BreakRequirement::IfNeeded;
+    style.CallsBreak = formatter::BreakRequirement::IfNeeded;
+    style.ChainsBreak = formatter::BreakRequirement::IfNeeded;
+    style.AssignmentRhsPlacement = formatter::FirstItemPlacement::InlineIfFits;
+    style.MemberAccessOperatorsSpacing = style.FunctionCallSpaceBeforeParameters = style.SpaceInsideCallArguments =
+        style.StatementSemicolonSpacing = formatter::GapPolicy::NoSpace;
+    style.ChainedCallRootNames = {"stream"};
+    style.ChainsPacking = formatter::ListPacking::AllOrVertical;
+
+    for (const bool sticky : {false, true}) {
+        SCOPED_TRACE(sticky);
+        style.StickyChainCallPairs = sticky ? std::vector<std::string>{"Item:Value"} : std::vector<std::string>{};
+        const auto policies = formatter::CompilePolicies(style);
+        const auto annotations = formatter::CompileLibraryAnnotations(style);
+        std::pmr::monotonic_buffer_resource file;
+        std::pmr::monotonic_buffer_resource scratch;
+        const auto safety = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
+        const auto spacing = formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
+        formatter::detail::LayoutPlan plan(tree, file);
+        ASSERT_TRUE(formatter::BuildSyntaxLayout(tree, policies, annotations, safety, spacing, plan, scratch));
+
+        for (const bool sourceMap : {false, true}) {
+            auto policy = formatter::SyntaxRenderPolicy(policies);
+            policy.SourceMap = sourceMap;
+            const auto result = plan.Render(policy, file);
+
+            if (sticky) {
+                EXPECT_EQ(result.State.Code, formatter::layout::Error::InvalidPolicy);
+                // The second member gap belongs to the sticky pair but is
+                // nested in the coupled tail. Width does not waive validation.
+                EXPECT_EQ(result.State.Position, 22u);
+            } else {
+                EXPECT_TRUE(result.State);
+            }
+        }
+    }
+}
+
 TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
 {
     // Block-aligned chain indentation is independent of the RHS width;

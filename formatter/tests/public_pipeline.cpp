@@ -970,10 +970,15 @@ TEST(PublicPipeline, InvalidPreparedRequestsAndActualEmittedWidthDiagnostics)
     style.ColumnLimit = 8;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const formatter::PreparedFormat prepared(style);
-    const auto result = FormatInput("// hit-fmt off\nint unavoidable_long_name;\n// hit-fmt on\n", prepared);
+    Input input("// hit-fmt off\nint unavoidable_long_name;\n// hit-fmt on\n");
+    const auto result = formatter::Format(input.View(), prepared);
     ASSERT_FALSE(result.Diagnostics.empty());
     EXPECT_EQ(result.Diagnostics[1].Position.Line, 2u);
     EXPECT_EQ(result.Diagnostics[1].Kind, formatter::LayoutDiagnosticKind::LineWidth);
+    EXPECT_EQ(formatter::Format(input.View(), style), result.Text);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { }, prepared.ParsingOptions());
+    EXPECT_EQ(formatter::Format(tree, style), result.Text);
+    EXPECT_EQ(formatter::Format(tree, prepared).Diagnostics.size(), result.Diagnostics.size());
     const std::array<parser::SourceRange, 1> bad{{{1, 1000}}};
     EXPECT_THROW(FormatInput("int x;", prepared, {.ImmutableRanges = bad}), std::invalid_argument);
 }
@@ -2201,6 +2206,264 @@ TEST(PublicPipeline, RulerPlacementHonorsScopeAndProtection)
         EXPECT_EQ(
             std::string_view(scoped.Text).substr(mapping.Output.Begin, mapping.Output.End - mapping.Output.Begin),
             tree.TokenText(token));
+    }
+}
+
+TEST(PublicPipeline, TextOnlyNamespaceProofMatchesValidatedResolver)
+{
+    const std::array inputs{
+        "namespace outer {int value;} // namespace outer\n",
+        "namespace outer {int value;}   // namespace outer\n",
+        "namespace outer {int value;}\t// namespace outer\n",
+        "namespace outer {int value;} // namespace wrong\n",
+        "namespace outer::inner {int value;} // namespace outer::inner\n",
+        "namespace {int value;} // namespace\n",
+        "namespace outer {int value;};;; // namespace outer\n",
+        "namespace outer {int value;} // namespace outer\r\n",
+        "namespace outer {int value;}\n// namespace outer\n",
+        "namespace outer { namespace inner {int value;} }\n",
+        "namespace outer::inner {int value;}\n",
+        "namespace {int value;}\n",
+        "namespace outer {\n#include <local/zeta.h>\n#include \"local/alpha.h\"\nint value;\n}\n",
+        "namespace outer {void f(){if(ready) consume(); else wait();}}\n",
+        "namespace outer {int values[] = {1, 2,};}\n",
+        "namespace outer {int value;};;; // old closing prose\n",
+        "namespace outer {\n/* body\n * stable content\n */\nint value;\n}\n",
+        "namespace first {int value;}\n /* neighbor\n * content\n */\nnamespace second {int value;}\n",
+        "// hit-fmt off\nnamespace locked {int   value;}\n// hit-fmt on\nnamespace open {int value;}\n",
+        "namespace outer {\r\nint value;\r\n}\r\n",
+        "namespace outer {int value;}\r",
+        "#if CHOICE\nnamespace outer {\n#else\nnamespace outer {\n#endif\nint value;\n}\n",
+    };
+
+    for (const auto policy :
+        {
+            formatter::NamespaceComments::AddMissing,
+            formatter::NamespaceComments::Fix,
+            formatter::NamespaceComments::Remove,
+        })
+    {
+        for (const bool normalize : {false, true}) {
+            auto style = Canonical();
+            style.IndentationKind = formatter::IndentationKind::Spaces;
+            style.IndentNamespaces = formatter::BodyIndentation::Indent;
+            style.NamespaceComments = policy;
+            style.NamespaceCommentSpaces = normalize ? 3 : 1;
+            style.ShortNamespaceLines = 0;
+            style.InitializersLayout = formatter::CategoryLayout::Canonical;
+            style.InitializersTrailingComma = formatter::TrailingCommaPolicy::Never;
+
+            if (normalize) {
+                style.AddMissingControlBraces = true;
+                style.RemoveNullDeclarations = true;
+                style.IncludeOrder = formatter::IncludeOrder::Sort;
+                style.IncludeDelimiters = formatter::IncludeDelimiters::QuotedLocal;
+                style.RulerPlacement = formatter::RulerPlacement::NamespaceBoundaries;
+                style.RulerLength = 12;
+            }
+
+            const formatter::PreparedFormat prepared(style);
+
+            for (const auto source : inputs) {
+                SCOPED_TRACE(source);
+                const Input input(source);
+                const auto validated = formatter::Format(input.View(), prepared).Text;
+                EXPECT_EQ(formatter::Format(input.View(), style), validated);
+                const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { }, prepared.ParsingOptions());
+                EXPECT_EQ(formatter::Format(tree, style), validated);
+            }
+        }
+    }
+}
+
+TEST(PublicPipeline, ConsumedNormalizationPreservesProtectionAndNamespaceValidation)
+{
+    auto style = Canonical();
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    style.RulerPlacement = formatter::RulerPlacement::NamespaceBoundaries;
+    style.RulerLength = 16;
+    style.NamespaceComments = formatter::NamespaceComments::Fix;
+    style.ShortNamespaceLines = 0;
+    style.WhitespaceSensitiveMacros = {"TEXT"};
+    style.HonorClangFormatDirectives = true;
+    const std::array<std::string_view, 6> sources{
+        "#include <z.h>\n#include <a.h>\nnamespace n {int first; int second;}\n",
+        "namespace n {\n#include <z.h>\n#include <a.h>\nint value;\n} // wrong\n",
+        "#include <z.h>\r\n#include <a.h>\nnamespace n {int café;\r\n/* note\r\n * body\r\n */ int value;}\r\n",
+        "#include <z.h>\n#include <a.h>\nnamespace n {\nTEXT(alpha   + beta);\nint value;\n}\n",
+        "#include <z.h>\n#include <a.h>\n// hit-fmt off\nint    fixed;\n// hit-fmt on\nnamespace n {int value;}\n",
+        "#define VALUE a \\\n b\nnamespace n {\n#if FLAG\nint value;\n#endif\n}\n",
+    };
+
+    for (const auto source : sources) {
+        SCOPED_TRACE(source);
+
+        for (const auto ending :
+            {formatter::LineEnding::Preserve, formatter::LineEnding::LF, formatter::LineEnding::CRLF})
+        {
+            style.LineEnding = ending;
+            const formatter::PreparedFormat prepared(style);
+            const Input input(source);
+            const auto expected = formatter::Format(input.View(), prepared).Text;
+            EXPECT_EQ(formatter::Format(input.View(), style), expected);
+            const Input formatted(expected);
+            EXPECT_EQ(formatter::Format(formatted.View(), style), expected);
+        }
+    }
+}
+
+TEST(PublicPipeline, FlatSourceSpansPreserveTextAndFailurePositions)
+{
+    using namespace formatter;
+    const std::array<std::string_view, 31> sources{
+        "int value = compute(first, second);\nvoid run(int first, int second)\n{\n"
+            "    consume(first, second);\n    return choose(first, second);\n}\n",
+        "template<class T>\nT select(T first, T second)\n{\n    T value = first + second;\n"
+            "    return compare<T>(value, first) ? value : second;\n}\n",
+        "struct Item\n{\n    int value = compute(1, 2);\n    void (*handler)(int, int);\n"
+            "    int (*factory())(double);\n    int read(int first, int second) const noexcept;\n};\n",
+        "namespace outer\n{\nint first = compute(1, 2);\nnamespace inner\n{\nint second = compute(3, 4);\n"
+            "}\n} // wrong\n",
+        "namespace outer {\n#include <local/z.h>\n#include <local/a.h>\nint value = compute(1, 2);\n}\n",
+        "void run()\n{\n    consume(first, second);\n    report(\"value %v\", result);\n"
+            "    builder.Item(\"x\").Value(1).Begin().Entry(2).End();\n}\n",
+        "void run()\n{\n    consume(first, second);\n    OPEN_SCOPE();\n        consume(third, fourth);\n"
+            "    CLOSE_SCOPE();\n}\n",
+        "void run()\n{\n    wrap(receiver.OPEN_SCOPE());\n        consume(first, second);\n"
+            "    wrap(receiver.CLOSE_SCOPE());\n}\n",
+        "void run()\n{\n    int OPEN_SCOPE = compute(first, second);\n    consume(third, fourth);\n"
+            "    int CLOSE_SCOPE = compute(third, fourth);\n}\n",
+        "void run()\n{\n    typeid(item);\n        consume(first, second);\n    noexcept(item);\n}\n",
+        "void run()\n{\n    TEXT(first   + second);\n    consume(third, fourth);\n}\n",
+        "void run()\n{\n// clang-format off\n    consume(first,   second);\n// clang-format on\n"
+            "    consume(third, fourth);\n}\n",
+        "void run()\n{\n    consume(first, /* label */ second);\n"
+            "    consume(\"fragment \" \"fragment\", other);\n    consume(third, fourth);\n}\n",
+        "void run()\n{\n    auto values = {first, second,};\n    auto lambda = [first] { return first; };\n"
+            "    consume(third, fourth);\n}\n",
+        "void run()\n{\n    if (ready)\n    {\n        consume(first, second);\n    }\n"
+            "    consume(third, fourth);\n}\n",
+        "OPAQUE_BEGIN()\n    void run(int first, int second)\n    {\nconsume(first, second);\n    }\n",
+        "void run()\n{\n    OPAQUE(first);\n                    BROKEN(item);\n    consume(third, fourth);\n}\n",
+        "void run()\n{\n    consume(first, second);\n"
+            "    builder.Item(\"x\").Value(1).Begin().Entry(2).End();\n    consume(third, fourth);\n}\n",
+        "OPAQUE_BEGIN()\n\t \tvoid run(int first, int second)\n\t{\n\t\tconsume(first, second);\n\t}\n",
+        "/* café */ OPAQUE_BEGIN()\n\tvoid run(int first, int second)\n\t{\n\t consume(first, second);\n\t}\n",
+        "template<class T> requires Valid<T>\nT choose(T first, T second)\n{\n"
+            "    return compare(first, second) ? first : second;\n}\n",
+        "template<class LongTemplateParameter>\nint configure(int first, int second);\n",
+        "int configure(int first, int second)          \r\n{\n    return combine(first, second);\n}\n",
+        "int configure(int first, int second) \r \n{\n    return combine(first, second);\n}\n",
+        "void run()\n{\n    consume(first, second)          ;          \n    consume(third, fourth);\n}\n",
+        "struct Item\n{\n    Wrapper<void(int parameter)> callback;\n    int value = compute(1, 2);\n"
+            "    int function(int first, int second);\n};\n",
+        "namespace outer\n{\n    int before = compute(first, second);\n                    UNKNOWN(item)\n"
+            "    int after = compute(third, fourth);\n}\n",
+        "struct Item\n{\n    int before = compute(first, second);\n                        UNKNOWN(item)\n"
+            "    int after = compute(third, fourth);\n};\n",
+        "void configure(int first, int second)\n{\n    consume(first, second);\n"
+            "                        UNKNOWN(item)\n    consume(third, fourth);\n}\n",
+        "namespace outer\n{\n    struct Item\n    {\n        void configure(int first, int second)\n"
+            "        {\n            consume(first, second);\n\t \t\tUNKNOWN(item)\n"
+            "            consume(third, fourth);\n        }\n    };\n}\n",
+        "namespace outer\n{\n    struct Item\n    {\n        int (*handler)(int, int);\n"
+            "        int array[compute(first, second)];\n        int (*factory())(double);\n"
+            "                        UNKNOWN(item)\n        int value = compute(third, fourth);\n    };\n}\n",
+    };
+    const auto capture = [] (auto&& action) {
+        try {
+            return std::pair{true, action()};
+        } catch (const std::exception& error) {
+            return std::pair{false, std::string(error.what())};
+        }
+    };
+
+    for (const auto width : {0u, 40u, 56u, 120u}) {
+        for (unsigned variant = 0; variant != 10; ++variant) {
+            auto style = Canonical();
+            style.ColumnLimit = width;
+            style.IndentationKind = IndentationKind::Spaces;
+            style.FunctionBracePlacement = BracePlacement::NextLine;
+            style.ConstructorBracePlacement = BracePlacement::NextLine;
+            style.DestructorBracePlacement = BracePlacement::NextLine;
+            style.IndentMembers = BodyIndentation::Indent;
+            style.IndentNamespaces = BodyIndentation::Indent;
+            style.NamespaceComments = NamespaceComments::Fix;
+            style.ShortNamespaceLines = 0;
+            style.BreakAfterTemplateHeader = true;
+            style.DeclarationCategoryBlankLines = {BlankLineMode::Exact, 1};
+            style.MemberGroupMaxEmptyLines = 2;
+            style.WhitespaceSensitiveMacros = {"TEXT"};
+            style.HonorClangFormatDirectives = true;
+
+            if (variant == 1) {
+                style.IncludeOrder = IncludeOrder::Sort;
+                style.IncludeDelimiters = IncludeDelimiters::QuotedLocal;
+                style.RulerPlacement = RulerPlacement::NamespaceBoundaries;
+                style.RulerLength = 16;
+                style.AddMissingControlBraces = true;
+            } else if (variant == 2) {
+                style.ChainsPacking = ListPacking::AllOrVertical;
+                style.IndentedChainScopePairs = {"Begin:End"};
+                style.StickyChainCallPairs = {"Item:Value", "builder:Item"};
+                style.CallLineMessageNames = {"report"};
+            } else if (variant == 3) {
+                style.IndentedCallScopePairs = {"OPEN_SCOPE:CLOSE_SCOPE"};
+                style.GenerateCallScopeIndentation = true;
+                style.NamespaceIndentWidth = 5;
+                style.MemberIndentWidth = 3;
+            } else if (variant == 4) {
+                style.ExpressionsBreak = BreakRequirement::Always;
+                style.CallsBreak = BreakRequirement::Always;
+                style.BodyShape = BodyShape::CompactIfFits;
+                style.FunctionBracePlacement = BracePlacement::Attached;
+            } else if (variant == 5) {
+                style.LineEnding = LineEnding::CRLF;
+                style.CallsAlignment = ContinuationAlignment::Delimiter;
+                style.ExpressionsAlignment = ExpressionAlignment::Operand;
+                style.BlankLineMacroNames = {"consume"};
+            } else if (variant == 6) {
+                style.RequiresClausePosition = RequiresClausePosition::WithFollowing;
+                style.IndentRequiresClause = true;
+            } else if (variant == 7) {
+                style.BreakAfterTemplateHeader = false;
+            } else if (variant == 8) {
+                style.TrailingWhitespace = TrailingWhitespace::Preserve;
+                style.StatementSemicolonSpacing = GapPolicy::Preserve;
+            } else if (variant == 9) {
+                style.IndentedCallScopePairs = {"typeid:noexcept"};
+                style.GenerateCallScopeIndentation = true;
+            }
+
+            const PreparedFormat prepared(style);
+
+            for (const auto source : sources) {
+                SCOPED_TRACE(source);
+                SCOPED_TRACE(width);
+                SCOPED_TRACE(variant);
+                const Input input(source);
+                const auto expected = capture([&] {
+                    return Format(input.View(), prepared).Text;
+                });
+                EXPECT_EQ(
+                    capture([&] {
+                        return Format(input.View(), style);
+                    }),
+                    expected);
+
+                if (expected.first) {
+                    const Input canonical(expected.second);
+                    const auto canonicalExpected = capture([&] {
+                        return Format(canonical.View(), prepared).Text;
+                    });
+                    EXPECT_EQ(
+                        capture([&] {
+                            return Format(canonical.View(), style);
+                        }),
+                        canonicalExpected);
+                }
+            }
+        }
     }
 }
 

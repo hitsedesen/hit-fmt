@@ -1,6 +1,7 @@
 #include "syntax_layout.hpp"
 
 #include "declaration_kind.hpp"
+#include "flat_span_internal.hpp"
 #include "layout_plan.hpp"
 #include "text_policies.hpp"
 
@@ -73,27 +74,29 @@ enum class DeclarationCategory : uint8_t
 
 struct Syntax
 {
-    RegionId Region = NoRegion;
     Index Root = None;
     Index PreviousSibling = None;
     Index Operator = None;
     Index ListGroup = None;
     Index PreservedIndentGroup = None;
-    bool Safe = true;
-    bool IndentSafe = true;
-    bool ChainSafe = true;
+    bool Safe : 1 = true;
+    bool IndentSafe : 1 = true;
+    bool ChainSafe : 1 = true;
     // Opaque syntax in independently delimited bodies does not invalidate
     // the enclosing expression's proven boundaries.
-    bool OpaqueSafe = true;
-    bool String = false;
-    bool Definition = false;
+    bool OpaqueSafe : 1 = true;
+    bool String : 1 = false;
+    bool Definition : 1 = false;
     DeclarationCategory Category = DeclarationCategory::None;
     bool ItemSequence : 1 = false;
     bool ControlHeader : 1 = false;
     bool NamespaceSuffix : 1 = false;
     bool Preprocessing : 1 = false;
+    bool FlatRoot : 1 = false;
     parser::TokenRange SequenceBody = {};
 };
+
+static_assert(sizeof(Syntax) <= 32);
 
 struct ScopeName
 {
@@ -209,7 +212,7 @@ public:
         , Groups_(layout.Groups_)
         , GroupSpecs_(layout.GroupSpecs_)
         , Gaps_(layout.Gaps_)
-        , Facts_(layout.Facts_)
+        , Facts_(size_t(tree.TokenCount()) + 1, &scratch)
         , Commas_(layout.Commas_)
         , Removed_(layout.Removed_)
         , Order_(&scratch)
@@ -258,7 +261,24 @@ public:
 
         size_t firstProtection = 0;
 
+        size_t flatToken = 0;
+
         for (Index i = 0; i < count; ++i) {
+            if (flatToken < Layout_.FlatSpans_.size() && Layout_.FlatSpans_[flatToken].Tokens.Begin == i) {
+                const auto end = Layout_.FlatSpans_[flatToken++].Tokens.End;
+                std::fill(PrefixProtection_.begin() + i + 1, PrefixProtection_.begin() + end + 1, PrefixProtection_[i]);
+                std::fill(
+                    PrefixOpaqueFences_.begin() + i + 1,
+                    PrefixOpaqueFences_.begin() + end + 1,
+                    PrefixOpaqueFences_[i]);
+                Layout_.Tokens_[i].RunFirst = true;
+                Layout_.Tokens_[i].RunPeer = end;
+                Layout_.Tokens_[end - 1].RunLast = true;
+                Layout_.Tokens_[end - 1].RunPeer = i;
+                i = end - 1;
+                continue;
+            }
+
             if (Spacing_.Gaps()[i].Field == SpacingField::TrailingCommentSpacing) {
                 Facts_[i].CachedCommentCount = Spacing_.TrailingCommentCount(i, Safety_).value_or(UINT16_MAX);
             }
@@ -332,7 +352,13 @@ public:
                 return a.Name < b.Name;
             });
 
+        size_t flatNode = 0;
+
         for (Index i = 0; i < Syntax_.size(); ++i) {
+            while (flatNode < Layout_.FlatSpans_.size() && Layout_.FlatSpans_[flatNode].Root < i) {
+                ++flatNode;
+            }
+
             auto& entry = Syntax_[i];
             const auto& node = Region(entry);
 
@@ -356,6 +382,16 @@ public:
                     Gaps_[node.Tokens.Begin].ParagraphBoundary = true;
                     Gaps_[node.Tokens.End].ParagraphBoundary = true;
                 }
+            }
+
+            if (entry.FlatRoot) {
+                if (node.Kind == NodeKind::FunctionDefinition) {
+                    PlanHeaderAndBody(i);
+                }
+
+                i = Layout_.FlatSpans_[flatNode].RegionEnd - 1;
+                ++flatNode;
+                continue;
             }
 
             if (node.Kind == NodeKind::IdentifierExpression || node.Kind == NodeKind::DeclaratorName ||
@@ -496,7 +532,15 @@ public:
 
         // Classified children plan first. Only unowned continuation gaps in
         // a bounded opaque statement need the authored relative indentation.
+        flatNode = 0;
+
         for (Index i = 0; i < Syntax_.size(); ++i) {
+            SkipFlatInteriors(i, flatNode);
+
+            if (i == Syntax_.size()) {
+                break;
+            }
+
             const auto& node = Region(Syntax_[i]);
 
             if (Syntax_[i].Preprocessing && node.StatementBoundary) {
@@ -546,7 +590,7 @@ private:
     std::pmr::vector<Group>& Groups_;
     std::pmr::vector<layout::GroupSpec>& GroupSpecs_;
     std::pmr::vector<Gap>& Gaps_;
-    std::pmr::vector<GapFacts>& Facts_;
+    std::pmr::vector<GapFacts> Facts_;
     std::pmr::vector<Comma>& Commas_;
     std::pmr::vector<uint8_t>& Removed_;
     std::pmr::vector<Index> Order_;
@@ -592,13 +636,70 @@ private:
 
     const SourceRegion& Region(const Syntax& syntax) const
     {
-        return Safety_.Regions()[syntax.Region];
+        // Projection preserves region order and never relocates entries
+        // after initialization; their index is already their region identity.
+        const auto id = &syntax - Syntax_.data();
+        assert(id >= 0 && size_t(id) < Syntax_.size());
+        return Safety_.Regions()[size_t(id)];
     }
 
     void Fail(SyntaxLayoutError error, Index token)
     {
         if (State_) {
             State_ = {error, token};
+        }
+    }
+
+    void SkipFlatInteriors(Index& id, size_t& flat) const
+    {
+        while (flat < Layout_.FlatSpans_.size()) {
+            const auto& span = Layout_.FlatSpans_[flat];
+
+            if (id >= span.RegionEnd) {
+                ++flat;
+                continue;
+            }
+
+            if (id > span.Root) {
+                id = span.RegionEnd;
+                ++flat;
+                continue;
+            }
+
+            break;
+        }
+    }
+
+    void ProjectFlatCategory(Index root)
+    {
+        const auto kind = Region(Syntax_[root]).Kind;
+
+        if (kind != NodeKind::Declaration && kind != NodeKind::FunctionDeclaration) {
+            return;
+        }
+
+        constexpr Index finished = 0x80000000u;
+        Stack_.clear();
+        Stack_.push_back(root);
+
+        while (!Stack_.empty()) {
+            const auto entry = Stack_.back();
+            const auto id = entry & ~finished;
+
+            if (entry & finished) {
+                Syntax_[id].Category = ClassifyDeclaration(id);
+                Stack_.pop_back();
+                continue;
+            }
+
+            Stack_.back() |= finished;
+            const auto& node = Region(Syntax_[id]);
+
+            for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
+                if (FlatSpanRules::CategorySpine(node.Kind, Region(Syntax_[child]).Kind)) {
+                    Stack_.push_back(child);
+                }
+            }
         }
     }
 
@@ -611,10 +712,18 @@ private:
         LastChild_.resize(regions.size(), None);
         BlockOf_.resize(regions.size(), None);
 
+        size_t flat = 0;
+
         for (Index id = 0; id < regions.size(); ++id) {
+            SkipFlatInteriors(id, flat);
+
+            if (id == regions.size()) {
+                break;
+            }
+
             auto& entry = Syntax_[id];
+            entry.FlatRoot = flat < Layout_.FlatSpans_.size() && Layout_.FlatSpans_[flat].Root == id;
             const auto& region = regions[id];
-            entry.Region = id;
             switch (region.Kind) {
                 case NodeKind::TranslationUnit:
                 case NodeKind::NamespaceDeclaration:
@@ -660,8 +769,23 @@ private:
             }
         }
 
+        flat = Layout_.FlatSpans_.size();
+
         for (Index i = Index(Syntax_.size()); i-- > 0;) {
+            while (flat && Layout_.FlatSpans_[flat - 1].Root > i) {
+                --flat;
+            }
+
+            if (flat && i > Layout_.FlatSpans_[flat - 1].Root && i < Layout_.FlatSpans_[flat - 1].RegionEnd) {
+                i = Layout_.FlatSpans_[flat - 1].Root;
+            }
+
             auto& entry = Syntax_[i];
+
+            if (entry.FlatRoot) {
+                ProjectFlatCategory(i);
+            }
+
             const auto& node = Region(entry);
             entry.Safe = node.Tokens.Begin <= node.Tokens.End && node.Tokens.End <= Tree_.TokenCount();
             switch (node.Kind) {
@@ -1193,7 +1317,7 @@ private:
 
             const auto owner = Spacing_.Gaps()[gap].Owner;
 
-            if ((owner == entry.Region || (Region(entry).Parent != None && owner == Region(entry).Parent)) &&
+            if ((owner == id || (Region(entry).Parent != None && owner == Region(entry).Parent)) &&
                 !Gaps_[gap].ContextKnown)
             {
                 Gaps_[gap].Context = GapContext::Preserved;
@@ -1702,7 +1826,7 @@ private:
                     // Comment topology stays preserved, but spacing owned by
                     // this list follows its layout throughout attached runs.
                     const auto spacingContext = [&] (Index gap) {
-                        if (Spacing_.Gaps()[gap].Owner == Syntax_[id].Region) {
+                        if (Spacing_.Gaps()[gap].Owner == id) {
                             Gaps_[gap].Context = canonical ? GapContext::Rebuilt : GapContext::Preserved;
                             Gaps_[gap].ContextKnown = true;
                         }
@@ -2685,6 +2809,10 @@ private:
 
     void ProjectHeaderGaps(Index id, Index begin, Index end, Index group)
     {
+        if (Syntax_[id].FlatRoot) {
+            return;
+        }
+
         const auto kind = Region(Syntax_[id]).Kind;
         const bool function = kind == NodeKind::FunctionDeclaration || kind == NodeKind::FunctionDefinition ||
             kind == NodeKind::FunctionTryBlock;
@@ -4232,7 +4360,15 @@ private:
             return;
         }
 
+        size_t flat = 0;
+
         for (Index id = 0; id < Syntax_.size(); ++id) {
+            SkipFlatInteriors(id, flat);
+
+            if (id == Syntax_.size()) {
+                break;
+            }
+
             auto& entry = Syntax_[id];
             const auto& node = Region(entry);
 
@@ -4532,7 +4668,9 @@ private:
 
     DiscoveredEndpoint ScopeEndpoint(Index statement)
     {
-        if (!Syntax_[statement].Safe || Region(Syntax_[statement]).Kind != NodeKind::ExpressionStatement) {
+        if (!Syntax_[statement].Safe || Syntax_[statement].FlatRoot ||
+            Region(Syntax_[statement]).Kind != NodeKind::ExpressionStatement)
+        {
             return {};
         }
 
@@ -5174,6 +5312,11 @@ private:
         }
 
         for (Index token = 0; token < Tree_.TokenCount(); ++token) {
+            if (Layout_.Tokens_[token].RunFirst) {
+                token = Layout_.Tokens_[token].RunPeer - 1;
+                continue;
+            }
+
             const auto range = Tree_.Token(token).Text;
 
             if (Tree_.Kind(token) != TokenKind::Comment || !IsRuler(Tree_.TokenText(token)) ||
@@ -5204,7 +5347,13 @@ private:
 
     std::string_view StatementMacroName(Index id) const
     {
-        const auto& node = Region(Syntax_[UnwrapStatement(id)]);
+        id = UnwrapStatement(id);
+
+        if (Syntax_[id].FlatRoot) {
+            return {};
+        }
+
+        const auto& node = Region(Syntax_[id]);
 
         if (node.Kind != NodeKind::ExpressionStatement) {
             return {};
@@ -5425,7 +5574,15 @@ private:
             std::pmr::vector<Index> children(Syntax_.get_allocator().resource());
             std::pmr::vector<Index> following(Syntax_.get_allocator().resource());
 
+            size_t flat = 0;
+
             for (Index id = 0; id < Syntax_.size(); ++id) {
+                SkipFlatInteriors(id, flat);
+
+                if (id == Syntax_.size()) {
+                    break;
+                }
+
                 const auto& node = Region(Syntax_[id]);
 
                 if (statementRules) {
@@ -5620,7 +5777,10 @@ private:
         const auto& policy = Policies_.VerticalGaps;
 
         if (policy.MaxEmptyLines.Enabled || policy.MemberGroupMaxEmptyLines.Enabled) {
-            for (Index i = 0; i < Gaps_.size(); ++i) {
+            for (Index i = 0;
+                i < Gaps_.size();
+                i = i < Layout_.Tokens_.size() && Layout_.Tokens_[i].RunFirst ? Layout_.Tokens_[i].RunPeer : i + 1)
+            {
                 const auto cap = Gaps_[i].MemberGroup && policy.MemberGroupMaxEmptyLines.Enabled
                     ? policy.MemberGroupMaxEmptyLines
                     : policy.MaxEmptyLines;
@@ -5656,6 +5816,10 @@ private:
         bool beforeDirective = false;
 
         for (Index i = Gaps_.size(); i-- > 0;) {
+            if (i < Layout_.Tokens_.size() && Layout_.Tokens_[i].RunLast) {
+                i = Layout_.Tokens_[i].RunPeer;
+            }
+
             auto& gap = Gaps_[i];
             const bool comment = i < Tree_.TokenCount() && Tree_.Kind(i) == TokenKind::Comment;
 
@@ -5760,9 +5924,20 @@ private:
         Groups_[gap.Owner].NeedsBlock |= lines || gap.PartialIndent;
     }
 
+    Index WorkBefore(Position position) const
+    {
+        const auto i = Index(position / 2);
+        return Facts_[0].SuffixWork - Facts_[i].SuffixWork + ((position & 1) ? Facts_[i].Work : 0);
+    }
+
     Index TokenWidth(Index i) const
     {
         const auto& token = Layout_.Tokens_[i];
+
+        if (token.RunFirst) {
+            return Tree_.Token(token.RunPeer - 1).Text.End - Tree_.Token(i).Text.Begin;
+        }
+
         return token.Line ? None : token.Prefix;
     }
 
@@ -5779,6 +5954,12 @@ private:
         RequireBlockAnchor(Tree_.TokenCount());
 
         for (Index i = Tree_.TokenCount(); i-- > 0;) {
+            if (Layout_.Tokens_[i].RunLast) {
+                i = Layout_.Tokens_[i].RunPeer;
+            }
+
+            const auto nextToken = Layout_.Tokens_[i].RunFirst ? Layout_.Tokens_[i].RunPeer : i + 1;
+
             if (!Removed_[i]) {
                 const auto tokenWidth = TokenWidth(i);
                 width = AddWidth(tokenWidth, width);
@@ -5803,7 +5984,7 @@ private:
                         prefixWidth = AddWidth(prefixWidth, TokenWidth(t));
                     }
 
-                    ++t;
+                    t = Layout_.Tokens_[t].RunFirst ? Layout_.Tokens_[t].RunPeer : t + 1;
                     const auto& next = Gaps_[t];
                     const bool mandatory = next.Shape == Boundary::Hard ||
                         (next.Shape == Boundary::Preserve && Safety_.Gaps()[t].HasLineFeed) ||
@@ -5835,7 +6016,7 @@ private:
 
             RequireBlockAnchor(i);
             FinalizeGap(i);
-            Facts_[i].SuffixWork = Facts_[i + 1].SuffixWork + Facts_[i].Work + !Removed_[i];
+            Facts_[i].SuffixWork = Facts_[nextToken].SuffixWork + Facts_[i].Work + !Removed_[i];
             const auto& gap = Gaps_[i];
             const bool boundary = gap.Shape == Boundary::Soft || gap.Shape == Boundary::Hard ||
                 (gap.Shape == Boundary::Conditional && gap.Broken != layout::GapKind::Flat) ||
@@ -6074,8 +6255,7 @@ private:
         const auto close = [&] {
             const auto id = Stack_.back();
             auto& group = Groups_[id];
-            group.ProbeWork =
-                1 + Layout_.WorkBefore(group.End) - Layout_.WorkBefore(group.Begin) + boundaryWork - group.BoundaryWork;
+            group.ProbeWork = 1 + WorkBefore(group.End) - WorkBefore(group.Begin) + boundaryWork - group.BoundaryWork;
             Layout_.Ends_.push_back(id);
             continuation = group.PreviousContinuation;
             Stack_.pop_back();
@@ -6269,12 +6449,30 @@ private:
         }
 
         if (kind == layout::GapKind::Flat) {
-            return FlatWidth(i) != 0 ? Safety_.CanReplaceGap(i, " ") : Safety_.CanReplaceGap(i, "");
+            if (!gap.MustStartWithLineFeed && gap.LineBoundary != GapLineBoundary::Required &&
+                gap.Separation != GapSeparation::Required)
+            {
+                return true;
+            }
+
+            const bool space = FlatWidth(i) != 0;
+
+            if (space && !gap.MustStartWithLineFeed && gap.LineBoundary != GapLineBoundary::Required) {
+                return true;
+            }
+
+            // The general replacement check always permits unchanged bytes,
+            // including an empty original gap with a separation constraint.
+            return Safety_.Original(i) == (space ? " " : "");
+        }
+
+        if (gap.LineBoundary != GapLineBoundary::Forbidden) {
+            return true;
         }
 
         return gap.MustStartWithLineFeed || Options_.LineEnding == layout::Newline::LF
-            ? Safety_.CanReplaceGap(i, "\n")
-            : Safety_.CanReplaceGap(i, "\r\n");
+            ? Safety_.Original(i) == "\n"
+            : Safety_.Original(i) == "\r\n";
     }
 
     bool ExpressionGap(Index i) const

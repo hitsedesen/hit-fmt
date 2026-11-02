@@ -20,21 +20,13 @@ void PlanRulerEdits(
     using TK = tokenizer::TokenKind;
     using TI = parser::TokenIndex;
     const auto regions = safety.Regions();
-    std::pmr::vector<uint8_t> declarationScopes(regions.size(), 0, &scratchMemory);
+    (void)scratchMemory;
 
     auto standalone = [&] (TI token) {
         return tree.Kind(token) == TK::Comment && IsRuler(tree.TokenText(token)) &&
             (token == 0 || safety.Gaps()[token].HasLineFeed) &&
             (token + 1 == tree.TokenCount() || safety.Gaps()[token + 1].HasLineFeed);
     };
-
-    for (size_t i = 0; i < regions.size(); ++i) {
-        const auto& node = regions[i];
-        declarationScopes[i] = (node.Parent == NoRegion || declarationScopes[node.Parent]) &&
-            (node.Kind == NK::TranslationUnit || node.Kind == NK::NamespaceDeclaration ||
-                node.Kind == NK::PreprocessingConditional || node.Kind == NK::PreprocessingBranch ||
-                node.Kind == NK::ExportDeclaration || node.Kind == NK::LinkageSpecification);
-    }
 
     const auto lf = tree.Source().find('\n');
     const bool crlf = options.RulerLineEnding == LineEnding::CRLF ||
@@ -98,10 +90,30 @@ void PlanRulerEdits(
         insert(point, {begin, begin + 1});
     };
 
-    for (size_t i = 0; i < regions.size(); ++i) {
+    for (RegionId i = 0; i < regions.size();) {
         const auto& node = regions[i];
+        const bool scope = node.Kind == NK::TranslationUnit || node.Kind == NK::NamespaceDeclaration ||
+            node.Kind == NK::PreprocessingConditional || node.Kind == NK::PreprocessingBranch ||
+            node.Kind == NK::ExportDeclaration || node.Kind == NK::LinkageSpecification;
 
-        if (!declarationScopes[i] || node.Kind != NK::NamespaceDeclaration) {
+        if (!scope) {
+            // No descendant can reenter a declaration scope. Skip its complete
+            // preorder interval without inspecting expression or body nodes.
+            auto next = node.NextSibling;
+            auto parent = node.Parent;
+
+            while (next == NoRegion && parent != NoRegion) {
+                next = regions[parent].NextSibling;
+                parent = regions[parent].Parent;
+            }
+
+            i = next == NoRegion ? RegionId(regions.size()) : next;
+            continue;
+        }
+
+        ++i;
+
+        if (node.Kind != NK::NamespaceDeclaration) {
             continue;
         }
 

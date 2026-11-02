@@ -9,7 +9,11 @@ namespace formatter::detail {
 // Safety describes the original tree and prepared settings, with EditScope
 // already applied. Keep source, configuration and arenas alive for this call.
 // Store persistent views in file, not scratch: scratch is reset during use.
-// The result owns its storage.
+// The result owns its storage. Text-only callers may omit width diagnostics.
+// owned is only supplied by the source+Style convenience entrypoint; its tree
+// may become a token-only original view during trusted normalization.
+// ownedSafety is supplied only alongside owned; after projecting its original
+// protection, identity normalization may consume that private analysis.
 [[nodiscard]] FormatResult FormatWithAnalysis(
     const parser::SyntaxTree& original,
     const PreparedFormat& prepared,
@@ -17,6 +21,9 @@ namespace formatter::detail {
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch);
+    std::pmr::monotonic_buffer_resource& scratch,
+    bool widthDiagnostics = true,
+    parser::SyntaxTree* owned = nullptr,
+    SourceAnalysis* ownedSafety = nullptr);
 
 } // namespace formatter::detail

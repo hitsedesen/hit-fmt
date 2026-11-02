@@ -1,8 +1,12 @@
+#include <formatter/formatter.hpp>
 #include <formatter/source_analysis.hpp>
+#include <formatter/source_analysis_internal.hpp>
+#include <formatter/structural_edits.hpp>
 #include <formatter/syntax_spacing.hpp>
 
 #include <gtest/gtest.h>
 
+#include <parser/normalized_syntax.hpp>
 #include <parser/parser.hpp>
 
 #include <tests/golden.hpp>
@@ -435,6 +439,24 @@ TEST(SourceAnalysis, RecoverySummariesAndMergedExplicitRanges)
 
     for (size_t i = 1; i < analysis.Protection().size(); ++i) {
         EXPECT_LT(analysis.Protection()[i - 1].Source.End, analysis.Protection()[i].Source.Begin);
+    }
+
+    // A whitespace gap can span disjoint protections. Its intrinsic facts
+    // stay independent, and its folded reasons come from the first range.
+    Input separated("int      value; int next;");
+    auto separatedTree = Parse(separated);
+    const auto gap = Before(separatedTree, "value");
+
+    for (const auto first : {formatter::ProtectionReason::Explicit, formatter::ProtectionReason::HeaderName}) {
+        const auto second = first == formatter::ProtectionReason::Explicit
+            ? formatter::ProtectionReason::HeaderName
+            : formatter::ProtectionReason::Explicit;
+        const std::array<formatter::ProtectedSourceRange, 2> disjoint{{{{4, 5}, first}, {{7, 8}, second}}};
+        auto protectedGaps = Analyze(separatedTree, memory, {.InheritedProtection = disjoint});
+        EXPECT_EQ(protectedGaps.Gaps()[gap].Reasons, first);
+        EXPECT_FALSE(protectedGaps.Gaps()[gap].IntrinsicPreserve);
+        EXPECT_FALSE(protectedGaps.CanReplaceGap(gap, " "));
+        EXPECT_TRUE(protectedGaps.CanReplaceGap(Before(separatedTree, "next"), "  "));
     }
 }
 
@@ -1559,6 +1581,279 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
     ASSERT_EQ(recovered.Original(recovered.Gaps().back()), "\r\n");
     EXPECT_TRUE(recovered.CanSpellGapNewlines(recoveryTree.TokenCount()));
 
+}
+
+TEST(SourceAnalysis, NormalizationTransportMatchesFreshAnalysis)
+{
+    for (const unsigned mode : {0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u}) {
+        SCOPED_TRACE(mode);
+        std::string text = "#include <z.h>\r\n#include <a.h>\nnamespace n {int café;\n"
+            "void f() { TEXT(alpha   + beta); call(/*value=*/2); }\n" "int last;\n}\n";
+        const auto shape = mode < 8 ? mode % 4 : mode == 11 ? 2 : 0;
+
+        if (shape == 1 || shape == 3) {
+            text.erase(text.find('\r'), 1);
+        }
+
+        if (shape == 2) {
+            text.insert(mode == 11 ? text.find("namespace") : 0, "///\n");
+        }
+
+        if (shape == 3) {
+            text += "namespace unfinished";
+        }
+
+        if (mode == 4 || mode == 10) {
+            text.insert(text.find("{int") + 1, "\n");
+        }
+
+        if (mode == 10) {
+            text.insert(text.find("TEXT"), "\\\n");
+        }
+
+        if (mode == 11) {
+            text.insert(0, "\xef\xbb\xbf");
+        }
+
+        if (mode == 8) {
+            text = "#include <z.h>\n#include <a.h>\nnamespace outer {\n"
+                "// first declaration\nint first; /* trailing */\n\n"
+                "namespace inner {\n// nested declaration\nint value;\n}\n" "namespace empty {\n}\n// dangling\n}\n";
+        }
+
+        const Input input(text);
+        auto original = Parse(input);
+        std::pmr::monotonic_buffer_resource file, scratch;
+        const std::string_view sensitive[] = {"TEXT"};
+        auto safety = formatter::BuildSourceAnalysis(original, {.WhitespaceSensitiveMacros = sensitive}, file, scratch);
+        formatter::Style style;
+        style.IncludeOrder = formatter::IncludeOrder::Sort;
+
+        if (shape == 0) {
+            style.RulerPlacement = formatter::RulerPlacement::NamespaceBoundaries;
+        }
+
+        style.RulerLength = 12;
+        const formatter::PreparedFormat prepared(style);
+        auto plan = formatter::PlanStructuralEdits(original, safety, prepared.Structural, file, scratch);
+        ASSERT_FALSE(plan.Edits.empty());
+        auto material = formatter::MaterializeStructuralEdits(original, plan, file, scratch);
+        const Input normalized(material.Text);
+        std::pmr::vector<parser::detail::NormalizedPiece> pieces(&scratch);
+        std::pmr::vector<parser::SourceRange> edits(&scratch);
+        for (const auto& piece : material.Provenance) {
+            pieces.push_back({piece.Output, piece.Original, piece.Generated});
+        }
+
+        for (const auto& edit : plan.Edits) {
+            edits.push_back(edit.Source);
+        }
+
+        ASSERT_TRUE(formatter::CanReuseNormalizedSourceAnalysis(original, safety, edits, pieces, scratch));
+        std::pmr::vector<formatter::ProtectedSourceRange> inherited(&scratch);
+        for (const auto& piece : pieces) {
+            if (piece.Generated) {
+                continue;
+            }
+
+            for (const auto& range : safety.Protection()) {
+                const auto begin = std::max(piece.Original.Begin, range.Source.Begin);
+                const auto end = std::min(piece.Original.End, range.Source.End);
+
+                if (begin < end) {
+                    inherited.push_back({
+                        {
+                            piece.Output.Begin + begin - piece.Original.Begin,
+                            piece.Output.Begin + end - piece.Original.Begin,
+                        },
+                        range.Reasons,
+                    });
+                }
+            }
+        }
+
+        auto fresh = Parse(normalized);
+        auto expected = formatter::BuildSourceAnalysis(
+            fresh,
+            {.WhitespaceSensitiveMacros = sensitive, .InheritedProtection = inherited},
+            file,
+            scratch);
+        std::pmr::vector<parser::TokenIndex> mapping(&scratch);
+        std::optional<parser::SyntaxTree> consumed;
+        std::pmr::vector<parser::detail::NormalizedCommentInsertion> insertions(&scratch);
+        const bool tokenView = mode >= 4 && mode != 9;
+
+        if (mode >= 4) {
+            const auto* root = &original.Root();
+            const parser::detail::NormalizedRegionTopology topology{
+                safety.Regions().data(),
+                static_cast<uint32_t>(safety.Regions().size()),
+                [] (const void* rows, uint32_t id) {
+                    return static_cast<const formatter::SourceRegion*>(rows)[id].FirstChild;
+                },
+                [] (const void* rows, uint32_t id) {
+                    return static_cast<const formatter::SourceRegion*>(rows)[id].NextSibling;
+                },
+            };
+            consumed = parser::detail::TryBuildNormalizedTokenView(
+                original,
+                normalized.View(),
+                pieces,
+                topology,
+                mapping,
+                insertions);
+            EXPECT_EQ(&original.Root(), root);
+
+            if (mode == 11) {
+                // The BOM prefix requires the established full-tokenization fallback.
+                ASSERT_FALSE(consumed);
+                EXPECT_EQ(formatter::Format(input.View(), style), formatter::Format(input.View(), prepared).Text);
+                continue;
+            }
+
+            if (mode == 9) {
+                // New line boundaries around originally inline namespace tokens
+                // deliberately require the established trivia-rebuilding path.
+                ASSERT_FALSE(consumed);
+            }
+        }
+
+        if (!tokenView) {
+            consumed = parser::detail::TryConsumeNormalizedSyntax(original, normalized.View(), pieces, mapping);
+        }
+
+        ASSERT_TRUE(consumed);
+        auto reused = tokenView
+            ? formatter::detail::ConsumeNormalizedTokenViewAnalysis(
+                original,
+                *consumed,
+                std::move(safety),
+                mapping,
+                pieces,
+                insertions,
+                inherited,
+                file,
+                scratch)
+            : shape == 0
+                ? formatter::ReuseNormalizedSourceAnalysis(
+                    original,
+                    *consumed,
+                    safety,
+                    mapping,
+                    pieces,
+                    inherited,
+                    file,
+                    scratch)
+                : formatter::detail::ConsumeIdentityNormalizedSourceAnalysis(
+                    original,
+                    *consumed,
+                    std::move(safety),
+                    mapping,
+                    pieces,
+                    inherited,
+                    file,
+                    scratch);
+
+        if (shape == 3) {
+            // An empty intrinsic recovery fence deliberately refuses transport.
+            // Rebuilding after consumption must preserve every fresh-analysis fact.
+            ASSERT_FALSE(reused);
+
+            if (tokenView) {
+                consumed = parser::detail::TryConsumeNormalizedSyntax(original, normalized.View(), pieces, mapping);
+                ASSERT_TRUE(consumed);
+            }
+
+            reused.emplace(formatter::BuildSourceAnalysis(
+                *consumed,
+                {.WhitespaceSensitiveMacros = sensitive, .InheritedProtection = inherited},
+                file,
+                scratch));
+        }
+
+        ASSERT_TRUE(reused);
+        ASSERT_EQ(consumed->TokenCount(), fresh.TokenCount());
+
+        for (parser::TokenIndex i = 0; i < fresh.TokenCount(); ++i) {
+            EXPECT_EQ(consumed->Kind(i), fresh.Kind(i)) << i;
+            EXPECT_EQ(consumed->TokenText(i), fresh.TokenText(i)) << i;
+            EXPECT_EQ(consumed->Role(i), fresh.Role(i)) << i;
+            EXPECT_EQ(consumed->MatchingDelimiter(i), fresh.MatchingDelimiter(i)) << i;
+            EXPECT_EQ(consumed->TokenPosition(i).Line, fresh.TokenPosition(i).Line) << i;
+            EXPECT_EQ(consumed->TokenPosition(i).Column, fresh.TokenPosition(i).Column) << i;
+        }
+
+        const auto gapFacts = [] (const formatter::SourceGap& gap) {
+            return std::tuple{
+                gap.Source.Begin,
+                gap.Source.End,
+                gap.Separation,
+                gap.LineBoundary,
+                gap.Reasons,
+                gap.Preserve,
+                gap.MustStartWithLineFeed,
+                gap.ContextSensitive,
+                bool(gap.IntrinsicPreserve),
+                bool(gap.IntrinsicContextSensitive),
+                bool(gap.HasBareCR),
+                bool(gap.HasLineFeed),
+                bool(gap.Horizontal),
+                bool(gap.RecoveryBoundary),
+                bool(gap.MovableStatementIndent),
+            };
+        };
+        EXPECT_EQ(reused->Source(), expected.Source());
+        ASSERT_EQ(reused->Gaps().size(), expected.Gaps().size());
+
+        for (size_t i = 0; i < expected.Gaps().size(); ++i) {
+            EXPECT_EQ(gapFacts(reused->Gaps()[i]), gapFacts(expected.Gaps()[i])) << i;
+            EXPECT_EQ(
+                reused->CanRewriteDirective(expected.Gaps()[i].Source),
+                expected.CanRewriteDirective(expected.Gaps()[i].Source)) << i;
+        }
+
+        const auto regionFacts = [] (const formatter::SourceRegion& region) {
+            return std::tuple{
+                region.Tokens.Begin,
+                region.Tokens.End,
+                region.Source.Begin,
+                region.Source.End,
+                region.Attached.Begin,
+                region.Attached.End,
+                region.Parent,
+                region.FirstChild,
+                region.NextSibling,
+                region.Kind,
+                region.Status,
+                region.Function,
+                region.StatementBoundary,
+            };
+        };
+        ASSERT_EQ(reused->Regions().size(), expected.Regions().size());
+
+        for (size_t i = 0; i < expected.Regions().size(); ++i) {
+            EXPECT_EQ(regionFacts(reused->Regions()[i]), regionFacts(expected.Regions()[i])) << i;
+        }
+
+        ASSERT_EQ(reused->Protection().size(), expected.Protection().size());
+
+        for (size_t i = 0; i < expected.Protection().size(); ++i) {
+            EXPECT_EQ(reused->Protection()[i].Source.Begin, expected.Protection()[i].Source.Begin);
+            EXPECT_EQ(reused->Protection()[i].Source.End, expected.Protection()[i].Source.End);
+            EXPECT_EQ(reused->Protection()[i].Reasons, expected.Protection()[i].Reasons);
+        }
+
+        ASSERT_EQ(reused->PartialGapPermissions().size(), expected.PartialGapPermissions().size());
+
+        for (size_t i = 0; i < expected.PartialGapPermissions().size(); ++i) {
+            EXPECT_EQ(reused->PartialGapPermissions()[i].Gap, expected.PartialGapPermissions()[i].Gap);
+            EXPECT_EQ(
+                reused->PartialGapPermissions()[i].Source.Begin,
+                expected.PartialGapPermissions()[i].Source.Begin);
+            EXPECT_EQ(reused->PartialGapPermissions()[i].Source.End, expected.PartialGapPermissions()[i].Source.End);
+            EXPECT_EQ(reused->PartialGapPermissions()[i].Kind, expected.PartialGapPermissions()[i].Kind);
+        }
+    }
 }
 
 } // namespace

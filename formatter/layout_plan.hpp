@@ -59,7 +59,9 @@ struct GapLayout
         uint16_t Spaces;
     };
 
-    Index Next = None, Previous = None;
+    Index Next = None;
+    // A source-gap head stores its tail here; extra fragments store their predecessor.
+    Index Previous = None;
     Whitespace Mode = Whitespace::Empty;
     layout::Newline Ending = layout::Newline::LF;
     bool FlatSource : 1 = false;
@@ -136,7 +138,6 @@ struct Gap
 // invalidates widths and permissions when it changes a gap shape.
 struct GapFacts
 {
-    Index LastPart = None;
     Index Work = 0;
     Index SuffixWork = 0;
     Index PrefixSequence = 0;
@@ -227,11 +228,18 @@ class LayoutPlan
 
     struct TokenLayout
     {
-        Index Prefix = 0;
-        bool Line = false;
-        bool Plain = true;
-        bool Protected = false;
-        bool Reindent = false;
+        union
+        {
+            Index Prefix = 0;
+            Index RunPeer;
+        };
+
+        bool Line : 1 = false;
+        bool Plain : 1 = true;
+        bool Protected : 1 = false;
+        bool Reindent : 1 = false;
+        bool RunFirst : 1 = false;
+        bool RunLast : 1 = false;
     };
 
     struct AnchorLayout
@@ -246,13 +254,16 @@ class LayoutPlan
         Index Part = Invalid;
     };
 public:
-    LayoutPlan(const parser::SyntaxTree& tree, std::pmr::memory_resource& memory)
+    LayoutPlan(
+        const parser::SyntaxTree& tree,
+        std::pmr::memory_resource& memory,
+        std::span<const FlatSpan> flatSpans = {})
         : Tree_(tree)
         , Source_(tree.Source())
+        , FlatSpans_(flatSpans)
         , Tokens_(tree.TokenCount(), &memory)
         , Removed_(tree.TokenCount(), &memory)
         , Gaps_(size_t(tree.TokenCount()) + 1, &memory)
-        , Facts_(size_t(tree.TokenCount()) + 1, &memory)
         , GapLayouts_(size_t(tree.TokenCount()) + 1, &memory)
         , Commas_(size_t(tree.TokenCount()) + 1, &memory)
         , Groups_(&memory)
@@ -272,6 +283,59 @@ public:
         Groups_.reserve(groups);
         GroupSpecs_.reserve(groups);
         GapPolicies_.reserve(tree.TokenCount() / 2 + 16);
+    }
+
+    [[nodiscard]] bool TokenSurvives(Index id) const
+    {
+        return Sealed_ && id < Tokens_.size() && !Removed_[id];
+    }
+
+    [[nodiscard]] bool TokenSpellingExact(Index id) const
+    {
+        return Sealed_ && id < Tokens_.size() && !Tokens_[id].Reindent;
+    }
+
+    [[nodiscard]] bool GapEmitsSpaces(Index id, size_t spaces) const
+    {
+        if (!Sealed_ || id >= GapLayouts_.size()) {
+            return false;
+        }
+
+        const auto last = GapLayouts_[id].Previous;
+
+        if (last == None) {
+            return spaces == 0;
+        }
+
+        if (last != id) {
+            return false;
+        }
+
+        const auto& part = Part(id);
+
+        if (part.Next != None) {
+            return false;
+        }
+
+        if (part.Mode == Whitespace::Flat && !part.FlatSource) {
+            return part.Spaces == spaces;
+        }
+
+        if ((part.Mode != Whitespace::Flat || !part.FlatSource) && part.Mode != Whitespace::Preserve) {
+            return false;
+        }
+
+        if (part.Origin.Begin > part.Origin.End || part.Origin.End > Source_.size()) {
+            return false;
+        }
+
+        const auto text = Text(part.Origin);
+        return text.size() == spaces && std::all_of(
+            text.begin(),
+            text.end(),
+            [] (char byte) {
+                return byte == ' ';
+            });
     }
 
     layout::Result Render(layout::Policy policy, std::pmr::memory_resource& memory) const;
@@ -294,17 +358,17 @@ private:
 
     GapLayout& AddGap(Whitespace mode, layout::Provenance origin)
     {
-        auto& gap = Facts_[CurrentGap_];
+        auto& last = GapLayouts_[CurrentGap_].Previous;
         auto id = CurrentGap_;
 
-        if (gap.LastPart != Invalid) {
+        if (last != Invalid) {
             id = Index(Gaps_.size() + ExtraGaps_.size());
             ExtraGaps_.emplace_back();
-            Part(id).Previous = gap.LastPart;
-            Part(gap.LastPart).Next = id;
+            Part(id).Previous = last;
+            Part(last).Next = id;
         }
 
-        gap.LastPart = id;
+        last = id;
         auto& part = Part(id);
         part.Order = SourceOrder(Position(CurrentGap_) * 2, 0x80000000u + Sequence_++);
         part.Origin = {origin.Begin, origin.End};
@@ -349,7 +413,7 @@ private:
 
     void ExpressionLine()
     {
-        Part(Facts_[CurrentGap_].LastPart).RealizeExpression = true;
+        Part(GapLayouts_[CurrentGap_].Previous).RealizeExpression = true;
         ++Sequence_;
     }
 
@@ -398,26 +462,39 @@ private:
         return id & 1 ? Groups_[group].Block : AnchorAt(group, order);
     }
 
-    Index WorkBefore(Position position) const
-    {
-        const auto i = Index(position / 2);
-        return Facts_[0].SuffixWork - Facts_[i].SuffixWork + ((position & 1) ? Facts_[i].Work : 0);
-    }
-
     layout::Provenance TokenOrigin(Index i) const
     {
-        const auto range = Tree_.Token(i).Text;
+        auto range = Tree_.Token(i).Text;
+
+        if (Tokens_[i].RunFirst) {
+            range.End = Tree_.Token(Tokens_[i].RunPeer - 1).Text.End;
+            return {range.Begin, range.End, layout::NoIdentity};
+        }
+
         return {range.Begin, range.End, i};
     }
 
-    layout::detail::Measure TokenMeasure(Index i, uint8_t tabWidth) const
+    void TokenMeasure(Index i, uint8_t tabWidth, layout::detail::Measure& result) const
     {
+        if (Tokens_[i].RunFirst) {
+            const auto source = TokenOrigin(i);
+            result.Prefix = source.End - source.Begin;
+            result.Line = false;
+            result.CanBreak = false;
+            result.Plain = true;
+            return;
+        }
+
         if (tabWidth != TabWidth_) {
-            return layout::detail::MeasureText(Tree_.TokenText(i), tabWidth);
+            result = layout::detail::MeasureText(Tree_.TokenText(i), tabWidth);
+            return;
         }
 
         const auto& token = Tokens_[i];
-        return {token.Prefix, token.Line, token.Line, token.Plain};
+        result.Prefix = token.Prefix;
+        result.Line = token.Line;
+        result.CanBreak = token.Line;
+        result.Plain = token.Plain;
     }
 
     std::string_view Text(layout::Provenance origin) const
@@ -488,12 +565,12 @@ private:
                         continue;
                     }
                 } else if (cursor.Part == Invalid) {
-                    if (Facts_[id].LastPart == Invalid) {
+                    if (GapLayouts_[id].Previous == Invalid) {
                         consume(cursor.Source);
                         continue;
                     }
 
-                    cursor.Part = Reverse ? Facts_[id].LastPart : id;
+                    cursor.Part = Reverse ? GapLayouts_[id].Previous : id;
                 }
 
                 const auto order = sourceToken ? SourceOrder(position) : Part(cursor.Part).Order;
@@ -507,14 +584,29 @@ private:
                 }
 
                 if (sourceToken) {
-                    consume(cursor.Source);
+                    auto emitted = id;
 
-                    if (!token(id)) {
+                    if constexpr (Reverse) {
+                        if (Tokens_[id].RunLast) {
+                            emitted = Tokens_[id].RunPeer;
+                            cursor.Source = emitted * 2 + 1;
+                        } else {
+                            consume(cursor.Source);
+                        }
+                    } else {
+                        if (Tokens_[id].RunFirst) {
+                            cursor.Source = Tokens_[id].RunPeer * 2;
+                        } else {
+                            consume(cursor.Source);
+                        }
+                    }
+
+                    if (!token(emitted)) {
                         return false;
                     }
                 } else {
                     const auto part = cursor.Part;
-                    cursor.Part = Reverse ? Part(part).Previous : Part(part).Next;
+                    cursor.Part = Reverse ? (part == id ? Invalid : Part(part).Previous) : Part(part).Next;
 
                     if (cursor.Part == Invalid) {
                         consume(cursor.Source);
@@ -564,10 +656,10 @@ private:
 
     const parser::SyntaxTree& Tree_;
     std::string_view Source_;
+    std::span<const FlatSpan> FlatSpans_;
     std::pmr::vector<TokenLayout> Tokens_;
     std::pmr::vector<uint8_t> Removed_;
     std::pmr::vector<detail::Gap> Gaps_;
-    std::pmr::vector<GapFacts> Facts_;
     std::pmr::vector<GapLayout> GapLayouts_;
     std::pmr::vector<Comma> Commas_;
     std::pmr::vector<Group> Groups_;

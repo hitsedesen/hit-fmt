@@ -1,5 +1,6 @@
 #pragma once
 
+#include <parser/normalized_syntax.hpp>
 #include <parser/syntax_tree.hpp>
 
 #include <cstddef>
@@ -12,6 +13,12 @@
 #include <vector>
 
 namespace formatter {
+
+namespace detail {
+
+struct NormalizationAnalysisReuse;
+
+} // namespace detail
 
 using GapId = parser::TokenIndex;
 
@@ -283,6 +290,18 @@ private:
     std::pmr::vector<PartialGapPermission> CollectPartialGapPermissions(
         std::optional<std::span<const parser::SourceRange>> scope) const;
 
+    friend struct detail::NormalizationAnalysisReuse;
+
+    friend std::optional<SourceAnalysis> ReuseNormalizedSourceAnalysis(
+        const parser::SyntaxTree& original,
+        const parser::SyntaxTree& tree,
+        const SourceAnalysis& safety,
+        std::span<const parser::TokenIndex> mapping,
+        std::span<const parser::detail::NormalizedPiece> pieces,
+        std::span<const ProtectedSourceRange> inherited,
+        std::pmr::memory_resource& file,
+        std::pmr::memory_resource& scratch);
+
     friend SourceAnalysis BuildSourceAnalysis(
         const parser::SyntaxTree& tree,
         const SourceAnalysisOptions& options,
@@ -315,5 +334,26 @@ private:
     const SourceAnalysisOptions& options,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
+
+// Internal source-only normalization transport. The guard requires every
+// semantic fence to survive as one exact copied piece and excludes changed
+// neighborhoods with lexical/recovery constraints. The reuse call refreshes
+// changed gap facts, trivia envelopes and protection/partial permissions.
+[[nodiscard]] bool CanReuseNormalizedSourceAnalysis(
+    const parser::SyntaxTree& original,
+    const SourceAnalysis& safety,
+    std::span<const parser::SourceRange> edits,
+    std::span<const parser::detail::NormalizedPiece> pieces,
+    std::pmr::memory_resource& scratch);
+
+[[nodiscard]] std::optional<SourceAnalysis> ReuseNormalizedSourceAnalysis(
+    const parser::SyntaxTree& original,
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    std::span<const parser::TokenIndex> mapping,
+    std::span<const parser::detail::NormalizedPiece> pieces,
+    std::span<const ProtectedSourceRange> inherited,
+    std::pmr::memory_resource& file,
+    std::pmr::memory_resource& scratch);
 
 } // namespace formatter

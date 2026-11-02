@@ -147,6 +147,11 @@ void ExpectFormattedGolden(
 
     EXPECT_EQ(FormatWithStyle(actual, style, inputFilePath), actual);
     const Input storage(input);
+
+    if (inputFilePath.empty()) {
+        EXPECT_EQ(formatter::Format(storage.View(), style), actual);
+    }
+
     const auto detailed = formatter::Format(
         storage.View(),
         formatter::PreparedFormat(style),

@@ -938,8 +938,10 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     for (const auto& name : style.BlankLineMacroNames) {
         if (name.ends_with('*')) {
             result.BlankLineMacroPrefixes_.push_back(name.substr(0, name.size() - 1));
+            result.BlankLinePrefixInitials_ |= std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63);
         } else {
             result.BlankLineMacros_.push_back(name);
+            result.BlankLineMacroFilter_.Add(name);
         }
     }
 
@@ -963,16 +965,19 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         style.CallLineMessageNames.size());
 
     for (const auto& name : style.CallLineFirstArgumentNames) {
+        result.MessagePinFilter_.Add(name);
         result.MessagePins_
             .push_back({name, FirstArgumentAnnotation::PinAnyArgument, style.CallLineFirstArgumentOverflow});
     }
 
     for (const auto& name : style.CallLineFirstStringNames) {
+        result.MessagePinFilter_.Add(name);
         result.MessagePins_
             .push_back({name, FirstArgumentAnnotation::PinCompleteStringLiteral, style.CallLineFirstStringOverflow});
     }
 
     for (const auto& name : style.CallLineMessageNames) {
+        result.MessagePinFilter_.Add(name);
         result.MessagePins_.push_back({
             name,
             FirstArgumentAnnotation::PinCompleteStringLiteral,
@@ -1005,11 +1010,29 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
                 return left.Name == right.Name;
             }),
         result.MessagePins_.end());
-    result.ChainRoots_ = style.ChainedCallRootNames;
+    result.ChainRoots_.reserve(style.ChainedCallRootNames.size());
+
+    for (const auto& name : style.ChainedCallRootNames) {
+        result.ChainRoots_.push_back(name);
+        result.ChainRootFilter_.Add(name);
+    }
+
     std::sort(result.ChainRoots_.begin(), result.ChainRoots_.end());
-    result.AlwaysBreakChainRoots_ = style.AlwaysBreakChainRootNames;
+    result.AlwaysBreakChainRoots_.reserve(style.AlwaysBreakChainRootNames.size());
+
+    for (const auto& name : style.AlwaysBreakChainRootNames) {
+        result.AlwaysBreakChainRoots_.push_back(name);
+        result.AlwaysBreakChainRootFilter_.Add(name);
+    }
+
     std::sort(result.AlwaysBreakChainRoots_.begin(), result.AlwaysBreakChainRoots_.end());
-    result.AlwaysBreakChainCalls_ = style.AlwaysBreakChainCallNames;
+    result.AlwaysBreakChainCalls_.reserve(style.AlwaysBreakChainCallNames.size());
+
+    for (const auto& name : style.AlwaysBreakChainCallNames) {
+        result.AlwaysBreakChainCalls_.push_back(name);
+        result.AlwaysBreakChainCallFilter_.Add(name);
+    }
+
     std::sort(result.AlwaysBreakChainCalls_.begin(), result.AlwaysBreakChainCalls_.end());
     result.VisualScopes_.reserve(style.IndentedCallScopePairs.size());
 
@@ -1071,6 +1094,10 @@ std::span<const MessagePinAnnotation> LibraryAnnotations::MessagePins() const
 
 const MessagePinAnnotation* LibraryAnnotations::FindMessagePin(std::string_view name) const noexcept
 {
+    if (!MessagePinFilter_.MayContain(name)) {
+        return nullptr;
+    }
+
     const auto found = std::lower_bound(
         MessagePins_.begin(),
         MessagePins_.end(),
@@ -1088,7 +1115,7 @@ ChainParticipation LibraryAnnotations::Chains() const noexcept
 
 bool LibraryAnnotations::IsAnnotatedChainRoot(std::string_view name) const noexcept
 {
-    return std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
+    return ChainRootFilter_.MayContain(name) && std::binary_search(ChainRoots_.begin(), ChainRoots_.end(), name);
 }
 
 std::span<const std::string> LibraryAnnotations::AlwaysBreakChainRoots() const
@@ -1098,7 +1125,8 @@ std::span<const std::string> LibraryAnnotations::AlwaysBreakChainRoots() const
 
 bool LibraryAnnotations::AlwaysBreakChainRoot(std::string_view name) const noexcept
 {
-    return std::binary_search(AlwaysBreakChainRoots_.begin(), AlwaysBreakChainRoots_.end(), name);
+    return AlwaysBreakChainRootFilter_.MayContain(name) &&
+        std::binary_search(AlwaysBreakChainRoots_.begin(), AlwaysBreakChainRoots_.end(), name);
 }
 
 std::span<const std::string> LibraryAnnotations::AlwaysBreakChainCalls() const
@@ -1108,8 +1136,17 @@ std::span<const std::string> LibraryAnnotations::AlwaysBreakChainCalls() const
 
 bool LibraryAnnotations::IsBlankLineMacro(std::string_view name) const noexcept
 {
-    if (std::binary_search(BlankLineMacros_.begin(), BlankLineMacros_.end(), name)) {
+    if (BlankLineMacroFilter_.MayContain(name) &&
+        std::binary_search(BlankLineMacros_.begin(), BlankLineMacros_.end(), name))
+    {
         return true;
+    }
+
+    // Prefix matches do not require the query's exact length.
+    if (name.empty() ||
+        !(BlankLinePrefixInitials_ & (std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63))))
+    {
+        return false;
     }
 
     const auto prefix = std::upper_bound(BlankLineMacroPrefixes_.begin(), BlankLineMacroPrefixes_.end(), name);
@@ -1118,7 +1155,8 @@ bool LibraryAnnotations::IsBlankLineMacro(std::string_view name) const noexcept
 
 bool LibraryAnnotations::AlwaysBreakChainCall(std::string_view name) const noexcept
 {
-    return std::binary_search(AlwaysBreakChainCalls_.begin(), AlwaysBreakChainCalls_.end(), name);
+    return AlwaysBreakChainCallFilter_.MayContain(name) &&
+        std::binary_search(AlwaysBreakChainCalls_.begin(), AlwaysBreakChainCalls_.end(), name);
 }
 
 std::span<const std::string> LibraryAnnotations::ChainRoots() const

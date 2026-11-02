@@ -82,6 +82,32 @@ public:
     [[nodiscard]] const VisualScopeAnnotation* FindScopeEnd(std::string_view name) const noexcept;
 
 private:
+    struct NameFilter
+    {
+        std::uint64_t Initials = 0;
+        std::uint64_t Lengths = 0;
+
+        void Add(std::string_view name) noexcept
+        {
+            Initials |= std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63);
+            Lengths |= std::uint64_t{1} << (name.size() & 63);
+        }
+
+        [[nodiscard]] bool MayContain(std::string_view name) const noexcept
+        {
+            // Collisions only admit the existing exact string lookup. Modulo
+            // lengths retain identifiers of any supported size.
+            return (Lengths & (std::uint64_t{1} << (name.size() & 63))) && !name.empty() &&
+                (Initials & (std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63)));
+        }
+    };
+
+    NameFilter MessagePinFilter_;
+    NameFilter ChainRootFilter_;
+    NameFilter AlwaysBreakChainRootFilter_;
+    NameFilter AlwaysBreakChainCallFilter_;
+    NameFilter BlankLineMacroFilter_;
+    std::uint64_t BlankLinePrefixInitials_ = 0;
     std::vector<MessagePinAnnotation> MessagePins_;
     std::vector<std::string> ChainRoots_;
     std::vector<std::string> AlwaysBreakChainRoots_;

@@ -20,6 +20,9 @@ void LayoutPlan::SourceWhitespace(Index begin, Index end, Newline ending)
     }
 }
 
+#if __has_cpp_attribute(gnu::flatten)
+[[gnu::flatten]]
+#endif
 Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) const
 {
     auto* resource = &memory;
@@ -168,9 +171,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     Index summaryOwner = InvalidId;
     std::size_t mappingCount = 0;
     const auto accumulate = [&] (
-        Measure flat,
-        Measure broken,
-        Measure flexible,
+        const Measure& flat,
+        const Measure& broken,
+        const Measure& flexible,
         std::uint8_t firstBreakPenalty,
         const std::array<uint32_t, 3>& childBreakPrefixes,
         Order lastBreak,
@@ -189,8 +192,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                         flexible.Line && firstBreakPenalty < penalty ? flexible.Prefix : AddWidth(flat.Prefix, prefix));
             }
 
-            summary.Flat = Join(flat, summary.Flat);
-            summary.Broken = Join(broken, summary.Broken);
+            Prepend(summary.Flat, flat);
+            Prepend(summary.Broken, broken);
 
             if (summary.LastBreak == NoOrder) {
                 summary.LastBreak = lastBreak;
@@ -204,8 +207,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         };
     Measure fixedRun;
     bool hasFixedRun = false;
-    const auto accumulateFixed = [&] (Measure measured) {
-        fixedRun = Join(measured, fixedRun);
+    const auto accumulateFixed = [&] (const Measure& measured) {
+        Prepend(fixedRun, measured);
         hasFixedRun = true;
     };
     const auto flushFixed = [&] {
@@ -318,7 +321,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         return true;
     };
     const auto summarizeToken = [&] (Index id) {
-        const auto flat = TokenMeasure(id, policy.TabWidth);
+        Measure flat;
+        TokenMeasure(id, policy.TabWidth, flat);
         summary.ProbeEligible &= !flat.Line && (flat.Plain ? flat.Prefix <= 4096 : Tree_.TokenText(id).size() <= 4096);
 
         if (countMappings) {
@@ -455,7 +459,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     result.Text.reserve(Source_.size());
 
     if (mappingRequested) {
-        result.Map.reserve(indexedMappingsOnly ? policy.TrackSource.size() : mappingCount);
+        result.Map.reserve(policy.SourceMap || policy.TokenMap ? mappingCount : policy.TrackSource.size());
     }
 
     struct CapturedAnchor
@@ -492,8 +496,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     };
 
     std::pmr::vector<Frame> frames(resource);
-    frames.reserve(Depth_);
-    Frame frame;
+    frames.reserve(size_t(Depth_) + 1);
+    frames.emplace_back();
+    Frame* current = &frames.back();
     Index activeGroup = InvalidId;
     Order currentOrder = 0;
     std::uint32_t column = 0;
@@ -501,9 +506,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     std::uint32_t lineIndent = 0;
     bool linePrefix = true;
     auto realizeContinuation = [&] {
-        if (frame.HasContinuation) {
-            frame.RealizedContinuationLine = true;
-            frame.RealizedContinuationIndent = column;
+        if (current->HasContinuation) {
+            current->RealizedContinuationLine = true;
+            current->RealizedContinuationIndent = column;
         }
     };
 
@@ -517,32 +522,34 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             // Otherwise continuation starters use the callee's physical line.
             return spec.Continuation
                 ? std::max(
-                    frame.HasContinuation ? frame.ContinuationBase : frame.Indent - frame.PendingExpressionIndent,
+                    current->HasContinuation
+                    ? current->ContinuationBase
+                    : current->Indent - current->PendingExpressionIndent,
                     lineIndent)
                 : lineIndent;
         }
 
-        if (frame.HasContinuation) {
-            if (frame.RealizedContinuationLine) {
-                return frame.RealizedContinuationIndent;
+        if (current->HasContinuation) {
+            if (current->RealizedContinuationLine) {
+                return current->RealizedContinuationIndent;
             }
 
             if (!spec.Continuation) {
-                return frame.ContinuationBase;
+                return current->ContinuationBase;
             }
         }
 
-        return frame.Indent - frame.PendingExpressionIndent;
+        return current->Indent - current->PendingExpressionIndent;
     };
     auto sharesRealizedContinuation = [&] (const auto& spec) {
-        return !spec.StructuralBase && frame.StructuralBase && frame.RealizedContinuationLine;
+        return !spec.StructuralBase && current->StructuralBase && current->RealizedContinuationLine;
     };
     auto sharesContinuation = [&] (const auto& spec) {
         // A structural consumer already indented its contents. Contributors
         // reuse that realized level; another contributor starting on a later
         // line still creates a level, preserving expression precedence.
-        return spec.Continuation && !spec.LineBase && frame.HasContinuation &&
-            ((lines == frame.ContinuationStartLine && !(spec.StructuralBase && frame.RealizedContinuationLine)) ||
+        return spec.Continuation && !spec.LineBase && current->HasContinuation &&
+            ((lines == current->ContinuationStartLine && !(spec.StructuralBase && current->RealizedContinuationLine)) ||
                 sharesRealizedContinuation(spec));
     };
     auto advance = [&] (std::string_view text, bool plain = false) {
@@ -600,7 +607,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         return width != Infinity && column <= policy.Width && width <= policy.Width - column;
     };
     auto tailWidth = [&] (Measure tail) {
-        return tail.Line ? tail.Prefix : AddWidth(tail.Prefix, frame.Tail);
+        return tail.Line ? tail.Prefix : AddWidth(tail.Prefix, current->Tail);
     };
     auto groupTail = [&] (const layout::GroupSpec& group, const GroupCache& entry) {
         if (group.FitSuffixWidth != InvalidId) {
@@ -608,14 +615,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         }
 
         const auto penalty = group.BreakPenalty;
-        const auto width = tailWidth(frame.OwnedFlat ? entry.FlatTail : entry.BrokenTail);
+        const auto width = tailWidth(current->OwnedFlat ? entry.FlatTail : entry.BrokenTail);
         // Keep costly groups flat when a cheaper following group can break.
         // An owned-flat parent still requires its complete flat suffix.
-        return !frame.OwnedFlat && penalty != 0 ? std::min(width, entry.TailBreakPrefixes[penalty - 1]) : width;
+        return !current->OwnedFlat && penalty != 0 ? std::min(width, entry.TailBreakPrefixes[penalty - 1]) : width;
     };
     auto resolveIndent = [&] (AnchorId id, std::uint32_t requiredWidth) {
         id = ResolveAnchor(id, currentOrder);
-        auto indent = frame.Indent;
+        auto indent = current->Indent;
 
         if (id != InvalidId) {
             const auto& anchor = anchors[id];
@@ -734,18 +741,17 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const auto& entry = groupCache[id];
         const auto& groupEntry = groupCache[id];
         const auto tail = groupTail(spec, groupEntry);
-        const bool mandatory = frame.Mandatory != NoOrder && frame.Mandatory >= i &&
-            frame.Mandatory <= Groups_[id].EndOrder && lines == frame.StartLine;
+        const bool mandatory = current->Mandatory != NoOrder && current->Mandatory >= i &&
+            current->Mandatory <= Groups_[id].EndOrder && lines == current->StartLine;
         const bool broken =
-            mandatory || (!frame.Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
+            mandatory || (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
         const bool keepOwnedFlat = broken && childLayoutDepth && groupEntry.ChildLayoutAllowed && i <= childLayoutEnd &&
             frames.size() - childLayoutBase < childLayoutDepth;
         result.Broken[id] = broken;
-        frames.push_back(frame);
         const bool forceOwned = spec.ForceBreak && groupEntry.OwnedLastBreak != NoOrder;
-        auto base = frame.Indent;
-        auto pending = frame.PendingExpressionIndent;
-        auto reversible = frame.ReversibleIndent;
+        auto base = current->Indent;
+        auto pending = current->PendingExpressionIndent;
+        auto reversible = current->ReversibleIndent;
 
         if (spec.StructuralBase) {
             if (!reversible || pending > base) {
@@ -761,7 +767,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         auto indent = spec.Indent;
         const bool shared = sharesContinuation(spec);
         const bool newLineBase =
-            spec.Continuation && !shared && frame.HasContinuation && lines != frame.ContinuationStartLine;
+            spec.Continuation && !shared && current->HasContinuation && lines != current->ContinuationStartLine;
 
         if (newLineBase) {
             // A new starter uses this physical line, not an unrealized
@@ -772,8 +778,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         if (shared) {
             const bool realized = sharesRealizedContinuation(spec);
-            const auto continuationIndent = realized ? frame.RealizedContinuationIndent : frame.Indent;
-            base = realized ? std::min(frame.ContinuationBase, continuationIndent) : frame.ContinuationBase;
+            const auto continuationIndent = realized ? current->RealizedContinuationIndent : current->Indent;
+            base = realized ? std::min(current->ContinuationBase, continuationIndent) : current->ContinuationBase;
 
             if (continuationIndent < base || continuationIndent - base > uint32_t(INT32_MAX)) {
                 indentationError(i);
@@ -794,7 +800,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             }
 
             if (spec.Continuation) {
-                const auto expressionBase = newLineBase ? base : frame.Indent - frame.PendingExpressionIndent;
+                const auto expressionBase = newLineBase ? base : current->Indent - current->PendingExpressionIndent;
                 pending = logical > expressionBase ? static_cast<std::uint32_t>(logical - expressionBase) : 0;
             } else {
                 pending = static_cast<std::uint32_t>(bias);
@@ -805,35 +811,39 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             reversible = false;
         }
 
-        frame = {
-            Offset(base, indent),
-            tail,
-            forceOwned
-                ? groupEntry.OwnedLastBreak
-                : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? groupEntry.LastBreak : NoOrder,
-            lines,
-            !broken,
-            !broken || keepOwnedFlat,
-            forceOwned,
-            false,
-            pending,
-            spec.ExpressionContinuation,
-            spec.StructuralBase,
-            false,
-            reversible,
-            spec.Continuation ? base : frame.ContinuationBase,
-            spec.Continuation || (!spec.StructuralBase && frame.HasContinuation),
-            (shared || (!spec.Continuation && !spec.StructuralBase)) && frame.RealizedContinuationLine,
-            frame.RealizedContinuationIndent,
-            spec.Continuation && !shared ? lines : frame.ContinuationStartLine,
-        };
+        // Materialize the child before growing storage so no parent reference
+        // can survive reallocation, including if the depth bound is exceeded.
+        frames
+            .emplace_back(Frame{
+                Offset(base, indent),
+                tail,
+                forceOwned
+                    ? groupEntry.OwnedLastBreak
+                    : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? groupEntry.LastBreak : NoOrder,
+                lines,
+                !broken,
+                !broken || keepOwnedFlat,
+                forceOwned,
+                false,
+                pending,
+                spec.ExpressionContinuation,
+                spec.StructuralBase,
+                false,
+                reversible,
+                spec.Continuation ? base : current->ContinuationBase,
+                spec.Continuation || (!spec.StructuralBase && current->HasContinuation),
+                (shared || (!spec.Continuation && !spec.StructuralBase)) && current->RealizedContinuationLine,
+                current->RealizedContinuationIndent,
+                spec.Continuation && !shared ? lines : current->ContinuationStartLine,
+            });
+        current = &frames.back();
         activeGroup = id;
         return true;
     };
     const auto renderEnd = [&] (Index id) -> bool {
         // Shape consumers still observe multiline descendants, even when
         // this group keeps every owned gap flat.
-        const bool multiline = lines != frame.StartLine;
+        const bool multiline = lines != current->StartLine;
 
         if (probing && groupCache[id].ShapeSensitive && bool(result.Broken[id]) != multiline) {
             // A later sibling may break without making this owner
@@ -847,31 +857,31 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         if (probing) {
             if (multiline) {
                 ++probeBrokenGroups;
-                probeBreakPenalty += frame.FlatChildPenalty;
+                probeBreakPenalty += current->FlatChildPenalty;
             } else if (const auto penalty = GroupSpecs_[id].FlatInBrokenParentPenalty; penalty != 0) {
                 // Defer this cost until the direct parent's shape is
                 // known; a wholly flat parent has no shape deviation.
-                frames.back().FlatChildPenalty += penalty;
+                frames[frames.size() - 2].FlatChildPenalty += penalty;
             }
         }
 
-        const bool realized = frame.RealizedExpressionLine && !frame.StructuralBase;
-        const bool continuationRealized = frame.RealizedContinuationLine && !frame.StructuralBase;
-        const auto continuationIndent = frame.RealizedContinuationIndent;
-        frame = frames.back();
+        const bool realized = current->RealizedExpressionLine && !current->StructuralBase;
+        const bool continuationRealized = current->RealizedContinuationLine && !current->StructuralBase;
+        const auto continuationIndent = current->RealizedContinuationIndent;
         frames.pop_back();
+        current = &frames.back();
 
         if (continuationRealized) {
-            frame.RealizedContinuationLine = true;
-            frame.RealizedContinuationIndent = continuationIndent;
+            current->RealizedContinuationLine = true;
+            current->RealizedContinuationIndent = continuationIndent;
         }
 
         if (realized) {
             // Realize inherited contributions, not the closed child's
             // additional offset. Independent child consumers fence this.
-            frame.PendingExpressionIndent = 0;
-            frame.RealizedExpressionLine = true;
-            frame.ReversibleIndent = true;
+            current->PendingExpressionIndent = 0;
+            current->RealizedExpressionLine = true;
+            current->ReversibleIndent = true;
         }
 
         activeGroup = Groups_[id].Parent;
@@ -889,10 +899,10 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         }
 
         const bool shared = sharesContinuation(spec);
-        auto base = frame.Indent;
+        auto base = current->Indent;
 
         if (spec.StructuralBase) {
-            if (!frame.ReversibleIndent || frame.PendingExpressionIndent > base) {
+            if (!current->ReversibleIndent || current->PendingExpressionIndent > base) {
                 indentationError(i);
                 return false;
             }
@@ -903,14 +913,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         auto offset = spec.Offset;
         auto sharedOffset = InvalidId;
 
-        if (spec.Continuation && !shared && frame.HasContinuation && lines != frame.ContinuationStartLine) {
+        if (spec.Continuation && !shared && current->HasContinuation && lines != current->ContinuationStartLine) {
             base = lineIndent;
         }
 
         if (shared) {
             const bool realized = sharesRealizedContinuation(spec);
-            const auto continuationIndent = realized ? frame.RealizedContinuationIndent : frame.Indent;
-            base = realized ? std::min(frame.ContinuationBase, continuationIndent) : frame.ContinuationBase;
+            const auto continuationIndent = realized ? current->RealizedContinuationIndent : current->Indent;
+            base = realized ? std::min(current->ContinuationBase, continuationIndent) : current->ContinuationBase;
 
             if (continuationIndent < base || continuationIndent - base > uint32_t(INT32_MAX)) {
                 indentationError(i);
@@ -999,7 +1009,20 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             advance(text, token.Plain);
         }
         if (mappingRequested && !probing) {
-            recordMapping({outputBegin, uint32_t(outputSize()), origin, exact, token.Protected});
+            if (token.RunFirst) {
+                for (auto original = id; original < token.RunPeer && result.State; ++original) {
+                    const auto source = Tree_.Token(original).Text;
+                    recordMapping({
+                        outputBegin + source.Begin - origin.Begin,
+                        outputBegin + source.End - origin.Begin,
+                        {source.Begin, source.End, original},
+                        true,
+                        false,
+                    });
+                }
+            } else {
+                recordMapping({outputBegin, uint32_t(outputSize()), origin, exact, token.Protected});
+            }
         }
 
         return bool(result.State) && (!probing || column <= policy.Width);
@@ -1049,7 +1072,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const bool ownerBroken = activeGroup != InvalidId && result.Broken[activeGroup];
 
         if (gapPlan.Mode == Whitespace::Flat) {
-            const bool continuingIndent = frame.RealizedContinuationLine && column == frame.RealizedContinuationIndent;
+            const bool continuingIndent =
+                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
             renderFlat(
                 gapPlan,
                 gapPlan.Spaces,
@@ -1152,7 +1176,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             copy(text.size());
             // Preserve the source geometry used by fixed-prefix summaries;
             // spelling is not a new layout or owned-break decision.
-            const bool continuingIndent = frame.RealizedContinuationLine && column == frame.RealizedContinuationIndent;
+            const bool continuingIndent =
+                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
             advance(text, textFlags[id] & TextPlain);
 
             if ((textFlags[id] & TextLine) || continuingIndent) {
@@ -1189,7 +1214,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             }
 
             realizeContinuation();
-            // Do not set frame.OwnedLine: only editable gaps satisfy
+            // Do not set current->OwnedLine: only editable gaps satisfy
             // ForceOwned.
 
         } else if (gapPlan.Mode == Whitespace::Decide) {
@@ -1204,16 +1229,17 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto& gap = gapPlan.Conditional && broken ? BrokenSpec(gaps) : gaps.Flat;
             const auto& gapEntry = gapCache[gapPlan.Policy];
 
-            if (frame.OwnedFlat && broken && gapPlan.Conditional && gap.Kind == GapKind::Hard) {
+            if (current->OwnedFlat && broken && gapPlan.Conditional && gap.Kind == GapKind::Hard) {
                 // Conditional topology belongs to the owner's broken shape;
                 // it cannot be suppressed by a child-only alternative.
                 return false;
             }
 
-            const bool continuingIndent = frame.RealizedContinuationLine && column == frame.RealizedContinuationIndent;
+            const bool continuingIndent =
+                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
             bool line = gap.Kind == GapKind::Hard;
 
-            if (gap.Kind == GapKind::Soft && ownerBroken && !frame.OwnedFlat) {
+            if (gap.Kind == GapKind::Soft && ownerBroken && !current->OwnedFlat) {
                 if (GroupSpecs_[activeGroup].Mode == GroupMode::Consistent) {
                     line = true;
                 } else {
@@ -1226,7 +1252,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     }
 
                     line = !fits(AddWidth(gapEntry.ExpandedWidth, segment ? gap.RequiredWidth : tail)) ||
-                        (frame.Mandatory == i && (frame.ForceOwned ? !frame.OwnedLine : lines == frame.StartLine));
+                        (current->Mandatory == i &&
+                            (current->ForceOwned ? !current->OwnedLine : lines == current->StartLine));
                 }
             }
 
@@ -1244,16 +1271,16 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 }
 
                 lines += gap.NewlineCount;
-                frame.OwnedLine = true;
+                current->OwnedLine = true;
 
-                if (frame.ExpressionContinuation) {
-                    if (!frame.ReversibleIndent) {
+                if (current->ExpressionContinuation) {
+                    if (!current->ReversibleIndent) {
                         indentationError(i);
                         return false;
                     }
 
-                    frame.PendingExpressionIndent = 0;
-                    frame.RealizedExpressionLine = true;
+                    current->PendingExpressionIndent = 0;
+                    current->RealizedExpressionLine = true;
                 }
 
                 if (gap.IndentSourceBegin != InvalidId) {
@@ -1298,7 +1325,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto text = gapPlan.Mode == Whitespace::Comma
                 ? (ownerBroken ? std::string_view(",") : std::string_view{})
                 : Text(gapPlan.Origin);
-            const bool continuingIndent = frame.RealizedContinuationLine && column == frame.RealizedContinuationIndent;
+            const bool continuingIndent =
+                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
 
             if (gapPlan.Mode == Whitespace::Comma) {
                 append(text);
@@ -1308,7 +1336,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
             advance(text, gapPlan.Mode == Whitespace::Comma || (textFlags[id] & TextPlain));
 
-            if (gapPlan.Mode == Whitespace::Preserve && frame.HasContinuation &&
+            if (gapPlan.Mode == Whitespace::Preserve && current->HasContinuation &&
                 ((textFlags[id] & TextLine) || continuingIndent) &&
                 text.find_first_not_of(" \t\r\n") == std::string_view::npos)
             {
@@ -1317,13 +1345,13 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         }
 
         if (gapPlan.RealizeExpression && activeGroup == Gaps_[gapPlan.SourceGap()].Owner) {
-            if (!frame.ReversibleIndent) {
+            if (!current->ReversibleIndent) {
                 indentationError(i);
                 return false;
             }
 
-            frame.PendingExpressionIndent = 0;
-            frame.RealizedExpressionLine = true;
+            current->PendingExpressionIndent = 0;
+            current->RealizedExpressionLine = true;
             realizeContinuation();
         }
 
@@ -1350,8 +1378,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             childLayoutDepth = 0;
         }
 
-        if (!layoutSelected && groupEntry.ChildLayoutAllowed && groupEntry.OwnedLastBreak != NoOrder && !frame.Flat &&
-            !entry.Flat.Line && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), groupTail(spec, groupEntry))))
+        if (!layoutSelected && groupEntry.ChildLayoutAllowed && groupEntry.OwnedLastBreak != NoOrder &&
+            !current->Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
+            !fits(AddWidth(entry.Flat.Width(), groupTail(spec, groupEntry))))
         {
             constexpr size_t MaxProbePositions = 256;
             constexpr size_t MaxProbeDepth = 4;
@@ -1363,7 +1392,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             --checkpoint.Begin;
 
             if (eligible && groupEntry.HasChild) {
-                const auto savedFrame = frame;
+                const auto savedFrame = *current;
                 const auto savedGroup = activeGroup;
                 const auto savedColumn = column;
                 const auto savedLines = lines;
@@ -1441,7 +1470,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     }
 
                     frames.resize(savedDepth);
-                    frame = savedFrame;
+                    current = &frames.back();
+                    *current = savedFrame;
                     activeGroup = savedGroup;
                     column = savedColumn;
                     lines = savedLines;

@@ -2,10 +2,12 @@
 
 #include <tokenizer/token.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <memory>
 #include <memory_resource>
@@ -357,8 +359,8 @@ template <class T>
     return ::new (memory.allocate(sizeof(T), alignof(T))) T;
 }
 
-// Appends through linked chunks while building. Seal() creates a dense chunk
-// directory so formatter-facing indexed access remains constant-time.
+// Grow an arena-owned chunk directory during construction so indexed access
+// remains constant-time both before and after Seal().
 template <class Chunk, uint16_t Capacity>
 class SegmentedStorage
 {
@@ -389,14 +391,39 @@ public:
         Last_ = std::exchange(other.Last_, nullptr);
         Chunks_ = std::exchange(other.Chunks_, nullptr);
         ChunkCount_ = std::exchange(other.ChunkCount_, 0);
+        ChunkCapacity_ = std::exchange(other.ChunkCapacity_, 0);
         Size_ = std::exchange(other.Size_, 0);
+        Sealed_ = std::exchange(other.Sealed_, false);
     }
 
     [[nodiscard]] Slot Append()
     {
-        assert(!Chunks_);
+        assert(!Sealed_ && Memory_);
+        assert(Size_ != std::numeric_limits<uint32_t>::max());
 
         if (!Last_ || Last_->Size == Capacity) {
+            if (ChunkCount_ == ChunkCapacity_) {
+                constexpr auto maxChunks = std::numeric_limits<uint32_t>::max() / Capacity +
+                    (std::numeric_limits<uint32_t>::max() % Capacity != 0);
+                const auto capacity = ChunkCapacity_ == 0
+                    ? uint32_t(4)
+                    : ChunkCapacity_ > maxChunks / 2 ? maxChunks : ChunkCapacity_ * 2;
+
+                if (capacity > std::numeric_limits<size_t>::max() / sizeof(Chunk*)) {
+                    throw std::bad_array_new_length();
+                }
+
+                auto** chunks = static_cast<Chunk**>(Memory_->allocate(sizeof(Chunk*) * capacity, alignof(Chunk*)));
+
+                if (ChunkCount_ != 0) {
+                    std::memcpy(chunks, Chunks_, sizeof(Chunk*) * ChunkCount_);
+                }
+
+                // Superseded directories share the input file's arena lifetime.
+                Chunks_ = chunks;
+                ChunkCapacity_ = capacity;
+            }
+
             auto* chunk = MakeDefaultInitialized<Chunk>(*Memory_);
 
             if (Last_) {
@@ -406,7 +433,7 @@ public:
             }
 
             Last_ = chunk;
-            ++ChunkCount_;
+            Chunks_[ChunkCount_++] = chunk;
         }
 
         auto offset = Last_->Size++;
@@ -416,48 +443,21 @@ public:
 
     void Seal()
     {
-        assert(!Chunks_);
-
-        if (ChunkCount_ == 0) {
-            return;
-        }
-
-        Chunks_ = static_cast<Chunk**>(Memory_->allocate(sizeof(Chunk*) * ChunkCount_, alignof(Chunk*)));
-        auto* chunk = First_;
-
-        for (uint32_t i = 0; i < ChunkCount_; ++i) {
-            Chunks_[i] = chunk;
-            chunk = chunk->Next;
-        }
+        assert(!Sealed_ && Memory_);
+        Sealed_ = true;
     }
 
-    // Requires the directory built by Seal().
+    // Formatter-facing access requires completed tokenization.
     [[nodiscard]] Chunk* ChunkAt(uint32_t index) const
     {
-        assert(Chunks_ && index < ChunkCount_);
+        assert(Sealed_ && index < ChunkCount_);
         return Chunks_[index];
     }
 
-    // Uses the directory when available, otherwise follows linked chunks.
     [[nodiscard]] Chunk* ResolveChunk(uint32_t index) const
     {
         assert(index < ChunkCount_);
-
-        if (Chunks_) {
-            return Chunks_[index];
-        }
-
-        if (index + 1 == ChunkCount_) {
-            return Last_;
-        }
-
-        auto* chunk = First_;
-
-        while (index-- != 0) {
-            chunk = chunk->Next;
-        }
-
-        return chunk;
+        return Chunks_[index];
     }
 
     [[nodiscard]] uint32_t Size() const
@@ -467,13 +467,16 @@ public:
 
 private:
     static_assert(std::is_trivially_destructible_v<Chunk>);
+    static_assert(Capacity != 0);
 
     std::pmr::memory_resource* Memory_;
     Chunk* First_ = nullptr;
     Chunk* Last_ = nullptr;
     Chunk** Chunks_ = nullptr;
     uint32_t ChunkCount_ = 0;
+    uint32_t ChunkCapacity_ = 0;
     uint32_t Size_ = 0;
+    bool Sealed_ = false;
 };
 
 struct StoredToken
@@ -494,6 +497,7 @@ class TriviaPool
         Chunk* Next = nullptr;
         uint16_t Size = 0;
         std::array<TriviaAttachments, AttachmentsPerChunk> Items;
+        std::array<Node*, AttachmentsPerChunk> Owners;
     };
 
 public:
@@ -511,16 +515,28 @@ public:
         Storage_.MoveFrom(std::move(other.Storage_));
     }
 
-    [[nodiscard]] uint32_t Add()
+    [[nodiscard]] uint32_t Add(Node& owner)
     {
         auto slot = Storage_.Append();
         slot.ChunkPtr->Items[slot.Offset] = {};
+        slot.ChunkPtr->Owners[slot.Offset] = &owner;
         return slot.Index;
     }
 
     void Seal()
     {
         Storage_.Seal();
+    }
+
+    [[nodiscard]] uint32_t Size() const
+    {
+        return Storage_.Size();
+    }
+
+    [[nodiscard]] Node& Owner(uint32_t index) const
+    {
+        assert(index < Storage_.Size());
+        return *Storage_.ResolveChunk(index / AttachmentsPerChunk)->Owners[index % AttachmentsPerChunk];
     }
 
     [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
@@ -559,7 +575,8 @@ class TokenPool
 
 public:
     explicit TokenPool(std::pmr::memory_resource& memory)
-        : Storage_(memory)
+        : Memory_(&memory)
+        , Storage_(memory)
     { }
 
     TokenPool(TokenPool&& other) noexcept = default;
@@ -569,6 +586,8 @@ public:
 
     void MoveFrom(TokenPool&& other) noexcept
     {
+        Memory_ = std::exchange(other.Memory_, nullptr);
+        Kinds_ = std::exchange(other.Kinds_, nullptr);
         Storage_.MoveFrom(std::move(other.Storage_));
     }
 
@@ -590,6 +609,29 @@ public:
     void Seal()
     {
         Storage_.Seal();
+        const auto count = Storage_.Size();
+
+        if (!count) {
+            return;
+        }
+
+        if (count <= TokensPerChunk) {
+            Kinds_ = Storage_.ChunkAt(0)->Kinds.data();
+            return;
+        }
+
+        // Grammar scans need kinds much more often than spelling/positions.
+        // Keep their immutable bytes directly indexed after tokenization.
+        Kinds_ = static_cast<tokenizer::TokenKind*>(Memory_
+            ->allocate(sizeof(tokenizer::TokenKind) * count, alignof(tokenizer::TokenKind)));
+        for (uint32_t begin = 0; begin < count;) {
+            const auto size = std::min<uint32_t>(TokensPerChunk, count - begin);
+            std::memcpy(
+                Kinds_ + begin,
+                Storage_.ChunkAt(begin / TokensPerChunk)->Kinds.data(),
+                sizeof(tokenizer::TokenKind) * size);
+            begin += size;
+        }
     }
 
     [[nodiscard]] const StoredToken& operator[](TokenIndex index) const
@@ -606,7 +648,8 @@ public:
     [[nodiscard]] tokenizer::TokenKind Kind(TokenIndex index) const
     {
         assert(index < Storage_.Size());
-        return Storage_.ChunkAt(index / TokensPerChunk)->Kinds[index % TokensPerChunk];
+        assert(Kinds_);
+        return Kinds_[index];
     }
 
     [[nodiscard]] PunctuationRole Role(TokenIndex index) const
@@ -637,6 +680,8 @@ public:
     [[nodiscard]] TokenIndex FindComment(TokenIndex begin, TokenIndex end) const;
 
 private:
+    std::pmr::memory_resource* Memory_;
+    tokenizer::TokenKind* Kinds_ = nullptr;
     SegmentedStorage<Chunk, TokensPerChunk> Storage_;
 };
 
@@ -729,6 +774,7 @@ private:
     explicit SyntaxTree(std::string_view input);
 
     std::unique_ptr<std::pmr::monotonic_buffer_resource> Memory_;
+    std::unique_ptr<std::pmr::monotonic_buffer_resource> OriginalMemory_;
     std::string_view Input_;
     detail::TokenPool Tokens_;
     detail::TriviaPool Trivia_;
