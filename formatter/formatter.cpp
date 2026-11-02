@@ -1,9 +1,13 @@
 #include "formatter.hpp"
 
 #include "diagnostic_locations.hpp"
+#include "flat_span_internal.hpp"
 #include "format_changes_internal.hpp"
 #include "format_pipeline.hpp"
 #include "layout_plan.hpp"
+#include "namespace_comments_internal.hpp"
+#include "source_analysis_internal.hpp"
+#include "structural_edits_internal.hpp"
 #include "syntax_layout.hpp"
 #include "text_policies.hpp"
 
@@ -13,6 +17,7 @@
 
 #include <algorithm>
 #include <format>
+#include <limits>
 #include <memory_resource>
 #include <optional>
 #include <stdexcept>
@@ -379,6 +384,644 @@ layout::Identity RecordRenderAnchors(
     }
 
     return original;
+}
+
+void PruneTextOnlyNamespaceNoOps(
+    NamespaceCommentPlan& plan,
+    const parser::SyntaxTree& original,
+    const parser::SyntaxTree& tree,
+    const StructuralMaterialization* normalized,
+    const detail::LayoutPlan& layout,
+    std::pmr::memory_resource& scratch,
+    const std::pmr::vector<detail::CopiedTokenRun>* copied = nullptr)
+{
+    using TI = parser::TokenIndex;
+    constexpr auto none = std::numeric_limits<TI>::max();
+    const auto count = original.TokenCount();
+
+    if (plan.Namespaces.empty() || (normalized && !copied && normalized->OriginalTokens.size() != count)) {
+        return;
+    }
+
+    // Keep malformed identity plans on the ordinary resolver's error path.
+    std::pmr::vector<size_t> active(&scratch);
+    TI previousOpen = 0;
+
+    for (size_t i = 0; i < plan.Namespaces.size(); ++i) {
+        const auto& ns = plan.Namespaces[i];
+
+        if (ns.Open >= ns.Close || ns.Close >= count || ns.Header.Begin >= ns.Header.End || ns.Header.End != ns.Open ||
+            ns.Comment > count || (i && ns.Open <= previousOpen))
+        {
+            return;
+        }
+
+        previousOpen = ns.Open;
+
+        while (!active.empty() && plan.Namespaces[active.back()].Close < ns.Open) {
+            active.pop_back();
+        }
+
+        if (!active.empty() && ns.Close >= plan.Namespaces[active.back()].Close) {
+            return;
+        }
+
+        active.push_back(i);
+    }
+
+    const auto currentToken = [&] (TI token) -> TI {
+        if (token >= count) {
+            return none;
+        }
+
+        if (!normalized) {
+            return token;
+        }
+
+        TokenOutputOffset expected;
+
+        if (copied) {
+            const auto* run = detail::FindCopiedTokenRun(*copied, token);
+
+            if (!run) {
+                return none;
+            }
+
+            expected = detail::CopiedTokenPosition(original, *run, token);
+        } else {
+            expected = normalized->OriginalTokens[token];
+        }
+
+        if (!expected.Present) {
+            return none;
+        }
+
+        TI first = 0, last = tree.TokenCount();
+
+        while (first < last) {
+            const auto middle = first + (last - first) / 2;
+
+            if (tree.Token(middle).Text.Begin < expected.Output.Begin) {
+                first = middle + 1;
+            } else {
+                last = middle;
+            }
+        }
+
+        if (first == tree.TokenCount()) {
+            return none;
+        }
+
+        const auto actual = tree.Token(first).Text;
+        return actual.Begin == expected.Output.Begin && actual.End == expected.Output.End ? first : none;
+    };
+    const auto noOp = [&] (const NamespaceIdentity& ns) {
+        const bool existing = ns.Comment != count;
+
+        if (plan.Options.Policy == NamespaceCommentPolicy::AddMissing && existing) {
+            return true;
+        }
+
+        if (plan.Options.Policy == NamespaceCommentPolicy::Remove && !existing) {
+            return true;
+        }
+
+        if (plan.Options.Policy != NamespaceCommentPolicy::Fix || !existing) {
+            return false;
+        }
+
+        const auto close = currentToken(ns.Close);
+        const auto comment = currentToken(ns.Comment);
+
+        if (close == none || comment == none || close + 1 != comment || !layout.TokenSurvives(close) ||
+            !layout.TokenSurvives(comment) || !layout.TokenSpellingExact(close) ||
+            !layout.TokenSpellingExact(comment) || tree.Kind(close) != tokenizer::TokenKind::Operator_CloseBrace ||
+            tree.Kind(comment) != tokenizer::TokenKind::Comment || !layout.GapEmitsSpaces(comment, plan.Options.Spaces))
+        {
+            return false;
+        }
+
+        auto text = tree.TokenText(comment);
+        const auto consume = [&] (std::string_view expected) {
+            if (!text.starts_with(expected)) {
+                return false;
+            }
+
+            text.remove_prefix(expected.size());
+            return true;
+        };
+
+        if (!consume("// namespace")) {
+            return false;
+        }
+
+        bool firstName = true;
+
+        for (TI token = ns.Header.Begin; token < ns.Header.End; ++token) {
+            const auto kind = original.Kind(token);
+
+            if (kind != tokenizer::TokenKind::Identifier && kind != tokenizer::TokenKind::Operator_ScopeResolution) {
+                continue;
+            }
+
+            if (firstName) {
+                if (!consume(" ")) {
+                    return false;
+                }
+
+                firstName = false;
+            }
+
+            if (!consume(original.TokenText(token))) {
+                return false;
+            }
+        }
+
+        // CRLF and noncanonical suffixes use the ordinary resolver. Any
+        // failed ownership/validity check there skips this identical edit.
+        return text.empty();
+    };
+    size_t retained = 0;
+
+    for (const auto& ns : plan.Namespaces) {
+        if (!noOp(ns)) {
+            plan.Namespaces[retained++] = ns;
+        }
+    }
+
+    plan.Namespaces.resize(retained);
+}
+
+// Successful consuming reuse built copied token records directly from these
+// source pieces. Check the compact endpoints/count before exposing affine
+// token indices; this certificate is never inferred from endpoint checks alone.
+bool CertifyCopiedTokenRuns(
+    const parser::SyntaxTree& tree,
+    const parser::SyntaxTree& original,
+    std::span<detail::CopiedTokenRun> copied)
+{
+    for (auto& run : copied) {
+        const auto begin = detail::CopiedTokenPosition(original, run, run.Original.Begin).Output;
+        const auto end = detail::CopiedTokenPosition(original, run, run.Original.End - 1).Output;
+        parser::TokenIndex first = 0, last = tree.TokenCount();
+
+        while (first < last) {
+            const auto middle = first + (last - first) / 2;
+
+            if (tree.Token(middle).Text.Begin < begin.Begin) {
+                first = middle + 1;
+            } else {
+                last = middle;
+            }
+        }
+
+        if (first == tree.TokenCount() || run.Original.Size() > tree.TokenCount() - first) {
+            return false;
+        }
+
+        const auto firstToken = tree.Token(first).Text;
+        const auto lastToken = tree.Token(first + run.Original.Size() - 1).Text;
+
+        if (firstToken.Begin != begin.Begin || firstToken.End != begin.End || lastToken.Begin != end.Begin ||
+            lastToken.End != end.End)
+        {
+            return false;
+        }
+
+        run.NormalizedBegin = first;
+    }
+
+    return true;
+}
+
+struct SparseNamespaceAnchors
+{
+    struct Token
+    {
+        parser::TokenIndex Normalized;
+        uint32_t Position;
+    };
+
+    std::pmr::vector<detail::NamespaceTokenPosition> Positions;
+    std::pmr::vector<Token> Tokens;
+
+    explicit SparseNamespaceAnchors(std::pmr::memory_resource& memory)
+        : Positions(&memory)
+        , Tokens(&memory)
+    { }
+};
+
+std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
+    const parser::SyntaxTree& tree,
+    const parser::SyntaxTree& original,
+    const StructuralMaterialization* normalized,
+    const NamespaceCommentPlan& namespaces,
+    const detail::LayoutPlan& layout,
+    std::pmr::memory_resource& file,
+    std::pmr::memory_resource& scratch,
+    const std::pmr::vector<detail::CopiedTokenRun>* copied = nullptr)
+{
+    using TI = parser::TokenIndex;
+    constexpr auto none = std::numeric_limits<TI>::max();
+    const auto count = original.TokenCount();
+
+    if (normalized && !copied && normalized->OriginalTokens.size() != count) {
+        return std::nullopt;
+    }
+
+    // A present identity must still designate one complete normalized token.
+    // The materializer proves its bytes are copied verbatim from original;
+    // validating endpoints rules out a token formed across a piece splice.
+    if (normalized && !copied) {
+        TI next = 0;
+
+        for (const auto& piece : normalized->Provenance) {
+            if (piece.Generated) {
+                continue;
+            }
+
+            TI first = 0, last = count;
+
+            while (first < last) {
+                const auto middle = first + (last - first) / 2;
+
+                if (original.Token(middle).Text.Begin < piece.Original.Begin) {
+                    first = middle + 1;
+                } else {
+                    last = middle;
+                }
+            }
+
+            for (auto id = first; id < count && original.Token(id).Text.Begin < piece.Original.End; ++id) {
+                const auto& expected = normalized->OriginalTokens[id];
+
+                while (next < tree.TokenCount() && tree.Token(next).Text.End <= expected.Output.Begin) {
+                    ++next;
+                }
+
+                if (!expected.Present || next == tree.TokenCount()) {
+                    return std::nullopt;
+                }
+
+                const auto actual = tree.Token(next++).Text;
+
+                if (actual.Begin != expected.Output.Begin || actual.End != expected.Output.End) {
+                    return std::nullopt;
+                }
+            }
+        }
+    }
+
+    const auto normalizedToken = [&] (TI token) -> TI {
+        if (token >= count) {
+            return none;
+        }
+
+        if (!normalized) {
+            return token < tree.TokenCount() ? token : none;
+        }
+
+        if (copied) {
+            const auto* run = detail::FindCopiedTokenRun(*copied, token);
+            return run ? run->NormalizedBegin + token - run->Original.Begin : none;
+        }
+
+        const auto& position = normalized->OriginalTokens[token];
+
+        if (!position.Present) {
+            return none;
+        }
+
+        TI first = 0, last = tree.TokenCount();
+
+        while (first < last) {
+            const auto middle = first + (last - first) / 2;
+
+            if (tree.Token(middle).Text.Begin < position.Output.Begin) {
+                first = middle + 1;
+            } else {
+                last = middle;
+            }
+        }
+
+        if (first == tree.TokenCount()) {
+            return none;
+        }
+
+        const auto actual = tree.Token(first).Text;
+        return actual.Begin == position.Output.Begin && actual.End == position.Output.End ? first : none;
+    };
+    const auto positionOf = [&] (TI token) {
+        if (copied) {
+            const auto* run = detail::FindCopiedTokenRun(*copied, token);
+            return run ? detail::CopiedTokenPosition(original, *run, token) : TokenOutputOffset{};
+        }
+
+        return normalized->OriginalTokens[token];
+    };
+    const auto survives = [&] (TI token) {
+        const auto id = normalizedToken(token);
+        return id != none && layout.TokenSurvives(id);
+    };
+
+    const auto previousSurvivor = [&] (TI before) {
+        if (!copied) {
+            while (before) {
+                if (survives(--before)) {
+                    return before;
+                }
+            }
+
+            return none;
+        }
+
+        auto run = std::lower_bound(
+            copied->begin(),
+            copied->end(),
+            before,
+            [] (const auto& item, TI token) {
+                return item.Original.Begin < token;
+            });
+
+        while (run != copied->begin()) {
+            --run;
+            auto token = std::min(before, run->Original.End);
+
+            while (token > run->Original.Begin) {
+                --token;
+
+                if (layout.TokenSurvives(run->NormalizedBegin + token - run->Original.Begin)) {
+                    return token;
+                }
+            }
+
+            before = run->Original.Begin;
+        }
+
+        return none;
+    };
+    const auto nextSurvivor = [&] (TI after) {
+        if (!copied) {
+            for (; after < count; ++after) {
+                if (survives(after)) {
+                    return after;
+                }
+            }
+
+            return none;
+        }
+
+        auto run = std::lower_bound(
+            copied->begin(),
+            copied->end(),
+            after,
+            [] (const auto& item, TI token) {
+                return item.Original.End <= token;
+            });
+
+        for (; run != copied->end(); ++run) {
+            for (auto token = std::max(after, run->Original.Begin); token < run->Original.End; ++token) {
+                if (layout.TokenSurvives(run->NormalizedBegin + token - run->Original.Begin)) {
+                    return token;
+                }
+            }
+
+            after = run->Original.End;
+        }
+
+        return none;
+    };
+
+    struct Interior
+    {
+        Offset Begin = UINT32_MAX;
+        Offset End = 0;
+
+        void Merge(const Interior& other)
+        {
+            Begin = std::min(Begin, other.Begin);
+            End = std::max(End, other.End);
+        }
+    };
+
+    std::pmr::vector<Interior> interiors(namespaces.Namespaces.size(), &scratch);
+    std::pmr::vector<size_t> active(&scratch);
+    size_t nextNamespace = 0;
+
+    // Include permutations may reorder identities. Prove containment in
+    // normalized coordinates once, before relying on monotonic rendering.
+    for (TI token = 0; normalized && !copied && token < count; ++token) {
+        while (!active.empty() && namespaces.Namespaces[active.back()].Close == token) {
+            const auto closed = active.back();
+            active.pop_back();
+
+            if (!active.empty()) {
+                interiors[active.back()].Merge(interiors[closed]);
+            }
+        }
+
+        if (!active.empty() && normalized->OriginalTokens[token].Present) {
+            const auto range = normalized->OriginalTokens[token].Output;
+            interiors[active.back()].Merge({range.Begin, range.End});
+        }
+
+        while (nextNamespace < namespaces.Namespaces.size() && namespaces.Namespaces[nextNamespace].Open == token) {
+            const auto& ns = namespaces.Namespaces[nextNamespace];
+
+            if (ns.Close <= token || ns.Close >= count || ns.Header.Begin >= ns.Header.End || ns.Header.End != token ||
+                (!active.empty() && ns.Close >= namespaces.Namespaces[active.back()].Close))
+            {
+                return std::nullopt;
+            }
+
+            active.push_back(nextNamespace++);
+        }
+    }
+
+    if (normalized && !copied && (!active.empty() || nextNamespace != namespaces.Namespaces.size())) {
+        return std::nullopt;
+    }
+
+    if (copied) {
+        // Within an exact copied run, token order is affine. Its two extrema
+        // prove containment for the whole intersecting namespace interior.
+        // Bound repeated overlap work for deeply nested scopes; the dense
+        // resolver remains the linear fallback for that unusual shape.
+        size_t work = 0;
+        const auto budget = 4 * (copied->size() + namespaces.Namespaces.size() + 1);
+
+        for (size_t i = 0; i < namespaces.Namespaces.size(); ++i) {
+            const auto& ns = namespaces.Namespaces[i];
+
+            if (ns.Open >= ns.Close || ns.Close >= count) {
+                return std::nullopt;
+            }
+
+            auto run = std::lower_bound(
+                copied->begin(),
+                copied->end(),
+                ns.Open + 1,
+                [] (const auto& item, TI token) {
+                    return item.Original.End <= token;
+                });
+
+            for (; run != copied->end() && run->Original.Begin < ns.Close; ++run) {
+                if (++work > budget) {
+                    return std::nullopt;
+                }
+
+                const auto begin = std::max(run->Original.Begin, ns.Open + 1);
+                const auto end = std::min(run->Original.End, ns.Close);
+
+                if (begin == end) {
+                    continue;
+                }
+
+                const auto first = tree.Token(run->NormalizedBegin + begin - run->Original.Begin).Text;
+                const auto last = tree.Token(run->NormalizedBegin + end - 1 - run->Original.Begin).Text;
+                interiors[i].Merge({first.Begin, last.End});
+            }
+        }
+    }
+
+    SparseNamespaceAnchors result(file);
+    bool supported = true;
+    const auto add = [&] (TI originalId) {
+        const auto id = normalizedToken(originalId);
+
+        if (id == none || !layout.TokenSurvives(id)) {
+            return;
+        }
+
+        // Required anchor tokens must have exact maps. A changed block-comment
+        // neighbor uses the dense resolver, whose spelling allowance remains.
+        if (!layout.TokenSpellingExact(id)) {
+            supported = false;
+            return;
+        }
+
+        result.Positions.push_back({originalId, {}});
+    };
+    TI previousOpen = 0;
+    active.clear();
+
+    for (size_t i = 0; i < namespaces.Namespaces.size(); ++i) {
+        const auto& ns = namespaces.Namespaces[i];
+
+        if (ns.Open >= ns.Close || ns.Close >= count || ns.Header.Begin >= ns.Header.End || ns.Header.End != ns.Open ||
+            (i && ns.Open <= previousOpen))
+        {
+            return std::nullopt;
+        }
+
+        previousOpen = ns.Open;
+
+        while (!active.empty() && namespaces.Namespaces[active.back()].Close < ns.Open) {
+            active.pop_back();
+        }
+
+        if (!active.empty() && ns.Close >= namespaces.Namespaces[active.back()].Close) {
+            return std::nullopt;
+        }
+
+        active.push_back(i);
+
+        if (normalized) {
+            const auto open = positionOf(ns.Open);
+            const auto close = positionOf(ns.Close);
+            const auto& interior = interiors[i];
+
+            if (!open.Present || !close.Present || open.Output.End > close.Output.Begin ||
+                (interior.Begin != UINT32_MAX &&
+                    (interior.Begin < open.Output.End || interior.End > close.Output.Begin)))
+            {
+                return std::nullopt;
+            }
+        }
+
+        for (TI token = ns.Header.Begin; token < ns.Header.End; ++token) {
+            add(token);
+        }
+
+        add(ns.Open);
+        add(ns.Close);
+
+        if (ns.Comment != count) {
+            add(ns.Comment);
+        }
+
+        const auto previous = previousSurvivor(ns.Header.Begin);
+        const auto next = nextSurvivor(ns.Close + 1);
+
+        if (previous != none) {
+            add(previous);
+        }
+
+        if (next != none) {
+            add(next);
+        }
+    }
+
+    if (!supported) {
+        return std::nullopt;
+    }
+
+    std::sort(
+        result.Positions.begin(),
+        result.Positions.end(),
+        [] (const auto& a, const auto& b) {
+            return a.Original < b.Original;
+        });
+    result.Positions.erase(
+        std::unique(
+            result.Positions.begin(),
+            result.Positions.end(),
+            [] (const auto& a, const auto& b) {
+                return a.Original == b.Original;
+            }),
+        result.Positions.end());
+
+    for (uint32_t i = 0; i < result.Positions.size(); ++i) {
+        result.Tokens.push_back({normalizedToken(result.Positions[i].Original), i});
+    }
+
+    std::sort(
+        result.Tokens.begin(),
+        result.Tokens.end(),
+        [] (const auto& a, const auto& b) {
+            return a.Normalized < b.Normalized;
+        });
+    return result;
+}
+
+void ComposeSparseNamespaceAnchors(
+    FormatResult& result,
+    const layout::Result& rendered,
+    const SourceAnalysis& safety,
+    SparseNamespaceAnchors& anchors)
+{
+    size_t next = 0;
+
+    for (const auto& map : rendered.Map) {
+        const auto output = Range{CheckedSourceAnalysisSize(map.OutputBegin), CheckedSourceAnalysisSize(map.OutputEnd)};
+
+        if (map.Source.Identity != layout::NoIdentity) {
+            while (next < anchors.Tokens.size() && anchors.Tokens[next].Normalized < map.Source.Identity) {
+                ++next;
+            }
+
+            if (next < anchors.Tokens.size() && anchors.Tokens[next].Normalized == map.Source.Identity) {
+                anchors.Positions[anchors.Tokens[next].Position].Position = {output, true};
+                ++next;
+            }
+        }
+
+        auto protection = map;
+        protection.Source.Identity = layout::NoIdentity;
+        (void)RecordRenderAnchors(result, protection, output, safety, {});
+    }
+
+    MergeProtection(result.OutputProtection);
 }
 
 void ComposeNamespaceAnchors(
@@ -766,7 +1409,14 @@ PreparedFormat::PreparedFormat(const Style& style)
     , EnumMacroNames(style.EnumMacroNames)
 { }
 
-FormatResult Format(const parser::SyntaxTree& original, const PreparedFormat& prepared, const FormatRequest& request)
+namespace {
+
+FormatResult FormatTree(
+    const parser::SyntaxTree& original,
+    const PreparedFormat& prepared,
+    const FormatRequest& request,
+    bool widthDiagnostics,
+    parser::SyntaxTree* owned = nullptr)
 {
     // Bound the initial input-local backing block. Consolidating the common
     // case avoids repeated heap growth/trim during arena teardown; larger
@@ -796,7 +1446,24 @@ FormatResult Format(const parser::SyntaxTree& original, const PreparedFormat& pr
         file,
         scratch);
     scratch.release();
-    return detail::FormatWithAnalysis(original, prepared, safety, sensitive, request, file, scratch);
+    return detail::FormatWithAnalysis(
+        original,
+        prepared,
+        safety,
+        sensitive,
+        request,
+        file,
+        scratch,
+        widthDiagnostics,
+        owned,
+        owned ? &safety : nullptr);
+}
+
+} // namespace
+
+FormatResult Format(const parser::SyntaxTree& original, const PreparedFormat& prepared, const FormatRequest& request)
+{
+    return FormatTree(original, prepared, request, true);
 }
 
 FormatResult detail::FormatWithAnalysis(
@@ -806,9 +1473,13 @@ FormatResult detail::FormatWithAnalysis(
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch)
+    std::pmr::monotonic_buffer_resource& scratch,
+    bool widthDiagnostics,
+    parser::SyntaxTree* owned,
+    SourceAnalysis* ownedSafety)
 {
-    auto plan = PlanStructuralEdits(
+    const auto structuralPlanner = owned ? detail::PlanStructuralEditsCertified : PlanStructuralEdits;
+    auto plan = structuralPlanner(
         original,
         safety,
         prepared.Structural,
@@ -816,11 +1487,14 @@ FormatResult detail::FormatWithAnalysis(
         scratch,
         {request.InputFilePath, &prepared.IncludeGroups});
     scratch.release();
-    auto namespacePlan = PlanNamespaceComments(original, safety, prepared.NamespaceComments, file, scratch);
+    const auto namespacePlanner = owned ? detail::PlanNamespaceCommentsCertified : PlanNamespaceComments;
+    auto namespacePlan = namespacePlanner(original, safety, prepared.NamespaceComments, file, scratch);
     scratch.release();
     FormatResult result;
     result.StructuralDiagnostics.assign(plan.Skipped.begin(), plan.Skipped.end());
     std::optional<StructuralMaterialization> normalized;
+    std::pmr::vector<detail::CopiedTokenRun> copied(&file);
+    bool copiedCertified = false;
     std::optional<parser::SyntaxTree> normalizedTree;
     std::optional<SourceAnalysis> normalizedSafety;
     const auto* tree = &original;
@@ -828,7 +1502,9 @@ FormatResult detail::FormatWithAnalysis(
     std::pmr::vector<StructuralProvenance> unchanged(&file);
     std::span<const StructuralProvenance> provenance;
     if (!plan.Edits.empty()) {
-        normalized.emplace(MaterializeStructuralEdits(original, plan, file, scratch));
+        normalized.emplace(owned
+            ? detail::MaterializeStructuralEditsCompact(original, plan, file, scratch, copied)
+            : MaterializeStructuralEdits(original, plan, file, scratch));
         scratch.release();
         const auto size = normalized->Text.size();
         normalized->Text.append(util::SourcePaddingSize, '\0');
@@ -840,8 +1516,69 @@ FormatResult detail::FormatWithAnalysis(
                     operation.Kind == StructuralAction::IncludeDelimiters;
             });
 
-        if (includeOnly) {
-            normalizedTree = parser::TryReparseIncludes(original, normalizedSource);
+        const bool commentsAndIncludes = includeOnly ||
+            std::ranges::all_of(
+                plan.Operations,
+                [] (const auto& operation) {
+                    return operation.Kind == StructuralAction::IncludeOrder ||
+                        operation.Kind == StructuralAction::IncludeDelimiters ||
+                        operation.Kind == StructuralAction::RulerLength ||
+                        operation.Kind == StructuralAction::RulerPlacement;
+                });
+        std::pmr::vector<parser::detail::NormalizedPiece> pieces(&scratch);
+        std::pmr::vector<parser::TokenIndex> grammarMapping(&scratch);
+        std::pmr::vector<parser::detail::NormalizedCommentInsertion> commentInsertions(&scratch);
+        bool tokenView = false;
+        const bool canConsumeAnalysis = owned && ownedSafety && !widthDiagnostics && !request.SourceMap &&
+            !request.TokenMap && !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations &&
+            !request.EditScope && request.ImmutableRanges.empty();
+        if (owned && commentsAndIncludes) {
+            pieces.reserve(normalized->Provenance.size());
+
+            for (const auto& piece : normalized->Provenance) {
+                pieces.push_back({piece.Output, piece.Original, piece.Generated});
+            }
+            std::pmr::vector<Range> edits(&scratch);
+            edits.reserve(plan.Edits.size());
+
+            for (const auto& edit : plan.Edits) {
+                edits.push_back(edit.Source);
+            }
+
+            if (CanReuseNormalizedSourceAnalysis(original, safety, edits, pieces, scratch)) {
+                if (canConsumeAnalysis) {
+                    const parser::detail::NormalizedRegionTopology topology{
+                        safety.Regions().data(),
+                        static_cast<uint32_t>(safety.Regions().size()),
+                        [] (const void* rows, uint32_t id) {
+                            return static_cast<const SourceRegion*>(rows)[id].FirstChild;
+                        },
+                        [] (const void* rows, uint32_t id) {
+                            return static_cast<const SourceRegion*>(rows)[id].NextSibling;
+                        },
+                    };
+                    normalizedTree = parser::detail::TryBuildNormalizedTokenView(
+                        original,
+                        normalizedSource,
+                        pieces,
+                        topology,
+                        grammarMapping,
+                        commentInsertions);
+                    tokenView = normalizedTree.has_value();
+                }
+
+                if (!normalizedTree) {
+                    normalizedTree =
+                        parser::detail::TryConsumeNormalizedSyntax(*owned, normalizedSource, pieces, grammarMapping);
+                }
+            }
+        }
+        if (!normalizedTree) {
+            if (includeOnly) {
+                normalizedTree = parser::TryReparseIncludes(original, normalizedSource);
+            } else if (commentsAndIncludes) {
+                normalizedTree = parser::TryReparseCommentsAndIncludes(original, normalizedSource);
+            }
         }
 
         if (!normalizedTree) {
@@ -850,6 +1587,7 @@ FormatResult detail::FormatWithAnalysis(
         }
 
         tree = &*normalizedTree;
+        copiedCertified = !grammarMapping.empty() && CertifyCopiedTokenRuns(*tree, original, copied);
         auto inherited = ProjectProtection(safety.Protection(), normalized->Provenance, scratch);
         std::optional<std::span<const Range>> currentScope;
         std::pmr::vector<Range> selected(&scratch);
@@ -858,17 +1596,73 @@ FormatResult detail::FormatWithAnalysis(
             currentScope = selected;
         }
 
-        normalizedSafety.emplace(BuildSourceAnalysis(
-            *tree,
-            {
-                .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
-                .WhitespaceSensitiveMacros = sensitive,
-                .EnumMacroNames = prepared.EnumMacroNames,
-                .InheritedProtection = inherited,
-                .EditScope = currentScope,
-            },
-            file,
-            scratch));
+        if (!grammarMapping.empty()) {
+            const bool consumeIdentity = canConsumeAnalysis && tree->TokenCount() == original.TokenCount();
+            auto reused = tokenView
+                ? detail::ConsumeNormalizedTokenViewAnalysis(
+                    original,
+                    *tree,
+                    std::move(*ownedSafety),
+                    grammarMapping,
+                    pieces,
+                    commentInsertions,
+                    inherited,
+                    file,
+                    scratch)
+                : consumeIdentity
+                    ? detail::ConsumeIdentityNormalizedSourceAnalysis(
+                        original,
+                        *tree,
+                        std::move(*ownedSafety),
+                        grammarMapping,
+                        pieces,
+                        inherited,
+                        file,
+                        scratch)
+                    : ReuseNormalizedSourceAnalysis(
+                        original,
+                        *tree,
+                        safety,
+                        grammarMapping,
+                        pieces,
+                        inherited,
+                        file,
+                        scratch);
+
+            if (reused) {
+                normalizedSafety.emplace(std::move(*reused));
+            }
+        }
+
+        if (!normalizedSafety) {
+            if (tokenView) {
+                // Analysis refusal may consume its arrays. The original AST is
+                // still intact, so retain the established parser/fresh fallback.
+                normalizedTree =
+                    parser::detail::TryConsumeNormalizedSyntax(*owned, normalizedSource, pieces, grammarMapping);
+
+                if (!normalizedTree) {
+                    normalizedTree.emplace(
+                        parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+                }
+
+                tree = &*normalizedTree;
+                copiedCertified = !grammarMapping.empty() && CertifyCopiedTokenRuns(*tree, original, copied);
+            }
+
+            normalizedSafety.emplace(BuildSourceAnalysis(
+                *tree,
+                {
+                    .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
+                    .WhitespaceSensitiveMacros = sensitive,
+                    .EnumMacroNames = prepared.EnumMacroNames,
+                    .InheritedProtection = inherited,
+                    .EditScope = currentScope,
+                },
+                file,
+                scratch));
+        }
+
         currentSafety = &*normalizedSafety;
         provenance = normalized->Provenance;
     } else {
@@ -881,9 +1675,20 @@ FormatResult detail::FormatWithAnalysis(
         provenance = unchanged;
     }
     scratch.release();
-    auto spacing = BuildSyntaxSpacing(*tree, *currentSafety, prepared.Policies, file, scratch);
-    scratch.release();
     SyntaxLayoutOptions options;
+    const bool flatSpans = owned && !request.EditScope && !widthDiagnostics && !request.SourceMap &&
+        !request.TokenMap && !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations;
+    auto spacing = flatSpans
+        ? detail::BuildFlatSyntaxSpacing(
+            *tree,
+            *currentSafety,
+            prepared.Policies,
+            prepared.Annotations,
+            options.TabWidth,
+            file,
+            scratch)
+        : BuildSyntaxSpacing(*tree, *currentSafety, prepared.Policies, file, scratch);
+    scratch.release();
 
     if (prepared.Policies.LineEnding == LineEnding::CRLF) {
         options.LineEnding = layout::Newline::CRLF;
@@ -905,7 +1710,7 @@ FormatResult detail::FormatWithAnalysis(
         scratch);
     options.GeneratedAdjacencies = gaps;
     options.ReassembledGaps = reassembled;
-    detail::LayoutPlan layout(*tree, file);
+    detail::LayoutPlan layout(*tree, file, detail::FlatSpanAccess::Spans(spacing));
     const auto built = BuildSyntaxLayout(
         *tree,
         prepared.Policies,
@@ -927,16 +1732,55 @@ FormatResult detail::FormatWithAnalysis(
     options.GeneratedAdjacencies = {};
     options.ReassembledGaps = {};
     scratch.release();
+
+    if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&
+        !request.DiagnosticLocations)
+    {
+        PruneTextOnlyNamespaceNoOps(
+            namespacePlan,
+            original,
+            *tree,
+            normalized ? &*normalized : nullptr,
+            layout,
+            scratch,
+            normalized && owned ? &copied : nullptr);
+        scratch.release();
+    }
+
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
     const bool changeMetadata = request.Changes || request.ChangeSummary;
     const bool sourceMap = request.SourceMap || (changeMetadata && prepared.Structural.SortIncludes);
     const bool needMaps =
         sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations || needNamespaceAnchors;
+    std::optional<SparseNamespaceAnchors> sparseNamespaces;
+    if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&
+        !request.DiagnosticLocations && needNamespaceAnchors)
+    {
+        if (normalized && owned && !copiedCertified) {
+            detail::MaterializeOriginalTokenOffsets(original, *normalized, copied);
+        }
+
+        sparseNamespaces = PrepareSparseNamespaceAnchors(
+            *tree,
+            original,
+            normalized ? &*normalized : nullptr,
+            namespacePlan,
+            layout,
+            file,
+            scratch,
+            copiedCertified ? &copied : nullptr);
+        scratch.release();
+    }
+
+    if (normalized && owned && needMaps && !sparseNamespaces) {
+        detail::MaterializeOriginalTokenOffsets(original, *normalized, copied);
+    }
+
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = sourceMap;
     auto rendered = [&] {
         std::pmr::vector<layout::Provenance> tracked(&scratch);
-        renderPolicy.IndexedTokenMap = !sourceMap && needMaps;
+        renderPolicy.IndexedTokenMap = !sourceMap && needMaps && !sparseNamespaces;
         renderPolicy.TokenCount = tree->TokenCount();
 
         if (!sourceMap && (needNamespaceAnchors || request.Changes)) {
@@ -946,6 +1790,13 @@ FormatResult detail::FormatWithAnalysis(
                 tracked.push_back({range.Source.Begin, range.Source.End});
             }
 
+            if (sparseNamespaces) {
+                for (const auto& token : sparseNamespaces->Tokens) {
+                    const auto range = tree->Token(token.Normalized).Text;
+                    tracked.push_back({range.Begin, range.End});
+                }
+            }
+
             if (request.Changes) {
                 for (const auto& piece : provenance) {
                     if (piece.Generated && !piece.Output.Empty()) {
@@ -953,6 +1804,9 @@ FormatResult detail::FormatWithAnalysis(
                     }
                 }
 
+            }
+
+            if (request.Changes || sparseNamespaces) {
                 std::sort(
                     tracked.begin(),
                     tracked.end(),
@@ -996,27 +1850,31 @@ FormatResult detail::FormatWithAnalysis(
             result.StructuralOperations.assign(plan.Operations.begin(), plan.Operations.end());
         }
 
-        result.OriginalTokens.resize(original.TokenCount());
-        auto identities = OriginalIdentities(*tree, original, normalized ? &*normalized : nullptr, scratch);
-
-        if (sourceMap) {
-            ComposeMaps(result, rendered, *currentSafety, identities, provenance);
+        if (sparseNamespaces) {
+            ComposeSparseNamespaceAnchors(result, rendered, *currentSafety, *sparseNamespaces);
         } else {
-            for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
-                const auto& token = rendered.Tokens[id];
-                const auto originalId = identities.empty() ? id : identities[id];
+            result.OriginalTokens.resize(original.TokenCount());
+            auto identities = OriginalIdentities(*tree, original, normalized ? &*normalized : nullptr, scratch);
 
-                if (token.Present && originalId != layout::NoIdentity) {
-                    result.OriginalTokens[originalId] = {{token.Begin, token.End}, true};
-                }
-            }
-
-            // Remaining mappings are precisely the tracked exact copies used
-            // for protection validation, not a full per-token map vector.
-            if (request.Changes) {
+            if (sourceMap) {
                 ComposeMaps(result, rendered, *currentSafety, identities, provenance);
             } else {
-                ComposeNamespaceAnchors(result, rendered, *currentSafety, identities);
+                for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
+                    const auto& token = rendered.Tokens[id];
+                    const auto originalId = identities.empty() ? id : identities[id];
+
+                    if (token.Present && originalId != layout::NoIdentity) {
+                        result.OriginalTokens[originalId] = {{token.Begin, token.End}, true};
+                    }
+                }
+
+                // Remaining mappings are precisely the tracked exact copies used
+                // for protection validation, not a full per-token map vector.
+                if (request.Changes) {
+                    ComposeMaps(result, rendered, *currentSafety, identities, provenance);
+                } else {
+                    ComposeNamespaceAnchors(result, rendered, *currentSafety, identities);
+                }
             }
         }
 
@@ -1031,14 +1889,23 @@ FormatResult detail::FormatWithAnalysis(
         // and the complete existing-comment replacement window. Validated
         // token identities transport those candidates, not map-anchor rights;
         // nonempty output protection alone cannot express an EOF point fence.
-        auto comments = ResolveNamespaceComments(
-            original,
-            namespacePlan,
-            result.Text,
-            result.OriginalTokens,
-            outputProtection,
-            file,
-            scratch);
+        auto comments = sparseNamespaces
+            ? detail::ResolveNamespaceCommentsCertified(
+                original,
+                namespacePlan,
+                result.Text,
+                sparseNamespaces->Positions,
+                outputProtection,
+                file,
+                scratch)
+            : ResolveNamespaceComments(
+                original,
+                namespacePlan,
+                result.Text,
+                result.OriginalTokens,
+                outputProtection,
+                file,
+                scratch);
         result.StructuralDiagnostics
             .insert(result.StructuralDiagnostics.end(), comments.Skipped.begin(), comments.Skipped.end());
         scratch.release();
@@ -1063,10 +1930,12 @@ FormatResult detail::FormatWithAnalysis(
     if (prepared.Policies.LineEnding != LineEnding::Preserve) {
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
-    if (request.SourceMap || request.DiagnosticLocations) {
-        WidthDiagnostics<true>(result, prepared.Policies, options.TabWidth);
-    } else {
-        WidthDiagnostics<false>(result, prepared.Policies, options.TabWidth);
+    if (widthDiagnostics) {
+        if (request.SourceMap || request.DiagnosticLocations) {
+            WidthDiagnostics<true>(result, prepared.Policies, options.TabWidth);
+        } else {
+            WidthDiagnostics<false>(result, prepared.Policies, options.TabWidth);
+        }
     }
     if (changeMetadata) {
         detail::BuildChangeMetadata(original, result, request.Changes, scratch);
@@ -1100,7 +1969,7 @@ FormatResult Format(util::PaddedSourceView source, const PreparedFormat& prepare
 
 std::string Format(const parser::SyntaxTree& tree, const Style& style)
 {
-    return Format(tree, PreparedFormat(style)).Text;
+    return FormatTree(tree, PreparedFormat(style), {}, false).Text;
 }
 
 std::string Format(const parser::SyntaxTree& tree)
@@ -1110,7 +1979,9 @@ std::string Format(const parser::SyntaxTree& tree)
 
 std::string Format(util::PaddedSourceView source, const Style& style)
 {
-    return Format(source, PreparedFormat(style)).Text;
+    const PreparedFormat prepared(style);
+    auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
+    return FormatTree(tree, prepared, {}, false, &tree).Text;
 }
 
 std::string Format(util::PaddedSourceView source)

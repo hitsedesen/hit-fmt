@@ -1,3 +1,4 @@
+#include <parser/normalized_syntax.hpp>
 #include <parser/operator_info.hpp>
 #include <parser/parser.hpp>
 
@@ -10,6 +11,7 @@
 #include <array>
 #include <format>
 #include <limits>
+#include <memory_resource>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -288,51 +290,112 @@ TEST_P(FileTest, Golden)
 
 TEST_P(FileTest, IncludeReuseMatchesFreshParse)
 {
-    const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, GetParam().Name};
-    const auto body = fixture.InputNamed(".in");
-    PaddedInput rewritten("%:include <a.h>\n\n# include \"z/long.h\"\n\n" + body);
-    const parser::ParseOptions options{
-        .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
-        .ClassMacroNames = GetParam().ClassMacroNames,
-        .EnumMacroNames = GetParam().EnumMacroNames,
-    };
-    const auto fresh = parser::Parse(rewritten.View(), [] (parser::ParseError) { }, options);
-    std::optional<parser::SyntaxTree> reused;
-    {
-        PaddedInput input("#include \"z/long.h\"\n#include <a.h>\n" + body);
-        const auto original = parser::Parse(input.View(), [] (parser::ParseError) { }, options);
-        reused = parser::TryReparseIncludes(original, rewritten.View());
-    }
+    for (const int mode : {0, 1, 2, 3, 4}) {
+        const bool rulers = mode == 1 || mode == 2 || mode == 4;
+        SCOPED_TRACE(mode);
+        const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, GetParam().Name};
+        auto body = fixture.InputNamed(".in");
+        std::string originalPrefix = "#include \"z/long.h\"\n#include <a.h>\n";
+        std::string rewrittenPrefix =
+            std::string(rulers ? "///\n" : "") + "%:include <a.h>\n\n# include \"z/long.h\"\n\n";
 
-    ASSERT_TRUE(reused);
-    EXPECT_EQ(Serialize(*reused), Serialize(fresh));
-    ASSERT_EQ(reused->TokenCount(), fresh.TokenCount());
-
-    for (parser::TokenIndex i = 0; i < fresh.TokenCount(); ++i) {
-        EXPECT_EQ(reused->Kind(i), fresh.Kind(i)) << i;
-        EXPECT_EQ(reused->Role(i), fresh.Role(i)) << i;
-        EXPECT_EQ(reused->MatchingDelimiter(i), fresh.MatchingDelimiter(i)) << i;
-        EXPECT_EQ(reused->Token(i).Text.Begin, fresh.Token(i).Text.Begin) << i;
-        EXPECT_EQ(reused->Token(i).Text.End, fresh.Token(i).Text.End) << i;
-        EXPECT_EQ(reused->TokenPosition(i).Line, fresh.TokenPosition(i).Line) << i;
-        EXPECT_EQ(reused->TokenPosition(i).Column, fresh.TokenPosition(i).Column) << i;
-    }
-    std::vector<std::pair<const Node*, const Node*>> pending{{&reused->Root(), &fresh.Root()}};
-    while (!pending.empty()) {
-        const auto [copy, reference] = pending.back();
-        pending.pop_back();
-        ASSERT_EQ(copy->Kind, reference->Kind);
-        EXPECT_EQ(copy->GetFunctionKind(), reference->GetFunctionKind());
-        EXPECT_EQ(copy->Tokens.Begin, reference->Tokens.Begin);
-        EXPECT_EQ(copy->Tokens.End, reference->Tokens.End);
-        auto* left = copy->FirstChild;
-        auto* right = reference->FirstChild;
-
-        for (; left && right; left = left->NextSibling, right = right->NextSibling) {
-            pending.push_back({left, right});
+        if (mode == 3) {
+            // Keep token indices fixed while removing one include's leading
+            // blank-line attachment and adding another in new coordinates.
+            originalPrefix = "#include \"z/long.h\"\n\n#include <a.h>\n";
+            rewrittenPrefix = "%:include <a.h>\n# include \"z/long.h\"\n\n";
+            body = "// declaration note\nint reuse_marker; // trailing note\n\n" + body;
+        } else if (mode == 4) {
+            originalPrefix.insert(0, "///\n");
+            rewrittenPrefix = "///////////\n#include \"z/long.h\"\n#include <a.h>\n";
         }
 
-        ASSERT_EQ(left == nullptr, right == nullptr);
+        PaddedInput rewritten(rewrittenPrefix + body);
+        const parser::ParseOptions options{
+            .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
+            .ClassMacroNames = GetParam().ClassMacroNames,
+            .EnumMacroNames = GetParam().EnumMacroNames,
+        };
+        const auto fresh = parser::Parse(rewritten.View(), [] (parser::ParseError) { }, options);
+        std::optional<parser::SyntaxTree> reused;
+        {
+            PaddedInput input(originalPrefix + body);
+            auto original = parser::Parse(input.View(), [] (parser::ParseError) { }, options);
+            if (mode >= 2) {
+                const auto before = static_cast<parser::SourceOffset>(input.View().Size - body.size());
+                const auto after = static_cast<parser::SourceOffset>(rewritten.View().Size - body.size());
+                const parser::detail::NormalizedPiece pieces[] = {
+                    {{0, after}, {0, before}, true},
+                    {{after, rewritten.View().Size}, {before, input.View().Size}, false},
+                };
+                std::pmr::monotonic_buffer_resource memory;
+                std::pmr::vector<parser::TokenIndex> mapping(&memory);
+                reused = parser::detail::TryConsumeNormalizedSyntax(original, rewritten.View(), pieces, mapping);
+            } else {
+                reused = rulers
+                    ? parser::TryReparseCommentsAndIncludes(original, rewritten.View())
+                    : parser::TryReparseIncludes(original, rewritten.View());
+            }
+        }
+
+        ASSERT_TRUE(reused);
+        EXPECT_EQ(Serialize(*reused), Serialize(fresh));
+        ASSERT_EQ(reused->TokenCount(), fresh.TokenCount());
+
+        for (parser::TokenIndex i = 0; i < fresh.TokenCount(); ++i) {
+            EXPECT_EQ(reused->Kind(i), fresh.Kind(i)) << i;
+            EXPECT_EQ(reused->Role(i), fresh.Role(i)) << i;
+            EXPECT_EQ(reused->MatchingDelimiter(i), fresh.MatchingDelimiter(i)) << i;
+            EXPECT_EQ(reused->Token(i).Text.Begin, fresh.Token(i).Text.Begin) << i;
+            EXPECT_EQ(reused->Token(i).Text.End, fresh.Token(i).Text.End) << i;
+            EXPECT_EQ(reused->TokenPosition(i).Line, fresh.TokenPosition(i).Line) << i;
+            EXPECT_EQ(reused->TokenPosition(i).Column, fresh.TokenPosition(i).Column) << i;
+        }
+        std::vector<std::pair<const Node*, const Node*>> pending{{&reused->Root(), &fresh.Root()}};
+        while (!pending.empty()) {
+            const auto [copy, reference] = pending.back();
+            pending.pop_back();
+            ASSERT_EQ(copy->Kind, reference->Kind);
+            EXPECT_EQ(copy->GetFunctionKind(), reference->GetFunctionKind());
+            EXPECT_EQ(copy->Tokens.Begin, reference->Tokens.Begin);
+            EXPECT_EQ(copy->Tokens.End, reference->Tokens.End);
+            const auto* copyTrivia = reused->AssociatedTrivia(*copy);
+            const auto* referenceTrivia = fresh.AssociatedTrivia(*reference);
+            ASSERT_EQ(copyTrivia == nullptr, referenceTrivia == nullptr);
+
+            if (copyTrivia) {
+                for (auto member :
+                    {
+                        &parser::TriviaAttachments::Leading,
+                        &parser::TriviaAttachments::Trailing,
+                        &parser::TriviaAttachments::Dangling,
+                    })
+                {
+                    auto* actual = (copyTrivia->*member).First;
+                    auto* expected = (referenceTrivia->*member).First;
+
+                    for (; actual && expected; actual = actual->Next, expected = expected->Next) {
+                        EXPECT_EQ(actual->Kind, expected->Kind);
+                        EXPECT_EQ(actual->Tokens.Begin, expected->Tokens.Begin);
+                        EXPECT_EQ(actual->Tokens.End, expected->Tokens.End);
+                        EXPECT_EQ(actual->Source.Begin, expected->Source.Begin);
+                        EXPECT_EQ(actual->Source.End, expected->Source.End);
+                        EXPECT_EQ(reused->SourceText(actual->Source), fresh.SourceText(expected->Source));
+                    }
+
+                    EXPECT_EQ(actual == nullptr, expected == nullptr);
+                }
+            }
+
+            auto* left = copy->FirstChild;
+            auto* right = reference->FirstChild;
+
+            for (; left && right; left = left->NextSibling, right = right->NextSibling) {
+                pending.push_back({left, right});
+            }
+
+            ASSERT_EQ(left == nullptr, right == nullptr);
+        }
     }
 }
 
@@ -351,6 +414,98 @@ TEST(Parser, IncludeReuseRejectsChangedGrammar)
     {
         PaddedInput rewritten(source);
         EXPECT_FALSE(parser::TryReparseIncludes(original, rewritten.View())) << source;
+    }
+}
+
+TEST(Parser, RulerReuseMatchesFreshNamespaceTrivia)
+{
+    const std::pair<std::string_view, std::string_view> cases[] = {
+        {"namespace N {\nint x;\n}\n", "namespace N {\n///\nint x;\n///\n}\n"},
+        {
+            "#include <a.h>\nnamespace N {\nusing namespace Q; // note\n// docs\nint x;\n}\n",
+            "#include <b.h>\nnamespace N {\nusing namespace Q; // note\n////\n// docs\nint x;\n////\n}\n",
+        },
+        {
+            "namespace A {\nnamespace B {\nvoid f() {}\n}\n}\n",
+            "namespace A {\n///\nnamespace B {\n///\nvoid f() {}\n///\n}\n///\n}\n",
+        },
+        {"///\nnamespace N {\n///\nint x;\n////\n}\n", "namespace N {\nint x;\n}\n"},
+        {"///\n", ""},
+        {"", "///\n"},
+        {"void f() {\n///\nint x;\n}\n", "void f() {\n////////\nint x;\n}\n"},
+        {"namespace N {\nint x; // trailing\n}\n", "namespace N {\nint x; // trailing\n///\n}\n"},
+    };
+    for (const auto& [before, after] : cases) {
+        SCOPED_TRACE(before);
+        SCOPED_TRACE(after);
+        PaddedInput rewritten(after);
+        std::optional<parser::SyntaxTree> reused;
+        {
+            PaddedInput input(before);
+            const auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
+            reused = parser::TryReparseCommentsAndIncludes(original, rewritten.View());
+        }
+
+        ASSERT_TRUE(reused);
+        const auto fresh = parser::Parse(rewritten.View(), [] (parser::ParseError) { });
+        EXPECT_EQ(Serialize(*reused), Serialize(fresh));
+        EXPECT_EQ(SerializePunctuationRoles(*reused), SerializePunctuationRoles(fresh));
+        ASSERT_EQ(reused->TokenCount(), fresh.TokenCount());
+
+        for (parser::TokenIndex i = 0; i < fresh.TokenCount(); ++i) {
+            EXPECT_EQ(reused->MatchingDelimiter(i), fresh.MatchingDelimiter(i)) << i;
+        }
+    }
+}
+
+TEST(Parser, RulerReuseRejectsNonSequenceComments)
+{
+    const std::pair<std::string_view, std::string_view> cases[] = {
+        {"void f() { call(1); }\n", "void f() { call(/*name=*/1); }\n"},
+        {"void f() { call(1); }\n", "void f() { call(\n///\n1); }\n"},
+        {"void f() {\nint x;\n}\n", "void f() {\n///\nint x;\n}\n"},
+        {"void f() {\n///\nint x;\n}\n", "void f() {\nint x;\n}\n"},
+        {"void f() {}\n///\n;\n", "void f() {}\n;\n"},
+        {"namespace N {\nunfinished\n}\n", "namespace N {\nunfinished\n///\n}\n"},
+        {"// before\nint x;\n", "// after\nint x;\n"},
+        {"int x;\n", "int y;\n///\n"},
+        {"namespace N { int x;\n", "namespace N { int x;\n////\n"},
+        {"void f() { int x;\n", "void f() { int x;\n////\n"},
+        {"struct S { int x;\n", "struct S { int x;\n////\n"},
+        {"#if FLAG\nint x;\n", "#if FLAG\nint x;\n////\n"},
+    };
+    for (const auto& [before, after] : cases) {
+        SCOPED_TRACE(before);
+        SCOPED_TRACE(after);
+        PaddedInput input(before), rewritten(after);
+        auto original = parser::Parse(input.View(), [] (parser::ParseError) { });
+        EXPECT_FALSE(parser::TryReparseCommentsAndIncludes(original, rewritten.View()));
+        const auto grammar = Serialize(original);
+        const auto roles = SerializePunctuationRoles(original);
+        parser::SourceOffset prefix = 0;
+
+        while (prefix < before.size() && prefix < after.size() && before[prefix] == after[prefix]) {
+            ++prefix;
+        }
+
+        auto oldEnd = static_cast<parser::SourceOffset>(before.size());
+        auto newEnd = static_cast<parser::SourceOffset>(after.size());
+
+        while (oldEnd > prefix && newEnd > prefix && before[oldEnd - 1] == after[newEnd - 1]) {
+            --oldEnd;
+            --newEnd;
+        }
+
+        const parser::detail::NormalizedPiece pieces[] = {
+            {{0, prefix}, {0, prefix}, false},
+            {{prefix, newEnd}, {prefix, oldEnd}, true},
+            {{newEnd, rewritten.View().Size}, {oldEnd, input.View().Size}, false},
+        };
+        std::pmr::monotonic_buffer_resource memory;
+        std::pmr::vector<parser::TokenIndex> mapping(&memory);
+        EXPECT_FALSE(parser::detail::TryConsumeNormalizedSyntax(original, rewritten.View(), pieces, mapping));
+        EXPECT_EQ(Serialize(original), grammar);
+        EXPECT_EQ(SerializePunctuationRoles(original), roles);
     }
 }
 
@@ -2453,7 +2608,7 @@ TEST(Parser, HandlesDeepCompoundNesting)
 TEST(Parser, HandlesDeepExpressionNesting)
 {
     std::string source = "void deeply_nested() { auto value = ";
-    constexpr size_t Depth = 300;
+    constexpr size_t Depth = 1500;
 
     for (size_t index = 0; index < Depth; ++index) {
         source += "Call(";
@@ -2476,8 +2631,13 @@ TEST(Parser, HandlesDeepExpressionNesting)
     parser::TokenIndex widestPair = 0;
     for (parser::TokenIndex index = 0; index < tree.TokenCount(); ++index) {
         auto matching = tree.MatchingDelimiter(index);
-        if (matching != std::numeric_limits<parser::TokenIndex>::max() && matching > index) {
-            widestPair = std::max(widestPair, matching - index);
+        if (matching != std::numeric_limits<parser::TokenIndex>::max()) {
+            ASSERT_LT(matching, tree.TokenCount());
+            EXPECT_EQ(tree.MatchingDelimiter(matching), index);
+
+            if (matching > index) {
+                widestPair = std::max(widestPair, matching - index);
+            }
         }
     }
     EXPECT_GT(widestPair, Depth * 2);

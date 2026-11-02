@@ -51,4 +51,12 @@ struct ParseOptions
 // The result owns its arena and borrows input; original may be released.
 [[nodiscard]] std::optional<SyntaxTree> TryReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input);
 
+// Also permit standalone all-slash ruler spelling changes and boundary ruler
+// insertion/removal between completed root or namespace declarations. Other
+// comment changes and uncertain boundaries return nullopt. All token indices,
+// roles, delimiter links, positions and trivia are rebuilt or rebased.
+[[nodiscard]] std::optional<SyntaxTree> TryReparseCommentsAndIncludes(
+    const SyntaxTree& original,
+    util::PaddedSourceView input);
+
 } // namespace parser

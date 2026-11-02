@@ -49,6 +49,15 @@ inline Measure Join(Measure a, Measure b)
     };
 }
 
+// Write summary fields directly rather than repacking a returned aggregate.
+inline void Prepend(Measure& destination, const Measure& prefix)
+{
+    destination.Prefix = prefix.Line ? prefix.Prefix : AddWidth(prefix.Prefix, destination.Prefix);
+    destination.Line = prefix.Line || destination.Line;
+    destination.CanBreak = prefix.CanBreak || destination.CanBreak;
+    destination.Plain = prefix.Plain && destination.Plain;
+}
+
 inline Measure MeasureText(std::string_view text, std::uint8_t tabWidth)
 {
     Measure result;

@@ -1,5 +1,7 @@
 #include "source_analysis.hpp"
 
+#include "source_analysis_internal.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -179,6 +181,114 @@ bool NeedsSeparation(TK a, std::string_view first, TK b, std::string_view second
 
     // A slash before a comment can turn a block comment into a line comment.
     return a == TK::Operator_Divide && b == TK::Comment;
+}
+
+void ClassifyGap(
+    SourceGap& gap,
+    std::string_view source,
+    parser::TokenIndex count,
+    parser::TokenIndex i,
+    const tokenizer::Token& token,
+    std::string_view text,
+    parser::PunctuationRole role,
+    TK previousKind,
+    std::string_view previousText,
+    parser::PunctuationRole previousRole,
+    Offset previousEnd)
+{
+    const auto begin = previousEnd;
+    const auto end = i < count ? token.Text.Begin : static_cast<Offset>(source.size());
+    const auto original = source.substr(begin, end - begin);
+    gap = {.Source = {begin, end}};
+
+    // Classify bare CR in the existing whitespace validation walk.
+    for (size_t offset = begin; offset < end; ++offset) {
+        const auto c = source[offset];
+
+        if (c == ' ' || c == '\t') {
+            continue;
+        }
+
+        gap.Horizontal = false;
+
+        if (c == '\n') {
+            gap.HasLineFeed = true;
+        } else if (c == '\r') {
+            gap.HasBareCR |= offset + 1 == source.size() || source[offset + 1] != '\n';
+        } else if (c != '\f' && c != '\v') {
+            gap.Preserve = true;
+        }
+    }
+
+    if (i && i < count && NeedsSeparation(previousKind, previousText, token.Kind, text)) {
+        // C++ permits adjacent template closers to be retokenized as >>.
+        // Only confirmed delimiters may relax maximal-munch separation;
+        // comparison/shift operators and unparsed syntax remain lexical.
+        const auto templateCloser = [] (TK kind, parser::PunctuationRole role) {
+            return role == parser::PunctuationRole::TemplateDelimiter &&
+                (kind == TK::Operator_Greater || kind == TK::Operator_RightShift);
+        };
+
+        if (!templateCloser(previousKind, previousRole) || !templateCloser(token.Kind, role)) {
+            gap.Separation = GapSeparation::Required;
+        }
+    }
+
+    // Preserve comment attachment topology, not its surrounding whitespace.
+    // In particular a line comment must not swallow the following token.
+    const auto commentOrDirective = [] (TK kind) {
+        return kind == TK::Comment || kind == TK::PreprocessingDirective;
+    };
+
+    if ((i && commentOrDirective(previousKind)) || (i < count && commentOrDirective(token.Kind))) {
+        gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
+    }
+
+    if (i &&
+        (previousKind == TK::PreprocessingDirective || (previousKind == TK::Comment && previousText.starts_with("//"))))
+    {
+        gap.MustStartWithLineFeed = true;
+
+        // No terminator at EOF: insertion could extend the line token,
+        // even though its half-open protection ends at the insertion point.
+        if (original.empty()) {
+            gap.Preserve = true;
+        }
+    }
+
+    if (i < count && token.Kind == TK::Operator_Remainder) {
+        // %: is a directive only at the beginning of a line in our lexer.
+        gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
+    }
+
+    if (i && i < count && Literal(previousKind) && Word(token.Kind, text) && original.empty()) {
+        // The tokenizer leaves string/character user-defined suffixes as
+        // identifiers. Adding whitespace changes grammar, not token kinds.
+        gap.ContextSensitive = true;
+        gap.Preserve = true;
+    }
+
+    if (i && (previousText.ends_with("\\") || previousText.ends_with("\\\r"))) {
+        gap.Preserve = true;
+        gap.Reasons = ProtectionReason::LineSplice;
+    }
+
+    if (i && i < count &&
+        ((previousKind == TK::Operator_OpenBracket && token.Kind == TK::Operator_OpenBracket) ||
+            (previousKind == TK::Operator_CloseBracket && token.Kind == TK::Operator_CloseBracket &&
+                !OrdinaryBracket(previousRole) && !OrdinaryBracket(role))))
+    {
+        // Uncertain bracket pairs may belong to attribute syntax. A
+        // proven ordinary closer, such as a capture after a subscript,
+        // leaves this gap available to its normal layout owner.
+        gap.ContextSensitive = true;
+        gap.Preserve = true;
+    }
+
+    // Keep intrinsic fences distinct from protection folded into the gap:
+    // a protected exact prefix need not protect a selected horizontal slice.
+    gap.IntrinsicPreserve = gap.Preserve;
+    gap.IntrinsicContextSensitive = gap.ContextSensitive;
 }
 
 bool Recovery(parser::NodeKind kind)
@@ -474,6 +584,10 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
     Protection_.swap(protection);
     HasEditScope_ = true;
 }
+
+#if __has_cpp_attribute(gnu::flatten)
+[[gnu::flatten]]
+#endif
 SourceAnalysis BuildSourceAnalysis(
     const parser::SyntaxTree& tree,
     const SourceAnalysisOptions& options,
@@ -496,68 +610,75 @@ SourceAnalysis BuildSourceAnalysis(
             result.Protection_.push_back({{begin, end}, reason});
         }
     };
-    struct Line
-    {
-        Offset Begin;
-        Offset FirstContent;
-        Offset ContentEnd;
-        bool Continued;
-    };
-
-    std::pmr::vector<Line> lines(&scratchMemory);
-    Offset logicalBegin = 0;
-    bool splice = false;
-    bool continuedFromPrevious = false;
-    Offset begin = 0;
     const auto horizontal = [] (char c) {
         return c == ' ' || (c >= '\t' && c <= '\r');
     };
 
-    for (;;) {
-        const auto newline = source.find('\n', begin);
-        const auto end = newline == std::string_view::npos ? size : Offset(newline);
-        auto first = begin;
+    for (size_t search = 0; search < size;) {
+        const auto slash = source.find('\\', search);
 
-        // Only the line edges matter to marker and splice recognition.
-        // Newline search skips the interior without classifying every byte.
-        while (first < end && horizontal(source[first])) {
-            ++first;
-        }
-
-        auto last = first == end ? begin : end;
-
-        while (last > first && horizontal(source[last - 1])) {
-            --last;
-        }
-
-        lines.push_back({begin, first == end ? size : first, last, continuedFromPrevious});
-
-        if (newline == std::string_view::npos) {
+        if (slash == std::string_view::npos) {
             break;
         }
 
-        const auto continued = last > begin && source[last - 1] == '\\';
-        splice |= continued;
+        auto next = slash + 1;
 
-        if (!continued) {
-            if (splice) {
-                protect(logicalBegin, end + 1, ProtectionReason::LineSplice);
-            }
-
-            logicalBegin = end + 1;
-            splice = false;
+        while (next < size && source[next] != '\n' && horizontal(source[next])) {
+            ++next;
         }
 
-        continuedFromPrevious = continued;
-        begin = end + 1;
+        if (next == size || source[next] != '\n') {
+            search = slash + 1;
+            continue;
+        }
+
+        const auto previous = source.rfind('\n', slash);
+        const auto logicalBegin = previous == std::string_view::npos ? 0 : previous + 1;
+        auto begin = next + 1;
+
+        for (;;) {
+            const auto newline = source.find('\n', begin);
+            const auto end = newline == std::string_view::npos ? size : newline;
+            auto last = end;
+
+            while (last > begin && horizontal(source[last - 1])) {
+                --last;
+            }
+
+            if (newline != std::string_view::npos && last > begin && source[last - 1] == '\\') {
+                begin = end + 1;
+                continue;
+            }
+
+            search = newline == std::string_view::npos ? size : end + 1;
+            protect(Offset(logicalBegin), Offset(search), ProtectionReason::LineSplice);
+            break;
+        }
     }
 
-    if (splice) {
-        protect(logicalBegin, size, ProtectionReason::LineSplice);
-    }
+    struct LineBounds
+    {
+        Offset Begin;
+        Offset ContentEnd;
+    };
 
-    size_t lineIndex = 0;
-    size_t endLineIndex = 0;
+    LineBounds cachedLine{};
+    bool cachedLineValid = false;
+    const auto physicalLine = [&] (Offset offset) {
+        // The LF belongs to its preceding line; its successor starts a new one.
+        if (!cachedLineValid || offset < cachedLine.Begin || offset > cachedLine.ContentEnd) {
+            const auto previous = offset ? source.rfind('\n', offset - 1) : std::string_view::npos;
+            const auto next = source.find('\n', offset);
+            cachedLine = {
+                previous == std::string_view::npos ? 0 : Offset(previous + 1),
+                next == std::string_view::npos ? size : Offset(next),
+            };
+            cachedLineValid = true;
+        }
+
+        return cachedLine;
+    };
+    Offset checkedMarkerEnd = 0;
     std::pmr::vector<std::string_view> names(
         options.WhitespaceSensitiveMacros.begin(),
         options.WhitespaceSensitiveMacros.end(),
@@ -602,7 +723,6 @@ SourceAnalysis BuildSourceAnalysis(
     // An outer configured invocation already protects all inner invocations.
     parser::TokenIndex macroEnd = 0;
     parser::TokenIndex pendingMacro = NoToken;
-    bool pendingEnum = false;
 
     TK previousKind = TK::Invalid;
     std::string_view previousText;
@@ -616,114 +736,17 @@ SourceAnalysis BuildSourceAnalysis(
             : std::string_view{};
         const auto role = i < count ? tree.Role(i) : parser::PunctuationRole::None;
         const auto begin = previousEnd;
-        const auto end = i < count ? token.Text.Begin : size;
-        const auto original = source.substr(begin, end - begin);
-        SourceGap gap{.Source = {begin, end}};
-
-        // Classify bare CR in the existing whitespace validation walk.
-        for (size_t offset = begin; offset < end; ++offset) {
-            const auto c = source[offset];
-
-            if (c == ' ' || c == '\t') {
-                continue;
-            }
-
-            gap.Horizontal = false;
-
-            if (c == '\n') {
-                gap.HasLineFeed = true;
-            } else if (c == '\r') {
-                gap.HasBareCR |= offset + 1 == source.size() || source[offset + 1] != '\n';
-            } else if (c != '\f' && c != '\v') {
-                gap.Preserve = true;
-            }
-        }
-
-        if (i && i < count && NeedsSeparation(previousKind, previousText, token.Kind, text)) {
-            // C++ permits adjacent template closers to be retokenized as >>.
-            // Only confirmed delimiters may relax maximal-munch separation;
-            // comparison/shift operators and unparsed syntax remain lexical.
-            const auto templateCloser = [] (TK kind, parser::PunctuationRole role) {
-                return role == parser::PunctuationRole::TemplateDelimiter &&
-                    (kind == TK::Operator_Greater || kind == TK::Operator_RightShift);
-            };
-
-            if (!templateCloser(previousKind, previousRole) || !templateCloser(token.Kind, role)) {
-                gap.Separation = GapSeparation::Required;
-            }
-        }
-
-        // Preserve comment attachment topology, not its surrounding whitespace.
-        // In particular a line comment must not swallow the following token.
-        const auto commentOrDirective = [] (TK kind) {
-            return kind == TK::Comment || kind == TK::PreprocessingDirective;
-        };
-
-        if ((i && commentOrDirective(previousKind)) || (i < count && commentOrDirective(token.Kind))) {
-            gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
-        }
-
-        if (i &&
-            (previousKind == TK::PreprocessingDirective ||
-                (previousKind == TK::Comment && previousText.starts_with("//"))))
-        {
-            gap.MustStartWithLineFeed = true;
-
-            // No terminator at EOF: insertion could extend the line token,
-            // even though its half-open protection ends at the insertion point.
-            if (original.empty()) {
-                gap.Preserve = true;
-            }
-        }
-
-        if (i < count && token.Kind == TK::Operator_Remainder) {
-            // %: is a directive only at the beginning of a line in our lexer.
-            gap.LineBoundary = gap.HasLineFeed ? GapLineBoundary::Required : GapLineBoundary::Forbidden;
-        }
-
-        if (i && i < count && Literal(previousKind) && Word(token.Kind, text) && original.empty()) {
-            // The tokenizer leaves string/character user-defined suffixes as
-            // identifiers. Adding whitespace changes grammar, not token kinds.
-            gap.ContextSensitive = true;
-            gap.Preserve = true;
-        }
-
-        if (i && (previousText.ends_with("\\") || previousText.ends_with("\\\r"))) {
-            gap.Preserve = true;
-            gap.Reasons = ProtectionReason::LineSplice;
-        }
-
-        if (i && i < count &&
-            ((previousKind == TK::Operator_OpenBracket && token.Kind == TK::Operator_OpenBracket) ||
-                (previousKind == TK::Operator_CloseBracket && token.Kind == TK::Operator_CloseBracket &&
-                    !OrdinaryBracket(previousRole) && !OrdinaryBracket(role))))
-        {
-            // Uncertain bracket pairs may belong to attribute syntax. A
-            // proven ordinary closer, such as a capture after a subscript,
-            // leaves this gap available to its normal layout owner.
-            gap.ContextSensitive = true;
-            gap.Preserve = true;
-        }
-
-        result.Gaps_.push_back(gap);
+        auto& gap = result.Gaps_.emplace_back();
+        ClassifyGap(gap, source, count, i, token, text, role, previousKind, previousText, previousRole, previousEnd);
 
         if (i == count) {
             break;
         }
 
         const auto tokenLine = [&] {
-            while (lineIndex + 1 < lines.size() && lines[lineIndex + 1].Begin <= token.Text.Begin) {
-                ++lineIndex;
-            }
-
-            while (endLineIndex + 1 < lines.size() && lines[endLineIndex + 1].Begin <= token.Text.End) {
-                ++endLineIndex;
-            }
-
-            return parser::SourceRange{
-                lines[lineIndex].Begin,
-                endLineIndex + 1 < lines.size() ? lines[endLineIndex + 1].Begin : size,
-            };
+            const auto first = physicalLine(token.Text.Begin);
+            const auto last = physicalLine(token.Text.End);
+            return parser::SourceRange{first.Begin, last.ContentEnd < size ? last.ContentEnd + 1 : size};
         };
 
         if (token.Kind == TK::Invalid) {
@@ -762,47 +785,67 @@ SourceAnalysis BuildSourceAnalysis(
                 (options.HonorClangFormatDirectives &&
                     (marker == "// clang-format on" || marker == "/* clang-format on */"));
 
-            if (off || on) {
-                const auto range = tokenLine();
+            if ((off || on) && token.Text.Begin >= checkedMarkerEnd) {
+                const auto line = physicalLine(token.Text.Begin);
+                const auto endLine = physicalLine(token.Text.End);
+                checkedMarkerEnd = line.ContentEnd < size ? line.ContentEnd + 1 : size;
 
-                if (lineIndex == endLineIndex && !lines[lineIndex].Continued &&
-                    token.Text.Begin == lines[lineIndex].FirstContent && token.Text.End >= lines[lineIndex].ContentEnd)
+                // A later candidate on this line has this marker in its prefix,
+                // so it cannot be standalone. Scan long indentation only once.
+                if (line.Begin == endLine.Begin &&
+                    std::all_of(source.begin() + line.Begin, source.begin() + token.Text.Begin, horizontal) &&
+                    std::all_of(source.begin() + token.Text.End, source.begin() + line.ContentEnd, horizontal))
                 {
-                    if (off && disabledDepth++ == 0) {
-                        disabledBegin = range.Begin;
-                    } else if (on && disabledDepth && --disabledDepth == 0) {
-                        protect(disabledBegin, range.End, ProtectionReason::Disabled);
+                    auto previousContentEnd = line.Begin ? line.Begin - 1 : 0;
+
+                    while (previousContentEnd && source[previousContentEnd - 1] != '\n' &&
+                        horizontal(source[previousContentEnd - 1]))
+                    {
+                        --previousContentEnd;
+                    }
+
+                    const bool continued = previousContentEnd && source[previousContentEnd - 1] == '\\';
+
+                    if (!continued) {
+                        if (off && disabledDepth++ == 0) {
+                            disabledBegin = line.Begin;
+                        } else if (on && disabledDepth && --disabledDepth == 0) {
+                            protect(disabledBegin, checkedMarkerEnd, ProtectionReason::Disabled);
+                        }
                     }
                 }
             }
         }
 
         if (i >= macroEnd && token.Kind == TK::Operator_OpenParenthesis && pendingMacro != NoToken) {
-            const auto close = tree.MatchingDelimiter(i);
-            const auto balanced = close > i && close < count && tree.Kind(close) == TK::Operator_CloseParenthesis;
-            macroEnd = balanced ? close + 1 : count;
-            // An unclosed invocation has no trustworthy local end; retain its
-            // suffix, not the unrelated prefix or a whole-file rollback.
-            const auto begin = tree.Token(pendingMacro).Text.Begin;
-            const auto end = balanced ? tree.Token(close).Text.End : size;
-            const auto reason = balanced
-                ? ProtectionReason::SensitiveMacro
-                : ProtectionReason::SensitiveMacro | ProtectionReason::Recovery;
+            const auto name = tree.TokenText(pendingMacro);
+            const bool sensitive = std::binary_search(names.begin(), names.end(), name);
+            const bool pendingEnum = !sensitive && std::binary_search(enumNames.begin(), enumNames.end(), name);
 
-            if (pendingEnum) {
-                enumInvocations.push_back({{begin, end}, reason});
-            } else {
-                protect(begin, end, reason);
+            if (sensitive || pendingEnum) {
+                const auto close = tree.MatchingDelimiter(i);
+                const auto balanced = close > i && close < count && tree.Kind(close) == TK::Operator_CloseParenthesis;
+                macroEnd = balanced ? close + 1 : count;
+                // An unclosed invocation has no trustworthy local end; retain its
+                // suffix, not the unrelated prefix or a whole-file rollback.
+                const auto begin = tree.Token(pendingMacro).Text.Begin;
+                const auto end = balanced ? tree.Token(close).Text.End : size;
+                const auto reason = balanced
+                    ? ProtectionReason::SensitiveMacro
+                    : ProtectionReason::SensitiveMacro | ProtectionReason::Recovery;
+
+                if (pendingEnum) {
+                    enumInvocations.push_back({{begin, end}, reason});
+                } else {
+                    protect(begin, end, reason);
+                }
             }
         }
 
         if (token.Kind != TK::Comment) {
             // Comments are preprocessing whitespace between a macro name and
             // its opening parenthesis; directives and other tokens are not.
-            const bool candidate = i >= macroEnd && token.Kind == TK::Identifier;
-            const bool sensitive = candidate && std::binary_search(names.begin(), names.end(), text);
-            pendingEnum = candidate && !sensitive && std::binary_search(enumNames.begin(), enumNames.end(), text);
-            pendingMacro = sensitive || pendingEnum ? i : NoToken;
+            pendingMacro = i >= macroEnd && token.Kind == TK::Identifier ? i : NoToken;
         }
 
         previousKind = token.Kind;
@@ -1077,6 +1120,7 @@ SourceAnalysis BuildSourceAnalysis(
 
             if (before == after && tokens.Begin < result.Gaps_.size()) {
                 result.Gaps_[tokens.Begin].Preserve = true;
+                result.Gaps_[tokens.Begin].IntrinsicPreserve = true;
                 result.Gaps_[tokens.Begin].Reasons =
                     recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous;
             }
@@ -1148,31 +1192,36 @@ SourceAnalysis BuildSourceAnalysis(
 
     MergeProtection(result.DirectiveFences_);
     MergeProtection(result.Protection_);
-    size_t interval = 0;
+    auto nextGap = result.Gaps_.begin();
+    const auto gapEnd = result.Gaps_.end();
+    const auto beforeRange = [] (const SourceGap& gap, Offset begin) {
+        // Empty gaps own insertion at a range's beginning; nonempty
+        // gaps ending there do not intersect its protected bytes.
+        return gap.Source.End < begin || (gap.Source.End == begin && !gap.Source.Empty());
+    };
 
-    for (auto& gap : result.Gaps_) {
-        // Keep intrinsic fences distinct from protection folded into the gap:
-        // a protected exact prefix need not protect a selected
-        // horizontal slice.
-        gap.IntrinsicPreserve = gap.Preserve;
-        gap.IntrinsicContextSensitive = gap.ContextSensitive;
-
-        while (interval < result.Protection_.size() && result.Protection_[interval].Source.End <= gap.Source.Begin) {
-            ++interval;
+    for (const auto& range : result.Protection_) {
+        if (nextGap == gapEnd) {
+            break;
         }
 
-        if (interval < result.Protection_.size()) {
-            const auto& range = result.Protection_[interval];
-            // Proven incoming gaps are outside the protected spelling, even
-            // when empty and sharing its first byte's offset. Do not bypass
-            // overlapping protection from any other reason.
+        if (nextGap->Source.Begin >= range.Source.End) {
+            continue;
+        }
+
+        if (beforeRange(*nextGap, range.Source.Begin)) {
+            nextGap = std::lower_bound(nextGap, gapEnd, range.Source.Begin, beforeRange);
+        }
+
+        while (nextGap != gapEnd && nextGap->Source.Begin < range.Source.End) {
+            auto& gap = *nextGap++;
+            // A gap spanning multiple protections observes only its first
+            // intersecting range, including a proven incoming-gap exception.
             const bool beforeSpelling = gap.Source.Empty() && gap.Source.Begin == range.Source.Begin &&
                 (range.Reasons == ProtectionReason::HeaderName ||
                     (gap.RecoveryBoundary && range.Reasons == ProtectionReason::Recovery));
 
-            if (!beforeSpelling &&
-                (gap.Source.Empty() ? range.Source.Begin <= gap.Source.Begin : range.Source.Begin < gap.Source.End))
-            {
+            if (!beforeSpelling) {
                 gap.Preserve = true;
                 gap.Reasons = gap.Reasons | range.Reasons;
 
@@ -1192,6 +1241,744 @@ SourceAnalysis BuildSourceAnalysis(
     }
 
     return result;
+}
+
+bool CanReuseNormalizedSourceAnalysis(
+    const parser::SyntaxTree& original,
+    const SourceAnalysis& safety,
+    std::span<const parser::SourceRange> edits,
+    std::span<const parser::detail::NormalizedPiece> pieces,
+    std::pmr::memory_resource& scratch)
+{
+    const auto firstAt = [&] (Offset offset) {
+        parser::TokenIndex low = 0, high = original.TokenCount();
+
+        while (low < high) {
+            const auto mid = low + (high - low) / 2;
+
+            if (original.Token(mid).Text.Begin < offset) {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+
+        return low;
+    };
+
+    for (const auto edit : edits) {
+        const auto begin = firstAt(edit.Begin);
+        const auto end = firstAt(edit.End);
+        const auto before = begin ? original.Token(begin - 1).Text.End : 0;
+        const auto after = end < original.TokenCount()
+            ? original.Token(end).Text.Begin
+            : Offset(original.Source().size());
+        const auto protections = safety.Protection();
+        auto found = std::lower_bound(
+            protections.begin(),
+            protections.end(),
+            before,
+            [] (const auto& range, Offset point) {
+                return range.Source.End < point;
+            });
+
+        for (; found != protections.end() && found->Source.Begin <= after; ++found) {
+            if (found->Reasons != ProtectionReason::Directive) {
+                return false;
+            }
+        }
+
+        for (auto gap = begin; gap <= end; ++gap) {
+            const auto& item = safety.Gaps()[gap];
+
+            if (item.IntrinsicPreserve || item.IntrinsicContextSensitive || item.RecoveryBoundary ||
+                item.MovableStatementIndent)
+            {
+                return false;
+            }
+        }
+    }
+    std::pmr::vector<parser::SourceRange> copied(&scratch);
+    copied.reserve(pieces.size());
+
+    for (const auto& piece : pieces) {
+        if (!piece.Generated) {
+            copied.push_back(piece.Original);
+        }
+    }
+
+    std::sort(
+        copied.begin(),
+        copied.end(),
+        [] (const auto a, const auto b) {
+            return a.Begin < b.Begin;
+        });
+    size_t next = 0;
+
+    for (const auto& range : safety.Protection()) {
+        if (range.Reasons == ProtectionReason::Directive) {
+            continue;
+        }
+
+        while (next < copied.size() && copied[next].End <= range.Source.Begin) {
+            ++next;
+        }
+
+        if (next == copied.size() || copied[next].Begin > range.Source.Begin || copied[next].End < range.Source.End) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+struct detail::NormalizationAnalysisReuse
+{
+    template <class Refresh>
+    static bool TransportRegions(
+        SourceAnalysis& result,
+        std::span<const SourceRegion> cached,
+        std::span<const parser::TokenIndex> mapping,
+        std::span<const parser::detail::NormalizedCommentInsertion> insertions,
+        bool inPlace,
+        const Refresh& refresh,
+        std::pmr::memory_resource& scratch)
+    {
+        if (inPlace) {
+            for (auto& region : result.Regions_) {
+                refresh(region);
+            }
+
+            return true;
+        }
+
+        struct Insertion
+        {
+            parser::detail::NormalizedCommentInsertion Proof;
+            RegionId Region = NoRegion;
+            RegionId Parent = NoRegion;
+        };
+
+        std::pmr::vector<Insertion> added(&scratch);
+        added.reserve(insertions.size());
+
+        for (const auto& proof : insertions) {
+            if (proof.ParentRegion >= cached.size() || proof.BeforeRegion <= proof.ParentRegion ||
+                proof.BeforeRegion > cached.size())
+            {
+                return false;
+            }
+
+            added.push_back({proof});
+        }
+
+        std::ranges::sort(
+            added,
+            [] (const Insertion& a, const Insertion& b) {
+                return a.Proof.BeforeRegion != b.Proof.BeforeRegion
+                    ? a.Proof.BeforeRegion < b.Proof.BeforeRegion
+                    : a.Proof.Token < b.Proof.Token;
+            });
+
+        if (added.size() > NoRegion || cached.size() > NoRegion - added.size()) {
+            throw std::length_error("too many source regions");
+        }
+
+        const auto rebase = [&] (RegionId id) -> RegionId {
+            if (id == NoRegion) {
+                return NoRegion;
+            }
+
+            const auto end = std::upper_bound(
+                added.begin(),
+                added.end(),
+                id,
+                [] (RegionId key, const Insertion& item) {
+                    return key < item.Proof.BeforeRegion;
+                });
+            return id + static_cast<RegionId>(end - added.begin());
+        };
+        const auto tokens = [&] (parser::TokenRange old) {
+            return old.Empty()
+                ? parser::TokenRange{mapping[old.Begin], mapping[old.Begin]}
+                : parser::TokenRange{mapping[old.Begin], mapping[old.End - 1] + 1};
+        };
+        size_t next = 0;
+
+        for (RegionId id = 0; id <= cached.size(); ++id) {
+            while (next < added.size() && added[next].Proof.BeforeRegion == id) {
+                auto& item = added[next++];
+                SourceRegion region{};
+                region.Tokens = {item.Proof.Token, item.Proof.Token + 1};
+                region.Attached = region.Tokens;
+                region.Parent = rebase(item.Proof.ParentRegion);
+                region.Kind = parser::NodeKind::Comment;
+                refresh(region);
+                item.Region = static_cast<RegionId>(result.Regions_.size());
+                result.Regions_.push_back(region);
+            }
+
+            if (id == cached.size()) {
+                break;
+            }
+
+            auto region = cached[id];
+            region.Tokens = region.Kind == parser::NodeKind::TranslationUnit
+                ? parser::TokenRange{0, static_cast<parser::TokenIndex>(result.Gaps_.size() - 1)}
+                : tokens(region.Tokens);
+            region.Attached = tokens(region.Attached);
+            region.Attached.Begin = std::min(region.Attached.Begin, region.Tokens.Begin);
+            region.Attached.End = std::max(region.Attached.End, region.Tokens.End);
+            region.Parent = rebase(region.Parent);
+            region.FirstChild = rebase(region.FirstChild);
+            region.NextSibling = rebase(region.NextSibling);
+            refresh(region);
+            result.Regions_.push_back(region);
+        }
+
+        if (next != added.size()) {
+            return false;
+        }
+        std::pmr::vector<RegionId> insertedIds(&scratch);
+        insertedIds.reserve(added.size());
+
+        for (auto& item : added) {
+            insertedIds.push_back(item.Region);
+            item.Parent = rebase(item.Proof.ParentRegion);
+        }
+
+        std::ranges::sort(
+            added,
+            [] (const Insertion& a, const Insertion& b) {
+                return a.Proof.ParentRegion != b.Proof.ParentRegion
+                    ? a.Proof.ParentRegion < b.Proof.ParentRegion
+                    : a.Proof.Token < b.Proof.Token;
+            });
+
+        for (size_t first = 0; first < added.size();) {
+            size_t end = first + 1;
+
+            while (end < added.size() && added[end].Proof.ParentRegion == added[first].Proof.ParentRegion) {
+                ++end;
+            }
+
+            auto& parent = result.Regions_[added[first].Parent];
+            auto child = parent.FirstChild;
+            auto previous = NoRegion;
+
+            for (size_t i = first; i < end; ++i) {
+                const auto id = added[i].Region;
+
+                while (child != NoRegion && result.Regions_[child].Tokens.Begin < added[i].Proof.Token) {
+                    previous = child;
+                    child = result.Regions_[child].NextSibling;
+                }
+
+                result.Regions_[id].NextSibling = child;
+
+                if (previous == NoRegion) {
+                    parent.FirstChild = id;
+                } else {
+                    result.Regions_[previous].NextSibling = id;
+                }
+
+                previous = id;
+            }
+
+            // New standalone comments attach to the next syntax sibling. Native
+            // attachment is certified by preserved same-line relationships.
+            auto pending = NoToken;
+
+            for (auto id = parent.FirstChild; id != NoRegion; id = result.Regions_[id].NextSibling) {
+                auto& region = result.Regions_[id];
+
+                if (std::binary_search(insertedIds.begin(), insertedIds.end(), id)) {
+                    pending = std::min(pending, region.Tokens.Begin);
+                } else if (region.Kind != parser::NodeKind::Comment && pending != NoToken) {
+                    region.Attached.Begin = std::min(region.Attached.Begin, pending);
+                    pending = NoToken;
+                }
+            }
+
+            first = end;
+        }
+
+        return true;
+    }
+
+    template <bool Consume, bool TokenOnly = false>
+    static std::optional<SourceAnalysis> Build(
+        const parser::SyntaxTree& original,
+        const parser::SyntaxTree& tree,
+        const SourceAnalysis& safety,
+        std::span<const parser::TokenIndex> mapping,
+        std::span<const parser::detail::NormalizedPiece> pieces,
+        std::span<const ProtectedSourceRange> inherited,
+        std::pmr::memory_resource& file,
+        std::pmr::memory_resource& scratch,
+        SourceAnalysis* owned = nullptr,
+        std::span<const parser::detail::NormalizedCommentInsertion> insertions = {})
+    {
+        if (!safety.Built_ || safety.HasEditScope_ || mapping.size() != size_t(original.TokenCount()) + 1) {
+            return std::nullopt;
+        }
+
+        const auto source = tree.Source();
+        const auto size = CheckedSourceAnalysisSize(source.size());
+        const auto count = tree.TokenCount();
+
+        if constexpr (Consume) {
+            if (owned != &safety || (!TokenOnly && count != original.TokenCount())) {
+                return std::nullopt;
+            }
+
+            if constexpr (TokenOnly) {
+                if (size_t(count) != size_t(original.TokenCount()) + insertions.size()) {
+                    return std::nullopt;
+                }
+            }
+        }
+        std::pmr::vector<parser::TokenIndex> prior(&scratch);
+        if constexpr (!Consume) {
+            prior.resize(size_t(count) + 1, NoToken);
+
+            for (parser::TokenIndex old = 0; old <= original.TokenCount(); ++old) {
+                if (mapping[old] != NoToken) {
+                    prior[mapping[old]] = old;
+                }
+            }
+        }
+
+        SourceAnalysis result = [&] {
+            if constexpr (Consume) {
+                return SourceAnalysis(std::move(*owned));
+            } else {
+                return SourceAnalysis(file);
+            }
+        }();
+        const SourceAnalysis& saved = Consume ? result : safety;
+        std::pmr::vector<SourceGap> oldGaps(&file);
+        std::pmr::vector<SourceRegion> oldRegions(&file);
+        const bool inPlace = Consume && (!TokenOnly || insertions.empty());
+
+        if constexpr (TokenOnly) {
+            if (!inPlace) {
+                oldGaps = std::move(result.Gaps_);
+                oldRegions = std::move(result.Regions_);
+            }
+        }
+
+        const std::span<const SourceGap> cachedGaps = TokenOnly && !inPlace ? oldGaps : saved.Gaps_;
+        const std::span<const SourceRegion> cachedRegions = TokenOnly && !inPlace ? oldRegions : saved.Regions_;
+
+        if (!inPlace) {
+            result.Gaps_.reserve(size_t(count) + 1);
+            result.Regions_.reserve(cachedRegions.size() + insertions.size() +
+                (!TokenOnly && count > original.TokenCount() ? count - original.TokenCount() : 0));
+        }
+
+        result.DirectiveFences_.clear();
+        result.Protection_.assign(inherited.begin(), inherited.end());
+
+        for (const auto range : inherited) {
+            if ((uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::Directive)) != 0) {
+                result.DirectiveFences_.push_back(range);
+            }
+        }
+
+        size_t piece = 0;
+        TK previousKind = TK::Invalid;
+        std::string_view previousText;
+        auto previousRole = parser::PunctuationRole::None;
+        Offset previousEnd = 0;
+        parser::TokenIndex oldCursor = 0, previousOld = NoToken;
+        size_t insertedCursor = 0;
+
+        for (parser::TokenIndex i = 0; i <= count; ++i) {
+            const auto token = i < count ? tree.Token(i) : tokenizer::Token{};
+            const auto text = i < count ? tree.TokenText(i) : std::string_view{};
+            const auto role = i < count ? tree.Role(i) : parser::PunctuationRole::None;
+            const auto end = i < count ? token.Text.Begin : size;
+            parser::TokenIndex old;
+
+            if constexpr (TokenOnly) {
+                if (oldCursor <= original.TokenCount() && mapping[oldCursor] == i) {
+                    old = oldCursor++;
+                } else {
+                    if (oldCursor <= original.TokenCount() && mapping[oldCursor] < i) {
+                        return std::nullopt;
+                    }
+
+                    if (insertedCursor == insertions.size() || insertions[insertedCursor++].Token != i) {
+                        return std::nullopt;
+                    }
+
+                    old = NoToken;
+                }
+            } else if constexpr (Consume) {
+                if (mapping[i] != i) {
+                    return std::nullopt;
+                }
+
+                old = i;
+            } else {
+                old = prior[i];
+            }
+
+            while (piece < pieces.size() && pieces[piece].Output.End < previousEnd) {
+                ++piece;
+            }
+
+            bool reuse;
+
+            if constexpr (TokenOnly) {
+                reuse = old != NoToken && (i ? previousOld != NoToken && previousOld + 1 == old : old == 0);
+            } else {
+                reuse =
+                    Consume || (old != NoToken && (i ? prior[i - 1] != NoToken && prior[i - 1] + 1 == old : old == 0));
+            }
+
+            previousOld = old;
+
+            if (reuse) {
+                const auto& cached = cachedGaps[old];
+                const bool copied = piece < pieces.size() && !pieces[piece].Generated &&
+                    pieces[piece].Output.Begin <= previousEnd && end <= pieces[piece].Output.End &&
+                    pieces[piece].Original.Begin + previousEnd - pieces[piece].Output.Begin == cached.Source.Begin &&
+                    pieces[piece].Original.Begin + end - pieces[piece].Output.Begin == cached.Source.End;
+                reuse = copied || saved.Original(cached) == source.substr(previousEnd, end - previousEnd);
+            }
+
+            // Consuming identity reuse can alias the cached gap. Finish its
+            // source comparison and refusal checks before updating that row.
+            if (reuse && cachedGaps[old].IntrinsicPreserve && cachedGaps[old].Source.Empty() &&
+                (uint16_t(cachedGaps[old].Reasons) &
+                    uint16_t(ProtectionReason::Recovery | ProtectionReason::Ambiguous)))
+            {
+                return std::nullopt;
+            }
+
+            auto& gap = inPlace ? result.Gaps_[i] : result.Gaps_.emplace_back();
+
+            if (reuse) {
+                gap = cachedGaps[old];
+                gap.Source = {previousEnd, end};
+                gap.Preserve = gap.IntrinsicPreserve;
+                gap.ContextSensitive = gap.IntrinsicContextSensitive;
+                gap.Reasons = i && (previousText.ends_with("\\") || previousText.ends_with("\\\r"))
+                    ? ProtectionReason::LineSplice
+                    : ProtectionReason::None;
+            } else {
+                ClassifyGap(
+                    gap,
+                    source,
+                    count,
+                    i,
+                    token,
+                    text,
+                    role,
+                    previousKind,
+                    previousText,
+                    previousRole,
+                    previousEnd);
+            }
+
+            if (i == count) {
+                break;
+            }
+
+            if (token.Kind == TK::PreprocessingDirective) {
+                const auto before = token.Text.Begin
+                    ? source.rfind('\n', token.Text.Begin - 1)
+                    : std::string_view::npos;
+                const auto after = source.find('\n', token.Text.End);
+                result.Protection_.push_back({
+                    {
+                        before == std::string_view::npos ? 0 : Offset(before + 1),
+                        after == std::string_view::npos ? size : Offset(after + 1),
+                    },
+                    ProtectionReason::Directive,
+                });
+            }
+
+            previousKind = token.Kind;
+            previousText = text;
+            previousRole = role;
+            previousEnd = token.Text.End;
+        }
+
+        const auto refreshSource = [&] (SourceRegion& region) {
+            const auto begin = region.Tokens.Begin < count ? tree.Token(region.Tokens.Begin).Text.Begin : size;
+            region.Source = {begin, region.Tokens.Empty() ? begin : tree.Token(region.Tokens.End - 1).Text.End};
+        };
+        if constexpr (TokenOnly) {
+            if (oldCursor != original.TokenCount() + 1 || insertedCursor != insertions.size()) {
+                return std::nullopt;
+            }
+
+            if (!TransportRegions(result, cachedRegions, mapping, insertions, inPlace, refreshSource, scratch)) {
+                return std::nullopt;
+            }
+        } else {
+            const auto refresh = [&] (SourceRegion& region, const parser::Node* node) {
+                refreshSource(region);
+                region.Attached = node->Tokens;
+
+                if (const auto* trivia = tree.AssociatedTrivia(*node)) {
+                    for (auto* item = trivia->Leading.First; item; item = item->Next) {
+                        region.Attached.Begin = std::min(region.Attached.Begin, item->Tokens.Begin);
+                    }
+
+                    for (auto* item = trivia->Trailing.First; item; item = item->Next) {
+                        region.Attached.End = std::max(region.Attached.End, item->Tokens.End);
+                    }
+                }
+            };
+            struct Frame
+            {
+                const parser::Node* Next;
+                RegionId Parent;
+                RegionId Last = NoRegion;
+            };
+
+            std::pmr::vector<Frame> stack(&scratch);
+            stack.push_back({&tree.Root(), NoRegion});
+            RegionId oldRegion = 0;
+            const auto skipDeleted = [&] {
+                if constexpr (Consume) {
+                    return;
+                }
+
+                while (oldRegion < saved.Regions_.size()) {
+                    const auto& region = saved.Regions_[oldRegion];
+
+                    if (region.Kind != parser::NodeKind::Comment || region.Tokens.Size() != 1 ||
+                        mapping[region.Tokens.Begin] != NoToken)
+                    {
+                        break;
+                    }
+
+                    ++oldRegion;
+                }
+            };
+            while (!stack.empty()) {
+                auto& frame = stack.back();
+                const auto* node = frame.Next;
+
+                if (!node) {
+                    if constexpr (Consume) {
+                        if (frame.Last != NoRegion && result.Regions_[frame.Last].NextSibling != NoRegion) {
+                            return std::nullopt;
+                        }
+                    }
+
+                    stack.pop_back();
+                    continue;
+                }
+
+                frame.Next = node->NextSibling;
+                skipDeleted();
+                SourceRegion copiedRegion{};
+                SourceRegion* target = &copiedRegion;
+                const bool inserted = !Consume && node->Kind == parser::NodeKind::Comment && node->Tokens.Size() == 1 &&
+                    prior[node->Tokens.Begin] == NoToken;
+
+                if (!inserted) {
+                    if (oldRegion == saved.Regions_.size()) {
+                        return std::nullopt;
+                    }
+
+                    if constexpr (Consume) {
+                        target = &result.Regions_[oldRegion++];
+                    } else {
+                        copiedRegion = saved.Regions_[oldRegion++];
+                    }
+
+                    const auto& region = *target;
+                    parser::TokenRange tokens;
+
+                    if constexpr (Consume) {
+                        tokens = region.Tokens;
+                    } else if (region.Kind == parser::NodeKind::TranslationUnit) {
+                        tokens = {0, count};
+                    } else if (region.Tokens.Empty()) {
+                        tokens = {mapping[region.Tokens.Begin], mapping[region.Tokens.Begin]};
+                    } else {
+                        tokens = {mapping[region.Tokens.Begin], mapping[region.Tokens.End - 1] + 1};
+                    }
+
+                    if (region.Kind != node->Kind || tokens.Begin != node->Tokens.Begin ||
+                        tokens.End != node->Tokens.End)
+                    {
+                        return std::nullopt;
+                    }
+                }
+
+                auto& region = *target;
+
+                if constexpr (!Consume) {
+                    if (result.Regions_.size() >= NoRegion) {
+                        throw std::length_error("too many source regions");
+                    }
+
+                    const auto id = static_cast<RegionId>(result.Regions_.size());
+                    region.Tokens = node->Tokens;
+                    refresh(region, node);
+                    region.Parent = frame.Parent;
+                    region.FirstChild = NoRegion;
+                    region.NextSibling = NoRegion;
+                    region.Kind = node->Kind;
+                    region.Function = node->GetFunctionKind();
+                    result.Regions_.push_back(region);
+
+                    if (frame.Parent != NoRegion) {
+                        if (frame.Last == NoRegion) {
+                            result.Regions_[frame.Parent].FirstChild = id;
+                        } else {
+                            result.Regions_[frame.Last].NextSibling = id;
+                        }
+
+                        frame.Last = id;
+                    }
+
+                    if (node->FirstChild) {
+                        stack.push_back({node->FirstChild, id});
+                    }
+                } else {
+                    const auto id = oldRegion - 1;
+
+                    // The owned AST retained every original production. Keep the
+                    // public correspondence guard while updating no topology fields.
+                    if (region.Parent != frame.Parent || region.FirstChild != (node->FirstChild ? id + 1 : NoRegion) ||
+                        (frame.Last != NoRegion && result.Regions_[frame.Last].NextSibling != id))
+                    {
+                        return std::nullopt;
+                    }
+
+                    refresh(region, node);
+                    frame.Last = id;
+
+                    if (node->FirstChild) {
+                        stack.push_back({node->FirstChild, id});
+                    }
+                }
+            }
+            skipDeleted();
+
+            if (oldRegion != saved.Regions_.size()) {
+                return std::nullopt;
+            }
+        }
+        result.Source_ = source;
+        MergeProtection(result.DirectiveFences_);
+        MergeProtection(result.Protection_);
+        auto nextGap = result.Gaps_.begin();
+        const auto gapEnd = result.Gaps_.end();
+        const auto beforeRange = [] (const SourceGap& gap, Offset begin) {
+            return gap.Source.End < begin || (gap.Source.End == begin && !gap.Source.Empty());
+        };
+
+        for (const auto& range : result.Protection_) {
+            if (nextGap == gapEnd) {
+                break;
+            }
+
+            if (nextGap->Source.Begin >= range.Source.End) {
+                continue;
+            }
+
+            if (beforeRange(*nextGap, range.Source.Begin)) {
+                nextGap = std::lower_bound(nextGap, gapEnd, range.Source.Begin, beforeRange);
+            }
+
+            while (nextGap != gapEnd && nextGap->Source.Begin < range.Source.End) {
+                auto& gap = *nextGap++;
+                const bool beforeSpelling = gap.Source.Empty() && gap.Source.Begin == range.Source.Begin &&
+                    (range.Reasons == ProtectionReason::HeaderName ||
+                        (gap.RecoveryBoundary && range.Reasons == ProtectionReason::Recovery));
+
+                if (!beforeSpelling) {
+                    gap.Preserve = true;
+                    gap.Reasons = gap.Reasons | range.Reasons;
+
+                    if ((uint16_t(range.Reasons) & uint16_t(ProtectionReason::HeaderName)) != 0) {
+                        gap.ContextSensitive = true;
+                    }
+                }
+            }
+        }
+
+        result.Built_ = true;
+        result.PartialGapPermissions_ = result.CollectPartialGapPermissions(std::nullopt);
+        return result;
+    }
+};
+
+std::optional<SourceAnalysis> ReuseNormalizedSourceAnalysis(
+    const parser::SyntaxTree& original,
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    std::span<const parser::TokenIndex> mapping,
+    std::span<const parser::detail::NormalizedPiece> pieces,
+    std::span<const ProtectedSourceRange> inherited,
+    std::pmr::memory_resource& file,
+    std::pmr::memory_resource& scratch)
+{
+    return detail::NormalizationAnalysisReuse::Build<false>(
+        original,
+        tree,
+        safety,
+        mapping,
+        pieces,
+        inherited,
+        file,
+        scratch);
+}
+
+std::optional<SourceAnalysis> detail::ConsumeIdentityNormalizedSourceAnalysis(
+    const parser::SyntaxTree& original,
+    const parser::SyntaxTree& tree,
+    SourceAnalysis&& safety,
+    std::span<const parser::TokenIndex> mapping,
+    std::span<const parser::detail::NormalizedPiece> pieces,
+    std::span<const ProtectedSourceRange> inherited,
+    std::pmr::memory_resource& file,
+    std::pmr::memory_resource& scratch)
+{
+    return detail::NormalizationAnalysisReuse::Build<true>(
+        original,
+        tree,
+        safety,
+        mapping,
+        pieces,
+        inherited,
+        file,
+        scratch,
+        &safety);
+}
+
+std::optional<SourceAnalysis> detail::ConsumeNormalizedTokenViewAnalysis(
+    const parser::SyntaxTree& original,
+    const parser::SyntaxTree& tree,
+    SourceAnalysis&& safety,
+    std::span<const parser::TokenIndex> mapping,
+    std::span<const parser::detail::NormalizedPiece> pieces,
+    std::span<const parser::detail::NormalizedCommentInsertion> insertions,
+    std::span<const ProtectedSourceRange> inherited,
+    std::pmr::memory_resource& file,
+    std::pmr::memory_resource& scratch)
+{
+    return detail::NormalizationAnalysisReuse::Build<true, true>(
+        original,
+        tree,
+        safety,
+        mapping,
+        pieces,
+        inherited,
+        file,
+        scratch,
+        &safety,
+        insertions);
 }
 
 } // namespace formatter

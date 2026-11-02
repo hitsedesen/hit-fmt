@@ -895,6 +895,37 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_TRUE(empty.ChainScopes().empty());
     EXPECT_TRUE(empty.StickyChainPairs().empty());
 
+    formatter::Style longNames;
+    const std::string longName = "A" + std::string(64, 'x');
+    longNames.CallLineFirstArgumentNames = {"A", longName.substr(0, 64), longName};
+    longNames.ChainedCallRootNames = {"ns::" + longName};
+    longNames.AlwaysBreakChainRootNames = {longName};
+    longNames.AlwaysBreakChainCallNames = {longName};
+    longNames.BlankLineMacroNames = {"EVENT", "TRACE_*", "TRACE_MORE_*"};
+    auto snapshot = formatter::CompileLibraryAnnotations(longNames);
+    auto copied = snapshot;
+    auto moved = std::move(copied);
+    longNames = {};
+
+    for (const auto* owned : {&snapshot, &moved}) {
+        EXPECT_NE(owned->FindMessagePin(longName), nullptr);
+        EXPECT_NE(owned->FindMessagePin(longName.substr(0, 64)), nullptr);
+        EXPECT_NE(owned->FindMessagePin("A"), nullptr);
+        EXPECT_EQ(owned->FindMessagePin("A" + std::string(63, 'x') + "y"), nullptr);
+        EXPECT_EQ(owned->FindMessagePin(""), nullptr);
+        EXPECT_TRUE(owned->IsAnnotatedChainRoot("ns::" + longName));
+        EXPECT_FALSE(owned->IsAnnotatedChainRoot(longName));
+        EXPECT_TRUE(owned->AlwaysBreakChainRoot(longName));
+        EXPECT_TRUE(owned->AlwaysBreakChainCall(longName));
+        EXPECT_FALSE(owned->AlwaysBreakChainCall(""));
+        EXPECT_TRUE(owned->IsBlankLineMacro("EVENT"));
+        EXPECT_FALSE(owned->IsBlankLineMacro("EVENT_EXTRA"));
+        EXPECT_TRUE(owned->IsBlankLineMacro("TRACE_"));
+        EXPECT_TRUE(owned->IsBlankLineMacro("TRACE_" + longName));
+        EXPECT_FALSE(owned->IsBlankLineMacro("TRAC"));
+        EXPECT_FALSE(owned->IsBlankLineMacro(""));
+    }
+
     for (const auto text :
         {
             "CallLineFirstArgumentNames = [\"Trace\", \"Trace\"]\n",

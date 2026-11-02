@@ -1,11 +1,14 @@
 #include "parser.hpp"
 
+#include "normalized_syntax.hpp"
 #include "operator_info.hpp"
 
 #include <util/assert.hpp>
 #include <util/phase_profiler.hpp>
 
 #include <tokenizer/tokenizer.hpp>
+
+#include <unicode/utf8.hpp>
 
 #include <algorithm>
 #include <array>
@@ -15,6 +18,7 @@
 #include <limits>
 #include <memory_resource>
 #include <new>
+#include <numeric>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -169,6 +173,7 @@ SyntaxTree::SyntaxTree(std::string_view input)
 
 SyntaxTree::SyntaxTree(SyntaxTree&& other) noexcept
     : Memory_(std::move(other.Memory_))
+    , OriginalMemory_(std::move(other.OriginalMemory_))
     , Input_(other.Input_)
     , Tokens_(std::move(other.Tokens_))
     , Trivia_(std::move(other.Trivia_))
@@ -179,6 +184,7 @@ SyntaxTree& SyntaxTree::operator=(SyntaxTree&& other) noexcept
 {
     if (this != &other) {
         Memory_ = std::move(other.Memory_);
+        OriginalMemory_ = std::move(other.OriginalMemory_);
         Input_ = other.Input_;
         Tokens_.MoveFrom(std::move(other.Tokens_));
         Trivia_.MoveFrom(std::move(other.Trivia_));
@@ -216,6 +222,20 @@ std::string_view SyntaxTree::SourceText(SourceRange range) const
 class ParseContext
 {
 public:
+    struct CopiedTokenRun
+    {
+        TokenRange Original;
+        TokenIndex OutputBegin;
+    };
+
+    [[nodiscard]] static std::optional<SyntaxTree> NormalizeTokens(
+        const SyntaxTree& original,
+        util::PaddedSourceView input,
+        std::span<const detail::NormalizedPiece> pieces,
+        detail::NormalizedRegionTopology topology,
+        std::pmr::vector<TokenIndex>& originalToNormalized,
+        std::pmr::vector<detail::NormalizedCommentInsertion>& insertions);
+
     [[nodiscard]] static SyntaxTree Run(
         util::PaddedSourceView input,
         ErrorHandler errorHandler,
@@ -223,7 +243,14 @@ public:
 
     [[nodiscard]] static std::optional<SyntaxTree> ReparseIncludes(
         const SyntaxTree& original,
-        util::PaddedSourceView input);
+        util::PaddedSourceView input,
+        bool rulers = false);
+
+    [[nodiscard]] static std::optional<SyntaxTree> ConsumeNormalized(
+        SyntaxTree& original,
+        util::PaddedSourceView input,
+        std::span<const detail::NormalizedPiece> pieces,
+        std::pmr::vector<TokenIndex>& originalToNormalized);
 
     ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler, const ParseOptions& options)
         : Tree_(tree)
@@ -294,13 +321,23 @@ public:
         }
     }
 
-    bool ReuseIncludeSyntax(const SyntaxTree& original)
+    bool ReuseIncludeSyntax(
+        const SyntaxTree& original,
+        bool rulers,
+        SyntaxTree* consumed = nullptr,
+        std::span<const TokenIndex> copied = {},
+        std::pmr::vector<TokenIndex>* transported = nullptr,
+        const detail::NormalizedRegionTopology* topology = nullptr,
+        std::pmr::vector<detail::NormalizedCommentInsertion>* insertions = nullptr,
+        std::span<const CopiedTokenRun> stable = {})
     {
-        Tokenize();
-        Tree_.Tokens_.Seal();
-        ParseLimit_ = Tree_.TokenCount();
+        if (!consumed && !topology) {
+            Tokenize();
+            Tree_.Tokens_.Seal();
+            ParseLimit_ = Tree_.TokenCount();
+        }
 
-        if (ParseLimit_ != original.TokenCount()) {
+        if (!rulers && ParseLimit_ != original.TokenCount()) {
             return false;
         }
 
@@ -336,6 +373,18 @@ public:
             const auto close = text.find(text.front() == '<' ? '>' : '"', 1);
             return close != std::string_view::npos && close != 1;
         };
+
+        if (rulers) {
+            return ReuseRulerSyntax(
+                original,
+                literalInclude,
+                consumed,
+                copied,
+                transported,
+                topology,
+                insertions,
+                stable);
+        }
 
         for (TokenIndex i = 0; i < ParseLimit_; ++i) {
             if (Kind(i) != original.Kind(i)) {
@@ -396,6 +445,538 @@ public:
 
         // Trivia owns source ranges and line-based attachments, so none of
         // the original trivia records may survive include permutations.
+        AssociateComments(*Tree_.Root_);
+        AssociateBlankLines(*Tree_.Root_);
+        Tree_.Trivia_.Seal();
+        return true;
+    }
+
+    template <class LiteralInclude>
+    bool ReuseRulerSyntax(
+        const SyntaxTree& original,
+        const LiteralInclude& literalInclude,
+        SyntaxTree* consumed,
+        std::span<const TokenIndex> copied,
+        std::pmr::vector<TokenIndex>* transported,
+        const detail::NormalizedRegionTopology* topology,
+        std::pmr::vector<detail::NormalizedCommentInsertion>* insertions,
+        std::span<const CopiedTokenRun> stable)
+    {
+        constexpr auto none = std::numeric_limits<TokenIndex>::max();
+        const auto ruler = [] (const SyntaxTree& tree, TokenIndex token) {
+            if (token >= tree.TokenCount() || tree.Kind(token) != TK::Comment) {
+                return false;
+            }
+
+            auto text = tree.TokenText(token);
+
+            while (!text.empty() && (text.back() == ' ' || text.back() == '\t' || text.back() == '\r')) {
+                text.remove_suffix(1);
+            }
+
+            if (text.size() < 3 || text.find_first_not_of('/') != std::string_view::npos) {
+                return false;
+            }
+
+            const auto source = tree.Token(token).Text;
+            const auto before = token ? tree.Token(token - 1).Text.End : 0;
+            const auto after = token + 1 < tree.TokenCount()
+                ? tree.Token(token + 1).Text.Begin
+                : SourceOffset(tree.Source().size());
+            return (!token ||
+                tree.Source().substr(before, source.Begin - before).find('\n') != std::string_view::npos) &&
+                (token + 1 == tree.TokenCount() ||
+                    tree.Source().substr(source.End, after - source.End).find('\n') != std::string_view::npos);
+        };
+        struct Change
+        {
+            TokenIndex Before;
+            TokenIndex NewToken;
+            bool Insert;
+            Node* Parent = nullptr;
+            uint32_t ParentRegion = none;
+            uint32_t BeforeRegion = none;
+        };
+        std::pmr::vector<TokenIndex> mapping(size_t(original.TokenCount()) + 1, none, &ScratchMemory_);
+        std::pmr::vector<Change> changes(&ScratchMemory_);
+        size_t deleted = 0;
+        size_t stableRun = 0;
+        TokenIndex old = 0, next = 0;
+        const auto nativeLineBoundaryMatches = [&] {
+            return !old ||
+                (original.WhitespaceBefore(old).find('\n') != std::string_view::npos) ==
+                    (Tree_.WhitespaceBefore(next).find('\n') != std::string_view::npos);
+        };
+
+        while (old < original.TokenCount() || next < ParseLimit_) {
+            if (topology) {
+                while (stableRun < stable.size() &&
+                    stable[stableRun].OutputBegin + stable[stableRun].Original.Size() <= next)
+                {
+                    ++stableRun;
+                }
+
+                if (stableRun < stable.size()) {
+                    const auto& run = stable[stableRun];
+                    const auto end = run.OutputBegin + run.Original.Size();
+
+                    if (next >= run.OutputBegin && next < end && run.Original.Begin + next - run.OutputBegin == old) {
+                        if (next == run.OutputBegin && !nativeLineBoundaryMatches()) {
+                            return false;
+                        }
+
+                        // TokenizePieces copied these tokens and every interior
+                        // gap byte exactly, including malformed input bytes.
+                        // Include permutations enter only when grammar order
+                        // again agrees with the copied original token indices.
+                        const auto length = end - next;
+                        std::iota(mapping.begin() + old, mapping.begin() + old + length, next);
+                        old += length;
+                        next += length;
+                        continue;
+                    }
+                }
+            }
+
+            if (old < original.TokenCount() && next < ParseLimit_ && original.Kind(old) == Kind(next) &&
+                ((!copied.empty() && copied[next] == old) || original.TokenText(old) == Text(next) ||
+                    (Kind(next) == TK::PreprocessingDirective && literalInclude(original.TokenText(old)) &&
+                        literalInclude(Text(next))) || (ruler(original, old) && ruler(Tree_, next))))
+            {
+                if (topology && !nativeLineBoundaryMatches()) {
+                    return false;
+                }
+
+                mapping[old++] = next++;
+            } else if (ruler(Tree_, next)) {
+                changes.push_back({old, next++, true});
+            } else if (ruler(original, old)) {
+                changes.push_back({old++, next, false});
+                ++deleted;
+            } else {
+                return false;
+            }
+        }
+
+        mapping.back() = ParseLimit_;
+
+        if ((consumed || topology) && deleted) {
+            return false;
+        }
+
+        const auto previousStable = [&] (const Node* previous, const Change& change) {
+            if (!previous) {
+                return true;
+            }
+
+            if (previous->Kind == NodeKind::Comment || previous->Kind == NodeKind::PreprocessingDirective) {
+                return true;
+            }
+
+            if (previous->Tokens.Empty()) {
+                return false;
+            }
+
+            switch (previous->Kind) {
+                case NodeKind::UnparsedSyntax:
+                case NodeKind::UnknownTypeName:
+                case NodeKind::MissingToken:
+                case NodeKind::UnexpectedToken:
+                case NodeKind::AmbiguousStatement:
+                case NodeKind::Error:
+                    return false;
+                default:
+                    break;
+            }
+
+            const auto last = original.Kind(previous->Tokens.End - 1);
+
+            if (last == TK::Operator_Semicolon) {
+                return true;
+            }
+
+            if (last != TK::Operator_CloseBrace ||
+                (!change.Insert &&
+                    (Kind(change.NewToken) == TK::Operator_Semicolon || Kind(change.NewToken) == TK::Keyword_catch)))
+            {
+                return false;
+            }
+
+            switch (previous->Kind) {
+                case NodeKind::NamespaceDeclaration:
+                case NodeKind::FunctionDefinition:
+                case NodeKind::MacroFunctionDefinition:
+                case NodeKind::LinkageSpecification:
+                case NodeKind::ExportDeclaration:
+                case NodeKind::TemplateDeclaration:
+                    return true;
+                default:
+                    return false;
+            }
+        };
+        bool topologyValid = true;
+        const auto claimChanges =
+            [&] (const Node& node, Node& copy, uint32_t region = UINT32_MAX, uint32_t after = UINT32_MAX) {
+                auto begin = node.Tokens.Begin;
+                auto end = node.Tokens.End;
+
+                if (node.Kind == NodeKind::NamespaceDeclaration) {
+                    while (begin < end && original.Kind(begin) != TK::Operator_OpenBrace) {
+                        ++begin;
+                    }
+
+                    if (begin == end || original.MatchingDelimiter(begin) != end - 1) {
+                        return;
+                    }
+
+                    ++begin;
+                    --end;
+                } else if (node.Kind != NodeKind::TranslationUnit) {
+                    return;
+                }
+
+                auto change = std::lower_bound(
+                    changes.begin(),
+                    changes.end(),
+                    begin,
+                    [] (const Change& item, TokenIndex boundary) {
+                        return item.Before < boundary;
+                    });
+                const Node* previous = nullptr;
+                auto* child = node.FirstChild;
+                auto childRegion = topology ? topology->FirstChild(topology->Records, region) : none;
+
+                for (; change != changes.end() && change->Before <= end; ++change) {
+                    const auto boundary = change->Before;
+
+                    // An unfinished body/conditional can consume newly appended
+                    // comments. EOF alone does not prove return to the root scope.
+                    if (node.Kind == NodeKind::TranslationUnit && boundary != 0 && boundary == original.TokenCount()) {
+                        continue;
+                    }
+
+                    while (child && child->Tokens.End <= boundary) {
+                        if (child->Kind != NodeKind::Comment || child->Tokens.Size() != 1 ||
+                            mapping[child->Tokens.Begin] != none)
+                        {
+                            previous = child;
+                        }
+
+                        if (topology) {
+                            if (childRegion >= topology->Count) {
+                                topologyValid = false;
+                                return;
+                            }
+
+                            childRegion = topology->NextSibling(topology->Records, childRegion);
+                        }
+
+                        child = child->NextSibling;
+                    }
+
+                    if ((child && child->Tokens.Begin < boundary) ||
+                        (boundary != begin && boundary != end && (!previous || previous->Tokens.End != boundary) &&
+                            (!child || child->Tokens.Begin != boundary)) || !previousStable(previous, *change))
+                    {
+                        continue;
+                    }
+
+                    if (topology && child && childRegion >= topology->Count) {
+                        topologyValid = false;
+                        return;
+                    }
+
+                    change->Parent = &copy;
+
+                    if (topology) {
+                        change->ParentRegion = region;
+                        change->BeforeRegion = child ? childRegion : after;
+                    }
+                }
+            };
+
+        for (TokenIndex id = 0; id < original.TokenCount(); ++id) {
+            if (mapping[id] == none) {
+                continue;
+            }
+
+            auto matching = original.MatchingDelimiter(id);
+
+            if (matching != none) {
+                matching = mapping[matching];
+
+                if (matching == none) {
+                    return false;
+                }
+            }
+
+            Tree_.Tokens_.SetRole(mapping[id], original.Role(id));
+            Tree_.Tokens_.SetMatchingDelimiter(mapping[id], matching);
+        }
+        if (consumed || topology) {
+            // Insertions map every original token and EOF boundary. Only the
+            // paths containing an inserted ruler need a topology proof; all
+            // other node endpoints are already known to survive.
+            struct Affected
+            {
+                const Node* Syntax;
+                uint32_t Region;
+                uint32_t After;
+            };
+
+            std::pmr::vector<Affected> affected(&ScratchMemory_);
+
+            if (!changes.empty()) {
+                affected.push_back({&original.Root(), topology ? 0u : none, topology ? topology->Count : none});
+            }
+
+            while (!affected.empty()) {
+                const auto frame = affected.back();
+                const auto* node = frame.Syntax;
+                affected.pop_back();
+                claimChanges(*node, *const_cast<Node*>(node), frame.Region, frame.After);
+
+                if (!topologyValid) {
+                    return false;
+                }
+
+                auto region = topology ? topology->FirstChild(topology->Records, frame.Region) : none;
+
+                for (auto* child = node->FirstChild; child; child = child->NextSibling) {
+                    if (topology && region >= topology->Count) {
+                        return false;
+                    }
+
+                    const auto sibling = topology ? topology->NextSibling(topology->Records, region) : none;
+                    const auto found = std::lower_bound(
+                        changes.begin(),
+                        changes.end(),
+                        child->Tokens.Begin,
+                        [] (const Change& change, TokenIndex point) {
+                            return change.Before < point;
+                        });
+
+                    if (found != changes.end() && found->Before <= child->Tokens.End) {
+                        affected.push_back({child, region, sibling == none ? frame.After : sibling});
+                    }
+
+                    region = sibling;
+                }
+
+                if (topology && region != none) {
+                    return false;
+                }
+            }
+
+            if (std::ranges::any_of(
+                changes,
+                [] (const Change& change) {
+                    return !change.Parent;
+                }))
+            {
+                return false;
+            }
+
+            if (transported) {
+                transported->assign(mapping.begin(), mapping.end());
+            }
+
+            if (topology) {
+                for (const auto& change : changes) {
+                    if (change.ParentRegion >= topology->Count || change.BeforeRegion > topology->Count) {
+                        return false;
+                    }
+
+                    insertions->push_back({change.NewToken, change.ParentRegion, change.BeforeRegion});
+                }
+
+                Tree_.Trivia_.Seal();
+                return true;
+            }
+
+            Tree_.Root_ = consumed->Root_;
+            Tree_.OriginalMemory_ = std::move(consumed->Memory_);
+            consumed->Root_ = nullptr;
+            Tree_.Root_->Tokens = {0, ParseLimit_};
+            if (changes.empty()) {
+                // No inserted/deleted token means every syntax endpoint keeps
+                // its index. Only nodes with old trivia need resetting before
+                // attachments are rebuilt in normalized source coordinates.
+                for (uint32_t id = 0; id < original.Trivia_.Size(); ++id) {
+                    original.Trivia_.Owner(id).TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+                }
+            } else {
+                std::pmr::vector<Node*> siblings(&ScratchMemory_);
+                auto* node = Tree_.Root_;
+                while (node) {
+                    const auto before = node->Tokens;
+                    node->Tokens = node == Tree_.Root_
+                        ? TokenRange{0, ParseLimit_}
+                        : before.Empty()
+                            ? TokenRange{mapping[before.Begin], mapping[before.Begin]}
+                            : TokenRange{mapping[before.Begin], mapping[before.End - 1] + 1};
+                    node->TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+                    if (node->FirstChild) {
+                        if (node->NextSibling) {
+                            siblings.push_back(node->NextSibling);
+                        }
+
+                        node = node->FirstChild;
+                    } else if (node->NextSibling) {
+                        node = node->NextSibling;
+                    } else if (!siblings.empty()) {
+                        node = siblings.back();
+                        siblings.pop_back();
+                    } else {
+                        node = nullptr;
+                    }
+                }
+            }
+        } else {
+            const auto prepare = [&] (const Node& node) -> Node* {
+                TokenRange tokens;
+
+                if (&node == &original.Root()) {
+                    tokens = {0, ParseLimit_};
+                } else if (node.Tokens.Empty()) {
+                    const auto point = mapping[node.Tokens.Begin];
+
+                    if (point == none) {
+                        return nullptr;
+                    }
+
+                    tokens = {point, point};
+                } else {
+                    const auto begin = mapping[node.Tokens.Begin];
+                    const auto last = mapping[node.Tokens.End - 1];
+
+                    if (begin == none || last == none) {
+                        return nullptr;
+                    }
+
+                    tokens = {begin, last + 1};
+                }
+
+                auto* copy = MakeNode(node.Kind, tokens.Begin);
+                copy->Tokens = tokens;
+                copy->FunctionKind_ = node.FunctionKind_;
+                claimChanges(node, *copy);
+                return copy;
+            };
+            auto* root = prepare(original.Root());
+            struct Frame
+            {
+                const Node* Next;
+                const Node* Original;
+                Node* Parent;
+            };
+
+            std::pmr::vector<Frame> stack(&ScratchMemory_);
+            stack.push_back({original.Root().FirstChild, &original.Root(), root});
+            size_t deletedNodes = 0;
+
+            while (!stack.empty()) {
+                auto& frame = stack.back();
+
+                if (!frame.Next) {
+                    stack.pop_back();
+                    continue;
+                }
+
+                const auto* node = frame.Next;
+                frame.Next = node->NextSibling;
+
+                if (node->Kind == NodeKind::Comment && node->Tokens.Size() == 1 && mapping[node->Tokens.Begin] == none)
+                {
+                    if (frame.Original->Kind != NodeKind::TranslationUnit &&
+                        frame.Original->Kind != NodeKind::NamespaceDeclaration)
+                    {
+                        return false;
+                    }
+
+                    ++deletedNodes;
+                    continue;
+                }
+
+                auto* copy = prepare(*node);
+
+                if (!copy) {
+                    return false;
+                }
+
+                if (frame.Parent->LastChild) {
+                    frame.Parent->LastChild->NextSibling = copy;
+                } else {
+                    frame.Parent->FirstChild = copy;
+                }
+
+                frame.Parent->LastChild = copy;
+
+                if (node->FirstChild) {
+                    stack.push_back({node->FirstChild, node, copy});
+                }
+            }
+
+            if (deletedNodes != deleted || std::ranges::any_of(
+                changes,
+                [] (const Change& change) {
+                    return !change.Parent;
+                }))
+            {
+                return false;
+            }
+
+            Tree_.Root_ = root;
+        }
+
+        // Merge each sequence's new comments once; repeated sibling searches
+        // would be quadratic for many inserted boundary rulers.
+        std::sort(
+            changes.begin(),
+            changes.end(),
+            [] (const Change& a, const Change& b) {
+                if (a.Parent != b.Parent) {
+                    return std::less<Node*>{}(a.Parent, b.Parent);
+                }
+
+                return a.NewToken < b.NewToken;
+            });
+        Node* parent = nullptr;
+        Node* previous = nullptr;
+        Node* child = nullptr;
+        for (const auto& change : changes) {
+            if (!change.Insert) {
+                continue;
+            }
+
+            if (parent != change.Parent) {
+                parent = change.Parent;
+                previous = nullptr;
+                child = parent->FirstChild;
+            }
+
+            while (child && child->Tokens.Begin < change.NewToken) {
+                previous = child;
+                child = child->NextSibling;
+            }
+
+            auto* comment = MakeNode(NodeKind::Comment, change.NewToken);
+            comment->Tokens.End = change.NewToken + 1;
+            comment->NextSibling = child;
+
+            if (previous) {
+                previous->NextSibling = comment;
+            } else {
+                parent->FirstChild = comment;
+            }
+
+            if (!child) {
+                parent->LastChild = comment;
+            }
+
+            previous = comment;
+        }
+
         AssociateComments(*Tree_.Root_);
         AssociateBlankLines(*Tree_.Root_);
         Tree_.Trivia_.Seal();
@@ -535,6 +1116,259 @@ private:
 
         auto kind = LookupName(Text(index));
         return kind && *kind == NameKind::Type;
+    }
+
+    bool TokenizePieces(
+        const SyntaxTree& original,
+        std::span<const detail::NormalizedPiece> pieces,
+        std::pmr::vector<TokenIndex>& copied,
+        std::pmr::vector<CopiedTokenRun>* stable = nullptr)
+    {
+        constexpr auto none = std::numeric_limits<TokenIndex>::max();
+        const auto firstAt = [&] (const SyntaxTree& tree, SourceOffset offset) {
+            TokenIndex low = 0, high = tree.TokenCount();
+
+            while (low < high) {
+                const auto mid = low + (high - low) / 2;
+
+                if (tree.Token(mid).Text.Begin < offset) {
+                    low = mid + 1;
+                } else {
+                    high = mid;
+                }
+            }
+
+            return low;
+        };
+        const auto advance = [] (util::Position position, std::string_view text) {
+            for (size_t at = 0; at < text.size();) {
+                const auto byte = static_cast<unsigned char>(text[at]);
+
+                if (byte == '\n') {
+                    ++position.Line;
+                    position.Column = 1;
+                    ++at;
+                } else {
+                    ++position.Column;
+
+                    if (byte < 128) {
+                        ++at;
+                    } else {
+                        const auto codepoint = unicode::utf8::GetFirstCodePoint(text.substr(at));
+                        at += codepoint ? codepoint->Size : 1;
+                    }
+                }
+            }
+
+            return position;
+        };
+        const auto positionAt = [&] (SourceOffset offset) {
+            const auto next = firstAt(original, offset);
+
+            if (next < original.TokenCount() && original.Token(next).Text.Begin == offset) {
+                return original.TokenPosition(next);
+            }
+
+            if (next) {
+                const auto previous = original.Token(next - 1);
+                return advance(
+                    previous.Position,
+                    original.Source().substr(previous.Text.Begin, offset - previous.Text.Begin));
+            }
+
+            return advance(util::Position{1, 1}, original.Source().substr(0, offset));
+        };
+        const auto translate = [] (util::Position position, util::Position before, util::Position after) {
+            return util::Position{
+                after.Line + position.Line - before.Line,
+                position.Line == before.Line ? after.Column + position.Column - before.Column : position.Column,
+            };
+        };
+        std::pmr::vector<SourceOffset> boundaries(&ScratchMemory_);
+        std::pmr::string atom(&ScratchMemory_);
+        util::Position position{1, 1};
+        SourceOffset end = 0;
+        copied.reserve(original.TokenCount());
+
+        for (const auto& piece : pieces) {
+            if (piece.Output.Begin != end || piece.Output.End < end || piece.Output.End > Tree_.Source().size()) {
+                return false;
+            }
+
+            boundaries.push_back(piece.Output.Begin);
+
+            if (piece.Generated) {
+                atom.assign(Tree_.Source().substr(piece.Output.Begin, (piece.Output.End - piece.Output.Begin)));
+                const auto size = atom.size();
+                atom.append(util::SourcePaddingSize, '\0');
+                bool valid = true;
+                tokenizer::Tokenizer tokenizer(
+                    {atom.data(), static_cast<uint32_t>(size)},
+                    [&] (tokenizer::TokenizationError) {
+                        valid = false;
+                    });
+                SourceOffset previous = 0;
+
+                for (auto token : tokenizer) {
+                    const auto spelling = std::string_view(atom.data(), size);
+
+                    if (spelling.substr(previous, token.Text.Begin - previous).find_first_not_of(" \t\r\n\v\f") !=
+                        std::string_view::npos)
+                    {
+                        return false;
+                    }
+
+                    previous = token.Text.End;
+                    const auto text = token.Text.View(spelling);
+
+                    if (token.Kind != TK::PreprocessingDirective &&
+                        (token.Kind != TK::Comment || !text.starts_with("///") ||
+                            text.find_first_not_of("/ \t\r") != std::string_view::npos))
+                    {
+                        return false;
+                    }
+
+                    token.Position = translate(token.Position, {1, 1}, position);
+                    token.Text.Begin += piece.Output.Begin;
+                    token.Text.End += piece.Output.Begin;
+                    Tree_.Tokens_.Add(token);
+                    copied.push_back(none);
+                }
+
+                if (!valid ||
+                    std::string_view(atom.data(), size).substr(previous).find_first_not_of(" \t\r\n\v\f") !=
+                        std::string_view::npos)
+                {
+                    return false;
+                }
+
+                position = advance(position, std::string_view(atom.data(), size));
+            } else {
+                if (piece.Original.Begin > piece.Original.End || piece.Original.End > original.Source().size() ||
+                    (piece.Original.End - piece.Original.Begin) != (piece.Output.End - piece.Output.Begin))
+                {
+                    return false;
+                }
+
+                const auto begin = firstAt(original, piece.Original.Begin);
+
+                if ((begin && original.Token(begin - 1).Text.End > piece.Original.Begin) ||
+                    (piece.Original.Begin == 0 && piece.Output.Begin != 0 &&
+                        original.Source().starts_with("\xef\xbb\xbf")))
+                {
+                    return false;
+                }
+
+                const auto before = positionAt(piece.Original.Begin);
+                const auto outputBegin = Tree_.TokenCount();
+
+                for (auto index = begin; index < original.TokenCount(); ++index) {
+                    auto token = original.Token(index);
+
+                    if (token.Text.Begin >= piece.Original.End) {
+                        break;
+                    }
+
+                    if (token.Text.End > piece.Original.End) {
+                        return false;
+                    }
+
+                    token.Position = translate(token.Position, before, position);
+                    token.Text.Begin = piece.Output.Begin + token.Text.Begin - piece.Original.Begin;
+                    token.Text.End = piece.Output.Begin + token.Text.End - piece.Original.Begin;
+                    Tree_.Tokens_.Add(token);
+                    copied.push_back(index);
+                }
+
+                if (stable && Tree_.TokenCount() != outputBegin) {
+                    stable->push_back({{begin, begin + Tree_.TokenCount() - outputBegin}, outputBegin});
+                }
+
+                position = translate(positionAt(piece.Original.End), before, position);
+            }
+
+            end = piece.Output.End;
+        }
+
+        if (end != Tree_.Source().size()) {
+            return false;
+        }
+
+        Tree_.Tokens_.Seal();
+        ParseLimit_ = Tree_.TokenCount();
+
+        if (!ParseLimit_) {
+            return Tree_.Source().find_first_not_of(" \t\r\n\v\f") == std::string_view::npos;
+        }
+
+        // Exact pieces can still form a different token at their join. Relex
+        // only the two neighboring atoms and their complete surrounding gap.
+        // The caller excludes edits adjoining logical-line splice protection.
+        TokenIndex checkedBegin = none, checkedEnd = none;
+
+        for (const auto boundary : boundaries) {
+            const auto next = firstAt(Tree_, boundary);
+            const auto begin = next ? next - 1 : 0;
+            const auto limit = std::min(ParseLimit_, next + 1);
+
+            if (begin == checkedBegin && limit == checkedEnd) {
+                continue;
+            }
+
+            checkedBegin = begin;
+            checkedEnd = limit;
+            const auto start = Tree_.Token(begin).Text.Begin;
+            const auto finish = limit < ParseLimit_
+                ? Tree_.Token(limit).Text.Begin
+                : SourceOffset(Tree_.Source().size());
+            const auto lf = start ? Tree_.Source().rfind('\n', start - 1) : std::string_view::npos;
+            const auto line = lf == std::string_view::npos ? 0 : lf + 1;
+            auto prefix = Tree_.Source().substr(line, start - line);
+
+            if (!line && prefix.starts_with("\xef\xbb\xbf")) {
+                prefix.remove_prefix(3);
+            }
+
+            const bool midline = prefix.find_first_not_of(" \t\r\v\f") != std::string_view::npos;
+            atom.assign(midline ? "; " : "");
+            const SourceOffset extra = static_cast<SourceOffset>(atom.size());
+            atom.append(Tree_.Source().substr(start, finish - start));
+            const auto size = atom.size();
+            atom.append(util::SourcePaddingSize, '\0');
+            bool valid = true;
+            tokenizer::Tokenizer tokenizer(
+                {atom.data(), static_cast<uint32_t>(size)},
+                [&] (tokenizer::TokenizationError) {
+                    valid = false;
+                });
+            auto index = begin;
+            bool sentinel = midline;
+
+            for (const auto token : tokenizer) {
+                if (sentinel) {
+                    sentinel = false;
+                    continue;
+                }
+
+                if (index == limit) {
+                    return false;
+                }
+
+                const auto expected = Tree_.Token(index++);
+
+                if (token.Kind != expected.Kind || token.Text.Begin + start != expected.Text.Begin + extra ||
+                    token.Text.End + start != expected.Text.End + extra)
+                {
+                    return false;
+                }
+            }
+
+            if (!valid || index != limit) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void Tokenize()
@@ -9018,6 +9852,30 @@ private:
 
     Node* ParseExpressionSyntax(TokenIndex& cursor, TokenIndex end, int minimum = 1)
     {
+        // Complete scalar operands need no postfix or precedence-parser frame.
+        // Comments and every potentially continuing expression use the full path.
+        if (cursor < end && (cursor + 1 == end || (minimum > 1 && Kind(cursor + 1) == TK::Operator_Comma))) {
+            const auto kind = Kind(cursor);
+
+            if ((kind >= TK::Identifier && kind <= TK::Literal_String) || kind == TK::Keyword_this ||
+                kind == TK::Keyword_true || kind == TK::Keyword_false || kind == TK::Keyword_nullptr)
+            {
+                const auto nodeKind = IsLiteralExpressionToken(kind)
+                    ? NodeKind::LiteralExpression
+                    : (kind == TK::Identifier || kind == TK::Keyword_this
+                        ? NodeKind::IdentifierExpression
+                        : NodeKind::Expression);
+                auto* node = MakeNode(nodeKind, cursor);
+                node->Tokens.End = ++cursor;
+                return node;
+            }
+        }
+
+        return ParseComplexExpressionSyntax(cursor, end, minimum);
+    }
+
+    Node* ParseComplexExpressionSyntax(TokenIndex& cursor, TokenIndex end, int minimum)
+    {
         cursor = NextSignificant(cursor);
 
         if (cursor >= end) {
@@ -9805,7 +10663,7 @@ private:
     TriviaAttachments& EnsureTriviaAttachments(Node& node)
     {
         if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
-            node.TriviaIndex_ = Tree_.Trivia_.Add();
+            node.TriviaIndex_ = Tree_.Trivia_.Add(node);
         }
         return Tree_.Trivia_[node.TriviaIndex_];
     }
@@ -10404,23 +11262,107 @@ SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler, const 
     return ParseContext::Run(input, std::move(errorHandler), options);
 }
 
-std::optional<SyntaxTree> ParseContext::ReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input)
+std::optional<SyntaxTree> ParseContext::ReparseIncludes(
+    const SyntaxTree& original,
+    util::PaddedSourceView input,
+    bool rulers)
 {
     SyntaxTree tree(input.View());
     ErrorHandler errors = [] (ParseError) { };
     ParseContext context(tree, errors, {});
 
-    if (!context.ReuseIncludeSyntax(original)) {
+    if (!context.ReuseIncludeSyntax(original, rulers)) {
         return std::nullopt;
     }
 
     return tree;
 }
 
+std::optional<SyntaxTree> ParseContext::NormalizeTokens(
+    const SyntaxTree& original,
+    util::PaddedSourceView input,
+    std::span<const detail::NormalizedPiece> pieces,
+    detail::NormalizedRegionTopology topology,
+    std::pmr::vector<TokenIndex>& originalToNormalized,
+    std::pmr::vector<detail::NormalizedCommentInsertion>& insertions)
+{
+    originalToNormalized.clear();
+    insertions.clear();
+
+    if (!original.Root_ || !topology.Records || !topology.Count || !topology.FirstChild || !topology.NextSibling) {
+        return std::nullopt;
+    }
+
+    SyntaxTree tree(input.View());
+    ErrorHandler errors = [] (ParseError) { };
+    ParseContext context(tree, errors, {});
+    std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
+    std::pmr::vector<CopiedTokenRun> stable(&context.ScratchMemory_);
+    if (!context.TokenizePieces(original, pieces, copied, &stable) ||
+        !context
+            .ReuseIncludeSyntax(original, true, nullptr, copied, &originalToNormalized, &topology, &insertions, stable))
+    {
+        originalToNormalized.clear();
+        insertions.clear();
+        return std::nullopt;
+    }
+
+    return tree;
+}
+
+std::optional<SyntaxTree> detail::TryBuildNormalizedTokenView(
+    const SyntaxTree& original,
+    util::PaddedSourceView input,
+    std::span<const NormalizedPiece> pieces,
+    NormalizedRegionTopology topology,
+    std::pmr::vector<TokenIndex>& originalToNormalized,
+    std::pmr::vector<NormalizedCommentInsertion>& insertions)
+{
+    return ParseContext::NormalizeTokens(original, input, pieces, topology, originalToNormalized, insertions);
+}
+
+std::optional<SyntaxTree> ParseContext::ConsumeNormalized(
+    SyntaxTree& original,
+    util::PaddedSourceView input,
+    std::span<const detail::NormalizedPiece> pieces,
+    std::pmr::vector<TokenIndex>& originalToNormalized)
+{
+    if (!original.Memory_ || original.OriginalMemory_) {
+        return std::nullopt;
+    }
+
+    SyntaxTree tree(input.View());
+    ErrorHandler errors = [] (ParseError) { };
+    ParseContext context(tree, errors, {});
+    std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
+    if (!context.TokenizePieces(original, pieces, copied) ||
+        !context.ReuseIncludeSyntax(original, true, &original, copied, &originalToNormalized))
+    {
+        return std::nullopt;
+    }
+
+    return tree;
+}
+
+std::optional<SyntaxTree> detail::TryConsumeNormalizedSyntax(
+    SyntaxTree& original,
+    util::PaddedSourceView input,
+    std::span<const NormalizedPiece> pieces,
+    std::pmr::vector<TokenIndex>& originalToNormalized)
+{
+    return ParseContext::ConsumeNormalized(original, input, pieces, originalToNormalized);
+}
+
 std::optional<SyntaxTree> TryReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input)
 {
     HIT_FMT_PROFILE_PHASE("parser.reuse_includes");
     return ParseContext::ReparseIncludes(original, input);
+}
+
+std::optional<SyntaxTree> TryReparseCommentsAndIncludes(const SyntaxTree& original, util::PaddedSourceView input)
+{
+    HIT_FMT_PROFILE_PHASE("parser.reuse_rulers");
+    return ParseContext::ReparseIncludes(original, input, true);
 }
 
 } // namespace parser

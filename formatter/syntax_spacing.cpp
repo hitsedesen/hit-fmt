@@ -1,5 +1,7 @@
 #include "syntax_spacing.hpp"
 
+#include "flat_span_internal.hpp"
+
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
@@ -130,6 +132,18 @@ struct Context
 
 // Only the current root-to-node path is retained. Next child and direct-token
 // cursor avoid collecting a wide node's children onto the stack.
+template <bool CollectFlat>
+struct FlatFrame
+{ };
+
+template <>
+struct FlatFrame<true>
+{
+    TI Candidate = NoToken;
+    bool RecoveryBody = false;
+};
+
+template <bool CollectFlat>
 struct Frame
 {
     RegionId Node;
@@ -143,6 +157,7 @@ struct Frame
     bool Complete = true;
     bool PreviousChildComplete = false;
     bool PreviousSiblingComplete = false;
+    [[no_unique_address]] FlatFrame<CollectFlat> Flat;
 };
 
 class Classifier
@@ -153,7 +168,8 @@ public:
         const GapPolicies& policies,
         PointerReferenceDeclaratorLocation binding,
         std::span<SyntaxGapPreference> gaps,
-        std::span<const SourceRegion> regions)
+        std::span<const SourceRegion> regions,
+        detail::FlatSpanCollector* flat)
         : Tree_(tree)
         , Policies_{
             GapPolicy::Preserve,
@@ -165,6 +181,7 @@ public:
         , Binding_(binding)
         , Gaps_(gaps)
         , Regions_(regions)
+        , Flat_(flat)
     { }
 
     RegionId Id(const SourceRegion& node) const
@@ -1196,7 +1213,20 @@ public:
 
     }
 
-    void Direct(const SourceRegion& node, Context& state, TI begin, TI end)
+    template <bool CollectFlat>
+    void Direct(const SourceRegion& node, Context& state, TI begin, TI end, TI flatCandidate = NoToken)
+    {
+        if constexpr (CollectFlat) {
+            if (flatCandidate != NoToken) {
+                DirectImpl<true>(node, state, begin, end, flatCandidate);
+                return;
+            }
+        }
+        DirectImpl<false>(node, state, begin, end, NoToken);
+    }
+
+    template <bool CollectFlat>
+    void DirectImpl(const SourceRegion& node, Context& state, TI begin, TI end, TI flatCandidate)
     {
         // Enum macro fields are a preprocessor sequence, not C++ expressions.
         // Its layout planner owns only the validated tuple boundaries.
@@ -1215,6 +1245,12 @@ public:
         const auto& owner = state.Owner != NoRegion ? Regions_[state.Owner] : node;
 
         for (TI i = begin; i < end; ++i) {
+            const auto kind = Tree_.Kind(i);
+
+            if constexpr (CollectFlat) {
+                Flat_->Token(flatCandidate, i, kind);
+            }
+
             if (state.UncertainSyntax) {
                 PreserveUncertain(i, owner);
                 PreserveUncertain(i + 1, owner);
@@ -1226,7 +1262,6 @@ public:
                 continue;
             }
 
-            const auto kind = Tree_.Kind(i);
             const auto role = Tree_.Role(i);
 
             if ((node.Kind == NK::IdentifierExpression || node.Kind == NK::LiteralExpression ||
@@ -2108,6 +2143,7 @@ private:
     PointerReferenceDeclaratorLocation Binding_;
     std::span<SyntaxGapPreference> Gaps_;
     std::span<const SourceRegion> Regions_;
+    detail::FlatSpanCollector* Flat_;
 };
 
 } // namespace
@@ -2185,6 +2221,7 @@ GapContext SpacingOwnerContext(SpacingOwner owner, const CompiledPolicies& polic
 
 SyntaxSpacing::SyntaxSpacing(std::pmr::memory_resource& fileMemory)
     : Gaps_(&fileMemory)
+    , FlatSpans_(&fileMemory)
 { }
 
 std::optional<bool> SyntaxSpacing::SpacePreference(
@@ -2253,14 +2290,16 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(GapId gap, cons
     return static_cast<std::uint16_t>(count);
 }
 
-SyntaxSpacing BuildSyntaxSpacing(
+template <bool CollectFlat>
+SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     const GapPolicies& spacing,
     PointerReferenceDeclaratorLocation pointerBinding,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces)
+    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces,
+    FlatSpanCollector* flat)
 {
     if (trailingCommentSpaces && trailingCommentSpaces->Count && *trailingCommentSpaces->Count > 10000) {
         throw std::invalid_argument("TrailingCommentSpaces must be between 0 and 10000");
@@ -2287,8 +2326,8 @@ SyntaxSpacing BuildSyntaxSpacing(
         throw std::invalid_argument("syntax spacing requires matching tree regions");
     }
 
-    Classifier classifier(tree, spacing, pointerBinding, result.Gaps_, regions);
-    std::pmr::vector<Frame> stack(&scratchMemory);
+    Classifier classifier(tree, spacing, pointerBinding, result.Gaps_, regions, flat);
+    std::pmr::vector<Frame<CollectFlat>> stack(&scratchMemory);
     stack.push_back({0, NoRegion, regions[0].FirstChild, {}, regions[0].Tokens.Begin});
 
     while (!stack.empty()) {
@@ -2297,6 +2336,18 @@ SyntaxSpacing BuildSyntaxSpacing(
         const auto* parentNode = frame.Parent == NoRegion ? nullptr : &regions[frame.Parent];
 
         if (!frame.Entered) {
+            if constexpr (CollectFlat) {
+                if (node.Kind == NK::CallExpression) {
+                    flat->Call(node);
+                }
+
+                if (frame.Flat.Candidate != NoToken || FlatSpanCollector::CandidateKind(node.Kind)) {
+                    frame.Flat.Candidate = flat->Enter(frame.Node, node, frame.Flat.Candidate);
+                }
+
+                frame.Flat.RecoveryBody = FlatSpanCollector::RecoveryBody(node);
+            }
+
             classifier.Enter(node, parentNode, frame.State, node.Status);
             frame.Complete =
                 node.Status == RegionStatus::Complete && !frame.State.UncertainSyntax && !frame.State.UncertainOperands;
@@ -2306,11 +2357,21 @@ SyntaxSpacing BuildSyntaxSpacing(
         if (frame.Child != NoRegion) {
             const auto childId = frame.Child;
             const auto& child = regions[childId];
+
+            if constexpr (CollectFlat) {
+                if (frame.Flat.RecoveryBody) {
+                    flat->BodyChild(frame.Node, child);
+                }
+            }
+
             frame.Child = child.NextSibling;
             const auto end = std::min(child.Tokens.Begin, node.Tokens.End);
 
             if (frame.Cursor < end) {
-                classifier.Direct(node, frame.State, frame.Cursor, end);
+                if constexpr (CollectFlat)
+                    classifier.Direct<true>(node, frame.State, frame.Cursor, end, frame.Flat.Candidate);
+                else
+                    classifier.Direct<false>(node, frame.State, frame.Cursor, end);
             }
 
             frame.Cursor = std::max(frame.Cursor, child.Tokens.End);
@@ -2329,12 +2390,24 @@ SyntaxSpacing BuildSyntaxSpacing(
             const auto parent = frame.Node;
 
             if (child.FirstChild == NoRegion) {
+                auto candidate = NoToken;
+
+                if constexpr (CollectFlat) {
+                    if (child.Kind == NK::CallExpression) {
+                        flat->Call(child);
+                    }
+
+                    if (frame.Flat.Candidate != NoToken || FlatSpanCollector::CandidateKind(child.Kind)) {
+                        candidate = flat->Enter(childId, child, frame.Flat.Candidate);
+                    }
+                }
+
                 classifier.Enter(child, &node, state, child.Status);
                 const bool complete =
                     child.Status == RegionStatus::Complete && !state.UncertainSyntax && !state.UncertainOperands;
 
                 if (!child.Tokens.Empty()) {
-                    classifier.Direct(child, state, child.Tokens.Begin, child.Tokens.End);
+                    classifier.Direct<CollectFlat>(child, state, child.Tokens.Begin, child.Tokens.End, candidate);
                 }
 
                 classifier.Finish(child);
@@ -2349,12 +2422,26 @@ SyntaxSpacing BuildSyntaxSpacing(
                 continue;
             }
 
+            auto candidate = NoToken;
+
+            if constexpr (CollectFlat) {
+                candidate = frame.Flat.Candidate;
+            }
+
             stack.push_back({childId, parent, child.FirstChild, state, child.Tokens.Begin});
+
+            if constexpr (CollectFlat) {
+                stack.back().Flat.Candidate = candidate;
+            }
+
             stack.back().PreviousSibling = previous;
             stack.back().PreviousSiblingComplete = previousComplete;
         } else {
             if (frame.Cursor < node.Tokens.End) {
-                classifier.Direct(node, frame.State, frame.Cursor, node.Tokens.End);
+                if constexpr (CollectFlat)
+                    classifier.Direct<true>(node, frame.State, frame.Cursor, node.Tokens.End, frame.Flat.Candidate);
+                else
+                    classifier.Direct<false>(node, frame.State, frame.Cursor, node.Tokens.End);
             }
 
             classifier.Finish(node);
@@ -2374,6 +2461,12 @@ SyntaxSpacing BuildSyntaxSpacing(
 
             stack.pop_back();
         }
+    }
+
+    auto flatGap = NoToken;
+
+    if constexpr (CollectFlat) {
+        flatGap = flat->BeforeGaps();
     }
 
     for (size_t i = 0; i < result.Gaps_.size(); ++i) {
@@ -2407,9 +2500,70 @@ SyntaxSpacing BuildSyntaxSpacing(
                 static_cast<SpacingConstraint>(static_cast<uint8_t>(gap.Constraint) |
                     static_cast<uint8_t>(SpacingConstraint::SourceSafety));
         }
+
+        if constexpr (CollectFlat) {
+            if (i == flatGap) {
+                flatGap = flat->Gap(TI(i), source, gap);
+            }
+        }
+    }
+
+    if constexpr (CollectFlat) {
+        flat->Finish(result, result.FlatSpans_);
     }
 
     return result;
+}
+
+SyntaxSpacing BuildSyntaxSpacing(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    const GapPolicies& spacing,
+    PointerReferenceDeclaratorLocation pointerBinding,
+    std::pmr::memory_resource& fileMemory,
+    std::pmr::memory_resource& scratchMemory,
+    std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces)
+{
+    return detail::FlatSpanAccess::BuildSpacing<false>(
+        tree,
+        safety,
+        spacing,
+        pointerBinding,
+        fileMemory,
+        scratchMemory,
+        trailingCommentSpaces,
+        nullptr);
+}
+
+SyntaxSpacing detail::BuildFlatSyntaxSpacing(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    const CompiledPolicies& policies,
+    const LibraryAnnotations& annotations,
+    uint8_t tabWidth,
+    std::pmr::memory_resource& fileMemory,
+    std::pmr::memory_resource& scratchMemory)
+{
+    FlatSpanCollector flat(tree, safety, policies, annotations, tabWidth, scratchMemory);
+    if (flat.Enabled())
+        return FlatSpanAccess::BuildSpacing<true>(
+            tree,
+            safety,
+            policies.Spacing,
+            policies.PointerReferenceDeclaratorLocation,
+            fileMemory,
+            scratchMemory,
+            policies.TrailingCommentSpaces,
+            &flat);
+    return FlatSpanAccess::BuildSpacing<false>(
+        tree,
+        safety,
+        policies.Spacing,
+        policies.PointerReferenceDeclaratorLocation,
+        fileMemory,
+        scratchMemory,
+        policies.TrailingCommentSpaces,
+        nullptr);
 }
 
 } // namespace formatter

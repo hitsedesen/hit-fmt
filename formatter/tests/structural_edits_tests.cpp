@@ -1,4 +1,5 @@
 #include <formatter/structural_edits.hpp>
+#include <formatter/structural_edits_internal.hpp>
 
 #include <gtest/gtest.h>
 
@@ -18,6 +19,8 @@ using namespace formatter;
 
 using test::Input;
 
+std::string Dump(const StructuralPlan& plan);
+
 struct File
 {
     Input Source;
@@ -34,12 +37,50 @@ struct File
 
     StructuralPlan Plan(StructuralOptions options)
     {
-        return PlanStructuralEdits(Tree, Safety, options, Memory, Scratch);
+        auto plan = PlanStructuralEdits(Tree, Safety, options, Memory, Scratch);
+        auto certified = detail::PlanStructuralEditsCertified(Tree, Safety, options, Memory, Scratch);
+        EXPECT_EQ(Dump(certified), Dump(plan));
+        return plan;
     }
 
     StructuralMaterialization Apply(const StructuralPlan& plan)
     {
-        return MaterializeStructuralEdits(Tree, plan, Memory, Scratch);
+        auto full = MaterializeStructuralEdits(Tree, plan, Memory, Scratch);
+        std::pmr::vector<detail::CopiedTokenRun> copied(&Memory);
+        auto compact = detail::MaterializeStructuralEditsCompact(Tree, plan, Memory, Scratch, copied);
+        EXPECT_EQ(compact.Text, full.Text);
+        EXPECT_TRUE(compact.OriginalTokens.empty());
+        EXPECT_EQ(compact.Provenance.size(), full.Provenance.size());
+
+        for (size_t i = 0; i < std::min(compact.Provenance.size(), full.Provenance.size()); ++i) {
+            const auto& actual = compact.Provenance[i];
+            const auto& expected = full.Provenance[i];
+            EXPECT_EQ(actual.Output.Begin, expected.Output.Begin);
+            EXPECT_EQ(actual.Output.End, expected.Output.End);
+            EXPECT_EQ(actual.Original.Begin, expected.Original.Begin);
+            EXPECT_EQ(actual.Original.End, expected.Original.End);
+            EXPECT_EQ(actual.Operation, expected.Operation);
+            EXPECT_EQ(actual.Generated, expected.Generated);
+        }
+
+        EXPECT_EQ(compact.GeneratedAdjacencies.size(), full.GeneratedAdjacencies.size());
+
+        for (size_t i = 0; i < std::min(compact.GeneratedAdjacencies.size(), full.GeneratedAdjacencies.size()); ++i) {
+            EXPECT_EQ(compact.GeneratedAdjacencies[i].Output.Begin, full.GeneratedAdjacencies[i].Output.Begin);
+            EXPECT_EQ(compact.GeneratedAdjacencies[i].Output.End, full.GeneratedAdjacencies[i].Output.End);
+            EXPECT_EQ(compact.GeneratedAdjacencies[i].Operation, full.GeneratedAdjacencies[i].Operation);
+        }
+
+        detail::MaterializeOriginalTokenOffsets(Tree, compact, copied);
+        EXPECT_EQ(compact.OriginalTokens.size(), full.OriginalTokens.size());
+
+        for (size_t i = 0; i < std::min(compact.OriginalTokens.size(), full.OriginalTokens.size()); ++i) {
+            EXPECT_EQ(compact.OriginalTokens[i].Present, full.OriginalTokens[i].Present);
+            EXPECT_EQ(compact.OriginalTokens[i].Output.Begin, full.OriginalTokens[i].Output.Begin);
+            EXPECT_EQ(compact.OriginalTokens[i].Output.End, full.OriginalTokens[i].Output.End);
+        }
+
+        return full;
     }
 };
 
@@ -108,6 +149,41 @@ std::vector<TokenOutputOffset> MapOutput(const parser::SyntaxTree& original, std
 
     return map;
 }
+NamespaceCommentPlan CheckedNamespaceComments(
+    const parser::SyntaxTree& tree,
+    const SourceAnalysis& safety,
+    NamespaceCommentOptions options,
+    std::pmr::memory_resource& memory,
+    std::pmr::memory_resource& scratch)
+{
+    auto plan = PlanNamespaceComments(tree, safety, options, memory, scratch);
+    auto certified = detail::PlanNamespaceCommentsCertified(tree, safety, options, memory, scratch);
+    EXPECT_EQ(certified.Namespaces.size(), plan.Namespaces.size());
+
+    for (size_t i = 0; i < std::min(certified.Namespaces.size(), plan.Namespaces.size()); ++i) {
+        const auto& actual = certified.Namespaces[i];
+        const auto& expected = plan.Namespaces[i];
+        EXPECT_EQ(actual.Owner.Begin, expected.Owner.Begin);
+        EXPECT_EQ(actual.Owner.End, expected.Owner.End);
+        EXPECT_EQ(actual.Header.Begin, expected.Header.Begin);
+        EXPECT_EQ(actual.Header.End, expected.Header.End);
+        EXPECT_EQ(actual.Open, expected.Open);
+        EXPECT_EQ(actual.Close, expected.Close);
+        EXPECT_EQ(actual.Comment, expected.Comment);
+    }
+
+    EXPECT_EQ(certified.Skipped.size(), plan.Skipped.size());
+
+    for (size_t i = 0; i < std::min(certified.Skipped.size(), plan.Skipped.size()); ++i) {
+        EXPECT_EQ(certified.Skipped[i].Action, plan.Skipped[i].Action);
+        EXPECT_EQ(certified.Skipped[i].Tokens.Begin, plan.Skipped[i].Tokens.Begin);
+        EXPECT_EQ(certified.Skipped[i].Tokens.End, plan.Skipped[i].Tokens.End);
+        EXPECT_EQ(certified.Skipped[i].Reason, plan.Skipped[i].Reason);
+    }
+
+    return plan;
+}
+
 TEST(StructuralEdits, DiagnosticGolden)
 {
     auto directory = std::filesystem::path(__FILE__).parent_path() / "testdata/structural-edits";
@@ -115,7 +191,7 @@ TEST(StructuralEdits, DiagnosticGolden)
     File file(source, {.HonorClangFormatDirectives = true});
     auto plan = file.Plan(All);
     auto normalized = file.Apply(plan);
-    auto namespaces = PlanNamespaceComments(
+    auto namespaces = CheckedNamespaceComments(
         file.Tree,
         file.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -551,22 +627,45 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
 TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
 {
     File file("void f(){if(a) work();}");
+    const auto compactRejects = [] (File& input, const StructuralPlan& rejected) {
+        std::pmr::vector<detail::CopiedTokenRun> copied(&input.Memory);
+        EXPECT_THROW(
+            (void)detail::MaterializeStructuralEditsCompact(input.Tree, rejected, input.Memory, input.Scratch, copied),
+            std::invalid_argument);
+    };
     auto plan = file.Plan({.AddMissingControlBraces = true});
     ASSERT_EQ(plan.Edits.size(), 2u);
     plan.Edits.push_back(plan.Edits.back());
     EXPECT_THROW((void)file.Apply(plan), std::invalid_argument);
+    compactRejects(file, plan);
     auto partial = file.Plan({.AddMissingControlBraces = true});
     partial.Edits.pop_back();
     EXPECT_THROW((void)file.Apply(partial), std::invalid_argument);
+    compactRejects(file, partial);
     auto split = file.Plan({.AddMissingControlBraces = true});
     split.Edits.front().Source.Begin += 1;
     split.Edits.front().Source.End += 1;
     EXPECT_THROW((void)file.Apply(split), std::invalid_argument);
+    compactRejects(file, split);
     File declarations(";;");
     auto deletion = declarations.Plan({.RemoveNullDeclarations = true});
     ASSERT_EQ(deletion.Edits.size(), 2u);
     deletion.Edits[1].Source.Begin = deletion.Edits[0].Source.Begin;
     EXPECT_THROW((void)declarations.Apply(deletion), std::invalid_argument);
+    compactRejects(declarations, deletion);
+    File includes("#include <b.h>\n#include <a.h>\n");
+    auto repeated = includes.Plan({.SortIncludes = true});
+    std::vector<size_t> sources;
+    for (size_t i = 0; i < repeated.Pieces.size(); ++i) {
+        if (repeated.Pieces[i].FromSource) {
+            sources.push_back(i);
+        }
+    }
+
+    ASSERT_GE(sources.size(), 2u);
+    repeated.Pieces[sources[1]].Source = repeated.Pieces[sources[0]].Source;
+    EXPECT_THROW((void)includes.Apply(repeated), std::invalid_argument);
+    compactRejects(includes, repeated);
 }
 
 TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
@@ -588,7 +687,7 @@ TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
 TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
 {
     File file("namespace n {int x;}");
-    auto plan = PlanNamespaceComments(
+    auto plan = CheckedNamespaceComments(
         file.Tree,
         file.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing, .ShortNamespaceLines = 1},
@@ -614,7 +713,7 @@ TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
 TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
 {
     File file("namespace a {namespace b::c {}}\n");
-    auto plan = PlanNamespaceComments(
+    auto plan = CheckedNamespaceComments(
         file.Tree,
         file.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -629,7 +728,7 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
         "namespace a {\nnamespace b::c {} // namespace b::c\n} // namespace " "a\n");
     // A namespace keyword behind an opaque prefix does not prove an identity.
     File recovered("NAMESPACE_PREFIX namespace a {}\n");
-    auto opaque = PlanNamespaceComments(
+    auto opaque = CheckedNamespaceComments(
         recovered.Tree,
         recovered.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -644,7 +743,7 @@ TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
 {
     for (auto policy : {NamespaceCommentPolicy::Fix, NamespaceCommentPolicy::Remove}) {
         File file("namespace a {} // old\r\nint x;\r\n");
-        auto plan = PlanNamespaceComments(
+        auto plan = CheckedNamespaceComments(
             file.Tree,
             file.Safety,
             {.Policy = policy, .ShortNamespaceLines = 100},
@@ -665,7 +764,7 @@ TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
 TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
 {
     File anonymous("namespace {}\n");
-    auto plan = PlanNamespaceComments(
+    auto plan = CheckedNamespaceComments(
         anonymous.Tree,
         anonymous.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -684,7 +783,7 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
         MaterializeNamespaceComments(anonymous.Tree.Source(), resolved, anonymous.Memory),
         "namespace {} // namespace\n");
     File correct("namespace n {} // namespace n\n");
-    auto fix = PlanNamespaceComments(
+    auto fix = CheckedNamespaceComments(
         correct.Tree,
         correct.Safety,
         {.Policy = NamespaceCommentPolicy::Fix},
@@ -702,7 +801,7 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
     File disabled(
         "// clang-format off\nnamespace n {} // " "keep\n// clang-format on\n",
         {.HonorClangFormatDirectives = true});
-    auto blocked = PlanNamespaceComments(
+    auto blocked = CheckedNamespaceComments(
         disabled.Tree,
         disabled.Safety,
         {.Policy = NamespaceCommentPolicy::Remove},
@@ -716,7 +815,7 @@ TEST(StructuralEdits, AnonymousNamespaceNoOpFixAndOriginalProtection)
 TEST(StructuralEdits, NamespaceCommentMappingsAllowOnlyReindentation)
 {
     File file("namespace n {\r\n/* note\r\n * body\r\n */\r\n}\r\n");
-    const auto plan = PlanNamespaceComments(
+    const auto plan = CheckedNamespaceComments(
         file.Tree,
         file.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -764,7 +863,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
 {
     for (const auto& text : {"namespace n {} int x;\n", "namespace n {} /* owner */\n"}) {
         File file(text);
-        auto plan = PlanNamespaceComments(
+        auto plan = CheckedNamespaceComments(
             file.Tree,
             file.Safety,
             {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -778,7 +877,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
     }
 
     File file("namespace n {}\n");
-    auto plan = PlanNamespaceComments(
+    auto plan = CheckedNamespaceComments(
         file.Tree,
         file.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -799,7 +898,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         ResolveNamespaceComments(file.Tree, plan, file.Tree.Source(), map, {}, file.Memory, file.Scratch);
     EXPECT_EQ(invalidHeader.Skipped.back().Reason, StructuralSkip::InvalidMapping);
     File braces("namespace n {\nvoid inside() {}\n}\n" "void after() {}\nnamespace safe {}\n");
-    auto identities = PlanNamespaceComments(
+    auto identities = CheckedNamespaceComments(
         braces.Tree,
         braces.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},
@@ -840,7 +939,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
     }
 
     File normalized("namespace n {\n#include <z.h>\n#include <a.h>\n;\n" "void f() {;}\n}\n;\nnamespace safe {}\n");
-    auto originalNames = PlanNamespaceComments(
+    auto originalNames = CheckedNamespaceComments(
         normalized.Tree,
         normalized.Safety,
         {.Policy = NamespaceCommentPolicy::AddMissing},

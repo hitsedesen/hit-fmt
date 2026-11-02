@@ -1,5 +1,6 @@
 #pragma once
 
+#include "flat_span.hpp"
 #include "formatter/policy.hpp"
 #include "formatter/source_analysis.hpp"
 
@@ -122,6 +123,8 @@ public:
 
 private:
     std::pmr::vector<SyntaxGapPreference> Gaps_;
+    std::pmr::vector<detail::FlatSpan> FlatSpans_;
+    friend struct detail::FlatSpanAccess;
     GapPolicy CommaSpaceAfter_ = GapPolicy::Preserve;
     std::optional<TrailingCommentSpaceSetting> TrailingCommentSpaces_;
     friend SyntaxSpacing BuildSyntaxSpacing(
