@@ -2318,7 +2318,7 @@ private:
         return pair != ClassMacroPairs_.end() && pair->first == name;
     }
 
-    Node* ParseDeclaration()
+    Node* ParseDeclaration(bool statementContext = false)
     {
         if (auto* macro = TryParseEnumMacro()) {
             return macro;
@@ -2348,7 +2348,7 @@ private:
             case TK::Keyword_class:
             case TK::Keyword_struct:
             case TK::Keyword_union:
-                return ParseRecordDeclaration();
+                return ParseRecordDeclaration(statementContext);
             case TK::Keyword_enum:
                 return ParseEnumDeclaration();
             case TK::Keyword_using:
@@ -3506,7 +3506,11 @@ private:
         return sawComma && conditionals == 0;
     }
 
-    [[nodiscard]] bool IsElaboratedInitializer(size_t start, size_t opening, const RecordHeadName& recordName) const
+    [[nodiscard]] bool IsElaboratedInitializer(
+        size_t start,
+        size_t opening,
+        const RecordHeadName& recordName,
+        bool statementContext) const
     {
         const auto first = SkipAttributeSpecifiers(start + 1);
 
@@ -3556,16 +3560,24 @@ private:
 
         const auto element = NextSignificant(opening + 1);
         const auto kind = Kind(element);
+
+        // At statement scope, prefer a type and declarator over an unknown
+        // export decoration for an empty list. Included types need not have
+        // a local binding; `final` still identifies a record definition.
+        if (statementContext && kind == TK::Operator_CloseBrace && name != recordName.FinalSpecifier) {
+            return true;
+        }
+
         const bool initializerEvidence = IsLiteralExpressionToken(kind) || kind == TK::Operator_OpenBrace ||
             kind == TK::Operator_ClassMemberAccess || (IsPrefixOperator(kind) && kind != TK::Operator_Complement) ||
             (kind == TK::Identifier && LookupName(Text(element)) == NameKind::Value);
         // A bare pair of unknown identifiers may instead be an export macro
         // and record name. Require type, declarator or initializer evidence;
-        // an empty body alone cannot distinguish these forms.
+        // an empty body at declaration scope cannot distinguish these forms.
         return initializerEvidence || HasInitializerListSeparators(opening);
     }
 
-    Node* ParseRecordDeclaration()
+    Node* ParseRecordDeclaration(bool statementContext)
     {
         auto start = Cursor_;
         const auto recordName = FindDeclaredRecordName(start);
@@ -3634,7 +3646,7 @@ private:
         }
 
         if (!sawBaseClause && !invalidHeadAngles && angleDepth == 0 && CurrentKind() == TK::Operator_OpenBrace &&
-            IsElaboratedInitializer(start, Cursor_, recordName))
+            IsElaboratedInitializer(start, Cursor_, recordName, statementContext))
         {
             Cursor_ = start;
             return ParseGeneralDeclaration();
@@ -8213,7 +8225,7 @@ private:
             case TK::Keyword_struct:
             case TK::Keyword_union:
             case TK::Keyword_enum:
-                return ParseDeclaration();
+                return ParseDeclaration(true);
             case TK::Keyword_case:
             case TK::Keyword_default:
                 return ParseLabel(NodeKind::CaseLabel);
