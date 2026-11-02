@@ -37,3 +37,17 @@ OpenScope
 // independent test
 DEFINE_CASE(Suite, Test) { Use(value); }
 CloseScope
+
+DEFINE_METHOD(Suite) {
+    using Local = int;
+    DEFINE_CASE /* nested header */ (Shared, Nested(1, (2 + 3))) {
+        Local* pointer;
+        Write(pointer);
+    }
+    DEFINE_METHOD(NestedSuite) {
+        DEFINE_CASE(Second) { return; }
+    }
+    DEFINE_CASE(DeclarationOnly);
+    auto result = DEFINE_CASE(value);
+    UNLISTED_CASE(Opaque) { untouched = left+right; }
+}

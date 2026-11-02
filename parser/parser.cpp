@@ -8001,6 +8001,11 @@ private:
             return macro;
         }
 
+        // Registered body macros can nest inside another macro's compound body.
+        if (auto* macro = TryParseFunctionBodyMacro()) {
+            return macro;
+        }
+
         auto first = NextSignificant(Cursor_);
         const auto afterAttributes = Kind(first) == TK::Operator_OpenBracket ? SkipAttributeSpecifiers(first) : first;
 

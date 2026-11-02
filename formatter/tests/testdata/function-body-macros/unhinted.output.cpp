@@ -21,3 +21,22 @@ static inline DEFINE_CASE(Suite, Helper(alpha   +  beta))
     Use(value);
 }
 static DEFINE_CASE(Suite, DeclarationOnly);
+
+DEFINE_METHOD( Suite , Nested(1+2)) {
+    DEFINE_CASE( First , Example ) {
+        ProcessCollectedMeasurements(primaryMeasurementSequence, secondaryMeasurementSequence, fallbackMeasurementSequence, expectedMeasurementSequence, measurementComparisonPolicy, messageOutput);
+        if(ready) Send(value);
+        TOKEN_TEXT(alpha   +  beta);
+    }
+    DEFINE_METHOD(NestedSuite) {
+        DEFINE_CASE(Second) {auto count=left+right; Use(count);}
+    }
+    DEFINE_CASE(DeclarationOnly);
+    auto result=DEFINE_CASE(value);
+    UNLISTED_CASE( Unknown , Example ) {untouched=left+right;}
+}
+namespace Comparison {
+    DEFINE_CASE(OrdinaryScope) {
+        ProcessCollectedMeasurements(primaryMeasurementSequence, secondaryMeasurementSequence, fallbackMeasurementSequence, expectedMeasurementSequence, measurementComparisonPolicy, messageOutput);
+    }
+}
