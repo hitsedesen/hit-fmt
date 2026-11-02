@@ -395,26 +395,35 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto& spec = GapPolicies_[gap.Policy];
             const auto& flatSpec = spec.Flat;
             const auto& brokenSpec = BrokenSpec(spec);
+            const bool indentConditional = gap.Conditional && spec.MinLineIndentOffset != InvalidId;
             flat = MeasureFlatGap(flatSpec, Source_, policy.TabWidth);
             const auto expandedFlat = gap.Conditional ? MeasureFlatGap(brokenSpec, Source_, policy.TabWidth) : flat;
             broken =
                 summaryOwner != InvalidId && brokenSpec.Kind == GapKind::Soft ? Measure{0, true, true} : expandedFlat;
+
+            // An indentation-dependent brace can stay attached in a broken
+            // header. Reserve its flat width when fitting preceding children.
+            if (indentConditional) {
+                broken = flat;
+            }
+
             expandedGapWidth = expandedFlat.Width();
 
-            if (summaryOwner != InvalidId && brokenSpec.Kind != GapKind::Flat) {
+            if (summaryOwner != InvalidId && brokenSpec.Kind != GapKind::Flat && !indentConditional) {
                 ownedBreak = i;
             }
 
-            guaranteedLine = brokenSpec.Kind == GapKind::Hard;
+            guaranteedLine = brokenSpec.Kind == GapKind::Hard && !indentConditional;
 
             if (gap.Conditional) {
-                summary.OwnedConditionalLine = summary.OwnedConditionalLine || guaranteedLine;
+                summary.OwnedConditionalLine = summary.OwnedConditionalLine || brokenSpec.Kind == GapKind::Hard;
                 summary.OwnedShapeChoice = summary.OwnedShapeChoice || flatSpec.Spaces != brokenSpec.Spaces ||
                     flatSpec.FlatSourceBegin != brokenSpec.FlatSourceBegin ||
                     flatSpec.FlatSourceEnd != brokenSpec.FlatSourceEnd;
             }
 
-            if (summaryOwner != InvalidId && (brokenSpec.Kind == GapKind::Soft || (gap.Conditional && guaranteedLine)))
+            if (summaryOwner != InvalidId && !indentConditional &&
+                (brokenSpec.Kind == GapKind::Soft || (gap.Conditional && guaranteedLine)))
             {
                 lastBreak = i;
             }
