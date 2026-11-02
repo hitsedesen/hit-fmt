@@ -243,4 +243,93 @@
     )
     "}"
   )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "EXPORT")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "DEFINE_CASE")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "Result")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "OrdinaryFunction")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "OpenScope"
+  )
+  (macro-function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (macro-function-header "DEFINE_CASE" "(" ")")
+    (compound-statement "{" "}")
+  )
+  (unparsed-syntax
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "CloseScope" "OpenScope" "// independent test"
+    (dangling-trivia
+      (comment "// independent test")
+    )
+  )
+  (macro-function-definition
+    (macro-function-header "DEFINE_CASE" "(" "Suite" "," "Test" ")")
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "Use")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "value")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (declaration
+    (declaration-specifiers "CloseScope")
+  )
 )

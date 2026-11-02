@@ -315,6 +315,7 @@ std::vector<FormatCase> FormatCases()
     ShareExpected(cases, directives, "legacy-false.output.cpp", "input.cpp");
     ShareExpected(cases, directives, "legacy-true.output.cpp", "indent.output.cpp");
     AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
+    AddCases(cases, data / "function-body-macros", {"namespace-boundaries"}, "namespace-boundaries.input.cpp");
     AddCases(cases, data / "single-statement-body", {"single"});
     AddCases(cases, data / "single-statement-body", {"compact", "preserve", "lambda-override"}, "lambdas.input.cpp");
     AddCases(
