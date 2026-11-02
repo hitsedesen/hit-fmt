@@ -51,6 +51,10 @@ BaseListsLayout = Preserve
   Zero offsets use IndentWidth.
 - TemplateParameters includes generic lambdas; TemplateArguments includes
   named casts. Shared >> closers stay together.
+- KeepMultiline = true prevents fitting authored multiline constructs from
+  becoming a single line. Canonical break positions and indentation still
+  apply; inline constructs may wrap. Explicit brace placement and protected
+  or Preserve layout retain their authority. Default false permits joining.
 - StringLiteralFragmentsAsArguments = true makes adjacent literals use
   Calls layout, break policy, packing and indentation as one expression.
   Direct arguments share their call's broken shape. Default false keeps

@@ -1,0 +1,11 @@
+Layout = Canonical
+ColumnLimit = 72
+IndentWidth = 4
+BodyShape = CompactIfFits
+EmptyBodyShape = CompactIfFits
+LambdaBodyShape = CompactIfFits
+BinaryOperatorSide = Leading
+CallsFirstItem = NextLine
+CallsSoleArgumentFirstItem = InlineIfFits
+CallLineFirstStringNames = ["REPORT"]
+CallLineFirstStringOverflow = KeepInline

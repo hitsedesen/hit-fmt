@@ -561,6 +561,7 @@ public:
 
         GapCacheReady_ = true;
         ResolveSafety();
+        PlanKeptMultiline();
         SummarizeSegments();
         SortForest();
 
@@ -1590,7 +1591,8 @@ private:
         GroupSpecs_[group].ForceBreak = canonical && !empty && policy.Break == BreakRequirement::Always;
 
         if (empty && canonical) {
-            Own(closer, group, Boundary::Flat, layout::GapKind::Flat, true);
+            const bool multiline = Policies_.KeepMultiline && Safety_.Gaps()[closer].HasLineFeed;
+            Own(closer, group, multiline ? Boundary::Soft : Boundary::Flat, layout::GapKind::Flat, true);
             return;
         }
 
@@ -2286,7 +2288,7 @@ private:
             ? Syntax_[Region(Syntax_[parent]).Parent].ListGroup
             : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
 
-        if (enclosing != None && (canonical || argument)) {
+        if (enclosing != None && (canonical || argument) && !Policies_.KeepMultiline) {
             if (initializer) {
                 // The initializer owns the assignment boundary, but its string
                 // fragments continue with the Calls indentation policy.
@@ -2329,7 +2331,14 @@ private:
         // Like call arguments, fragments continue from their opening line
         // independently of the enclosing expression's continuation offset.
         GroupSpecs_[group].StructuralBase = true;
-        GroupSpecs_[group].LineBase = true;
+        GroupSpecs_[group].LineBase = !Policies_.KeepMultiline || !argument;
+
+        if (Policies_.KeepMultiline && argument && enclosing != None) {
+            // The independent fragment shape still uses its argument list's
+            // continuation column, including a first fragment on its own line.
+            Groups_[group].IndentGroup = enclosing;
+        }
+
         GroupSpecs_[group].Continuation = true;
         GroupSpecs_[group].ForceBreak = canonical && policy.Break == BreakRequirement::Always;
         DirectTokens(
@@ -3730,6 +3739,7 @@ private:
                 (parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression));
         BlockOf_[id] = group;
         Groups_[group].SyntaxBody = true;
+        Gaps_[opening].BodyOpening = true;
 
         if (canonical) {
             const bool expanded = shape == BodyShape::Expanded;
@@ -5806,6 +5816,52 @@ private:
 
                     gap.Vertical = true;
                     gap.NewlineCount = uint16_t(cap.EmptyLines + 1);
+                }
+            }
+        }
+    }
+
+    void PlanKeptMultiline()
+    {
+        if (!Policies_.KeepMultiline) {
+            return;
+        }
+
+        // Ownership is already canonical: a nested body's lines belong to
+        // that body, while an operator's incoming flat gap still identifies
+        // the expression whose legal outgoing boundary may take its place.
+        std::pmr::vector<Index> candidate(Groups_.size(), None, Syntax_.get_allocator().resource());
+        std::pmr::vector<uint8_t> breakable(Groups_.size(), 0, Syntax_.get_allocator().resource());
+
+        for (Index i = 0; i < Gaps_.size(); ++i) {
+            const auto& gap = Gaps_[i];
+
+            if (gap.Owner == None || !GapMutable(i) || gap.Shape == Boundary::Preserve) {
+                continue;
+            }
+
+            breakable[gap.Owner] |= gap.Shape == Boundary::Soft || gap.Shape == Boundary::Hard ||
+                (gap.Shape == Boundary::Conditional && gap.Broken != layout::GapKind::Flat);
+
+            if (candidate[gap.Owner] == None && !gap.BodyOpening && Allows(i, layout::GapKind::Hard)) {
+                candidate[gap.Owner] = i;
+            }
+
+            if (Safety_.Gaps()[i].HasLineFeed && !gap.BodyOpening) {
+                GroupSpecs_[gap.Owner].KeepMultiline = true;
+            }
+        }
+
+        for (Index id = 0; id < Groups_.size(); ++id) {
+            if (GroupSpecs_[id].KeepMultiline && !breakable[id]) {
+                if (candidate[id] == None) {
+                    GroupSpecs_[id].KeepMultiline = false;
+                } else {
+                    auto& gap = Gaps_[candidate[id]];
+                    GroupSpecs_[id].KeepMultilineFallback = true;
+                    gap.Shape = Boundary::Conditional;
+                    gap.Broken = layout::GapKind::Soft;
+                    gap.PartialIndent = !gap.PreserveIndent && Policies_.IndentationKind != IndentationKind::Preserve;
                 }
             }
         }

@@ -185,6 +185,11 @@ AlignmentFallbackOffset = 0
 # false preserves the existing Expressions formatting rules.
 StringLiteralFragmentsAsArguments = false
 
+# Keep authored multiline constructs multiline while choosing canonical
+# break positions and indentation. Inline constructs may still wrap.
+# Explicit brace placement and Preserve/protected layout take precedence.
+KeepMultiline = false
+
 # Values: Inherit | Preserve | Canonical
 CallsLayout = Inherit
 

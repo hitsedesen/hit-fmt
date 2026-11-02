@@ -132,6 +132,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool ShapeSensitive : 1 = false;
         bool ProbeEligible : 1 = true;
         bool HasChild : 1 = false;
+        // Physical preservation is separate from flat geometry and fit tails.
+        bool KeptChild : 1 = false;
         // Eligible layout depths 0..3, with all deeper levels in bit 4.
         uint8_t ProbeLayouts = 0;
     };
@@ -162,6 +164,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool OwnedShapeChoice = false;
         bool ProbeEligible = true;
         bool HasChild = false;
+        bool KeptLine = false;
         uint8_t ProbeLayouts = 0;
     };
 
@@ -250,6 +253,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         groupEntry.OwnedLastBreak = summary.OwnedLastBreak;
         groupEntry.GuaranteedLine = summary.GuaranteedLine;
         groupEntry.ShapeSensitive = summary.OwnedShapeChoice;
+        groupEntry.KeptChild = summary.KeptLine;
         lastBreak = groupEntry.LastBreak;
         // A child can stay flat in its parent's broken shape. Only its
         // unconditional lines are guaranteed without a child decision.
@@ -295,6 +299,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         summaries.pop_back();
         summary.ProbeEligible &= entry.ProbeEligible;
         summary.HasChild = true;
+        summary.KeptLine = summary.KeptLine || groupEntry.KeptChild || group.KeepMultiline;
         summary.ProbeLayouts |= entry.ProbeLayouts;
         summaryOwner = Groups_[id].Parent;
         entry.Flat = flat;
@@ -743,12 +748,16 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const auto tail = groupTail(spec, groupEntry);
         const bool mandatory = current->Mandatory != NoOrder && current->Mandatory >= i &&
             current->Mandatory <= Groups_[id].EndOrder && lines == current->StartLine;
-        const bool broken =
-            mandatory || (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
-        const bool keepOwnedFlat = broken && childLayoutDepth && groupEntry.ChildLayoutAllowed && i <= childLayoutEnd &&
-            frames.size() - childLayoutBase < childLayoutDepth;
+        const bool broken = spec.KeepMultiline || mandatory ||
+            (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
+        const bool keepOwnedFlat = broken && !spec.KeepMultiline && childLayoutDepth && groupEntry.ChildLayoutAllowed &&
+            i <= childLayoutEnd && frames.size() - childLayoutBase < childLayoutDepth;
         result.Broken[id] = broken;
-        const bool forceOwned = spec.ForceBreak && groupEntry.OwnedLastBreak != NoOrder;
+        // Ordinary authored owner breaks stay stable when descendants later
+        // wrap. Only a newly promoted compact boundary may defer to a kept child.
+        const bool forceOwned = (spec.ForceBreak ||
+            (spec.KeepMultiline && !groupEntry.GuaranteedLine &&
+                !(spec.KeepMultilineFallback && groupEntry.KeptChild))) && groupEntry.OwnedLastBreak != NoOrder;
         auto base = current->Indent;
         auto pending = current->PendingExpressionIndent;
         auto reversible = current->ReversibleIndent;
