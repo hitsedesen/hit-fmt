@@ -1,0 +1,25 @@
+debug: formatting analysis for sample.cpp [original source; range ends exclusive]
+debug: parser: Unexpected token
+  --> sample.cpp:15:6 [original source]
+debug: parser: Unexpected token
+  --> sample.cpp:18:24 [original source]
+debug: protected range: preprocessing directive, line splice
+  --> sample.cpp:1:1-3:1 [original source]
+debug: protected range: formatting disabled by off/on directive
+  --> sample.cpp:3:1-9:1 [original source]
+debug: protected range: whitespace-sensitive or opaque macro
+  --> sample.cpp:10:5-10:27 [original source]
+debug: protected range: ambiguous or unsupported syntax
+  --> sample.cpp:11:5-11:21 [original source]
+debug: protected range: parser recovery or invalid token
+  --> sample.cpp:14:12-14:16 [original source]
+debug: protected range: parser recovery or invalid token
+  --> sample.cpp:14:18-15:6 [original source]
+debug: protected range: header name spelling
+  --> sample.cpp:17:8-17:19 [original source]
+debug: protected range: parser recovery or invalid token
+  --> sample.cpp:18:22-18:24 [original source]
+debug: skipped adding control braces: protected source or edit boundary
+  --> sample.cpp:4:26-4:36 [original source]
+debug: skipped adding control braces: labeled body
+  --> sample.cpp:13:18-13:24 [original source]

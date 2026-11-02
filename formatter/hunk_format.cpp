@@ -300,6 +300,7 @@ ChangedFormatResult FormatChanged(
     canonicalRequest.Changes = false;
     canonicalRequest.ChangeSummary = false;
     canonicalRequest.DiagnosticLocations = false;
+    canonicalRequest.InputProtection = false;
     const auto canonical =
         detail::FormatWithAnalysis(tree, prepared, safety, sensitive, canonicalRequest, file, scratch);
     safety.RestrictEditScope(scope);

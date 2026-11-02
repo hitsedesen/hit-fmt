@@ -312,6 +312,10 @@ void PrintCheckResult(
     const Options& options,
     const Terminal& terminal)
 {
+    if (options.Debug) {
+        PrintFileDebug(output, path, checked);
+    }
+
     if (options.SummaryOnly) {
         if (options.Fix && checked.FormattingMismatch) {
             output << terminal.BoldGreen << path << ": fixed formatting" << terminal.Reset << '\n';
@@ -365,7 +369,8 @@ FileResult ProcessFile(
             config,
             inputFilePath,
             scope,
-            options.SummaryOnly ? DiagnosticDetail::Summary : DiagnosticDetail::Full);
+            options.SummaryOnly ? DiagnosticDetail::Summary : DiagnosticDetail::Full,
+            options.Debug);
 
         if (options.Fix && checked.FormattingMismatch) {
             util::WriteEntireFile(filePath, checked.Formatting.Text);

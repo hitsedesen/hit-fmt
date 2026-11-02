@@ -1495,6 +1495,11 @@ FormatResult detail::FormatWithAnalysis(
     auto namespacePlan = namespacePlanner(original, safety, prepared.NamespaceComments, file, scratch);
     scratch.release();
     FormatResult result;
+
+    if (request.InputProtection) {
+        result.InputProtection.assign(safety.Protection().begin(), safety.Protection().end());
+    }
+
     result.StructuralDiagnostics.assign(plan.Skipped.begin(), plan.Skipped.end());
     std::optional<StructuralMaterialization> normalized;
     std::pmr::vector<detail::CopiedTokenRun> copied(&file);

@@ -1,0 +1,2 @@
+debug: formatting analysis for clean.cpp [original source; range ends exclusive]
+debug: no parser errors, protected ranges or skipped structural edits

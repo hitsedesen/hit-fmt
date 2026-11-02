@@ -118,6 +118,7 @@ Options ParseOptions(std::span<const char* const> args)
     flags.Bool("--check", nullptr);
     flags.Bool("--no-spillover", &options.Spillover, false);
     flags.Bool("--summary", &options.SummaryOnly);
+    flags.Bool("--debug", &options.Debug);
     flags.OptionalValue("--generate-config", &options.GenerateConfig, ParseGenerateConfig);
     flags.Value("--changed-hunks", &options.HunkInput, ParseChangedHunks, ChangedHunkError);
     flags.Value("--changed-ranges", &options.HunkInput, ParseChangedHunks, ChangedHunkError);
