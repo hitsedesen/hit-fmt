@@ -1,2 +1,4 @@
 MemberAccessOperatorsSpacing = NoSpace
 ScopeResolutionSpacing = Preserve
+ReturnArrowSpaceBefore = Space
+ReturnArrowSpaceAfter = Space

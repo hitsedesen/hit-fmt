@@ -13,4 +13,6 @@ void f() {
   invoke('x' "not concatenated", next);
   invoke("not concatenated" 'x', next);
   invoke("head" "tail"_label, next);
+  Result deferred() CUSTOM_SUFFIX;
+  Result linked() asm("linked_symbol");
 }

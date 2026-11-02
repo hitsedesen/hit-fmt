@@ -316,6 +316,36 @@
         )
         ";"
       )
+      (declaration-statement
+        (declaration-specifiers "Result")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "deferred")
+              (function-declarator
+                (parameter-list "(" ")")
+                "CUSTOM_SUFFIX"
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "Result")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "linked")
+              (function-declarator
+                (parameter-list "(" ")")
+                "asm" "(" "\"linked_symbol\"" ")"
+              )
+            )
+          )
+        )
+        ";"
+      )
       "}"
     )
   )
