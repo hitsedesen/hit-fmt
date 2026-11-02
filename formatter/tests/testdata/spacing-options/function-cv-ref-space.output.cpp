@@ -26,6 +26,22 @@ struct ValueHolder {
     int RefOnly()& {
         return value;
     }
+    int& Bound()& PROJECT_LIFETIME {
+        return value;
+    }
+    int&& MoveBound()&& PROJECT_ANNOTATE(lifetime) {
+        return static_cast<int&&>(value);
+    }
+    const int& ConstBound() const & PROJECT_LIFETIME PROJECT_ANNOTATE(lifetime) {
+        return value;
+    }
+    int& DeclaredBound()& PROJECT_LIFETIME;
+    int& NativeBound()& [[clang::lifetimebound]] {
+        return value;
+    }
+    int& CommentBound()& /* lifetime */ PROJECT_LIFETIME {
+        return value;
+    }
     operator bool() const;
 };
 const int& ValueHolder::Read() const & {

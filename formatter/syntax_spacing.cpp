@@ -1035,6 +1035,12 @@ public:
                         (Tree_.Kind(previous - 1) == TK::Keyword_const ||
                             Tree_.Kind(previous - 1) == TK::Keyword_volatile);
                     field = cv ? F::FunctionCvRefQualifierSpacing : F::FunctionRefQualifierSpacing;
+
+                    // An opaque macro suffix is still separate from the
+                    // ref-qualifier, even without an attribute production.
+                    if (parent && end < parent->Tokens.End && Tree_.Kind(end) == TK::Identifier) {
+                        Mark(end, F::FunctionSuffixSpecifierSpacing, *parent, C::DeclarationHeaders, 1, true);
+                    }
                 }
 
                 Mark(begin, field, parent ? *parent : node, C::DeclarationHeaders, 3, true);
