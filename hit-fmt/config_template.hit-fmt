@@ -802,8 +802,8 @@ BlankLineMacroNames = []
 # beside the opener; put every following format argument on its
 # own line even when the call fits. Exact unqualified names,
 # including members. Overrides both first-argument pin lists.
-# Header opening pieces stay inline even past ColumnLimit;
-# nested expressions and concatenated literal pieces may wrap.
+# Overflowing headers wrap at argument boundaries before
+# splitting nested expressions or concatenated literal pieces.
 # Without a complete literal argument, use ordinary call layout.
 # CallsLayout = Preserve, CallsBreak = Always and protection win.
 # Example: CallLineMessageNames = ["LOG_MESSAGE"]

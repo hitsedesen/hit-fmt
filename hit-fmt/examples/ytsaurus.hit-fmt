@@ -288,7 +288,7 @@ NamingAcronyms = ["IO", "IP", "YT", "TCP", "HTTP", "RPC", "MPSC"]
 Exclude = ["(^|/)moody_camel_concurrent_queue\\.h$"]
 
 # Explicit YTsaurus library annotations; syntax lowering owns contextual guards.
-# Keep condition/error prefixes and the message inline; format arguments break.
+# Keep fitting condition/error prefixes and messages inline; format arguments break.
 CallLineMessageNames = [
     "THROW_ERROR_EXCEPTION",
     "THROW_ERROR_EXCEPTION_IF",
