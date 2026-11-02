@@ -423,6 +423,11 @@ inline FormatResult ProjectHunkFormat(
 
     std::pmr::vector<Piece> pieces(&memory);
     FormatResult result;
+
+    if (request.InputProtection) {
+        result.InputProtection.assign(safety.Protection().begin(), safety.Protection().end());
+    }
+
     result.StructuralDiagnostics.assign(eligible.Skipped.begin(), eligible.Skipped.end());
     const auto append = [&] (Range input, bool formatted) {
         if (input.Empty()) {

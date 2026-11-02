@@ -18,6 +18,7 @@ struct Options
     bool Fix = false;
     bool Spillover = true;
     bool SummaryOnly = false;
+    bool Debug = false;
     bool ShowHelp = false;
     bool ShowVersion = false;
     bool ShowConfigHelp = false;

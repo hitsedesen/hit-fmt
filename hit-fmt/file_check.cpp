@@ -96,6 +96,141 @@ bool InLines(size_t line, std::span<const formatter::Hunk> hunks)
     return it != hunks.end() && it->Begin <= line;
 }
 
+std::string ProtectionMessage(formatter::ProtectionReason reasons)
+{
+    using Reason = formatter::ProtectionReason;
+    std::string message = "protected range: ";
+    bool separated = false;
+    const auto append = [&] (Reason reason, std::string_view text) {
+        if ((static_cast<uint16_t>(reasons) & static_cast<uint16_t>(reason)) == 0) {
+            return;
+        }
+
+        if (separated) {
+            message += ", ";
+        }
+
+        message += text;
+        separated = true;
+    };
+    append(Reason::Disabled, "formatting disabled by off/on directive");
+    append(Reason::SensitiveMacro, "whitespace-sensitive or opaque macro");
+    append(Reason::Recovery, "parser recovery or invalid token");
+    append(Reason::Ambiguous, "ambiguous or unsupported syntax");
+    append(Reason::Directive, "preprocessing directive");
+    append(Reason::LineSplice, "line splice");
+    append(Reason::Explicit, "explicit immutable range");
+    append(Reason::HeaderName, "header name spelling");
+    append(Reason::OutsideEditScope, "outside selected hunks or permitted edit scope");
+    return message;
+}
+
+std::string_view ActionName(formatter::StructuralAction action)
+{
+    using Action = formatter::StructuralAction;
+    switch (action) {
+        case Action::AddMissingControlBraces:
+            return "adding control braces";
+        case Action::EmptyControlBody:
+            return "rewriting empty control body";
+        case Action::RemoveNullStatements:
+            return "removing null statement";
+        case Action::RemoveNullDeclarations:
+            return "removing null declaration";
+        case Action::IncludeOrder:
+            return "sorting includes";
+        case Action::NamespaceComments:
+            return "editing namespace comment";
+        case Action::DirectiveWhitespace:
+            return "formatting directive whitespace";
+        case Action::IncludeDelimiters:
+            return "rewriting include delimiters";
+        case Action::RulerLength:
+            return "resizing ruler";
+        case Action::RulerPlacement:
+            return "placing ruler";
+    }
+
+    throw std::logic_error("unexpected structural action");
+}
+
+std::string_view SkipReason(formatter::StructuralSkip reason)
+{
+    using Reason = formatter::StructuralSkip;
+    switch (reason) {
+        case Reason::Incomplete:
+            return "incomplete syntax";
+        case Reason::Protected:
+            return "protected source or edit boundary";
+        case Reason::CommentAttached:
+            return "attached comment";
+        case Reason::Attributes:
+            return "attributes";
+        case Reason::LabelBody:
+            return "labeled body";
+        case Reason::DirectiveBoundary:
+            return "preprocessing directive boundary";
+        case Reason::InvalidMapping:
+            return "source mapping could not be validated";
+        case Reason::FollowingText:
+            return "following text prevents a safe edit";
+        case Reason::ShortNamespace:
+            return "short namespace exempted by configuration";
+        case Reason::RequiredBody:
+            return "body is required";
+        case Reason::MissingNamespaceComment:
+            return "existing explanatory comment is preserved";
+    }
+
+    throw std::logic_error("unexpected structural skip reason");
+}
+
+void CollectFormattingDebug(const parser::SyntaxTree& tree, CheckedFile& checked)
+{
+    const auto& formatting = checked.Formatting;
+    checked.Debug
+        .reserve(checked.Debug.size() + formatting.InputProtection.size() + formatting.StructuralDiagnostics.size());
+    std::pmr::monotonic_buffer_resource scratch;
+    struct Point
+    {
+        parser::SourceOffset Offset;
+        util::Position* Position;
+    };
+
+    std::pmr::vector<Point> points(&scratch);
+    points.reserve(2 * (formatting.InputProtection.size() + formatting.StructuralDiagnostics.size()));
+    const auto add = [&] (parser::SourceRange source, std::string message) {
+        auto& diagnostic = checked.Debug.emplace_back(DebugDiagnostic{{}, {}, std::move(message)});
+        points.push_back({source.Begin, &diagnostic.Begin});
+        points.push_back({source.End, &diagnostic.End});
+    };
+
+    for (const auto& protection : formatting.InputProtection) {
+        add(protection.Source, ProtectionMessage(protection.Reasons));
+    }
+
+    for (const auto& diagnostic : formatting.StructuralDiagnostics) {
+        if (!diagnostic.Tokens.Empty()) {
+            add(
+                {tree.Token(diagnostic.Tokens.Begin).Text.Begin, tree.Token(diagnostic.Tokens.End - 1).Text.End},
+                "skipped " + std::string(ActionName(diagnostic.Action)) + ": " +
+                std::string(SkipReason(diagnostic.Reason)));
+        }
+    }
+
+    std::sort(
+        points.begin(),
+        points.end(),
+        [] (const auto& a, const auto& b) {
+            return a.Offset < b.Offset;
+        });
+    PositionSweep original(tree.Source(), formatting.Changes ? &formatting.Changes->OriginalLines : nullptr);
+
+    for (const auto& point : points) {
+        *point.Position = original.Position(point.Offset);
+    }
+}
+
 std::string_view RequiredChangeMessage(formatter::StructuralAction action)
 {
     using Action = formatter::StructuralAction;
@@ -181,13 +316,18 @@ CheckedFile FormatAndCheckFile(
     const PreparedConfiguration& configuration,
     std::string_view inputFilePath,
     std::optional<ChangedFileScope> changed,
-    DiagnosticDetail diagnostics)
+    DiagnosticDetail diagnostics,
+    bool debug)
 {
     CheckedFile checked;
     std::vector<parser::ParseError> incomplete;
     auto tree = parser::Parse(
         source,
         [&] (parser::ParseError error) {
+            if (debug) {
+                checked.Debug.push_back({error.Position, error.Position, "parser: " + error.Message});
+            }
+
             if (error.CheckingIncomplete) {
                 incomplete.push_back(std::move(error));
             }
@@ -246,6 +386,7 @@ CheckedFile FormatAndCheckFile(
         .DiagnosticLocations = (locations || changed.has_value()) &&
             configuration.Formatting.Policies.ColumnLimit != 0 &&
             configuration.Formatting.Policies.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Report,
+        .InputProtection = debug,
     };
 
     if (changed) {
@@ -273,6 +414,10 @@ CheckedFile FormatAndCheckFile(
             });
     } else {
         checked.Formatting = formatter::Format(tree, configuration.Formatting, request);
+    }
+
+    if (debug) {
+        CollectFormattingDebug(tree, checked);
     }
 
     for (const auto& diagnostic : checked.Formatting.StructuralDiagnostics) {
@@ -338,6 +483,26 @@ CheckedFile FormatAndCheckFile(
     }
 
     return checked;
+}
+
+void PrintFileDebug(std::ostream& output, std::string_view path, const CheckedFile& checked)
+{
+    output << "debug: formatting analysis for " << path << " [original source; range ends exclusive]\n";
+
+    if (checked.Debug.empty()) {
+        output << "debug: no parser errors, protected ranges or skipped structural edits\n";
+    }
+
+    for (const auto& diagnostic : checked.Debug) {
+        output << "debug: " << diagnostic.Message << "\n  --> " << path << ':' << diagnostic.Begin.Line << ':'
+            << diagnostic.Begin.Column;
+
+        if (Before(diagnostic.Begin, diagnostic.End)) {
+            output << '-' << diagnostic.End.Line << ':' << diagnostic.End.Column;
+        }
+
+        output << " [original source]\n";
+    }
 }
 
 void PrintFileIssues(

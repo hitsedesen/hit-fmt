@@ -33,6 +33,13 @@ struct SemanticDiagnostic
     bool BlockedByHunks = false;
 };
 
+struct DebugDiagnostic
+{
+    util::Position Begin;
+    util::Position End;
+    std::string Message;
+};
+
 struct CheckedFile
 {
     formatter::FormatResult Formatting;
@@ -41,6 +48,8 @@ struct CheckedFile
     std::vector<SemanticDiagnostic> RequiredChanges;
     // Original byte ranges that were not fully checked.
     std::vector<formatter::HunkCoverage> Incomplete;
+    // Informational only; positions always refer to the original input.
+    std::vector<DebugDiagnostic> Debug;
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
 
@@ -71,7 +80,10 @@ enum class DiagnosticDetail
     const PreparedConfiguration& configuration,
     std::string_view inputFilePath = {},
     std::optional<ChangedFileScope> changed = std::nullopt,
-    DiagnosticDetail diagnostics = DiagnosticDetail::Locations);
+    DiagnosticDetail diagnostics = DiagnosticDetail::Locations,
+    bool debug = false);
+
+void PrintFileDebug(std::ostream& output, std::string_view path, const CheckedFile& checked);
 
 // Check uses original coordinates; fix uses formatted coordinates.
 void PrintFileIssues(

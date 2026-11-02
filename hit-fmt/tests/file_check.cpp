@@ -56,6 +56,85 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(clean.HasFailures(true));
 }
 
+TEST(FileCheck, DebugExplainsProtectionAndParserRecoveryWithoutChangingResults)
+{
+    const test::golden::Fixture fixture{std::filesystem::path(__FILE__).parent_path() / "testdata/file-check", "debug"};
+    const char* args[] = {"hit-fmt", "--debug", "--fix", "--summary", "sample.cpp"};
+    const auto options = hit_fmt::ParseOptions(args);
+    auto raw = Configuration();
+    raw.FormattingStyle.AddMissingControlBraces = true;
+    raw.FormattingStyle.WhitespaceSensitiveMacros = {"KEEP"};
+    raw.FormattingStyle.HonorClangFormatDirectives = true;
+    const hit_fmt::PreparedConfiguration configuration(raw);
+    const Input input(fixture.InputNamed(".input.cpp"));
+    const auto ordinary = hit_fmt::FormatAndCheckFile(input.View(), configuration);
+    EXPECT_TRUE(ordinary.Debug.empty());
+    EXPECT_TRUE(ordinary.Formatting.InputProtection.empty());
+    EXPECT_NE(ordinary.Formatting.Text.find("if (ready) {"), std::string::npos);
+
+    for (const auto detail : {hit_fmt::DiagnosticDetail::Full, hit_fmt::DiagnosticDetail::Summary}) {
+        const auto checked =
+            hit_fmt::FormatAndCheckFile(input.View(), configuration, "sample.cpp", std::nullopt, detail, options.Debug);
+        EXPECT_EQ(checked.Formatting.Text, ordinary.Formatting.Text);
+        EXPECT_EQ(checked.HasFailures(false), ordinary.HasFailures(false));
+        EXPECT_EQ(checked.HasFailures(options.Fix), ordinary.HasFailures(options.Fix));
+        ASSERT_FALSE(checked.Debug.empty());
+        std::ostringstream output;
+        hit_fmt::PrintFileDebug(output, "sample.cpp", checked);
+        fixture.Expect(output.str(), ".debug.txt");
+    }
+
+    raw.FormattingStyle.HonorClangFormatDirectives = false;
+    const auto ignored = hit_fmt::FormatAndCheckFile(
+        input.View(),
+        hit_fmt::PreparedConfiguration(raw),
+        {},
+        std::nullopt,
+        hit_fmt::DiagnosticDetail::Summary,
+        true);
+    EXPECT_TRUE(std::ranges::none_of(
+        ignored.Formatting.InputProtection,
+        [&] (const auto& range) {
+            const auto source = input.View().View().substr(range.Source.Begin, range.Source.End - range.Source.Begin);
+            return range.Reasons == formatter::ProtectionReason::Disabled && source.find("clang_value") != source.npos;
+        }));
+}
+
+TEST(FileCheck, DebugExplainsHunkScopeAndUsesOriginalCoordinates)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "debug-hunks",
+    };
+    const Input input("void first(){work(a,b);}\nvoid second(){work(c,d);}\n");
+    const hit_fmt::PreparedConfiguration configuration(Configuration());
+    const formatter::Hunk hunks[] = {{1, 1}};
+    const hit_fmt::ChangedFileScope scope{hunks, false};
+    const auto ordinary = hit_fmt::FormatAndCheckFile(input.View(), configuration, {}, scope);
+    const auto checked =
+        hit_fmt::FormatAndCheckFile(input.View(), configuration, {}, scope, hit_fmt::DiagnosticDetail::Full, true);
+    EXPECT_EQ(checked.Formatting.Text, ordinary.Formatting.Text);
+    EXPECT_NE(checked.Formatting.Text, input.View().View());
+    EXPECT_EQ(checked.HasFailures(false), ordinary.HasFailures(false));
+    EXPECT_EQ(checked.HasFailures(true), ordinary.HasFailures(true));
+    std::ostringstream output;
+    hit_fmt::PrintFileDebug(output, "sample.cpp", checked);
+    fixture.Expect(output.str(), ".debug.txt");
+
+    const Input clean("int value;\n");
+    const auto unrestricted = hit_fmt::FormatAndCheckFile(
+        clean.View(),
+        configuration,
+        {},
+        std::nullopt,
+        hit_fmt::DiagnosticDetail::Summary,
+        true);
+    EXPECT_FALSE(unrestricted.HasFailures(false));
+    output.str("");
+    hit_fmt::PrintFileDebug(output, "clean.cpp", unrestricted);
+    fixture.Expect(output.str(), ".clean.debug.txt");
+}
+
 TEST(FileCheck, NamingRolesRemainFailuresAfterApplyingFormatting)
 {
     const test::golden::Fixture fixture{
@@ -953,6 +1032,18 @@ TEST(FileCheck, SharedConditionalBodiesCannotClaimConformance)
     EXPECT_TRUE(recovered.HasFailures(false));
     EXPECT_TRUE(recovered.HasFailures(true));
     EXPECT_FALSE(recovered.RequiredChanges.empty());
+    const auto debugged = hit_fmt::FormatAndCheckFile(
+        wrapped.View(),
+        configuration,
+        {},
+        std::nullopt,
+        hit_fmt::DiagnosticDetail::Full,
+        true);
+    EXPECT_EQ(debugged.Formatting.Text, recovered.Formatting.Text);
+    EXPECT_TRUE(debugged.HasFailures(true));
+    ASSERT_EQ(debugged.RequiredChanges.size(), recovered.RequiredChanges.size());
+    ASSERT_FALSE(debugged.RequiredChanges.empty());
+    EXPECT_EQ(debugged.RequiredChanges.front().Message, recovered.RequiredChanges.front().Message);
     const Input complete("#if FIRST\nvoid First() { Work(); }\n#else\nvoid Second() { Other(); }\n#endif\n");
     EXPECT_TRUE(hit_fmt::FormatAndCheckFile(complete.View(), configuration).RequiredChanges.empty());
     const formatter::Hunk outside[] = {{1, 1}};

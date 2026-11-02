@@ -103,6 +103,8 @@ struct FormatRequest
     bool ChangeSummary = false;
     // Resolve width diagnostics to original token locations.
     bool DiagnosticLocations = false;
+    // Retain protection reasons in original-input byte coordinates for debugging.
+    bool InputProtection = false;
 };
 
 struct FormatMapping
@@ -142,6 +144,9 @@ struct FormatResult
     std::vector<StructuralOperation> StructuralOperations;
     std::vector<TokenOutputOffset> OriginalTokens;
     std::vector<ProtectedSourceRange> OutputProtection;
+    // Original-input bytes, including selection fences in FormatChanged.
+    // Collected only with FormatRequest::InputProtection, before normalization.
+    std::vector<ProtectedSourceRange> InputProtection;
     std::optional<FormatChangeSummary> Summary;
     std::optional<FormatChanges> Changes;
 };

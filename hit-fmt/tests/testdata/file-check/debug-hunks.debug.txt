@@ -1,0 +1,3 @@
+debug: formatting analysis for sample.cpp [original source; range ends exclusive]
+debug: protected range: outside selected hunks or permitted edit scope
+  --> sample.cpp:2:1-3:1 [original source]
