@@ -1,0 +1,30 @@
+#if DISABLE_POLL_TEST
+UTEST(Poll, DISABLED_Read) {
+#else
+UTEST(Poll, Read) {
+#endif
+    auto value=ReadValue();
+    EXPECT_EQ(value,1);
+}
+
+#if FIRST
+void First() {
+#else
+void Second() {
+#endif
+    Work();
+}
+
+#if RECORD
+struct Record {
+#else
+void Function() {
+#endif
+    Ambiguous();
+}
+
+#if COMPLETE
+void Complete() { Work(); }
+#else
+void Alternative() { Other(); }
+#endif

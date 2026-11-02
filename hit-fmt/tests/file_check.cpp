@@ -919,4 +919,47 @@ TEST(FileCheck, UnsupportedPreparationFailsClosed)
     EXPECT_THROW(hit_fmt::PreparedConfiguration{raw}, std::invalid_argument);
 }
 
+TEST(FileCheck, SharedConditionalBodiesCannotClaimConformance)
+{
+    auto settings = Configuration();
+    settings.FormattingStyle.FunctionBodyMacroNames = {"UTEST"};
+    const hit_fmt::PreparedConfiguration configuration(std::move(settings));
+    std::ostringstream diagnostics;
+
+    for (const auto header : {"UTEST(Poll, Read)", "void Read()", "struct Read"}) {
+        const Input input(std::string("#if DISABLED\n") + header + " {\n#else\n" + header +
+            " {\n#endif\n    auto value=ReadValue();\n    EXPECT_EQ(value,1);\n}\n");
+        const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
+        EXPECT_TRUE(checked.HasFailures(false));
+        EXPECT_TRUE(checked.HasFailures(true));
+        ASSERT_FALSE(checked.RequiredChanges.empty());
+        EXPECT_EQ(checked.RequiredChanges.front().Original.Line, 6u);
+
+        for (bool fix : {false, true}) {
+            std::ostringstream summary, details;
+            hit_fmt::PrintFileSummaryIssues(summary, checked, fix);
+            hit_fmt::PrintFileIssues(details, "sample.cpp", input.View().View(), checked, fix);
+            EXPECT_NE(summary.str().find("cannot be checked safely"), std::string::npos);
+            diagnostics << header << (fix ? " fix\n" : " check\n") << details.str() << "summary: " << summary.str()
+                << '\n';
+        }
+    }
+
+    const test::golden::Fixture fixture{HIT_FMT_TESTDATA_DIR, "shared_conditional_body"};
+    fixture.Expect(diagnostics.str(), ".diagnostics.txt");
+    const Input wrapped("NAMESPACE_BEGIN\n#if FIRST\nUTEST(Poll, First) {\n"
+        "#else\nUTEST(Poll, Second) {\n#endif\n    Work();\n}\nNAMESPACE_END\n");
+    const auto recovered = hit_fmt::FormatAndCheckFile(wrapped.View(), configuration);
+    EXPECT_TRUE(recovered.HasFailures(false));
+    EXPECT_TRUE(recovered.HasFailures(true));
+    EXPECT_FALSE(recovered.RequiredChanges.empty());
+    const Input complete("#if FIRST\nvoid First() { Work(); }\n#else\nvoid Second() { Other(); }\n#endif\n");
+    EXPECT_TRUE(hit_fmt::FormatAndCheckFile(complete.View(), configuration).RequiredChanges.empty());
+    const formatter::Hunk outside[] = {{1, 1}};
+    const Input shared("#if FIRST\nvoid First() {\n#else\nvoid Second() {\n#endif\n    Work();\n}\n");
+    const auto scoped =
+        hit_fmt::FormatAndCheckFile(shared.View(), configuration, {}, hit_fmt::ChangedFileScope{outside, false});
+    EXPECT_TRUE(scoped.RequiredChanges.empty());
+}
+
 } // namespace

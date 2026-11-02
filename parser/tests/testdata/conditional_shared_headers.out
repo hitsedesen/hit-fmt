@@ -1,0 +1,251 @@
+(translation-unit
+  (preprocessing-conditional
+    (preprocessing-branch
+      (preprocessing-directive "#if DISABLE_POLL_TEST")
+      (declaration
+        (unparsed-syntax "UTEST" "(" "Poll" "," "DISABLED_Read" ")" "{")
+      )
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#else")
+      (declaration
+        (unparsed-syntax "UTEST" "(" "Poll" "," "Read" ")" "{")
+      )
+    )
+    (preprocessing-directive "#endif")
+  )
+  (unparsed-syntax
+    (declaration
+      (declaration-specifiers "auto")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "ReadValue")
+              (argument-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "EXPECT_EQ")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "value")
+                )
+                (list-separator ",")
+                (parameter-declaration
+                  (init-declarator-list
+                    (init-declarator
+                      (abstract-declarator "1")
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (unparsed-syntax "}")
+  )
+  (preprocessing-conditional
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (preprocessing-branch
+      (preprocessing-directive
+        (leading-trivia
+          (whitespace "\n\n")
+        )
+        "#if FIRST"
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "First")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (missing-token)
+        )
+      )
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#else")
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Second")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (missing-token)
+        )
+      )
+    )
+    (preprocessing-directive "#endif")
+  )
+  (unparsed-syntax
+    (function-declaration
+      (declaration-specifiers "Work")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (unparsed-syntax "}")
+  )
+  (preprocessing-conditional
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (preprocessing-branch
+      (preprocessing-directive
+        (leading-trivia
+          (whitespace "\n\n")
+        )
+        "#if RECORD"
+      )
+      (record-declaration
+        "struct" "Record" "{"
+        (missing-token)
+      )
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#else")
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Function")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (missing-token)
+        )
+      )
+    )
+    (preprocessing-directive "#endif")
+  )
+  (unparsed-syntax
+    (function-declaration
+      (declaration-specifiers "Ambiguous")
+      (init-declarator-list
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (unparsed-syntax "}")
+  )
+  (preprocessing-conditional
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (preprocessing-branch
+      (preprocessing-directive
+        (leading-trivia
+          (whitespace "\n\n")
+        )
+        "#if COMPLETE"
+      )
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Complete")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Work")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+    (preprocessing-branch
+      (preprocessing-directive "#else")
+      (function-definition
+        (declaration-specifiers "void")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "Alternative")
+              (function-declarator
+                (parameter-list "(" ")")
+              )
+            )
+          )
+        )
+        (compound-statement
+          "{"
+          (expression-statement
+            (call-expression
+              (identifier-expression "Other")
+              (argument-list "(" ")")
+            )
+            ";"
+          )
+          "}"
+        )
+      )
+    )
+    (preprocessing-directive "#endif")
+  )
+)
