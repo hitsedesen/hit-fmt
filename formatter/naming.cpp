@@ -54,6 +54,29 @@ bool Configured(const NameRule& rule)
     return rule.Case.has_value() || rule.Prefixes || rule.Suffixes || !rule.Exemptions.empty();
 }
 
+bool StandardLibraryFunction(std::string_view name)
+{
+    static constexpr std::string_view names[] = {
+        "begin",
+        "end",
+        "cbegin",
+        "cend",
+        "rbegin",
+        "rend",
+        "crbegin",
+        "crend",
+        "size",
+        "ssize",
+        "empty",
+        "data",
+        "swap",
+        "get",
+        "iter_move",
+        "iter_swap",
+    };
+    return std::ranges::find(names, name) != std::end(names);
+}
+
 std::string ExpectedName(const NameRule& rule, bool prefixOK, bool suffixOK, bool caseOK, bool acronymOK)
 {
     std::string expected = "expected ";
@@ -175,6 +198,8 @@ public:
         : Tree(tree)
         , Style(config.Naming)
         , ExemptNamespaces(config.NamingNamespaceExemptions)
+        , ExemptNames(config.NamingExemptions)
+        , ExemptStandardLibrary(config.NamingStandardLibraryExemptions)
         , Acronyms(config.NamingAcronyms)
     { }
 
@@ -306,7 +331,10 @@ public:
 
         const auto name = Tree.TokenText(index);
 
-        if (std::ranges::find(rule.Exemptions, name) != rule.Exemptions.end()) {
+        if (std::ranges::find(ExemptNames, name) != ExemptNames.end() ||
+            std::ranges::find(rule.Exemptions, name) != rule.Exemptions.end() ||
+            (ExemptStandardLibrary && &rule == &Style.Function && StandardLibraryFunction(name)))
+        {
             return;
         }
 
@@ -847,6 +875,8 @@ private:
     const parser::SyntaxTree& Tree;
     const NamingStyle& Style;
     const std::vector<std::string>& ExemptNamespaces;
+    const std::vector<std::string>& ExemptNames;
+    bool ExemptStandardLibrary;
     const std::vector<std::string>& Acronyms;
     std::vector<NameDiagnostic> Results;
     std::string Scope;

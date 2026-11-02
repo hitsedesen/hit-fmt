@@ -1,0 +1,14 @@
+25:9: variable name 'custom_begin' has invalid case
+  expected PascalCase
+26:9: variable name 'begin' has invalid case
+  expected PascalCase
+29:6: function name 'begin_extra' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+30:6: function name 'BEGIN' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+31:6: function name 'external_names' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+32:22: variable name 'data' has invalid case
+  expected PascalCase
+33:15: variable name 'BadParameter' has invalid case
+  expected camelCase

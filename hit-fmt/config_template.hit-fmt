@@ -2065,6 +2065,19 @@ EnumeratorNameSuffixes = []
 # Values: [] or ["identifier", ...]
 EnumeratorNameExemptions = []
 
+# Exempt standard library extension function names from case, affix and
+# acronym checks: begin, end, cbegin, cend, rbegin, rend, crbegin, crend,
+# size, ssize, empty, data, swap, get, iter_move and iter_swap.
+# Applies to member and free function definitions by exact name only;
+# signatures are not verified. Other categories and parameter-name presence
+# checks are unaffected. Custom exemptions work with either setting.
+NamingStandardLibraryExemptions = false
+
+# Additional exemptions for all categories, alongside category NameExemptions.
+# Exact, case-sensitive, unqualified identifiers, e.g. ["external_name"].
+# Lists replace inherited lists; [] clears custom exemptions.
+NamingExemptions = []
+
 # Known acronyms: uppercase words of at least two letters; [] disables checks.
 # For camelCase/PascalCase only: two-letter words uppercase, longer words
 # capitalized; initial camelCase words lowercase. Example: IOCount, TcpCount,

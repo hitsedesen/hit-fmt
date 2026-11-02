@@ -635,6 +635,8 @@
 
 #define FORMATTER_CONFIGURATION_OPTIONS(X)                                  \
     X(std::vector<std::string>, NamingNamespaceExemptions, {"std"})          \
+    X(bool, NamingStandardLibraryExemptions, false)                         \
+    X(std::vector<std::string>, NamingExemptions, {})                        \
     X(std::vector<std::string>, NamingAcronyms, {})                          \
     X(formatter::FunctionDeclarationParameterNames, \
         FunctionDeclarationParameterNames, \

@@ -608,6 +608,13 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
 template <auto Member>
 void AssignConfig(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
 {
+    if constexpr (std::is_same_v<decltype(Member), decltype(&Configuration::NamingExemptions)>) {
+        if constexpr (Member == &Configuration::NamingExemptions) {
+            config.*Member = ParseCallNames(value, path, line);
+            return;
+        }
+    }
+
     ParseField(config.*Member, value, path, line);
     if constexpr (std::is_same_v<decltype(Member), decltype(&Configuration::NamingAcronyms)>) {
         if constexpr (Member == &Configuration::NamingAcronyms) {

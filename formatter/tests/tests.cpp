@@ -4741,8 +4741,11 @@ TEST_P(NamingTest, Golden)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
     const auto name = GetParam();
-    const bool extended = name == "roles" || name == "fallback" || name == "affixes" || name == "acronyms";
-    const auto input = ReadFile(dir / (name == "rules" ? "input.cpp" : extended ? name + ".cpp" : "alternate.cpp"));
+    const bool exemptions = name == "exemptions" || name == "exemptions_disabled";
+    const bool extended =
+        name == "roles" || name == "fallback" || name == "affixes" || name == "acronyms" || exemptions;
+    const auto input = ReadFile(dir /
+        (exemptions ? "exemptions.cpp" : name == "rules" ? "input.cpp" : extended ? name + ".cpp" : "alternate.cpp"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));
     const Input storage(input);
     const formatter::PreparedFormat prepared(config.FormattingStyle);
@@ -4767,7 +4770,16 @@ TEST_P(NamingTest, Golden)
 INSTANTIATE_TEST_SUITE_P(
     Formatter,
     NamingTest,
-    testing::Values("rules", "alternate", "no_exempt", "roles", "fallback", "affixes", "acronyms"),
+    testing::Values(
+        "rules",
+        "alternate",
+        "no_exempt",
+        "roles",
+        "fallback",
+        "affixes",
+        "acronyms",
+        "exemptions",
+        "exemptions_disabled"),
     ConfigName);
 
 TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)
