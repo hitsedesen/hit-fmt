@@ -1,0 +1,3 @@
+include = "exemptions.hit-fmt"
+NamingStandardLibraryExemptions = false
+NamingExemptions = []

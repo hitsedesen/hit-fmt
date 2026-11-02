@@ -1,0 +1,62 @@
+2:9: function name 'begin' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+3:9: function name 'end' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+4:9: function name 'cbegin' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+5:9: function name 'cend' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+6:9: function name 'rbegin' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+7:9: function name 'rend' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+8:9: function name 'crbegin' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+9:9: function name 'crend' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+10:9: function name 'size' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+11:9: function name 'ssize' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+12:10: function name 'empty' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+13:10: function name 'data' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+15:5: function name 'begin' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+16:5: function name 'end' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+17:6: function name 'swap' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+18:5: function name 'get' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+19:5: function name 'iter_move' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+20:6: function name 'iter_swap' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+21:6: function name 'external_name' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+21:24: variable name 'external_name' has invalid case
+  expected camelCase
+21:47: variable name 'external_name' has invalid case
+  expected PascalCase
+22:26: struct name 'external_name' has invalid case
+  expected PascalCase
+25:9: variable name 'custom_begin' has invalid case
+  expected PascalCase
+26:9: variable name 'begin' has invalid case
+  expected PascalCase
+27:9: variable name 'external_name' has invalid case
+  expected PascalCase
+29:6: function name 'begin_extra' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+30:6: function name 'BEGIN' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+31:6: function name 'external_names' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+32:22: variable name 'data' has invalid case
+  expected PascalCase
+33:6: function name 'size' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+33:15: variable name 'BadParameter' has invalid case
+  expected camelCase

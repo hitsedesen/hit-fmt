@@ -1,0 +1,9 @@
+FunctionNameCase = PascalCase
+FunctionNamePrefixes = ["Do"]
+FunctionNameSuffixes = ["_"]
+VariableNameCase = PascalCase
+ParameterNameCase = camelCase
+StructNameCase = PascalCase
+NamingStandardLibraryExemptions = true
+NamingExemptions = ["external_name"]
+FunctionNameExemptions = ["custom_begin"]
