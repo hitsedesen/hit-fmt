@@ -32,3 +32,14 @@ void f() {
             .Finish(
                 gamma, delta));
 }
+
+namespace Outer {
+    namespace Inner {
+        void nested() {
+            outer(
+                builder().Configure<Entry>(
+                    argument)
+                    .Finish());
+        }
+    }
+}
