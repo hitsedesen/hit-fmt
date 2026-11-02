@@ -1236,8 +1236,7 @@ public:
             return;
         }
 
-        // Capture initializer ranges are raw, not parsed expression children.
-        // Capture() handles their confirmed prefix and preserves internals.
+        // Capture() owns the prefix; initializer children own their internals.
         if (node.Kind == NK::LambdaCapture && !state.UncertainSyntax) {
             return;
         }
@@ -1885,9 +1884,8 @@ private:
             if (cursor < end && Tree_.Kind(cursor) == TK::Operator_Assign && next(cursor + 1) < end && parent &&
                 parent->Kind == NK::LambdaCaptureList)
             {
-                Pair(cursor, F::SpaceAroundCaptureAssignment, F::SpaceAroundCaptureAssignment, *parent, C::Captures, 1);
-                // The separator's right edge is owned; everything after the
-                // first initializer token is unparsed, including later '='.
+                Pair(cursor, F::SpaceAroundCaptureAssignment, F::SpaceAroundCaptureAssignment, *parent, C::Captures, 3);
+                // Keep the separator's right edge out of raw-gap protection.
                 unknown = cursor + 2;
             } else if (cursor < end && Tree_.Kind(cursor) == TK::Operator_Ellipsis && next(cursor + 1) == end) {
                 PackEllipsis(node, {.Owner = Id(node), .Category = C::Captures}, cursor);
@@ -1896,9 +1894,20 @@ private:
             }
         }
 
-        // This disjoint raw range is visited once, never searched for '=' or
-        // parsed speculatively. Unknown internals cannot borrow outer policies.
+        // Preserve only raw gaps outside initializer children. Parsed syntax
+        // must retain its own spacing and indentation policies.
+        auto* child = Child(node);
+
         for (TI i = unknown; i < end; ++i) {
+            while (child && child->Tokens.End <= i) {
+                child = Next(*child);
+            }
+
+            if (child && child->Tokens.Begin <= i) {
+                i = child->Tokens.End - 1;
+                continue;
+            }
+
             PreserveUncertain(i, node);
         }
     }

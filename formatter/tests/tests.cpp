@@ -1834,6 +1834,15 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-trailing-return", "lambda-trailing-return.input.cpp"});
     cases.push_back({BODY_INDENT_TESTDATA_DIR, "lambda-wrapped-parameters", "lambda-wrapped-parameters.input.cpp"});
     addProfileCase("../lambda-captures", "profile");
+    addProfileCase("../lambda-captures", "nested-init-capture");
+
+    {
+        const auto directory = data / "lambda-captures";
+        auto style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        style.LambdaBodiesLayout = CategoryLayout::Preserve;
+        cases.push_back({directory, "nested-init-capture-preserve", "nested-init-capture.input.cpp"});
+        cases.back().Style = style;
+    }
 
     for (const auto* name : {"generic-header", "generic-header-fitting", "generic-header-forced"}) {
         addProfileCase("../lambda-captures", name);

@@ -557,6 +557,30 @@ std::vector<const Node*> LambdaOwnershipNodes(const Node& root, parser::NodeKind
     return found;
 }
 
+TEST(Parser, NestedCaptureInitializersHaveBoundedRecovery)
+{
+    std::string source = "auto callback = ";
+
+    for (size_t i = 0; i < 128; ++i) {
+        source += "[nested = ";
+    }
+
+    source += "[] {}";
+
+    for (size_t i = 0; i < 128; ++i) {
+        source += "] { nested(); }";
+    }
+
+    source += "; int outside;";
+    PaddedInput input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    const auto unparsed = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::UnparsedSyntax);
+    ASSERT_EQ(unparsed.size(), 1u);
+    EXPECT_TRUE(tree.SourceText(unparsed.front()->Tokens).starts_with("= [nested ="));
+    ASSERT_NE(tree.Root().LastChild, nullptr);
+    EXPECT_EQ(tree.SourceText(tree.Root().LastChild->Tokens), "int outside;");
+}
+
 TEST(Parser, ConditionalFragmentsKeepRolesAndBodies)
 {
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "preprocessing_fragments"};
@@ -2532,6 +2556,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"declarations"},
         GoldenCase{"expressions"},
         GoldenCase{"separated_lists"},
+        GoldenCase{"lambda_init_captures"},
         GoldenCase{"template_parameters_recovery", true},
         GoldenCase{"preprocessing", true},
         GoldenCase{"conditional_shared_headers", true, false, {"UTEST"}},

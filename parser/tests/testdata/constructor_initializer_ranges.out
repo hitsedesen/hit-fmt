@@ -254,7 +254,10 @@
                                     (lambda-expression
                                       (lambda-capture-list
                                         "["
-                                        (lambda-capture "id" "=" "1")
+                                        (lambda-capture
+                                          "id" "="
+                                          (literal-expression "1")
+                                        )
                                         "]"
                                       )
                                       (parameter-list

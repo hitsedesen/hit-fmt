@@ -2585,6 +2585,38 @@ private:
 
     void AddSeparatedElementSyntax(Node& element, NodeKind kind, size_t begin, size_t end)
     {
+        if (kind == NodeKind::LambdaCapture) {
+            auto name = NextSignificant(begin);
+
+            if (Kind(name) == TK::Operator_Ampersand) {
+                name = NextSignificant(name + 1);
+            }
+
+            if (Kind(name) == TK::Operator_Ellipsis) {
+                name = NextSignificant(name + 1);
+            }
+
+            if (name < end && Kind(name) == TK::Identifier) {
+                const auto initializer = NextSignificant(name + 1);
+
+                if (initializer < end &&
+                    (Kind(initializer) == TK::Operator_Assign || Kind(initializer) == TK::Operator_OpenParenthesis ||
+                        Kind(initializer) == TK::Operator_OpenBrace))
+                {
+                    if (CaptureInitializerDepth_ >= 64) {
+                        AddUnparsedSyntax(element, initializer, end);
+                        return;
+                    }
+
+                    ++CaptureInitializerDepth_;
+                    AddInitializerExpression(element, initializer, end);
+                    --CaptureInitializerDepth_;
+                }
+            }
+
+            return;
+        }
+
         if (kind == NodeKind::BaseSpecifier) {
             auto typeBegin = begin;
 
@@ -11271,6 +11303,7 @@ private:
     TokenIndex ParseLimit_ = 0;
     size_t BranchParseDepth_ = 0;
     unsigned TemplateListDepth_ = 0;
+    unsigned CaptureInitializerDepth_ = 0;
     unsigned TypeSyntaxDepth_ = 0;
     unsigned RequiresSyntaxDepth_ = 0;
     static constexpr size_t MaximumParseDepth = 256;
