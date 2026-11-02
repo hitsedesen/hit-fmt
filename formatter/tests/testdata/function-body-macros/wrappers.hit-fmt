@@ -1,0 +1,4 @@
+Layout = Canonical
+ListBreak = IfNeeded
+ColumnLimit = 40
+FunctionBodyMacroNames = ["TEST", "DEFINE_CASE"]

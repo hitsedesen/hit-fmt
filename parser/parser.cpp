@@ -7458,6 +7458,94 @@ private:
         return innerEnd && *innerEnd == *outerEnd - 1;
     }
 
+    void ParseOpaqueMacroBody(Node& node, TokenIndex start)
+    {
+        // Cached pairs bound recovery to this body and keep nested wrapper
+        // traversal linear. Damaged delimiter contexts remain wholly opaque.
+        const auto end = HasDelimiterMap_ ? FindBalancedEnd(Cursor_) : std::numeric_limits<TokenIndex>::max();
+
+        if (FunctionBodyMacroNames_.empty() || end > ParseLimit_) {
+            ConsumeBalanced();
+
+            if (CurrentKind() == TK::Operator_Semicolon) {
+                ++Cursor_;
+            }
+
+            AddUnparsedSyntax(node, start, Cursor_);
+            return;
+        }
+
+        auto unparsed = start;
+        ++Cursor_;
+
+        while (Cursor_ < end - 1) {
+            if (CurrentKind() == TK::Comment || CurrentKind() == TK::Operator_CloseBrace) {
+                ++Cursor_;
+                continue;
+            }
+
+            const auto first = Cursor_;
+
+            if (auto* macro = TryParseFunctionBodyMacro()) {
+                AddUnparsedSyntax(node, unparsed, first);
+                Append(node, *macro);
+                unparsed = Cursor_;
+                continue;
+            }
+
+            // A bare invocation followed by a balanced brace body can wrap
+            // independent configured declarations without revealing its own
+            // grammar. Descend only through that shape, never call arguments
+            // or initializers. The surrounding spelling stays opaque.
+            if (CurrentKind() == TK::Identifier) {
+                const auto arguments = NextSignificant(Cursor_ + 1);
+                const auto headerEnd = Kind(arguments) == TK::Operator_OpenParenthesis
+                    ? FindBalancedEnd(arguments)
+                    : std::numeric_limits<TokenIndex>::max();
+
+                if (headerEnd < end) {
+                    const auto body = NextSignificant(headerEnd);
+
+                    if (Kind(body) == TK::Operator_OpenBrace && FindBalancedEnd(body) <= end) {
+                        Cursor_ = body + 1;
+                        continue;
+                    }
+                }
+            }
+
+            // Unrecognized block items cannot establish an interior boundary.
+            // Skip their balanced payloads through the terminating semicolon.
+            while (Cursor_ < end - 1) {
+                const auto kind = CurrentKind();
+
+                if (IsOpenDelimiter(kind)) {
+                    const auto next = FindBalancedEnd(Cursor_);
+
+                    if (next > end) {
+                        Cursor_ = end - 1;
+                        break;
+                    }
+
+                    Cursor_ = next;
+                } else {
+                    ++Cursor_;
+
+                    if (kind == TK::Operator_Semicolon) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Cursor_ = end;
+
+        if (CurrentKind() == TK::Operator_Semicolon) {
+            ++Cursor_;
+        }
+
+        AddUnparsedSyntax(node, unparsed, Cursor_);
+    }
+
     Node* ParseGeneralDeclaration()
     {
         auto start = Cursor_;
@@ -7893,14 +7981,8 @@ private:
                         FindDeclarationSpecifiersEnd(start, Cursor_) == parameterBegin)
                     {
                         auto* node = MakeNode(NodeKind::Declaration, start);
-                        ConsumeBalanced();
-
-                        if (CurrentKind() == TK::Operator_Semicolon) {
-                            ++Cursor_;
-                        }
-
+                        ParseOpaqueMacroBody(*node, start);
                         node->Tokens.End = Cursor_;
-                        AddUnparsedSyntax(*node, start, Cursor_);
                         return node;
                     }
                     return ParseFunctionDefinition(

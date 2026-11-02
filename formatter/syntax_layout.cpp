@@ -3588,7 +3588,14 @@ private:
             PreservedBodyIndent(bodyChild == None ? id : bodyChild, opening, Tree_.MatchingDelimiter(opening));
         const auto bodyWidth =
             BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
-        const auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
+        auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
+
+        if (fixedBase == None && node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::Declaration &&
+            !GapMutable(node.Tokens.Begin))
+        {
+            fixedBase = SourceLineIndent(node.Tokens.Begin);
+        }
+
         const auto group = GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(opening + 1), layout::GroupMode::Fill);
         GroupSpecs_[group].StructuralBase = true;
         GroupSpecs_[group].FixedBase = fixedBase;
@@ -3797,6 +3804,18 @@ private:
         // without a continuation frame.
         const auto parent = Region(Syntax_[id]).Parent;
         GroupSpecs_[group].FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
+
+        // A preserved header may have no planned enclosing block. Its
+        // independently parsed body still follows that header's source level.
+        const auto enclosing = parent == None ? None : Region(Syntax_[parent]).Parent;
+
+        if (contentIndent == None && Region(Syntax_[id]).Kind == NodeKind::CompoundStatement && enclosing != None &&
+            Region(Syntax_[enclosing]).Kind == NodeKind::Declaration &&
+            !GapMutable(Region(Syntax_[parent]).Tokens.Begin) && BraceFor(parent))
+        {
+            GroupSpecs_[group].FixedBase = SourceLineIndent(Region(Syntax_[parent]).Tokens.Begin);
+        }
+
         // Inline linkage headers inherit their enclosing structural level
         // when indentation is explicit; own-line headers keep their line base.
         const bool linkageLineBase =
