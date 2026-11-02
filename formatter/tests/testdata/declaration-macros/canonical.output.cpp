@@ -131,7 +131,65 @@ OpenScope
 class Forward;
 CloseScope
 
+namespace Aliases {
+PROJECT_NAMESPACE_BEGIN
+using Value = int;
+PROJECT_NAMESPACE_END
+}
+
+OpenScope
+using namespace Detail;
+CloseScope
+
+namespace Functions {
+ScopeBegin
+void Run( );
+ScopeEnd
+}
+
+OpenScope
+inline void RunInline( ) {
+    Call(1, 2);
+}
+CloseScope
+
+ScopeBegin
+int count = 1;
+ScopeEnd
+
+OpenScope
+constexpr int limit = 2;
+CloseScope
+
+ScopeBegin
+const volatile int flags = 3;
+ScopeEnd
+
+ScopeBegin
+typedef int Number;
+ScopeEnd
+
+OpenScope
+static_assert(true);
+CloseScope
+
+ScopeBegin
+// declaration boundary
+void Commented( );
+ScopeEnd
+
 EXPORT class SameLine { int member=3; };
+EXPORT void SameLineFunction( );
+EXPORT inline void SameLineInline( );
+template<class T>
+concept Any = true;
+Any auto Constrained( );
+Any decltype(auto) ConstrainedReference( );
+Aliases::Value inline NamedReturn( );
+Aliases::Value
+typedef NamedAlias;
+Aliases::Value
+const* pointerToConst;
 typedef
 struct Alias { int member; } Alias;
 const
