@@ -1,0 +1,1 @@
+fail: namespace closing comment is missing; existing explanatory comment is preserved; fail: namespace closing comment is missing; existing explanatory comment is preserved; fail: namespace closing comment is missing; existing explanatory comment is preserved; fail: namespace closing comment is missing; existing explanatory comment is preserved

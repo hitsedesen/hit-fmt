@@ -1005,6 +1005,10 @@ RemoveNullDeclarations = false
 EmptyControlBody = Preserve
 
 # Values: Preserve | Remove | AddMissing | Fix
+# Fix and Remove rewrite only namespace closing labels (// namespace Name
+# or a bare matching namespace name). Explanatory comments stay intact.
+# Fix and AddMissing still report a missing label when an explanatory
+# comment prevents a safe fix. ShortNamespaceLines exemptions apply.
 NamespaceComments = Preserve
 
 # Values: Preserve | 0..10000 (omitted: TrailingCommentSpacing)

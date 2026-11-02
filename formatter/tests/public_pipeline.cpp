@@ -1871,7 +1871,7 @@ TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
     using formatter::GapPolicy;
     using formatter::NamespaceComments;
     const std::string source =
-        "int amount;\t// namespace is ordinary prose\n" "namespace N {\nint local;\n}\t// arbitrary closer prose\n";
+        "int amount;\t// namespace is ordinary prose\n" "namespace N {\nint local;\n}\t// namespace Wrong\n";
 
     for (const auto old :
         {
@@ -1891,8 +1891,8 @@ TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
             const formatter::PreparedFormat prepared(style);
             const auto result = FormatInput(source, prepared);
             EXPECT_TRUE(result.Text.starts_with("int amount;  // namespace"));
-            EXPECT_TRUE(result.Text.ends_with(
-                policy == NamespaceComments::Fix ? "}    // namespace N\n" : "}\t// arbitrary closer prose\n"));
+            EXPECT_TRUE(result.Text
+                .ends_with(policy == NamespaceComments::Fix ? "}    // namespace N\n" : "}\t// namespace Wrong\n"));
             EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
         }
     }

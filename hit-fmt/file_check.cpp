@@ -204,7 +204,10 @@ CheckedFile FormatAndCheckFile(
         checked.Semantic.push_back({diagnostic.Position, {}, std::move(message), diagnostic.Anchor});
     }
 
-    const bool tokenMap = locations && (changed.has_value() || !checked.Semantic.empty());
+    const auto namespacePolicy = configuration.Formatting.NamespaceComments.Policy;
+    const bool namespaceDiagnostics = namespacePolicy == formatter::NamespaceCommentPolicy::Fix ||
+        namespacePolicy == formatter::NamespaceCommentPolicy::AddMissing;
+    const bool tokenMap = locations && (changed.has_value() || !checked.Semantic.empty() || namespaceDiagnostics);
     std::vector<formatter::Hunk> selected, permitted;
     const formatter::FormatRequest request{
         .InputFilePath = inputFilePath,
@@ -229,6 +232,7 @@ CheckedFile FormatAndCheckFile(
                 {},
                 std::string(RequiredChangeMessage(skip.Action)),
                 {skip.Tokens.Begin, tree.Token(skip.Tokens.Begin).Text.Begin},
+                true,
             });
         }
 
@@ -240,6 +244,28 @@ CheckedFile FormatAndCheckFile(
             });
     } else {
         checked.Formatting = formatter::Format(tree, configuration.Formatting, request);
+    }
+
+    for (const auto& diagnostic : checked.Formatting.StructuralDiagnostics) {
+        if (diagnostic.Action != formatter::StructuralAction::NamespaceComments ||
+            diagnostic.Reason != formatter::StructuralSkip::MissingNamespaceComment)
+        {
+            continue;
+        }
+
+        const auto token = diagnostic.Tokens.Begin;
+        const auto position = tree.TokenPosition(token);
+
+        if (changed && !InLines(position.Line, selected)) {
+            continue;
+        }
+
+        checked.RequiredChanges.push_back({
+            position,
+            {},
+            "namespace closing comment is missing; existing explanatory comment is preserved",
+            {token, tree.Token(token).Text.Begin},
+        });
     }
 
     const auto& summary = *checked.Formatting.Summary;
@@ -301,7 +327,7 @@ void PrintFileIssues(
         const auto position = fix ? diagnostic.Emitted : diagnostic.Original;
         output << "fail: " << diagnostic.Message;
 
-        if (fix) {
+        if (fix && diagnostic.BlockedByHunks) {
             output << BlockedHunkFix;
         }
 
@@ -383,7 +409,7 @@ void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bo
     for (const auto& diagnostic : checked.RequiredChanges) {
         issue(diagnostic.Message, true);
 
-        if (fix) {
+        if (fix && diagnostic.BlockedByHunks) {
             output << BlockedHunkFix;
         }
     }

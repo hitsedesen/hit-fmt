@@ -4,6 +4,8 @@
 #include "structural_edits_internal.hpp"
 #include "text_policies.hpp"
 
+#include <unicode/utf8.hpp>
+
 #include <algorithm>
 #include <filesystem>
 #include <limits>
@@ -1623,6 +1625,79 @@ void detail::MaterializeOriginalTokenOffsets(
 
 namespace {
 
+bool NamespaceClosingComment(const parser::SyntaxTree& tree, parser::TokenRange header, TI comment)
+{
+    auto text = tree.TokenText(comment);
+
+    if (!text.starts_with("//")) {
+        return false;
+    }
+
+    text.remove_prefix(2);
+    const auto trim = [&] {
+        const auto begin = text.find_first_not_of(" \t\r");
+        text = begin == std::string_view::npos ? std::string_view{} : text.substr(begin);
+        const auto end = text.find_last_not_of(" \t\r");
+        text = end == std::string_view::npos ? std::string_view{} : text.substr(0, end + 1);
+    };
+    trim();
+
+    if (text == "anonymous namespace" || text == "unnamed namespace" || text == "Unnamed namespace") {
+        return true;
+    }
+
+    if (text == "namespace") {
+        return true;
+    }
+
+    if (text.starts_with("namespace") && text.size() > 9 && (text[9] == ' ' || text[9] == '\t')) {
+        text.remove_prefix(9);
+        trim();
+        bool start = true;
+
+        while (!text.empty()) {
+            if (!start && text.starts_with("::")) {
+                text.remove_prefix(2);
+                start = true;
+                continue;
+            }
+
+            const auto cp = unicode::utf8::GetFirstCodePoint(text);
+
+            if (!cp ||
+                (cp->Value != '_' && !(start ? unicode::IsXIDStart(cp->Value) : unicode::IsXIDContinue(cp->Value))))
+            {
+                return false;
+            }
+
+            text.remove_prefix(cp->Size);
+            start = false;
+        }
+
+        return !start;
+    }
+
+    // A bare label is unambiguous only when it spells this namespace's name.
+    bool named = false;
+
+    for (auto token = header.Begin; token < header.End; ++token) {
+        if (tree.Kind(token) != TK::Identifier && tree.Kind(token) != TK::Operator_ScopeResolution) {
+            continue;
+        }
+
+        const auto name = tree.TokenText(token);
+
+        if (!text.starts_with(name)) {
+            return false;
+        }
+
+        text.remove_prefix(name.size());
+        named = true;
+    }
+
+    return named && text.empty();
+}
+
 template <bool Certified>
 NamespaceCommentPlan PlanNamespaceCommentsImpl(
     const parser::SyntaxTree& original,
@@ -1722,7 +1797,7 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
         }
 
         if (suffix < original.TokenCount() && original.Kind(suffix) == TK::Comment &&
-            original.TokenText(suffix).starts_with("//") && Horizontal(original.WhitespaceBefore(suffix)))
+            Horizontal(original.WhitespaceBefore(suffix)))
         {
             comment = suffix;
         }
@@ -1736,7 +1811,10 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
             return;
         }
 
-        plan.Namespaces.push_back({node.Tokens, {node.Tokens.Begin, open}, open, close, comment});
+        const parser::TokenRange header{node.Tokens.Begin, open};
+        const bool explanatory =
+            comment != original.TokenCount() && !NamespaceClosingComment(original, header, comment);
+        plan.Namespaces.push_back({node.Tokens, header, open, close, comment, explanatory});
     };
 
     if constexpr (Certified) {
@@ -1971,6 +2049,32 @@ StructuralPlan ResolveNamespaceCommentsImpl(
 
         auto begin = mapping[ns.Close].Output.End;
         auto end = begin;
+        const auto shortNamespace = [&] {
+            if (!plan.Options.ShortNamespaceLines) {
+                return false;
+            }
+
+            const auto openLine = line(mapping[ns.Open].Output.Begin);
+            const auto closeLine = line(mapping[ns.Close].Output.Begin);
+            const auto interior = closeLine > openLine ? closeLine - openLine - 1 : 0;
+            return interior <= plan.Options.ShortNamespaceLines;
+        };
+
+        if (ns.ExplanatoryComment) {
+            if (plan.Options.Policy != NamespaceCommentPolicy::Remove) {
+                if (shortNamespace()) {
+                    skip(StructuralSkip::ShortNamespace);
+                } else {
+                    Skip(
+                        resolved,
+                        StructuralAction::NamespaceComments,
+                        {ns.Close, ns.Close + 1},
+                        StructuralSkip::MissingNamespaceComment);
+                }
+            }
+
+            continue;
+        }
 
         if (existing) {
             // Comments after a null suffix become closing comments only if
@@ -2010,15 +2114,9 @@ StructuralPlan ResolveNamespaceCommentsImpl(
                 continue;
             }
 
-            if (plan.Options.ShortNamespaceLines) {
-                const auto openLine = line(mapping[ns.Open].Output.Begin);
-                const auto closeLine = line(mapping[ns.Close].Output.Begin);
-                const auto interior = closeLine > openLine ? closeLine - openLine - 1 : 0;
-
-                if (interior <= plan.Options.ShortNamespaceLines) {
-                    skip(StructuralSkip::ShortNamespace);
-                    continue;
-                }
+            if (shortNamespace()) {
+                skip(StructuralSkip::ShortNamespace);
+                continue;
             }
 
             const auto newline = output.find('\n', begin);

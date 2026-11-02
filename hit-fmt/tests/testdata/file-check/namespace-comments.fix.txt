@@ -1,0 +1,8 @@
+fail: namespace closing comment is missing; existing explanatory comment is preserved
+  --> sample.cpp:2:1 [written output]
+fail: namespace closing comment is missing; existing explanatory comment is preserved
+  --> sample.cpp:6:1 [written output]
+fail: namespace closing comment is missing; existing explanatory comment is preserved
+  --> sample.cpp:8:1 [written output]
+fail: namespace closing comment is missing; existing explanatory comment is preserved
+  --> sample.cpp:10:1 [written output]

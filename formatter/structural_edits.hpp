@@ -41,6 +41,7 @@ enum class StructuralSkip : uint8_t
     FollowingText,
     ShortNamespace,
     RequiredBody,
+    MissingNamespaceComment,
 };
 
 struct StructuralDiagnostic
@@ -231,6 +232,7 @@ struct NamespaceIdentity
     parser::TokenIndex Open;
     parser::TokenIndex Close;
     parser::TokenIndex Comment; // TokenCount() if absent
+    bool ExplanatoryComment = false;
 };
 
 struct NamespaceCommentPlan
