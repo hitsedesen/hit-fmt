@@ -227,6 +227,7 @@ public:
         , ScopeNames_(&scratch)
         , ChainLinks_(&scratch)
         , ChainScopeNames_(&scratch)
+        , InlineMessageHeaders_(&scratch)
     {
         for (size_t i = 0; i < OwnerContexts_.size(); ++i) {
             OwnerContexts_[i] = SpacingOwnerContext(static_cast<SpacingOwner>(i), policies);
@@ -606,6 +607,7 @@ private:
     std::pmr::vector<ScopeName> ScopeNames_;
     std::pmr::vector<ChainLink> ChainLinks_;
     std::pmr::vector<ScopeName> ChainScopeNames_;
+    std::pmr::vector<parser::TokenRange> InlineMessageHeaders_;
     SyntaxLayoutStatus State_;
     size_t NextPermission_ = 0;
     bool GapCacheReady_ = false;
@@ -1505,6 +1507,8 @@ private:
         const auto* pin = pinned.Annotation;
         const bool messageLayout = pin && pin->MessageLayout;
         const auto messageEnd = messageLayout ? Region(Syntax_[pinned.Argument]).Tokens.End : None;
+        const bool inlineMessage = messageLayout && pin->Overflow == AttachedStringOverflow::KeepInline &&
+            policy.Break != BreakRequirement::Always;
 
         if (sharedCloser && node.Tokens.Size() == 2) {
             return;
@@ -1519,6 +1523,16 @@ private:
 
         if (group == None) {
             return;
+        }
+
+        if (inlineMessage) {
+            // Lists are visited in source order. Merge nested headers so the
+            // safety pass can suppress optional breaks in one linear sweep.
+            if (InlineMessageHeaders_.empty() || InlineMessageHeaders_.back().End < begin + 1) {
+                InlineMessageHeaders_.push_back({begin + 1, messageEnd});
+            } else {
+                InlineMessageHeaders_.back().End = std::max(InlineMessageHeaders_.back().End, messageEnd);
+            }
         }
 
         const auto messageHeader = canonical && messageLayout && policy.Break != BreakRequirement::Always
@@ -1666,11 +1680,11 @@ private:
                 // retain their independent layout and width decisions.
                 firstKind = layout::GapKind::Flat;
                 GroupSpecs_[group].ForceBreak = false;
-            } else if (pin && !messageLayout && pin->Overflow == AttachedStringOverflow::KeepInline &&
+            } else if (pin && pin->Overflow == AttachedStringOverflow::KeepInline &&
                 policy.Break != BreakRequirement::Always)
             {
-                // Attach the first argument's opening piece; its nested
-                // syntax (including literal concatenation) may still wrap.
+                // First-argument pins attach only the opening piece. Message
+                // headers also suppress optional interior breaks below.
                 firstKind = layout::GapKind::Flat;
             }
 
@@ -1686,9 +1700,9 @@ private:
             }
 
             Own(begin + 1, group, Boundary::Conditional, firstKind);
-            Gaps_[begin + 1].Attached = soleLambdaInline;
+            Gaps_[begin + 1].Attached = soleLambdaInline || inlineMessage;
 
-            if (messageHeader != group && Policies_.ColumnLimit != 0) {
+            if (messageHeader != group && !inlineMessage && Policies_.ColumnLimit != 0) {
                 // The opener must fit the complete header, including optional
                 // nested breaks, before deciding to keep it on the call line.
                 GroupSpecs_[group].ChildBreaks = false;
@@ -1908,9 +1922,12 @@ private:
                         split,
                         messagePrefix ? messageHeader : items,
                         Boundary::Conditional,
-                        formatArgument || policy.Packing == ListPacking::VerticalWhenBroken
-                        ? layout::GapKind::Hard
-                        : layout::GapKind::Soft);
+                        messagePrefix && inlineMessage
+                        ? layout::GapKind::Flat
+                        : formatArgument || policy.Packing == ListPacking::VerticalWhenBroken
+                            ? layout::GapKind::Hard
+                            : layout::GapKind::Soft);
+                    Gaps_[split].Attached = messagePrefix && inlineMessage;
                 }
 
                 Own(side == OperatorSide::Leading ? t + 1 : t, group, Boundary::Flat);
@@ -5905,6 +5922,7 @@ private:
     void ResolveSafety()
     {
         bool beforeDirective = false;
+        auto inlineHeader = InlineMessageHeaders_.size();
 
         for (Index i = Gaps_.size(); i-- > 0;) {
             if (i < Layout_.Tokens_.size() && Layout_.Tokens_[i].RunLast) {
@@ -5912,6 +5930,19 @@ private:
             }
 
             auto& gap = Gaps_[i];
+
+            while (inlineHeader && InlineMessageHeaders_[inlineHeader - 1].Begin > i) {
+                --inlineHeader;
+            }
+
+            if (inlineHeader && i < InlineMessageHeaders_[inlineHeader - 1].End && gap.Owner != None &&
+                !GroupSpecs_[gap.Owner].ForceBreak &&
+                (gap.Shape == Boundary::Soft || gap.Shape == Boundary::Conditional))
+            {
+                gap.Shape = Boundary::Flat;
+                gap.Attached = true;
+            }
+
             const bool comment = i < Tree_.TokenCount() && Tree_.Kind(i) == TokenKind::Comment;
 
             if (!comment) {

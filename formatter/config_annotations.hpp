@@ -39,8 +39,8 @@ struct MessagePinAnnotation
     std::string Name;
     FirstArgumentAnnotation FirstArgument = FirstArgumentAnnotation::PinCompleteStringLiteral;
     AttachedStringOverflow Overflow = AttachedStringOverflow::Wrap;
-    // Find the first complete literal argument, attach its prefix, and break
-    // before every following format argument even when the call fits.
+    // Find the first complete literal argument, attach its prefix according
+    // to Overflow, and break before every following format argument.
     bool MessageLayout = false;
 };
 

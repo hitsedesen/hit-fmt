@@ -28,9 +28,7 @@ void Report()
         first,
         "Other "
         "argument");
-    THROW_ERROR_EXCEPTION(
-        "An extended error description that exceeds the column limit once all fragments are combined "
-        "with this additional context",
+    THROW_ERROR_EXCEPTION("An extended error description that exceeds the column limit once all fragments are combined " "with this additional context",
         first);
 
     YT_LOG_INFO(u8"Short " /* fragment */ u8"message",
