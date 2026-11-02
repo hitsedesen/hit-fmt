@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(hit-fmt
-    VERSION 0.13.0
+    VERSION 0.14.0
     DESCRIPTION "Configurable C++ formatter"
     HOMEPAGE_URL "https://sourcecraft.dev/hitsedesen/hit-fmt"
     LANGUAGES CXX)
