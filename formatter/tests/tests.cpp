@@ -2745,6 +2745,14 @@ std::vector<FormatCase> FormatCases()
         cases.push_back({directory, "overflow", "overflow.input.cpp"});
         cases.push_back({directory, "keep-inline", "overflow.input.cpp"});
 
+        for (const bool fragments : {false, true}) {
+            auto style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+            style.CallLineMessageOverflow = formatter::MessageHeaderOverflow::Wrap;
+            style.StringLiteralFragmentsAsArguments = fragments;
+            cases.push_back({directory, fragments ? "fragmented-arguments" : "fragmented", "fragmented.input.cpp"});
+            cases.back().Style = style;
+        }
+
         for (const auto* name : {"always", "preserve", "unlimited"}) {
             auto style = formatter::LoadConfigFile(directory / (std::string(name) + ".hit-fmt")).FormattingStyle;
             style.CallLineMessageOverflow = formatter::MessageHeaderOverflow::KeepInline;

@@ -824,7 +824,8 @@ CallLineMessageNames = []
 
 # Applies to CallLineMessageNames only.
 # Wrap (default): wrap at argument boundaries before splitting
-# nested expressions or concatenated literal pieces.
+# nested expressions. Concatenated literals may wrap after a
+# fitting first fragment beside the opener.
 # KeepInline: keep preceding arguments and the complete message
 # beside the opener, even past ColumnLimit. Required nested
 # breaks, CallsBreak = Always, preserved calls and protection win.

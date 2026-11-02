@@ -1543,8 +1543,8 @@ private:
             : group;
 
         if (messageHeader != group) {
-            // Fitting headers stay beside the opener independently of format
-            // arguments. Overflow uses list boundaries before nested breaks.
+            // Headers wrap independently of format arguments. Overflow uses
+            // list boundaries before nested breaks.
             Groups_[messageHeader].IndentGroup = group;
             GroupSpecs_[messageHeader].ChildBreaks = false;
             // Literal fragments share the header's shape, independently of
@@ -1703,11 +1703,12 @@ private:
             Gaps_[begin + 1].Attached = soleLambdaInline || inlineMessage;
 
             if (messageHeader != group && !inlineMessage && Policies_.ColumnLimit != 0) {
-                // The opener must fit the complete header, including optional
-                // nested breaks, before deciding to keep it on the call line.
+                // Fit the prefix and first literal fragment beside the opener.
+                // Later fragments can wrap without moving a fitting first one.
+                const auto& message = Region(Syntax_[pinned.Argument]);
                 GroupSpecs_[group].ChildBreaks = false;
                 Gaps_[begin + 1].FitNextSegment = true;
-                Gaps_[begin + 1].FitThrough = messageEnd;
+                Gaps_[begin + 1].FitThrough = message.Tokens.Begin + 1;
             }
 
             if (pin && pin->Overflow == AttachedStringOverflow::BreakBefore && Policies_.ColumnLimit != 0) {
