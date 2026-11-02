@@ -2310,6 +2310,9 @@ std::vector<FormatCase> FormatCases()
         {"punctuation-preserve", "punctuation-space", "comments-preserve"},
         "punctuation-preserve.input.cpp");
     cases.push_back({google, "access-only", "access-scope.input.cpp"});
+    cases.push_back({google, "access-only-canonical", "access-scope.input.cpp", "access-only"});
+    cases.back().Style = formatter::LoadConfigFile(google / "access-only.hit-fmt").FormattingStyle;
+    cases.back().Style->Layout = LayoutMode::Canonical;
     cases.push_back({google, "scope-only", "access-scope-safe.input.cpp"});
     cases.push_back({google, "scope-only-canonical", "access-scope-safe.input.cpp", "scope-only"});
     auto scopeStyle = formatter::LoadConfigFile(google / "scope-only.hit-fmt").FormattingStyle;

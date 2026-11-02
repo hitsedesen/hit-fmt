@@ -6164,6 +6164,20 @@ private:
             return std::nullopt;
         }
 
+        const auto closing = proveDirectInitializer
+            ? ArgumentPairEnd(opening, end).value_or(std::numeric_limits<TokenIndex>::max())
+            : FindBalancedEnd(opening);
+        const auto suffix = closing <= end ? NextSignificant(closing) : end;
+
+        if (suffix < end && Kind(suffix) != TK::Operator_Comma && GetBinaryOperatorInfo(Kind(suffix)).Precedence != 0 &&
+            !IsFunctionSuffixStart(suffix))
+        {
+            // A macro-led expression can resemble a declaration until an
+            // expression-only operator follows the call. Unknown suffixes
+            // may be macros or extensions and do not disprove a declaration.
+            return std::nullopt;
+        }
+
         return InferParameterList(opening, end, ambiguous, proveDirectInitializer);
     }
 
