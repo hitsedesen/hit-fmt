@@ -1,0 +1,34 @@
+1:8: struct name 'Range' has invalid prefix and case
+  expected prefix 'T', 'I' or 'E' and PascalCase between naming affixes
+21:6: function name 'external_name' has invalid case
+  expected PascalCase
+21:24: variable name 'external_name' has invalid case
+  expected camelCase
+21:47: variable name 'external_name' has invalid case
+  expected camelCase
+22:11: namespace name 'types' has invalid prefix and case
+  expected prefix 'N' and PascalCase between naming affixes
+22:26: struct name 'external_name' has invalid prefix and case
+  expected prefix 'T', 'I' or 'E' and PascalCase between naming affixes
+23:6: function name 'custom_begin' has invalid case
+  expected PascalCase
+24:8: struct name 'Names' has invalid prefix and case
+  expected prefix 'T', 'I' or 'E' and PascalCase between naming affixes
+25:9: variable name 'custom_begin' has invalid case
+  expected PascalCase
+26:9: variable name 'begin' has invalid case
+  expected PascalCase
+27:9: variable name 'external_name' has invalid case
+  expected PascalCase
+29:6: function name 'begin_extra' has invalid case
+  expected PascalCase
+31:6: function name 'external_names' has invalid case
+  expected PascalCase
+32:6: function name 'DoWork_' has invalid case
+  expected PascalCase
+33:15: variable name 'BadParameter' has invalid case
+  expected camelCase
+36:6: function name 'main_extra' has invalid case
+  expected PascalCase
+37:6: function name 'DoMain_' has invalid case
+  expected PascalCase
