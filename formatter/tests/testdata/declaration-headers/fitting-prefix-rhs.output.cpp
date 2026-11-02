@@ -26,13 +26,13 @@ void Sample()
     size_t callbacks = 0, factories = 0, pointers = 0, constructors = 0,
         selfTypes = 0;
 }
-
 namespace Tags {
-
-////////////////////////////////////////////////////////////////////////////////
-
 BEGIN_TAGS
-enum Token{First, Second};
+enum Token
+{
+    First,
+    Second
+};
 
 END_TAGS
 

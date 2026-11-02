@@ -84,3 +84,56 @@ OpenScope
 namespace {
 }
 CloseScope
+
+ScopeBegin
+class Metadata
+{
+    public:
+    int Get(int value) {
+        return value;
+    }
+    private:
+    int stored = 2;
+};
+ScopeEnd
+
+OpenScope
+// independent record
+struct Data
+{
+    int first = 1;
+    int second = 2;
+};
+CloseScope
+
+OpenScope
+union Payload
+{
+    int number;
+    float fraction;
+};
+CloseScope
+
+OpenScope
+template<class T>
+class Wrapper
+{
+    T value;
+};
+CloseScope
+
+OpenScope
+enum class State
+{ First, Second };
+CloseScope
+
+OpenScope
+class Forward;
+CloseScope
+
+EXPORT class SameLine { int member=3; };
+typedef
+struct Alias { int member; } Alias;
+const
+struct Data* pointer;
+Data make(class Forward* value);
