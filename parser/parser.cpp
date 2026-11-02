@@ -2609,6 +2609,26 @@ private:
             const auto first = NextSignificant(begin);
             const auto second = NextSignificant(first + 1);
 
+            if (kind == NodeKind::TemplateArgument) {
+                auto operand = first;
+
+                while (operand < end &&
+                    (Kind(operand) == TK::Operator_OpenParenthesis || IsPrefixOperator(Kind(operand))))
+                {
+                    operand = NextSignificant(operand + 1);
+                }
+
+                // A lambda-led argument is an expression, including through
+                // unary and parenthesized operands. Its body needs syntax
+                // ownership rather than the opaque interiors of type scanning.
+                if (operand < end && Kind(operand) == TK::Operator_OpenBracket &&
+                    Kind(NextSignificant(operand + 1)) != TK::Operator_OpenBracket)
+                {
+                    AddExpressionRange(element, begin, end);
+                    return;
+                }
+            }
+
             // Multiword type prefixes need an owner for specifier spacing.
             // Nested type syntax already contributes its own nodes.
             if (kind == NodeKind::TemplateArgument && second < end && IsWordToken(Kind(first)) &&

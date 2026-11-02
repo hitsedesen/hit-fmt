@@ -31,11 +31,21 @@ void local() {
 template<class, auto, class> struct Box {
 };
 template<class, auto, class> int make();
-void declared(Box<int, []() -> int { return 1; }, int> value);
-void declared(Box<int, int, []() -> int { return 1; }> value);
-void declared(int value = make<int, []() -> int { return 1; }, int>());
-void declared(int value = make<int, int, []() -> int { return 1; }>());
-void declared(Foreign<int, []() -> int { return 1; }, int> value);
+void declared(Box<int, []() -> int {
+    return 1;
+}, int> value);
+void declared(Box<int, int, []() -> int {
+    return 1;
+}> value);
+void declared(int value = make<int, []() -> int {
+    return 1;
+}, int>());
+void declared(int value = make<int, int, []() -> int {
+    return 1;
+}>());
+void declared(Foreign<int, []() -> int {
+    return 1;
+}, int> value);
 void declared(bool value = 1 < 2, int other = [] { return 1; }());
 void declared(void (*callback)(int));
 void declared([[maybe_unused]] int value);

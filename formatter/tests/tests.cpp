@@ -2950,6 +2950,22 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "template-arguments", {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
     cases.push_back({
         data / "template-arguments",
+        "lambdas",
+        "lambdas.input.cpp",
+        "../../../../hit-fmt/examples/ytsaurus",
+    });
+    {
+        auto preserved = cases.back();
+        preserved.Name = "lambdas-preserve";
+        preserved.Expected = "lambdas.output.cpp";
+        preserved.Style =
+            formatter::LoadConfigFile(preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
+        preserved.Style->TemplateArgumentsLayout = CategoryLayout::Preserve;
+        cases.push_back(std::move(preserved));
+    }
+
+    cases.push_back({
+        data / "template-arguments",
         "function-types",
         "function-types.input.cpp",
         "../style/repository-80",
