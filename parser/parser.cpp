@@ -8289,10 +8289,19 @@ private:
         initializer->Tokens.End = semicolons[0];
 
         if (begin < semicolons[0]) {
-            if (ClassifySimpleStatement(begin) == NodeKind::DeclarationStatement) {
+            const auto kind = ClassifySimpleStatement(begin);
+
+            if (kind == NodeKind::DeclarationStatement) {
                 AddDeclarationSyntax(*initializer, begin, semicolons[0]);
-            } else {
+            } else if (kind == NodeKind::ExpressionStatement) {
                 AddExpressionRange(*initializer, begin, semicolons[0]);
+            } else {
+                // Missing type bindings leave the initializer head ambiguous,
+                // just as in a block statement. Only its assignment RHS is shared.
+                auto* statement = MakeNode(kind, begin);
+                statement->Tokens.End = semicolons[0];
+                AddAmbiguousAssignmentRhs(*statement, semicolons[0]);
+                Append(*initializer, *statement);
             }
         }
 
@@ -10344,9 +10353,8 @@ private:
         unambiguous = false;
         bool hasTemplateArguments = false;
         bool typeEvidence = false;
-        bool hasQualifiedType = Kind(first) == TK::Operator_ScopeResolution;
 
-        if (hasQualifiedType) {
+        if (Kind(first) == TK::Operator_ScopeResolution) {
             first = NextSignificant(first + 1);
 
             if (first >= end || Kind(first) != TK::Identifier) {
@@ -10371,7 +10379,6 @@ private:
                 hasTemplateArguments = true;
                 typeEvidence |= HasTypeTemplateArgument(cursor, templateEnd);
                 cursor = NextSignificant(templateEnd);
-                hasQualifiedType = true;
                 continue;
             }
 
@@ -10390,11 +10397,6 @@ private:
             }
 
             cursor = NextSignificant(cursor + 1);
-            hasQualifiedType = true;
-        }
-
-        if (!hasQualifiedType) {
-            return false;
         }
 
         bool pointerOrReference = false;
@@ -10471,26 +10473,10 @@ private:
             return NodeKind::ExpressionStatement;
         }
 
-        auto next = NextSignificant(name + 1);
-
-        if (Kind(next) == TK::Identifier) {
-            // Adjacent type and declarator names cannot form an expression,
-            // even when the type's declaration is outside this input file.
-            return NodeKind::DeclarationStatement;
-        }
-
         bool unambiguous = false;
 
         if (LooksLikeUnknownTypeDeclaration(first, Tree_.Tokens_.Size(), unambiguous)) {
             return unambiguous ? NodeKind::DeclarationStatement : NodeKind::AmbiguousStatement;
-        }
-
-        if (Kind(next) == TK::Operator_Star || Kind(next) == TK::Operator_Ampersand || Kind(next) == TK::Operator_And) {
-            auto name = NextSignificant(next + 1);
-
-            if (Kind(name) == TK::Identifier) {
-                return NodeKind::AmbiguousStatement;
-            }
         }
 
         return NodeKind::ExpressionStatement;
