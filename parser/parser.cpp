@@ -3758,7 +3758,21 @@ private:
         while (!AtEnd() && CurrentKind() != TK::Operator_OpenBrace && CurrentKind() != TK::Operator_Semicolon &&
             CurrentKind() != TK::Operator_CloseBrace)
         {
-            ++Cursor_;
+            if (CurrentKind() == TK::Operator_OpenBracket && Kind(Cursor_ + 1) == TK::Operator_OpenBracket) {
+                auto begin = Cursor_;
+                ConsumeBalanced();
+                auto* attribute = MakeNode(NodeKind::AttributeSpecifier, begin);
+                attribute->Tokens.End = Cursor_;
+                Append(*node, *attribute);
+            } else if (IsExtensionAttribute(Cursor_)) {
+                auto begin = Cursor_;
+                Cursor_ = FindExtensionAttributeEnd(begin, ParseLimit_);
+                auto* attribute = MakeNode(NodeKind::ExtensionAttributeSpecifier, begin);
+                attribute->Tokens.End = Cursor_;
+                Append(*node, *attribute);
+            } else {
+                ++Cursor_;
+            }
         }
         if (CurrentKind() == TK::Operator_OpenBrace) {
             auto bodyStart = Cursor_;

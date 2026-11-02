@@ -1,0 +1,10 @@
+enum class [[nodiscard]] Status { Ready, Failed };
+enum struct [[deprecated("use Status")]] Legacy : unsigned { Old };
+enum [[deprecated]] [[vendor::tag(Token{3})]] Flag { Set };
+enum [[deprecated]]  : unsigned { Anonymous };
+enum class [[nodiscard]] Forward : unsigned;
+enum [[deprecated]] Unscoped : unsigned;
+enum class /* key */ [[nodiscard]] /* name */ Commented { Value };
+enum __attribute__((deprecated)) Extension { Extended };
+enum class Plain { First, Second };
+struct [[nodiscard]] Record { int values[2]; };
