@@ -93,6 +93,8 @@ struct Syntax
     bool NamespaceSuffix : 1 = false;
     bool Preprocessing : 1 = false;
     bool FlatRoot : 1 = false;
+    // Recovered lists cannot supply their children's continuation level.
+    bool UnplannedListIndent : 1 = false;
     parser::TokenRange SequenceBody = {};
 };
 
@@ -362,6 +364,8 @@ public:
 
             auto& entry = Syntax_[i];
             const auto& node = Region(entry);
+            entry.UnplannedListIndent =
+                !entry.ItemSequence && node.Parent != None && Syntax_[node.Parent].UnplannedListIndent;
 
             // Uncertain annotation islands retain their complete topology.
             // Plan their relative indentation once, not nested syntax layouts.
@@ -470,6 +474,7 @@ public:
             // Chain planning rebases opaque spines through its preservation fallback.
             if (!entry.Safe && !IsSpine(node.Kind) && !CanPlanAroundOpaqueChildren(i)) {
                 if (ListFor(node.Kind)) {
+                    entry.UnplannedListIndent = true;
                     PreserveUnplannedListContext(i);
                 }
 
@@ -1554,9 +1559,11 @@ private:
         }
 
         GroupSpecs_[group].StructuralBase = true;
-        // An opaque callee spine may have no chain group to provide its level.
-        // Arguments still continue from the call's physical opening line.
-        GroupSpecs_[group].LineBase = node.Kind == NodeKind::ArgumentList;
+        // An opaque callee or sibling can leave enclosing lists unplanned.
+        // Independent children then need their physical opening line's base.
+        GroupSpecs_[group].LineBase = node.Kind == NodeKind::ArgumentList ||
+            (node.Kind == NodeKind::InitializerList && Syntax_[id].UnplannedListIndent);
+        Syntax_[id].UnplannedListIndent = false;
 
         if (node.Kind == NodeKind::TemplateParameterList || node.Kind == NodeKind::TemplateArgumentList ||
             node.Kind == NodeKind::LambdaCaptureList)
