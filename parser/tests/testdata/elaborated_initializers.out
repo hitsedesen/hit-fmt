@@ -1803,4 +1803,117 @@
     (class-virt-specifier "final")
     "{" "}" ";"
   )
+  (preprocessing-directive
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "#include \"types.h\""
+  )
+  (function-definition
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration
+        (declaration-specifiers "struct" "ImportedState")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "plain")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "ImportedState")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "control")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "class" "ImportedMessage")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "message")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "union" "ImportedPayload")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "payload")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (record-declaration "struct" "Local" "{" "}" ";")
+      (record-declaration
+        "struct" "SealedLocal"
+        (class-virt-specifier "final")
+        "{" "}" ";"
+      )
+      (record-declaration
+        "struct"
+        (unparsed-syntax "Decorated" "LocalRecord")
+        "{"
+        (declaration
+          (declaration-specifiers "int")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "value")
+              )
+            )
+          )
+          ";"
+        )
+        "}" ";"
+      )
+      "}"
+    )
+  )
 )

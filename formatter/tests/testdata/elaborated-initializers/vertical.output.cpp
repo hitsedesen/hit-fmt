@@ -198,3 +198,19 @@ struct HiddenFinal;
 int HiddenFinal;
 struct HiddenFinal final
 { };
+
+#include "types.h"
+
+void Run() {
+    struct ImportedState plain{};
+    ImportedState control{};
+    class ImportedMessage message{};
+    union ImportedPayload payload{};
+    struct Local
+    { };
+    struct SealedLocal final
+    { };
+    struct Decorated LocalRecord {
+        int value;
+    };
+}

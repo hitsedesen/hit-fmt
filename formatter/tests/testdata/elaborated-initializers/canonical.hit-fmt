@@ -4,3 +4,5 @@ StructBracePlacement = NextLine
 EmptyBodyShape = CompactIfFits
 EmptyBlockInteriorSpacing = Space
 BraceInitializerSpacing = NoSpace
+EmptyBraceInitializerInteriorSpacing = NoSpace
+RecordBodyInteriorSpacing = Space
