@@ -3075,7 +3075,8 @@ private:
             bool startsDeclaration = angleDepth == 0 &&
                 ((boundaryEligible &&
                     (IsDeclarationSpecifier(kind) || kind == TK::Keyword_operator || kind == TK::Keyword_using ||
-                        kind == TK::Keyword_concept)) ||
+                        kind == TK::Keyword_concept ||
+                        (kind == TK::Operator_OpenBracket && Kind(next) == TK::Operator_OpenBracket))) ||
                     (constraintMayEnd && kind == TK::Identifier &&
                         (Kind(next) == TK::Identifier || Kind(next) == TK::Keyword_operator ||
                             Kind(next) == TK::Operator_OpenParenthesis)));

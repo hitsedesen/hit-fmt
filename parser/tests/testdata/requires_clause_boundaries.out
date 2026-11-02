@@ -437,4 +437,235 @@
       ";"
     )
   )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (member-expression
+          (identifier-expression "traits")
+          "::"
+          (unparsed-syntax "Ready" "<" "traits" "::" "Value" "<" "T" ">>")
+        )
+      )
+    )
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    (function-definition
+      (declaration-specifiers
+        "traits" "::" "Result"
+        (template-argument-list
+          "<"
+          (template-argument "T")
+          ">"
+        )
+      )
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Convert")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (parenthesized-expression
+          "("
+          (binary-expression
+            (template-id-expression
+              (identifier-expression "Ready")
+              (template-argument-list
+                "<"
+                (template-argument "T")
+                ">"
+              )
+            )
+            "&&"
+            (identifier-expression "enabled")
+          )
+          ")"
+          (trailing-trivia
+            (comment "/* declaration boundary */")
+          )
+        )
+        "/* declaration boundary */"
+      )
+    )
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    (attribute-specifier "[" "[" "deprecated" "(" "\"use another overload\"" ")" "]" "]")
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Inspect")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+  )
+  (template-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "template"
+    (template-parameter-list
+      "<"
+      (template-parameter "class" "T")
+      ">"
+    )
+    (requires-clause
+      "requires"
+      (constraint-expression
+        (requires-expression
+          "requires"
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "T")
+              (init-declarator-list
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
+                  )
+                )
+              )
+            )
+            ")"
+          )
+          (requirement-body
+            "{"
+            (simple-requirement
+              (subscript-expression
+                (identifier-expression "value")
+                "["
+                (literal-expression "0")
+                "]"
+              )
+            )
+            (list-separator ";")
+            (simple-requirement
+              (call-expression
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (literal-expression "true")
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+                (argument-list "(" ")")
+              )
+            )
+            (list-separator ";")
+            "}"
+          )
+        )
+      )
+    )
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    (function-definition
+      (declaration-specifiers "T")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "Copy")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      (compound-statement
+        "{"
+        (return-statement
+          "return"
+          (identifier-expression "value")
+          ";"
+        )
+        "}"
+      )
+    )
+  )
 )

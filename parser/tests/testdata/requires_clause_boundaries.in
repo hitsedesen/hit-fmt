@@ -34,3 +34,19 @@ struct Pack;
 template<int Value>
 requires (lower < Value > upper)
 void Ordered();
+
+template<class T>
+requires traits::Ready<traits::Value<T>>
+[[nodiscard]] traits::Result<T> Convert(T value) { return {}; }
+
+template<class T>
+requires (Ready<T> && enabled) /* declaration boundary */
+[[nodiscard]] [[deprecated("use another overload")]]
+int Inspect(T value);
+
+template<class T>
+requires requires(T value) {
+    value[0];
+    [] { return true; }();
+}
+[[nodiscard]] T Copy(T value) { return value; }
