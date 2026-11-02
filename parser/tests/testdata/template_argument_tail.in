@@ -9,4 +9,8 @@ void Test()
     result = APPLY(first, left < right ? value, limit > (other), next : fallback, last);
     result = APPLY(first, helpers::Make<flag ? left, right : other>(value), index, last);
     result = APPLY(first, left < right, limit > value, index, last);
+    result = APPLY(limits<int>::max(), true);
+    result = APPLY(factory<const Item*>::make(), true);
+    result = APPLY(factory<4, int>::make(), true);
+    result = APPLY(left < right > ::value(), true);
 }

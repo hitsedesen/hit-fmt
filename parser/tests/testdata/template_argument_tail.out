@@ -400,6 +400,140 @@
         )
         ";"
       )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (member-expression
+                    (template-id-expression
+                      (identifier-expression "limits")
+                      (template-argument-list
+                        "<"
+                        (template-argument "int")
+                        ">"
+                      )
+                    )
+                    "::"
+                    (identifier-expression "max")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "true")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (member-expression
+                    (template-id-expression
+                      (identifier-expression "factory")
+                      (template-argument-list
+                        "<"
+                        (template-argument
+                          (type-id "const" "Item" "*")
+                        )
+                        ">"
+                      )
+                    )
+                    "::"
+                    (identifier-expression "make")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "true")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (member-expression
+                    (template-id-expression
+                      (identifier-expression "factory")
+                      (template-argument-list
+                        "<"
+                        (template-argument "4")
+                        (list-separator ",")
+                        (template-argument "int")
+                        ">"
+                      )
+                    )
+                    "::"
+                    (identifier-expression "make")
+                  )
+                  (argument-list "(" ")")
+                )
+              )
+              (list-separator ",")
+              (argument
+                (literal-expression "true")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (assignment-expression
+          (identifier-expression "result")
+          "="
+          (call-expression
+            (identifier-expression "APPLY")
+            (argument-list
+              "("
+              (argument
+                (call-expression
+                  (member-expression
+                    (unparsed-syntax "left" "<" "right" ">")
+                    "::"
+                    (identifier-expression "value")
+                  )
+                  (argument-list "(" ")")
+                )
+                (unparsed-syntax "," "true")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
       "}"
     )
   )

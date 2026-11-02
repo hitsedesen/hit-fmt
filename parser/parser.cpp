@@ -7254,7 +7254,11 @@ private:
                     const bool parenthesizedSuffix = following < end &&
                         Kind(following) == TK::Operator_OpenParenthesis && ArgumentPairEnd(following, end).has_value();
 
-                    if (ArgumentTemplateUse(following, end) || parenthesizedSuffix) {
+                    // Definite type arguments prove template use even before a
+                    // qualified member; its trailing comma still separates arguments.
+                    if (ArgumentTemplateUse(following, end) || parenthesizedSuffix ||
+                        HasTypeTemplateArgument(i, following))
+                    {
                         // A nonempty suffix can still be a comparison operand,
                         // so expression parsing retains the ambiguous angles.
                         // Either interpretation ends before the comma after
