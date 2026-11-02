@@ -1,0 +1,2 @@
+include = "hinted.hit-fmt"
+FunctionBodyMacroNames = ["TEST_F", "DEFINE_CASE"]

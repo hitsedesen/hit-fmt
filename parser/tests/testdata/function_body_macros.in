@@ -21,3 +21,19 @@ static inline DEFINE_CASE(Suite, Helper(alpha + beta)) { Use(value); }
 static DEFINE_CASE(Suite, DeclarationOnly);
 int tail;
 }
+
+EXPORT DEFINE_CASE() {}
+
+Result
+OrdinaryFunction() { return {}; }
+
+OpenScope
+
+DEFINE_CASE() {}
+
+CloseScope
+
+OpenScope
+// independent test
+DEFINE_CASE(Suite, Test) { Use(value); }
+CloseScope
