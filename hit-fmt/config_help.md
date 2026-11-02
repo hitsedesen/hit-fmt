@@ -564,9 +564,10 @@ FunctionCvRefQualifierSpacing = NoSpace
   on its own line even if the call fits. Default: []. Exact unqualified
   names, including members; overrides both first-argument pin lists.
   CallLineMessageOverflow controls width conflicts: Wrap (default) wraps
-  headers at argument boundaries before splitting nested expressions or
-  concatenated literals; KeepInline keeps the header through the complete
-  message on the call line, even past ColumnLimit. Required nested breaks
+  headers at argument boundaries before splitting nested expressions.
+  Concatenated literals may wrap after a fitting first fragment beside the
+  opener. KeepInline keeps the header through the complete message on the
+  call line, even past ColumnLimit. Required nested breaks
   still win. Calls without a complete
   literal use ordinary layout. Preserve/Always and protection still win.
 - CallLineFirstArgumentNames pins any first argument beside the opener;

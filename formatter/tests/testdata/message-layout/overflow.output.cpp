@@ -30,8 +30,7 @@ void Report()
         ready && valid,
         "Incompatible entries in the requested batch %v",
         batch);
-    message(
-        code,
+    message(code,
         "A description with "
             "two separately stored message fragments %v",
         value);
