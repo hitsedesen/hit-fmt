@@ -812,8 +812,7 @@ BlankLineMacroNames = []
 # beside the opener; put every following format argument on its
 # own line even when the call fits. Exact unqualified names,
 # including members. Overrides both first-argument pin lists.
-# Overflowing headers wrap at argument boundaries before
-# splitting nested expressions or concatenated literal pieces.
+# CallLineMessageOverflow controls overflowing headers.
 # Without a complete literal argument, use ordinary call layout.
 # CallsLayout = Preserve, CallsBreak = Always and protection win.
 # Example: CallLineMessageNames = ["LOG_MESSAGE"]
@@ -822,6 +821,18 @@ BlankLineMacroNames = []
 #     count);
 # Values: [] or ["name", ...]
 CallLineMessageNames = []
+
+# Applies to CallLineMessageNames only.
+# Wrap (default): wrap at argument boundaries before splitting
+# nested expressions or concatenated literal pieces.
+# KeepInline: keep preceding arguments and the complete message
+# beside the opener, even past ColumnLimit. Required nested
+# breaks, CallsBreak = Always, preserved calls and protection win.
+# Example: with CallLineMessageNames = ["raise"], KeepInline keeps
+# raise(condition, "A long message", value) through the message
+# on the call line; value still moves to its own line.
+# Values: Wrap | KeepInline
+CallLineMessageOverflow = Wrap
 
 # Exact names (including member calls), empty by default.
 # Unqualified identifiers, not patterns.

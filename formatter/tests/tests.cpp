@@ -2743,6 +2743,15 @@ std::vector<FormatCase> FormatCases()
         }
 
         cases.push_back({directory, "overflow", "overflow.input.cpp"});
+        cases.push_back({directory, "keep-inline", "overflow.input.cpp"});
+
+        for (const auto* name : {"always", "preserve", "unlimited"}) {
+            auto style = formatter::LoadConfigFile(directory / (std::string(name) + ".hit-fmt")).FormattingStyle;
+            style.CallLineMessageOverflow = formatter::MessageHeaderOverflow::KeepInline;
+            cases.push_back({directory, std::string("keep-inline-") + name, "policy.input.cpp"});
+            cases.back().Style = style;
+            cases.back().Expected = std::string(name) + ".output.cpp";
+        }
     }
 
     for (const bool anyArgument : {false, true}) {

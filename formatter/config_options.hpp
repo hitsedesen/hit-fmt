@@ -571,6 +571,8 @@
     OPT(formatter::AttachedStringOverflow, CallLineFirstStringOverflow, \
         formatter::AttachedStringOverflow::Wrap) \
     OPT(std::vector<std::string>, CallLineMessageNames, {})                   \
+    OPT(formatter::MessageHeaderOverflow, CallLineMessageOverflow, \
+        formatter::MessageHeaderOverflow::Wrap) \
     OPT(std::vector<std::string>, ChainedCallRootNames, {})                   \
     OPT(std::vector<std::string>, AlwaysBreakChainRootNames, {})              \
     OPT(std::vector<std::string>, AlwaysBreakChainCallNames, {})              \

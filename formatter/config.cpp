@@ -988,7 +988,9 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         result.MessagePins_.push_back({
             name,
             FirstArgumentAnnotation::PinCompleteStringLiteral,
-            AttachedStringOverflow::KeepInline,
+            style.CallLineMessageOverflow == MessageHeaderOverflow::KeepInline
+                ? AttachedStringOverflow::KeepInline
+                : AttachedStringOverflow::Wrap,
             true,
         });
     }
