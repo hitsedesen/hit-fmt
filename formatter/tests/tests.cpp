@@ -4753,7 +4753,7 @@ TEST_P(NamingTest, Golden)
 {
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
     const auto name = GetParam();
-    const bool exemptions = name == "exemptions" || name == "exemptions_disabled";
+    const bool exemptions = name.starts_with("exemptions");
     const bool extended =
         name == "roles" || name == "fallback" || name == "affixes" || name == "acronyms" || exemptions;
     const auto input = ReadFile(dir /
@@ -4791,7 +4791,8 @@ INSTANTIATE_TEST_SUITE_P(
         "affixes",
         "acronyms",
         "exemptions",
-        "exemptions_disabled"),
+        "exemptions_disabled",
+        "exemptions_ytsaurus"),
     ConfigName);
 
 TEST(Formatter, Preserve_KeepsEmptyRecoveryAndBinarySource)

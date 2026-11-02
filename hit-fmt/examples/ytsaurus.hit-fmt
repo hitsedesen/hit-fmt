@@ -264,6 +264,7 @@ StructNamePrefixes = ["T", "I", "E"]
 EnumNameCase = PascalCase
 EnumNamePrefixes = ["E"]
 FunctionNameCase = PascalCase
+NamingStandardLibraryExemptions = true
 NamespaceNameCase = PascalCase
 NamespaceNamePrefixes = ["N"]
 LocalVariableNameCase = camelCase

@@ -57,6 +57,7 @@ bool Configured(const NameRule& rule)
 bool StandardLibraryFunction(std::string_view name)
 {
     static constexpr std::string_view names[] = {
+        "main",
         "begin",
         "end",
         "cbegin",

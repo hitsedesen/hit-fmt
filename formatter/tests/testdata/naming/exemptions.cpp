@@ -31,3 +31,7 @@ void BEGIN() { }
 void external_names() { }
 void DoWork_() { int data; }
 void size(int BadParameter) { }
+int main() { return 0; }
+int main(int argc, char** argv) { return 0; }
+void main_extra() { }
+void DoMain_() { int main; }
