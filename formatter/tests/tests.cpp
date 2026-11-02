@@ -339,6 +339,14 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "class-body-macros", {"hinted", "preserve", "unhinted"});
     AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
     AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});
+
+    cases.push_back({
+        data / "declaration-headers",
+        "member-suffixes-ytsaurus",
+        "member-suffixes.input.cpp",
+        (examples / "ytsaurus").string(),
+    });
+
     AddCases(cases, data / "interword-spacing", {"canonical", "preserve", "headers-preserve"});
 
     for (const auto* profile : {"space", "specifier-preserve", "preserve"}) {

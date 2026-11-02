@@ -661,7 +661,27 @@ TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
         style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
         const formatter::PreparedFormat prepared(style);
         const auto result = FormatInput(source, prepared);
-        EXPECT_TRUE(result.Diagnostics.empty());
+
+        if (std::string_view(profile) == "narrow") {
+            // These indivisible function names and suffixes exceed 40 columns.
+            const std::array suffixes{
+                "ReadResultFromCurrentStorage() const noexcept",
+                "GetResultFromCurrentStorage() noexcept",
+            };
+            ASSERT_EQ(result.Diagnostics.size(), suffixes.size());
+
+            for (size_t i = 0; i < suffixes.size(); ++i) {
+                const auto suffix = result.Text.find(suffixes[i]);
+                ASSERT_NE(suffix, std::string::npos);
+                EXPECT_EQ(result.Diagnostics[i].Kind, formatter::LayoutDiagnosticKind::LineWidth);
+                EXPECT_EQ(
+                    result.Diagnostics[i].Position.Line,
+                    1 + std::count(result.Text.begin(), result.Text.begin() + suffix, '\n'));
+            }
+        } else {
+            EXPECT_TRUE(result.Diagnostics.empty());
+        }
+
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
     }
 

@@ -2759,8 +2759,6 @@ private:
             case NodeKind::DeclaratorName:
             case NodeKind::DestructorName:
             case NodeKind::OperatorFunctionName:
-            case NodeKind::FunctionQualifier:
-            case NodeKind::ExceptionSpecification:
             case NodeKind::TrailingReturnType:
                 return true;
             default:
@@ -2840,28 +2838,20 @@ private:
             const auto current = Stack_.back();
             Stack_.pop_back();
             const auto& part = Region(Syntax_[current]);
-            const bool suffix = function && !part.Tokens.Empty() &&
-                (part.Kind == NodeKind::FunctionQualifier || part.Kind == NodeKind::ExceptionSpecification ||
-                    part.Kind == NodeKind::TrailingReturnType);
+            const bool suffix = function && !part.Tokens.Empty() && part.Kind == NodeKind::TrailingReturnType;
             const auto owner = suffix
                 ? GroupAt(GapPosition(part.Tokens.Begin), GapPosition(part.Tokens.End), layout::GroupMode::Fill)
                 : group;
 
             if (suffix) {
-                // Keep qualifiers beside the parameter closer; a return type
-                // can instead move intact before breaking its template lists.
-                const bool trailing = part.Kind == NodeKind::TrailingReturnType;
-                GroupSpecs_[owner].BreakPenalty = trailing ? 0 : 2;
-
-                if (trailing) {
-                    const auto offset = Policies_.Parameters.Indent.ContinuationOffset;
-                    GroupSpecs_[owner].Indent = int32_t(offset);
-                    GroupSpecs_[owner].StructuralBase = true;
-                    GroupSpecs_[owner].Continuation = true;
-                    Groups_[owner].Indent = {ContinuationAlignment::Block, offset, offset};
-                    Groups_[owner].HasAnchor = true;
-                    Gaps_[part.Tokens.Begin].FitThrough = part.Tokens.End;
-                }
+                // A return type can move intact before breaking its template lists.
+                const auto offset = Policies_.Parameters.Indent.ContinuationOffset;
+                GroupSpecs_[owner].Indent = int32_t(offset);
+                GroupSpecs_[owner].StructuralBase = true;
+                GroupSpecs_[owner].Continuation = true;
+                Groups_[owner].Indent = {ContinuationAlignment::Block, offset, offset};
+                Groups_[owner].HasAnchor = true;
+                Gaps_[part.Tokens.Begin].FitThrough = part.Tokens.End;
             }
 
             Index nameBegin = None;
@@ -2948,7 +2938,11 @@ private:
                             ((node.Kind == NodeKind::DeclarationSpecifiers && separated) || t == nameBegin ||
                                 (t == node.Tokens.Begin && headerPart));
 
-                        if ((kind == NodeKind::FunctionDeclaration || kind == NodeKind::InitDeclarator) && !breakable) {
+                        // Qualifiers and exception specifications stay with the
+                        // parameter closer, including across authored line breaks.
+                        if ((kind == NodeKind::FunctionDeclaration || kind == NodeKind::InitDeclarator) && !breakable &&
+                            node.Kind != NodeKind::FunctionQualifier && node.Kind != NodeKind::ExceptionSpecification)
+                        {
                             return;
                         }
 
