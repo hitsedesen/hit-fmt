@@ -478,6 +478,10 @@ void PruneTextOnlyNamespaceNoOps(
     const auto noOp = [&] (const NamespaceIdentity& ns) {
         const bool existing = ns.Comment != count;
 
+        if (ns.ExplanatoryComment) {
+            return plan.Options.Policy == NamespaceCommentPolicy::Remove;
+        }
+
         if (plan.Options.Policy == NamespaceCommentPolicy::AddMissing && existing) {
             return true;
         }

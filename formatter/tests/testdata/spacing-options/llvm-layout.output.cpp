@@ -33,7 +33,7 @@ namespace empty {
 }
 namespace withComment {
 int X;
-} // namespace withComment
+} // old name
 namespace larger {
 int X;
 int Y;

@@ -89,6 +89,63 @@ TEST(FileCheck, NamingRolesRemainFailuresAfterApplyingFormatting)
     fixture.Expect(diagnostics, ".diagnostics.txt");
 }
 
+TEST(FileCheck, ExplanatoryNamespaceCommentsKeepMissingLabelDiagnostics)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "namespace-comments",
+    };
+    const Input input(fixture.InputNamed(".input.cpp"));
+
+    for (const auto policy : {formatter::NamespaceComments::Fix, formatter::NamespaceComments::AddMissing}) {
+        auto raw = Configuration();
+        raw.FormattingStyle.NamespaceComments = policy;
+        raw.FormattingStyle.RemoveNullDeclarations = true;
+        const hit_fmt::PreparedConfiguration prepared(raw);
+
+        for (const auto detail :
+            {hit_fmt::DiagnosticDetail::Summary, hit_fmt::DiagnosticDetail::Locations, hit_fmt::DiagnosticDetail::Full})
+        {
+            const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, detail);
+            ASSERT_EQ(checked.RequiredChanges.size(), 4u);
+            EXPECT_TRUE(checked.HasFailures(false));
+            EXPECT_TRUE(checked.HasFailures(true));
+            const Input applied(checked.Formatting.Text);
+            const auto repeated = hit_fmt::FormatAndCheckFile(applied.View(), prepared);
+            EXPECT_EQ(repeated.Formatting.Text, checked.Formatting.Text);
+            EXPECT_FALSE(repeated.FormattingMismatch);
+            EXPECT_EQ(repeated.RequiredChanges.size(), 4u);
+            std::ostringstream summary;
+            hit_fmt::PrintFileSummaryIssues(summary, checked, true);
+            fixture.Expect(summary.str(), ".summary.txt");
+
+            if (detail != hit_fmt::DiagnosticDetail::Summary) {
+                for (const bool fix : {false, true}) {
+                    std::ostringstream output;
+                    hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix);
+                    fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
+                }
+            }
+        }
+
+        const formatter::Hunk selected[] = {{1, 1}};
+        const auto scoped =
+            hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{selected, false});
+        ASSERT_EQ(scoped.RequiredChanges.size(), 1u);
+        EXPECT_EQ(scoped.RequiredChanges.front().Original.Line, 1u);
+        const std::span<const formatter::Hunk> none;
+        const auto unselected =
+            hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, hit_fmt::ChangedFileScope{none, false});
+        EXPECT_TRUE(unselected.RequiredChanges.empty());
+        EXPECT_FALSE(unselected.HasFailures(false));
+
+        raw.FormattingStyle.ShortNamespaceLines = 1;
+        const auto exempt = hit_fmt::FormatAndCheckFile(input.View(), hit_fmt::PreparedConfiguration(raw));
+        EXPECT_TRUE(exempt.RequiredChanges.empty());
+        EXPECT_FALSE(exempt.HasFailures(true));
+    }
+}
+
 TEST(FileCheck, PartialSelectionNeverChangesCanonicalFormatting)
 {
     auto raw = Configuration();

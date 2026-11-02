@@ -30,13 +30,14 @@ struct SemanticDiagnostic
     util::Position Emitted;
     std::string Message;
     formatter::TokenAnchor Anchor;
+    bool BlockedByHunks = false;
 };
 
 struct CheckedFile
 {
     formatter::FormatResult Formatting;
     std::vector<SemanticDiagnostic> Semantic;
-    // Required edits blocked by hunk boundaries.
+    // Required edits that cannot be applied automatically.
     std::vector<SemanticDiagnostic> RequiredChanges;
     // Original byte ranges that were not fully checked.
     std::vector<formatter::HunkCoverage> Incomplete;

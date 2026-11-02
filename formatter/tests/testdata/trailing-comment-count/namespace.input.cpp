@@ -1,4 +1,4 @@
 int amount;	// memo
 namespace N {
 int local;
-}	// wrong
+}	// namespace wrong

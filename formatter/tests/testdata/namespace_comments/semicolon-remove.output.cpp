@@ -13,12 +13,12 @@ int value;
 namespace outer {
 namespace nested {
 int value;
-}
-}
+} // nested closing comment
+} // outer closing comment
 
 namespace direct {
 int value;
-}
+} // wrong closing comment
 
 namespace missing {
 int value;
@@ -30,7 +30,7 @@ int value;
 
 namespace spaced {
 int value;
-}
+}   // spaced closing suffix
 
 int after;
 
@@ -54,4 +54,4 @@ struct Record {
 
 namespace eof {
 int value;
-}
+} // closing comment at EOF

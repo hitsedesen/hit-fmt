@@ -170,6 +170,7 @@ NamespaceCommentPlan CheckedNamespaceComments(
         EXPECT_EQ(actual.Open, expected.Open);
         EXPECT_EQ(actual.Close, expected.Close);
         EXPECT_EQ(actual.Comment, expected.Comment);
+        EXPECT_EQ(actual.ExplanatoryComment, expected.ExplanatoryComment);
     }
 
     EXPECT_EQ(certified.Skipped.size(), plan.Skipped.size());
@@ -742,7 +743,7 @@ TEST(StructuralEdits, NamespaceZeroDisablesExemptionAndNestedIdentities)
 TEST(StructuralEdits, NamespaceFixRemoveKeepCrLfAndIgnoreThreshold)
 {
     for (auto policy : {NamespaceCommentPolicy::Fix, NamespaceCommentPolicy::Remove}) {
-        File file("namespace a {} // old\r\nint x;\r\n");
+        File file("namespace a {} // namespace old\r\nint x;\r\n");
         auto plan = CheckedNamespaceComments(
             file.Tree,
             file.Safety,
@@ -873,7 +874,11 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         auto resolved = ResolveNamespaceComments(file.Tree, plan, text, map, {}, file.Memory, file.Scratch);
         EXPECT_TRUE(resolved.Edits.empty());
         ASSERT_FALSE(resolved.Skipped.empty());
-        EXPECT_EQ(resolved.Skipped.back().Reason, StructuralSkip::FollowingText);
+        EXPECT_EQ(
+            resolved.Skipped.back().Reason,
+            std::string_view(text).find("/*") != std::string_view::npos
+            ? StructuralSkip::MissingNamespaceComment
+            : StructuralSkip::FollowingText);
     }
 
     File file("namespace n {}\n");
