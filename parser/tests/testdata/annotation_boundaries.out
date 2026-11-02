@@ -517,4 +517,65 @@
     )
     ";"
   )
+  (preprocessing-directive "#define WRAPPER_BEGIN")
+  (preprocessing-directive "#define WRAPPER_END")
+  (unparsed-syntax "WRAPPER_BEGIN")
+  (linkage-specification
+    "extern" "\"C\"" "{"
+    (preprocessing-conditional
+      (preprocessing-branch
+        (preprocessing-directive "#if defined(ENABLE_ATTRIBUTE)")
+        (declaration
+          (declaration-specifiers
+            (extension-attribute-specifier "__attribute__" "(" "(" "visibility" "(" "\"default\"" ")" ")" ")")
+          )
+        )
+      )
+      (preprocessing-directive "#endif")
+    )
+    (function-declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "entry")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}"
+  )
+  (declaration
+    (declaration-specifiers "WRAPPER_END")
+    ";"
+  )
+  (preprocessing-directive "#define OPTIONAL_ANNOTATION")
+  (declaration
+    (declaration-specifiers "OPTIONAL_ANNOTATION" "extern" "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "counter")
+        )
+      )
+    )
+    ";"
+  )
 )
