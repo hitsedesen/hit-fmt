@@ -1480,4 +1480,327 @@
     )
     ";"
   )
+  (record-declaration
+    (leading-trivia
+      (whitespace "\n\n")
+    )
+    "struct" "State" "{" "}" ";"
+  )
+  (declaration
+    (declaration-specifiers "State")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "control")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "State")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "State")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "plain")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "::" "State")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "qualified")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "State")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "hiddenCall")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (call-expression
+                  (identifier-expression "produce")
+                  (argument-list "(" ")")
+                )
+              )
+              "}"
+            )
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (function-definition
+    (declaration-specifiers "struct" "State")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "makeState")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (return-statement
+        "return"
+        (braced-initializer
+          (initializer-list "{" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "StateOwner" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "State")
+          )
+        )
+      )
+      ";"
+    )
+    (declaration
+      (declaration-specifiers "struct" "State")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "member")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
+            )
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "useHiddenState")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration-statement
+        (declaration-specifiers "int")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "State")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "struct" "State")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "local")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "struct" "::" "State")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "qualified")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (binary-expression
+          (identifier-expression "State")
+          "*"
+          (identifier-expression "operand")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration "class" "HiddenMessage" "{" "}" ";")
+  (record-declaration
+    "union" "HiddenPayload" "{"
+    (declaration
+      (declaration-specifiers "int")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (declarator-name "value")
+          )
+        )
+      )
+      ";"
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "useHiddenRecords")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "HiddenMessage")
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "HiddenPayload")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (declaration
+        (declaration-specifiers "class" "HiddenMessage")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "message")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration
+        (declaration-specifiers "union" "HiddenPayload")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "payload")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list "{" "}")
+              )
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (record-declaration "struct" "HiddenFinal" ";")
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "HiddenFinal")
+        )
+      )
+    )
+    ";"
+  )
+  (record-declaration
+    "struct" "HiddenFinal"
+    (class-virt-specifier "final")
+    "{" "}" ";"
+  )
 )

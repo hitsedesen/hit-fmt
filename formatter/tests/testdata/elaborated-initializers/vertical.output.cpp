@@ -162,3 +162,39 @@ template<int N> struct Derived: Base<N == 1>
 {
     int value;
 };
+
+struct State
+{ };
+State control{};
+int State();
+struct State plain{};
+struct ::State qualified{};
+struct State hiddenCall{
+    produce(),
+};
+struct State makeState() {
+    return {};
+};
+struct StateOwner
+{
+    int State;
+    struct State member{};
+};
+void useHiddenState() {
+    int State;
+    struct State local{};
+    struct ::State qualified{};
+    State * operand;
+}
+class HiddenMessage { };
+union HiddenPayload {
+    int value;
+};
+void useHiddenRecords(int HiddenMessage, int HiddenPayload) {
+    class HiddenMessage message{};
+    union HiddenPayload payload{};
+}
+struct HiddenFinal;
+int HiddenFinal;
+struct HiddenFinal final
+{ };

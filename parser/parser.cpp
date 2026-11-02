@@ -1118,6 +1118,22 @@ private:
         return kind && *kind == NameKind::Type;
     }
 
+    [[nodiscard]] bool IsKnownElaboratedType(TokenIndex index) const
+    {
+        const auto name = Text(index);
+
+        // Elaborated type specifiers ignore values that hide a record name.
+        for (auto* scope = CurrentScope_; scope; scope = scope->Parent) {
+            for (auto* binding = scope->Bindings; binding; binding = binding->Next) {
+                if (binding->Name == name && binding->Kind == NameKind::Type) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     bool TokenizePieces(
         const SyntaxTree& original,
         std::span<const detail::NormalizedPiece> pieces,
@@ -3373,7 +3389,7 @@ private:
                 // supports an opaque record head; a known type remains a
                 // return type. A base clause also rules out a function.
                 const auto bodyEnd = kind == TK::Operator_OpenBrace ? FindBalancedEnd(next) : end;
-                macroName = !IsKnownType(firstName) &&
+                macroName = !IsKnownElaboratedType(firstName) &&
                     (kind == TK::Operator_Colon ||
                         (bodyEnd < end && Kind(NextSignificant(bodyEnd)) == TK::Operator_Semicolon));
             }
@@ -3534,7 +3550,7 @@ private:
             return false;
         }
 
-        if (name != recordName.FinalSpecifier && (declaratorEvidence || IsKnownType(first))) {
+        if (name != recordName.FinalSpecifier && (declaratorEvidence || IsKnownElaboratedType(first))) {
             return true;
         }
 
