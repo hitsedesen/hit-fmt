@@ -405,12 +405,14 @@ TEST(SyntaxSpacing, BracedAssignmentKeepsItsOperatorGap)
     }
 }
 
-TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
+TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnInitializerInternals)
 {
     GapPolicies policies;
     policies.SpaceAroundCaptureAssignment = GapPolicy::Space;
+    policies.AssignmentOperatorSpacing = GapPolicy::NoSpace;
 
-    for (auto capture : {"[x=(a=1)]", "[x=a=1]", "[&x=(a=1)]", "[...x=(a=1)]", "[&...x=a=1]", "[x /* bind */ = (a=1)]"})
+    for (auto capture :
+        {"[x=(a=1)]", "[x=a=1]", "[x={a=1}]", "[&x=(a=1)]", "[...x=(a=1)]", "[&...x=a=1]", "[x /* bind */ = (a=1)]"})
     {
         const std::string source = std::string("void f(){int a; auto fn=") + capture + "{};}";
         Analysis analysis(source, policies);
@@ -427,13 +429,13 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
 
         for (auto id : {inner, inner + 1}) {
             const auto& gap = analysis.Spacing.Gaps()[id];
-            EXPECT_EQ(gap.Field, F::None) << capture;
-            EXPECT_EQ(gap.Category, C::None) << capture;
+            EXPECT_EQ(gap.Field, F::AssignmentOperatorSpacing) << capture;
+            EXPECT_EQ(gap.Category, C::Expressions) << capture;
             EXPECT_NE(gap.Owner, own.Owner) << capture;
-            EXPECT_NE(
+            EXPECT_EQ(
                 static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
                 0) << capture;
-            EXPECT_FALSE(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety)) << capture;
+            EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), false) << capture;
         }
     }
 
@@ -446,8 +448,8 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnRawInitializerInternals)
 
     for (auto capture : {"[x(a=1)]", "[x{a=1}]"}) {
         Analysis direct(std::string("void f(){auto fn=") + capture + "{};}", policies);
-        EXPECT_EQ(direct.Spacing.Gaps()[direct.Before("=", 1)].Field, F::None);
-        EXPECT_FALSE(direct.Spacing.SpacePreference(direct.Before("=", 1), GapContext::Rebuilt, direct.Safety));
+        EXPECT_EQ(direct.Spacing.Gaps()[direct.Before("=", 1)].Field, F::AssignmentOperatorSpacing);
+        EXPECT_EQ(direct.Spacing.SpacePreference(direct.Before("=", 1), GapContext::Rebuilt, direct.Safety), false);
     }
 
     Analysis simple("void f(){auto fn=[&a, values...]{};}", policies, PointerReferenceDeclaratorLocation::Left);

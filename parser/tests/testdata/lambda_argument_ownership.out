@@ -185,7 +185,10 @@
           (lambda-expression
             (lambda-capture-list
               "["
-              (lambda-capture "seed" "=" "2")
+              (lambda-capture
+                "seed" "="
+                (literal-expression "2")
+              )
               "]"
             )
             (parameter-list

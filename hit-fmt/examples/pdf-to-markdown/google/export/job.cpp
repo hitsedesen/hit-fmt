@@ -105,9 +105,8 @@ std::string SummarizeExport(const Document& document, const Result& result,
       result.source_offsets.size() << ", status: " << status;
   output << ", source map: " << (flags.write_source_map ? "yes" : "no") <<
       ", atomic: " << (flags.atomic_replace ? "yes" : "no");
-  auto preview = [&document, &result, &output, status,
-                  exported_blocks = result.source_offsets.size(),
-                  total_pages = document.pages.size()](
+  auto preview = [&document, &result, &output, status, exported_blocks = result
+                  .source_offsets.size(), total_pages = document.pages.size()](
       std::size_t maximum_characters) {
         const MarkdownView view{result.markdown
                 .data(), std::min(maximum_characters, result.markdown.size())};
