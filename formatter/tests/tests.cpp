@@ -2724,6 +2724,23 @@ std::vector<FormatCase> FormatCases()
         }
 
         cases.push_back({directory, "ytsaurus", "ytsaurus.input.cpp", profile});
+
+        for (const auto packing : {ListPacking::VerticalWhenBroken, ListPacking::AllOrVertical}) {
+            auto fragments = cases.back();
+            fragments.Name = packing == ListPacking::VerticalWhenBroken
+                ? "ytsaurus-fragments"
+                : "ytsaurus-fragments-all-or-vertical";
+
+            if (packing == ListPacking::AllOrVertical) {
+                fragments.Expected = "ytsaurus-fragments.output.cpp";
+            }
+
+            fragments.Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+            fragments.Style->StringLiteralFragmentsAsArguments = true;
+            fragments.Style->CallsPacking = packing;
+            cases.push_back(std::move(fragments));
+        }
+
         cases.push_back({directory, "overflow", "overflow.input.cpp"});
     }
 
