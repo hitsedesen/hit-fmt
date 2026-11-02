@@ -517,4 +517,79 @@
     )
     ";"
   )
+  (enum-declaration
+    "enum" "class"
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    "Status"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "Ready")
+      )
+      (list-separator ",")
+      (enumerator
+        (enumerator-name "Failed")
+      )
+      "}"
+    )
+    ";"
+  )
+  (enum-declaration
+    "enum" "struct"
+    (attribute-specifier "[" "[" "deprecated" "(" "\"use Status\"" ")" "]" "]")
+    "Legacy" ":" "unsigned"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "Old")
+      )
+      "}"
+    )
+    ";"
+  )
+  (enum-declaration
+    "enum"
+    (attribute-specifier "[" "[" "deprecated" "]" "]")
+    (attribute-specifier "[" "[" "vendor" "::" "tag" "(" "Token" "{" "3" "}" ")" "]" "]")
+    "Flag"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "Set")
+      )
+      "}"
+    )
+    ";"
+  )
+  (enum-declaration
+    "enum"
+    (attribute-specifier "[" "[" "deprecated" "]" "]")
+    ":" "unsigned"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "Anonymous")
+      )
+      "}"
+    )
+    ";"
+  )
+  (enum-declaration
+    "enum" "class"
+    (attribute-specifier "[" "[" "nodiscard" "]" "]")
+    "Forward" ":" "unsigned" ";"
+  )
+  (enum-declaration
+    "enum"
+    (extension-attribute-specifier "__attribute__" "(" "(" "deprecated" ")" ")")
+    "Extension"
+    (enumerator-list
+      "{"
+      (enumerator
+        (enumerator-name "Extended")
+      )
+      "}"
+    )
+    ";"
+  )
 )

@@ -28,3 +28,9 @@ Vec NOTE(0) load(int n) noexcept(true) try { return n; } /* first */ catch(int T
 RAW(int n) & noexcept try { return n; } catch(...) { return 0; }
 int genuine(int n) try { return n; } catch(int code) { return code; } catch(...) { return 0; }
 int tail;
+enum class [[nodiscard]] Status { Ready, Failed };
+enum struct [[deprecated("use Status")]] Legacy : unsigned { Old };
+enum [[deprecated]] [[vendor::tag(Token{3})]] Flag { Set };
+enum [[deprecated]] : unsigned { Anonymous };
+enum class [[nodiscard]] Forward : unsigned;
+enum __attribute__((deprecated)) Extension { Extended };
