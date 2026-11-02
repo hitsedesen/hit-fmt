@@ -32,3 +32,13 @@
   expected PascalCase
 37:6: function name 'DoMain_' has invalid case
   expected PascalCase
+38:7: class name 'Error' has invalid case
+  expected PascalCase between naming affixes
+42:8: struct name 'Mutex' has invalid prefix and case
+  expected prefix 'T', 'I' or 'E' and PascalCase between naming affixes
+54:6: function name 'hash_value' has invalid case
+  expected PascalCase
+55:6: function name 'what_extra' has invalid case
+  expected PascalCase
+56:6: function name 'DoCheck_' has invalid case
+  expected PascalCase

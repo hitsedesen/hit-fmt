@@ -68,3 +68,31 @@
   expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
 37:22: variable name 'main' has invalid case
   expected PascalCase
+40:17: function name 'what' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+43:10: function name 'lock' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+44:10: function name 'unlock' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+45:10: function name 'try_lock' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+46:10: function name 'try_lock_for' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+47:10: function name 'try_lock_until' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+48:10: function name 'lock_shared' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+49:10: function name 'unlock_shared' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+50:10: function name 'try_lock_shared' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+51:10: function name 'try_lock_shared_for' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+52:10: function name 'try_lock_shared_until' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+54:6: function name 'hash_value' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+55:6: function name 'what_extra' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+56:23: variable name 'lock' has invalid case
+  expected PascalCase

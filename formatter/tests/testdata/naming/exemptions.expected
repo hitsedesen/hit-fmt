@@ -16,3 +16,9 @@
   expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
 37:22: variable name 'main' has invalid case
   expected PascalCase
+54:6: function name 'hash_value' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+55:6: function name 'what_extra' has invalid prefix and suffix and case
+  expected prefix 'Do' and suffix '_' and PascalCase between naming affixes
+56:23: variable name 'lock' has invalid case
+  expected PascalCase

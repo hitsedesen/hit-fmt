@@ -869,10 +869,17 @@ NameExemptions. Lists replace inherited lists; [] clears custom exemptions.
 NamingStandardLibraryExemptions defaults to false. The YTsaurus preset
 enables it. When true, the entry-point name main and function names begin,
 end, cbegin, cend, rbegin, rend, crbegin, crend, size, ssize, empty, data,
-swap, get, iter_move and iter_swap bypass case, affix and acronym checks.
+swap, get, iter_move, iter_swap, what, lock, unlock, try_lock, try_lock_for,
+try_lock_until, lock_shared, unlock_shared, try_lock_shared,
+try_lock_shared_for and try_lock_shared_until bypass case, affix and acronym
+checks.
 This covers member and free function definitions by name;
-signatures are not verified. Other categories and parameter-name presence
+signatures and inheritance are not verified. Other categories and
+parameter-name presence
 checks are unaffected. Custom exemptions work with either setting.
+
+The exception and mutex names support standard exception overrides and locking
+protocols. Project-specific names such as hash_value require custom exemptions.
 
 Variable roles, in precedence order:
 - Parameter falls back to Variable; GlobalVariable falls back to Variable.
