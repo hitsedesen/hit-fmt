@@ -1413,6 +1413,7 @@ std::vector<FormatCase> FormatCases()
 
     cases.push_back({chains, "comparison-fitting", "comparison-fitting.input.cpp", "child-fitting"});
     cases.push_back({chains, "structural-base", "structural-base.input.cpp"});
+    cases.push_back({chains, "closed-calls", "closed-calls.input.cpp"});
 
     for (const auto* profile : {"template-roots-selected", "template-roots-forced", "template-roots-preserve"}) {
         cases.push_back({chains, profile, "template-roots.input.cpp"});
@@ -3156,7 +3157,7 @@ std::vector<FormatCase> FormatCases()
             "canonical",
             {{2, 2}, {6, 6}},
             spillover,
-            "canonical.input.cpp",
+            spillover ? "" : "canonical.input.cpp",
         });
     }
 

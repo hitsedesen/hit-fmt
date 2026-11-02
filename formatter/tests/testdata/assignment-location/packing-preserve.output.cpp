@@ -11,14 +11,14 @@ bool Inspect()
     };
     auto matched = Check(
         "first_long_pattern") || Check(
-            "second_long_pattern") || Check([](int x) {
-                return x;
-            });
+        "second_long_pattern") || Check([](int x) {
+            return x;
+        });
     return Check(
         "first_long_pattern") || Check(
-            "second_long_pattern") || Check([](int x) {
-                return x;
-            });
+        "second_long_pattern") || Check([](int x) {
+            return x;
+        });
 }
 enum Flags {
     Selected = first_long_predicate() || second_long_predicate() || third_long_predicate() };

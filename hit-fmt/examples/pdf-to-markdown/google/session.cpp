@@ -45,8 +45,8 @@ void Session::Refresh() {
   preview_ = Converter{options_}.Convert(document_, ExportMode::kSelection);
   desktop_.Preview().SetMarkdown(preview_.markdown)
       .SetSourceMap(preview_.source_offsets).PreserveScroll();
-  desktop_.Status().Show("Ready", preview_.source_offsets.size(),
-                         preview_.skipped);
+  desktop_.Status()
+      .Show("Ready", preview_.source_offsets.size(), preview_.skipped);
   dirty_ = false;
 }
 
@@ -103,9 +103,8 @@ void Session::Run() {
         dirty_ = true;
         break;
       case EventKind::kExportFile:
-        if (auto path = desktop_.Dialogs().SaveFile("Export Markdown",
-                                                    "notes.md",
-                                                    {"*.md", "*.markdown"});
+        if (auto path = desktop_.Dialogs()
+            .SaveFile("Export Markdown", "notes.md", {"*.md", "*.markdown"});
             path)
           ExportTo(*path, event->ShiftPressed() ? ExportMode::kWholeDocument
                    : ExportMode::kSelection);

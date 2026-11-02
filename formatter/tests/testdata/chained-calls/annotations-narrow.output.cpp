@@ -34,7 +34,7 @@ void Write() {
       .BeginMap()
         .Item(
             "abcdefghijk").Value(
-                "abcdefghijk")
+            "abcdefghijk")
       .EndMap();
   Builder()
       .BeginMap()
@@ -79,7 +79,7 @@ void Write() {
       .BeginMap()
         .Item(
             "block") /* Keep this block comment. */ .Value(
-                value)
+            value)
       .EndMap();
   Other()
       .BeginMap()

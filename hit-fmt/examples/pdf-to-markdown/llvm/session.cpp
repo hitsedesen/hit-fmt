@@ -47,8 +47,8 @@ void Session::refresh() {
       Converter{Settings}.convert(SourceDocument, ExportMode::Selection);
   ActiveDesktop.preview().setMarkdown(PreviewResult.Markdown)
       .setSourceMap(PreviewResult.SourceOffsets).preserveScroll();
-  ActiveDesktop.status().show("Ready", PreviewResult.SourceOffsets.size(),
-                              PreviewResult.Skipped);
+  ActiveDesktop.status()
+      .show("Ready", PreviewResult.SourceOffsets.size(), PreviewResult.Skipped);
   Dirty = false;
 }
 
@@ -109,9 +109,8 @@ void Session::run() {
       Dirty = true;
       break;
     case EventKind::ExportFile:
-      if (auto Path = ActiveDesktop.dialogs().saveFile("Export Markdown",
-                                                       "notes.md",
-                                                       {"*.md", "*.markdown"});
+      if (auto Path = ActiveDesktop.dialogs()
+          .saveFile("Export Markdown", "notes.md", {"*.md", "*.markdown"});
           Path)
         exportTo(*Path, Event->shiftPressed() ? ExportMode::WholeDocument
                  : ExportMode::Selection);

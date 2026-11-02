@@ -21,14 +21,14 @@ void Write() {
       .BeginMap()
         .Item(
             "wide").Value(
-                aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
+            aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
       .EndMap();
   Builder().BeginMap().Item("abcdefghijk").Value("abcdefghijk").EndMap();
   Builder()
       .BeginMap()
         .Item(
             "call").Value(
-                Other().BeginMap().Item("nested").Value(value).EndMap())
+            Other().BeginMap().Item("nested").Value(value).EndMap())
       .EndMap();
   Builder()
       .BeginMap()

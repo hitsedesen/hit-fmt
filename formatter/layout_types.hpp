@@ -135,6 +135,8 @@ struct GroupSpec
     bool KeepMultiline : 1 = false;
     // A compact/pinned owner had no legal break until one was promoted.
     bool KeepMultilineFallback : 1 = false;
+    // Compare coupled owned breaks with Fill during bounded layout selection.
+    bool ProbeConsistent : 1 = false;
     // Prospective visual continuation, realized only by this group's line gaps.
     // Contributors require nonnegative Indent and cannot be structural
     // consumers.

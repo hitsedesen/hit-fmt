@@ -4680,6 +4680,8 @@ private:
             return;
         }
 
+        GroupSpecs_[group].ProbeConsistent = policy.Packing == ListPacking::Fill && calls > 1;
+
         // The receiver-to-tail break is independent of the tail's coupled
         // member boundaries, just like a list opener and its item row.
         const auto tail = policy.Packing == ListPacking::AllOrVertical && links > 1
@@ -4696,6 +4698,8 @@ private:
             const auto t = Region(Syntax_[callee]).Tokens.End;
 
             if (IsChainLink(spine)) {
+                // A coupled alternative needs every link to be editable.
+                GroupSpecs_[group].ProbeConsistent &= GapMutable(t);
                 OwnContinuationBoundary(
                     t,
                     t == firstLink ? group : tail,
