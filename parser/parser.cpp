@@ -7367,15 +7367,39 @@ private:
             auto kind = CurrentKind();
 
             // A standalone object-like macro does not own the following
-            // namespace, type declaration, linkage block, or hinted declaration macro.
-            // Same-line prefixes still have unknown header grammar.
+            // independent declaration or its leading directives. Same-line
+            // prefixes still have unknown header grammar.
+            auto declarationStart = Cursor_;
+            bool independentDeclaration = false;
+
+            if (kind == TK::PreprocessingDirective && Kind(start) == TK::Identifier &&
+                Kind(PreviousSignificant(Cursor_)) == TK::Identifier)
+            {
+                do {
+                    declarationStart = NextSignificant(declarationStart + 1);
+                } while (Kind(declarationStart) == TK::PreprocessingDirective);
+
+                auto specifier = declarationStart;
+
+                while (IsDeclarationSpecifier(Kind(specifier)) && !IsFundamentalTypeKeyword(Kind(specifier))) {
+                    specifier = NextSignificant(specifier + 1);
+                }
+
+                independentDeclaration =
+                    IsFundamentalTypeKeyword(Kind(specifier)) || IsHintedDeclarationMacro(specifier);
+            }
+
+            const auto declarationKind = declarationStart == Cursor_ ? kind : Kind(declarationStart);
+
             if (Cursor_ != start &&
-                (kind == TK::Keyword_namespace || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
-                    kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_template ||
-                    (kind == TK::Keyword_inline && SignificantKind(Cursor_ + 1) == TK::Keyword_namespace) ||
-                    (kind == TK::Keyword_extern && LooksLikeLinkageSpecification(Cursor_)) ||
-                    IsHintedDeclarationMacro(Cursor_)) && Kind(start) == TK::Identifier &&
-                Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
+                (declarationKind == TK::Keyword_namespace || declarationKind == TK::Keyword_class ||
+                    declarationKind == TK::Keyword_struct || declarationKind == TK::Keyword_union ||
+                    declarationKind == TK::Keyword_enum || declarationKind == TK::Keyword_template ||
+                    (declarationKind == TK::Keyword_inline &&
+                        SignificantKind(declarationStart + 1) == TK::Keyword_namespace) ||
+                    (declarationKind == TK::Keyword_extern && LooksLikeLinkageSpecification(declarationStart)) ||
+                    IsHintedDeclarationMacro(declarationStart) || independentDeclaration) &&
+                Kind(start) == TK::Identifier && Kind(PreviousSignificant(Cursor_)) == TK::Identifier &&
                 SourceLine(PreviousSignificant(Cursor_)) < SourceLine(Cursor_))
             {
                 auto* node = MakeNode(NodeKind::UnparsedSyntax, start);

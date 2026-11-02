@@ -1,0 +1,10 @@
+include = "hinted.hit-fmt"
+PointerReferenceDeclaratorLocation = Left
+AssignmentOperatorSpacing = Space
+BinaryOperatorSpacing = Space
+UnaryOperatorSpacing = NoSpace
+SpaceInsideCallArguments = NoSpace
+SpaceInsideFunctionParameters = NoSpace
+FunctionCallSpaceBeforeParameters = NoSpace
+TemplateTypeArgumentInteriorSpacing = NoSpace
+CastArgumentSpacing = NoSpace
