@@ -3076,7 +3076,8 @@ private:
                 ((boundaryEligible &&
                     (IsTypeKeyword(kind) || kind == TK::Keyword_class || kind == TK::Keyword_struct ||
                         kind == TK::Keyword_union || kind == TK::Keyword_enum || kind == TK::Keyword_using ||
-                        kind == TK::Keyword_concept)) ||
+                        kind == TK::Keyword_concept ||
+                        (kind == TK::Operator_OpenBracket && Kind(next) == TK::Operator_OpenBracket))) ||
                     (constraintMayEnd && kind == TK::Identifier &&
                         (Kind(next) == TK::Identifier || Kind(next) == TK::Keyword_operator ||
                             Kind(next) == TK::Operator_OpenParenthesis)));
