@@ -2041,10 +2041,11 @@ TEST(PublicPipeline, FunctionBodyMacrosRetainHeadersThroughNormalization)
     style.WhitespaceSensitiveMacros = {"TOKEN_TEXT"};
     style.AddMissingControlBraces = true;
     style.RemoveNullStatements = true;
+    style.RemoveNullDeclarations = true;
     const formatter::PreparedFormat prepared(style);
     const std::string header = "static inline DEFINE_CASE(Shared, Helper(alpha   +  beta), " "const Shared& input)";
     const std::string source = "using Shared = int;\n" + header +
-        " {Shared* pointer; auto value=left+right; ; " "if(value) Use(value); TOKEN_TEXT(alpha   +  beta);}\n";
+        " {Shared* pointer; auto value=left+right; ; " "if(value) Use(value); TOKEN_TEXT(alpha   +  beta);};\n";
     Input input(source);
     auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
     const auto* macro = tree.Root().FirstChild->NextSibling;
@@ -2058,6 +2059,7 @@ TEST(PublicPipeline, FunctionBodyMacrosRetainHeadersThroughNormalization)
     EXPECT_NE(result.Text.find(header), std::string::npos);
     EXPECT_NE(result.Text.find("left + right"), std::string::npos);
     EXPECT_NE(result.Text.find("TOKEN_TEXT(alpha   +  beta)"), std::string::npos);
+    EXPECT_TRUE(result.Text.ends_with("}\n"));
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
 }
 
@@ -2169,13 +2171,15 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
     style.FunctionBodyMacroNames = {"DEFINE_CASE"};
     style.BinaryOperatorSpacing = formatter::GapPolicy::Space;
     style.HonorClangFormatDirectives = true;
+    style.RemoveNullDeclarations = true;
     const formatter::PreparedFormat prepared(style);
-    const std::string source = "DEFINE_CASE(Suite, Case) {auto sum=left+right; Use(sum);}\n";
+    const std::string source = "DEFINE_CASE(Suite, Case) {auto sum=left+right; Use(sum);};\n";
     const auto begin = parser::SourceOffset(source.find('{') + 1);
     const auto end = parser::SourceOffset(source.find('}'));
     const std::array selected{parser::SourceRange{begin, end}};
     const auto limited = FormatInput(source, prepared, {.EditScope = selected});
     EXPECT_NE(limited.Text.find("left + right"), std::string::npos);
+    EXPECT_TRUE(limited.Text.ends_with("};\n"));
     const std::array immutable{parser::SourceRange{0, parser::SourceOffset(source.size())}};
     EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
     const auto disabled = "// clang-format off\n" + source + "// clang-format on\n";

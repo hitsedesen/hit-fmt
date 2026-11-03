@@ -1,0 +1,1 @@
+TEST(TSynthetic, Example) { Work(); };

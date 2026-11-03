@@ -90,7 +90,7 @@ struct Syntax
     DeclarationCategory Category = DeclarationCategory::None;
     bool ItemSequence : 1 = false;
     bool ControlHeader : 1 = false;
-    bool NamespaceSuffix : 1 = false;
+    bool ClosingSuffix : 1 = false;
     bool Preprocessing : 1 = false;
     bool FlatRoot : 1 = false;
     // Recovered lists cannot supply their children's continuation level.
@@ -803,12 +803,13 @@ private:
             {
                 const auto& previous = Syntax_[entry.PreviousSibling];
                 const auto& preceding = Region(previous);
-                // Same-line null declarations after a namespace body are a
-                // closing suffix, not a new paragraph. Carry this through a
+                // Same-line null declarations after a namespace or hinted
+                // function body are a closing suffix. Carry this through a
                 // run of semicolons so its trailing comment stays attached.
-                entry.NamespaceSuffix = preceding.Tokens.End == region.Tokens.Begin &&
-                    (previous.NamespaceSuffix ||
-                        (preceding.Kind == NodeKind::NamespaceDeclaration && !preceding.Tokens.Empty() &&
+                entry.ClosingSuffix = preceding.Tokens.End == region.Tokens.Begin &&
+                    (previous.ClosingSuffix ||
+                        ((preceding.Kind == NodeKind::NamespaceDeclaration ||
+                            preceding.Kind == NodeKind::MacroFunctionDefinition) && !preceding.Tokens.Empty() &&
                             Tree_.Kind(preceding.Tokens.End - 1) == TokenKind::Operator_CloseBrace));
             }
         }
@@ -4033,7 +4034,7 @@ private:
                 Own(
                     part.Tokens.Begin,
                     owner,
-                    Syntax_[child].NamespaceSuffix
+                    Syntax_[child].ClosingSuffix
                     ? Boundary::Preserve
                     : shape == BodyShape::Expanded ? Boundary::Hard : Boundary::Soft);
                 Gaps_[part.Tokens.Begin].Reindent |= independentIndent;
@@ -5828,6 +5829,7 @@ private:
                 const auto opening = body ? Syntax_[id].SequenceBody.Begin - 1 : None;
                 const auto close = body ? Syntax_[id].SequenceBody.End : None;
                 Index previous = None;
+                Index previousAttachment = None;
                 Index access = None;
                 bool seenSection = false;
                 bool content = false;
@@ -5856,7 +5858,7 @@ private:
                     if ((!entry.Safe && !macroDefinition) || part.Kind == NodeKind::PreprocessingDirective ||
                         part.Kind == NodeKind::PreprocessingConditional)
                     {
-                        previous = access = None;
+                        previous = previousAttachment = access = None;
                         continue;
                     }
 
@@ -5865,14 +5867,14 @@ private:
                         // genuinely unattached comment is a barrier, never
                         // moved to invent declaration adjacency or an
                         // access-content boundary.
-                        const auto preceding = access != None ? access : previous;
+                        const auto preceding = access != None ? access : previousAttachment;
                         const bool trailing =
                             preceding != None && part.Tokens.End <= Region(Syntax_[preceding]).Attached.End;
                         const bool leading =
                             following[p] != None && part.Tokens.Begin >= Region(Syntax_[following[p]]).Attached.Begin;
 
                         if (!trailing && !leading) {
-                            previous = access = None;
+                            previous = previousAttachment = access = None;
                         }
 
                         continue;
@@ -5887,20 +5889,22 @@ private:
 
                         seenSection = true;
                         access = child;
-                        previous = None;
+                        previous = previousAttachment = None;
                         continue;
                     }
 
                     if (!DeclarationItem(part.Kind)) {
-                        previous = access = None;
+                        previous = previousAttachment = access = None;
                         continue;
                     }
 
                     // Initial members form an implicit access section.
                     seenSection = true;
 
-                    if (entry.NamespaceSuffix) {
-                        previous = child;
+                    if (entry.ClosingSuffix) {
+                        // The suffix owns trailing trivia; the definition
+                        // still determines spacing before the next item.
+                        previousAttachment = child;
                         continue;
                     }
 
@@ -5943,7 +5947,7 @@ private:
                         }
                     }
 
-                    previous = child;
+                    previous = previousAttachment = child;
                 }
 
                 if (content && node.Kind == NodeKind::NamespaceDeclaration && close != None) {

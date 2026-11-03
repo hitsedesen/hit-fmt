@@ -326,7 +326,11 @@ std::pmr::vector<uint8_t> NullRemovalContexts(
             }
 
             if (regions[id].Kind != NK::Comment && !NullSyntax(tree, regions[id])) {
-                known = contexts[id] & KnownSyntax;
+                // An explicit function-body hint proves the closing boundary,
+                // even though its opaque header and body remain conservative
+                // null-removal contexts. It cannot require a trailing ';'.
+                known = (contexts[id] & KnownSyntax) ||
+                    (regions[id].Kind == NK::MacroFunctionDefinition && regions[id].Status == RegionStatus::Complete);
             }
         }
     }

@@ -1319,6 +1319,21 @@ std::vector<FormatCase> FormatCases()
     });
     const auto nullStatements = data / "null-statements";
     AddCases(cases, nullStatements, {"preserve", "remove"});
+    cases.push_back({nullStatements, "macro-semicolon", "macro-semicolon.input.cpp"});
+    cases.push_back({nullStatements, "macro-semicolons", "macro-semicolons.input.cpp", "macro-semicolon"});
+    {
+        FormatCase value{nullStatements, "macro-semicolon-retained", "macro-semicolons.input.cpp"};
+        value.Style = formatter::LoadConfigFile(nullStatements / "macro-semicolon.hit-fmt").FormattingStyle;
+        value.Style->RemoveNullDeclarations = false;
+        cases.push_back(std::move(value));
+    }
+
+    {
+        FormatCase value{nullStatements, "macro-semicolon-unannotated", "macro-semicolon.input.cpp"};
+        value.Style = formatter::LoadConfigFile(nullStatements / "macro-semicolon.hit-fmt").FormattingStyle;
+        value.Style->FunctionBodyMacroNames.clear();
+        cases.push_back(std::move(value));
+    }
 
     for (const auto name :
         {"whitespace-trim", "whitespace-preserve", "whitespace-trim-crlf", "whitespace-trim-preserve-indent"})
