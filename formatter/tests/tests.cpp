@@ -322,7 +322,11 @@ std::vector<FormatCase> FormatCases()
         "brace-spacing.input.cpp");
     AddCases(cases, data / "function-body-macros", {"namespace-boundaries"}, "namespace-boundaries.input.cpp");
     AddCases(cases, data / "function-body-macros", {"conditional"}, "conditional.input.cpp");
-    AddCases(cases, data / "function-body-macros", {"wrappers", "wrappers-unhinted"}, "wrappers.input.cpp");
+    AddCases(
+        cases,
+        data / "function-body-macros",
+        {"wrappers", "wrappers-next-line", "wrappers-unhinted"},
+        "wrappers.input.cpp");
     ShareExpected(cases, data / "function-body-macros", "wrappers-unhinted.output.cpp", "wrappers.input.cpp");
     AddCases(cases, data / "single-statement-body", {"single"});
     AddCases(cases, data / "single-statement-body", {"compact", "preserve", "lambda-override"}, "lambdas.input.cpp");

@@ -5,6 +5,12 @@ SUITE(Example) {
             third_argument,
             fourth_argument);
     }
+    TEST(Second) {
+        Second();
+    }
+    TEST(Third) {
+        Third();
+    }
 }
 GROUP /* opaque header */ ( Nested(1+2,(3+4)) ) {
     WRAPPER(Inner) {
@@ -16,6 +22,13 @@ GROUP /* opaque header */ ( Nested(1+2,(3+4)) ) {
                 second_argument,
                 third_argument,
                 fourth_argument);
+        }
+        DEFINE_CASE(Second) {
+            Second();
+        }
+        // A comment between sibling tests stays at the wrapper's level.
+        TEST(Third) {
+            Third();
         }
     }
     TEST(Following) {
@@ -44,5 +57,8 @@ namespace Comparison {
             second_argument,
             third_argument,
             fourth_argument);
+    }
+    TEST(Second) {
+        Second();
     }
 }

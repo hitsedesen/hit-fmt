@@ -3590,8 +3590,10 @@ private:
             BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
         auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
 
+        // Opaque wrappers supply no block group. Extracted macro bodies use
+        // their header's source level even when the leading gap is editable.
         if (fixedBase == None && node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::Declaration &&
-            !GapMutable(node.Tokens.Begin))
+            (macroFunction || !GapMutable(node.Tokens.Begin)))
         {
             fixedBase = SourceLineIndent(node.Tokens.Begin);
         }
@@ -3805,13 +3807,15 @@ private:
         const auto parent = Region(Syntax_[id]).Parent;
         GroupSpecs_[group].FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
 
-        // A preserved header may have no planned enclosing block. Its
-        // independently parsed body still follows that header's source level.
+        // Without a planned enclosing block, preserved headers and macros
+        // extracted from opaque wrappers anchor their bodies to the source.
+        // Extracted macros need that base even when their leading gap is editable.
         const auto enclosing = parent == None ? None : Region(Syntax_[parent]).Parent;
 
         if (contentIndent == None && Region(Syntax_[id]).Kind == NodeKind::CompoundStatement && enclosing != None &&
             Region(Syntax_[enclosing]).Kind == NodeKind::Declaration &&
-            !GapMutable(Region(Syntax_[parent]).Tokens.Begin) && BraceFor(parent))
+            (Region(Syntax_[parent]).Kind == NodeKind::MacroFunctionDefinition ||
+                !GapMutable(Region(Syntax_[parent]).Tokens.Begin)) && BraceFor(parent))
         {
             GroupSpecs_[group].FixedBase = SourceLineIndent(Region(Syntax_[parent]).Tokens.Begin);
         }

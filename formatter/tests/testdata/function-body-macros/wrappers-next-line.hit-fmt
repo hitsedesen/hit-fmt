@@ -1,0 +1,4 @@
+include = "wrappers.hit-fmt"
+IndentationKind = Spaces
+FunctionBracePlacement = NextLine
+IndentNamespaces = NoIndent
