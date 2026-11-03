@@ -1,4 +1,5 @@
 SUITE(Example) {
+    int Helper() { return 0; }
     TEST(Case)
     {
         Run(first_argument,
@@ -17,6 +18,7 @@ SUITE(Example) {
 }
 GROUP /* opaque header */ ( Nested(1+2,(3+4)) ) {
     WRAPPER(Inner) {
+        static auto Helper(int value) noexcept -> int { return value; }
         static DEFINE_CASE(
             Another,
             Nested(1+2, (3+4)))
@@ -48,7 +50,10 @@ SUITE(Payloads) {
     PAYLOAD(TEST(Argument) {Run(first_argument, second_argument, third_argument, fourth_argument);});
     auto value = Holder{TEST(Initializer) {Run(first_argument, second_argument, third_argument, fourth_argument);}};
     auto expression = TEST(value);
+    auto combined = Holder{} + TEST(ExpressionTail) {Run(first_argument, second_argument, third_argument, fourth_argument);};
     TEST(DeclarationOnly);
+    auto lambda = []() { TEST(InsideLambda) {Run(first_argument, second_argument, third_argument, fourth_argument);} };
+    int Helper() { TEST(InsideHelper) {Run(first_argument, second_argument, third_argument, fourth_argument);} return 0; }
     TEST(AfterPayloads)
     {
         Run(first_argument,

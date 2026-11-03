@@ -417,6 +417,25 @@ TEST(FileCheck, FunctionBodyMacroHintsApplyToTheInitialParse)
     EXPECT_FALSE(hit_fmt::FormatAndCheckFile(applied.View(), configuration).FormattingMismatch);
 }
 
+TEST(FileCheck, FunctionBodyMacrosAfterHelpersSatisfyWidthLimit)
+{
+    formatter::Configuration raw;
+    raw.FormattingStyle.Layout = formatter::LayoutMode::Canonical;
+    raw.FormattingStyle.ColumnLimit = 40;
+    raw.FormattingStyle.FunctionBodyMacroNames = {"TEST"};
+    raw.FormattingStyle.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
+    const hit_fmt::PreparedConfiguration configuration(std::move(raw));
+    const Input input("SUITE(Example) {\n" "    int Helper() { return 0; }\n" "    TEST(Case) {\n"
+        "        Run(first_argument, second_argument, third_argument, fourth_argument);\n" "    }\n" "}\n");
+    const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
+    EXPECT_TRUE(checked.FormattingMismatch);
+    EXPECT_TRUE(checked.HasFailures(false));
+    EXPECT_FALSE(checked.HasFailures(true));
+    EXPECT_TRUE(checked.Formatting.Diagnostics.empty());
+    const Input applied(checked.Formatting.Text);
+    EXPECT_FALSE(hit_fmt::FormatAndCheckFile(applied.View(), configuration).HasFailures(false));
+}
+
 TEST(FileCheck, DiagnosticGoldenUsesOriginalCheckAndFinalFixCoordinates)
 {
     const test::golden::Fixture fixture{

@@ -7513,10 +7513,17 @@ private:
                 }
             }
 
-            // Unrecognized block items cannot establish an interior boundary.
-            // Skip their balanced payloads through the terminating semicolon.
+            // A balanced brace body can end an opaque definition without a
+            // semicolon. Initializer expressions still own their full tail;
+            // their braces cannot establish independent declaration boundaries.
+            bool initializer = false;
+
             while (Cursor_ < end - 1) {
                 const auto kind = CurrentKind();
+
+                if (kind == TK::Operator_Assign && Kind(PreviousSignificant(Cursor_)) != TK::Keyword_operator) {
+                    initializer = true;
+                }
 
                 if (IsOpenDelimiter(kind)) {
                     const auto next = FindBalancedEnd(Cursor_);
@@ -7527,6 +7534,10 @@ private:
                     }
 
                     Cursor_ = next;
+
+                    if (kind == TK::Operator_OpenBrace && !initializer) {
+                        break;
+                    }
                 } else {
                     ++Cursor_;
 
