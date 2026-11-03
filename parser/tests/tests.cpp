@@ -246,6 +246,7 @@ struct GoldenCase
     std::vector<std::string> FunctionBodyMacroNames;
     std::vector<std::string> ClassMacroNames;
     std::vector<std::string> EnumMacroNames;
+    std::vector<std::string> CallLikeMacroNames;
 };
 
 std::ostream& operator<<(std::ostream& output, const GoldenCase& testCase)
@@ -272,6 +273,7 @@ TEST_P(FileTest, Golden)
             .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
             .ClassMacroNames = GetParam().ClassMacroNames,
             .EnumMacroNames = GetParam().EnumMacroNames,
+            .CallLikeMacroNames = GetParam().CallLikeMacroNames,
         });
     auto actual = Serialize(tree);
 
@@ -315,6 +317,7 @@ TEST_P(FileTest, IncludeReuseMatchesFreshParse)
             .FunctionBodyMacroNames = GetParam().FunctionBodyMacroNames,
             .ClassMacroNames = GetParam().ClassMacroNames,
             .EnumMacroNames = GetParam().EnumMacroNames,
+            .CallLikeMacroNames = GetParam().CallLikeMacroNames,
         };
         const auto fresh = parser::Parse(rewritten.View(), [] (parser::ParseError) { }, options);
         std::optional<parser::SyntaxTree> reused;
@@ -2606,6 +2609,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"declaration_operands_recovery", true},
         GoldenCase{"annotation_boundaries"},
         GoldenCase{"declaration_macros", false, true},
+        GoldenCase{"call_like_macros", false, true, {}, {}, {}, {"bind_handler"}},
         GoldenCase{"qualified_records"},
         GoldenCase{"opaque_record_owners"},
         GoldenCase{"extensions"},

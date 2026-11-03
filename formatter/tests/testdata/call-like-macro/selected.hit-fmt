@@ -1,6 +1,6 @@
 # Shape preferences apply when broken; fitting canonical groups flatten.
 ColumnLimit = 60
-ParametersLayout = Canonical
-ParametersPacking = VerticalWhenBroken
-ParametersFirstItem = NextLine
+CallsLayout = Canonical
+CallsPacking = VerticalWhenBroken
+CallsFirstItem = NextLine
 CallLikeMacroNames = ["DECLARE_TYPED_ACTION"]

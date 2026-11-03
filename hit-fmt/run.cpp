@@ -267,7 +267,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
         << "Hunk lines are one-based and inclusive in the original source.\n"
         << "Hunk paths are relative to the working directory. Safe enclosing "
             "lists and include groups may spill up to 200 lines.\n"
-        << "Nonempty CallLikeMacroNames are currently unsupported.\n"
+        << "Configure CallLikeMacroNames for call-shaped macros; see --help-config.\n"
         << "Configure ClassMacroNames with Begin:End pairs for " "class-generating macros; see --help-config.\n"
         << "Output is colorized when written to a terminal; set " "NO_COLOR to disable it.\n\n";
     highlight("Examples:", terminal.BoldCyan);

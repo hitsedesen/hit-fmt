@@ -314,6 +314,9 @@ std::vector<FormatCase> FormatCases()
     ShareExpected(cases, directives, "preserve.output.cpp", "input.cpp");
     ShareExpected(cases, directives, "legacy-false.output.cpp", "input.cpp");
     ShareExpected(cases, directives, "legacy-true.output.cpp", "indent.output.cpp");
+    AddCases(cases, data / "call-like-macro", {"selected"});
+    AddCases(cases, data / "call-like-macro", {"registration", "unhinted", "protected"}, "registration.input.cpp");
+    AddCases(cases, data / "call-like-macro", {"contexts"}, "contexts.input.cpp");
     AddCases(cases, data / "function-body-macros", {"hinted", "unhinted"});
     AddCases(
         cases,
@@ -4619,31 +4622,6 @@ INSTANTIATE_TEST_SUITE_P(
     ParameterNameTest,
     testing::Values("enabled", "default", "declarations_only", "definitions_only", "names_only", "ytsaurus"),
     ConfigName);
-
-TEST(Formatter, CallArgument_RejectsUnsupportedSyntaxHints)
-{
-    const test::golden::Fixture fixture{
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../call-like-macro",
-        "selected",
-    };
-    const auto style = formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle;
-    const auto input = fixture.Input();
-    const Input storage(input);
-    const auto source = storage.View();
-    const auto tree = parser::Parse(source, [] (parser::ParseError) { });
-
-    for (bool parsed : {false, true}) {
-        SCOPED_TRACE(parsed);
-        try {
-            const auto output = parsed ? formatter::Format(tree, style) : formatter::Format(source, style);
-            FAIL() << "unsupported syntax hints produced output: " << output;
-        } catch (const std::invalid_argument& error) {
-            EXPECT_EQ(
-                std::string_view(error.what()),
-                "CallLikeMacroNames syntax hints are not yet supported " "by the public pipeline");
-        }
-    }
-}
 
 TEST(Formatter, CallArgument_RequiresOwnedBreaksAcrossArities)
 {

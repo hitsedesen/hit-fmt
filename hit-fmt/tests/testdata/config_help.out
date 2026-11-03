@@ -731,9 +731,15 @@ Put constraints on an indented line
 Safety and checks
 - hit-fmt off/on always protects text. HonorClangFormatDirectives
   defaults to true for clang-format off/on.
-- FunctionBodyMacroNames marks balanced invocations with function bodies;
-  WhitespaceSensitiveMacros protects invocation bytes. Nonempty
-  CallLikeMacroNames is currently unsupported.
+- CallLikeMacroNames opts exact, unqualified standalone macro invocations
+  into C++ call formatting, including lambda arguments. A trailing semicolon
+  is optional. Use it only when arguments follow C++ expression grammar;
+  it does not expand macros or infer declarations. Calls use Calls options.
+  Other macro syntax hints for the same name are rejected. Unlisted macros
+  keep their existing handling. WhitespaceSensitiveMacros and
+  off/on directives still protect invocation bytes.
+- FunctionBodyMacroNames marks balanced invocations followed by function
+  bodies; its arguments stay opaque rather than becoming call arguments.
 - ClassMacroNames uses Begin:End pairs of unqualified function-like macros.
   Endpoints must be distinct and unique; nested pairs must match.
 - EnumMacroNames formats YT-style enum sequences in the final argument.
@@ -758,7 +764,7 @@ Safety and checks
 
 Macro hints
     HonorClangFormatDirectives = true
-    CallLikeMacroNames = []
+    CallLikeMacroNames = ["REGISTER_HANDLER"]
     FunctionBodyMacroNames = ["DEFINE_CASE", "DEFINE_METHOD"]
     EnumMacroNames = ["DEFINE_ENUM", "DEFINE_BIT_ENUM"]
     ClassMacroNames = ["BEGIN_SETTER:END_SETTER"]

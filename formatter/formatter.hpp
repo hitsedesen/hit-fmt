@@ -46,8 +46,8 @@ struct LayoutDiagnostic
 };
 
 // Immutable, owning configuration snapshot. Preparation throws invalid_argument
-// for invalid or unsupported settings, including nonempty CallLikeMacroNames
-// and non-Preserve ambiguous template spacing.
+// for invalid or unsupported settings, including non-Preserve ambiguous
+// template spacing.
 class PreparedFormat
 {
 public:
@@ -59,6 +59,7 @@ public:
     const NamespaceCommentOptions NamespaceComments;
     const bool HonorClangFormatDirectives;
     const std::vector<std::string> WhitespaceSensitiveMacros;
+    const std::vector<std::string> CallLikeMacroNames;
     const std::vector<std::string> FunctionBodyMacroNames;
     const std::vector<std::string> ClassMacroNames;
     const std::vector<std::string> EnumMacroNames;
@@ -69,6 +70,7 @@ public:
             .FunctionBodyMacroNames = FunctionBodyMacroNames,
             .ClassMacroNames = ClassMacroNames,
             .EnumMacroNames = EnumMacroNames,
+            .CallLikeMacroNames = CallLikeMacroNames,
         };
     }
 };

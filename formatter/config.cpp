@@ -880,9 +880,11 @@ void ValidateLibraryAnnotationStyle(const Style& style)
                 style.StickyChainCallPairs.size(),
                 style.ClassMacroNames.size() * 2,
                 style.EnumMacroNames.size(),
+                style.CallLikeMacroNames.size(),
                 style.BlankLineMacroNames.size(),
             }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
+    ValidateAnnotationNames(style.CallLikeMacroNames, scratch, "CallLikeMacroNames", false);
     ValidateAnnotationNames(style.EnumMacroNames, scratch, "EnumMacroNames", false);
     ValidateAnnotationNames(style.CallLineFirstStringNames, scratch, "CallLineFirstStringNames", false);
     ValidateAnnotationNames(style.CallLineMessageNames, scratch, "CallLineMessageNames", false);
@@ -935,6 +937,16 @@ void ValidateLibraryAnnotationStyle(const Style& style)
     }
 
     RejectDuplicateAnnotations(scratch, "ClassMacroNames");
+
+    for (const auto& name : style.CallLikeMacroNames) {
+        if (std::find(style.FunctionBodyMacroNames.begin(), style.FunctionBodyMacroNames.end(), name) !=
+            style.FunctionBodyMacroNames.end() ||
+            std::find(style.EnumMacroNames.begin(), style.EnumMacroNames.end(), name) != style.EnumMacroNames.end() ||
+            std::find(scratch.begin(), scratch.end(), name) != scratch.end())
+        {
+            throw std::invalid_argument("CallLikeMacroNames conflicts with another macro syntax hint");
+        }
+    }
 }
 
 LibraryAnnotations CompileLibraryAnnotations(const Style& style)

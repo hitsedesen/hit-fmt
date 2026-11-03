@@ -36,6 +36,9 @@ struct ParseOptions
     // Invocations whose final argument is a YT-style sequence of (Name) or
     // ((Name)(value)) entries. Other arguments and value expressions stay raw.
     std::span<const std::string> EnumMacroNames = {};
+    // Exact, unqualified standalone invocations with C++ expression arguments.
+    // The terminating semicolon is optional; no macro expansion is inferred.
+    std::span<const std::string> CallLikeMacroNames = {};
 };
 
 // Build a recovery-oriented, lossless C++ syntax tree. The parser recognizes
