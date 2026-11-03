@@ -2585,11 +2585,15 @@ private:
 
         const bool defaultArgument = kind == NodeKind::Initializer && declaration != None &&
             Region(Syntax_[declaration]).Kind == NodeKind::ParameterDeclaration;
+        const bool indentedExpression = policy.Alignment == ExpressionAlignment::Indented && !declarationAssignment &&
+            kind != NodeKind::AssignmentExpression;
         // A default starts a continuation from its parameter's physical line,
         // not the parameter list's already-realized continuation level.
         GroupSpecs_[group].ExpressionContinuation = !defaultArgument;
-        GroupSpecs_[group].StructuralBase = defaultArgument;
-        GroupSpecs_[group].LineBase = defaultArgument;
+        // Indented expressions likewise own a level beyond their starting
+        // line, even when an enclosing argument has already continued.
+        GroupSpecs_[group].StructuralBase = defaultArgument || indentedExpression;
+        GroupSpecs_[group].LineBase = defaultArgument || indentedExpression;
         GroupSpecs_[group].Continuation = true;
 
         if (canonical && threePart && parent != None && Region(Syntax_[parent]).Kind == NodeKind::Initializer &&

@@ -120,7 +120,11 @@ Wrapped if conditions
 Expressions and chains
 - ExpressionsBreak and ChainsBreak default to IfNeeded.
   Wrapping respects precedence. OperatorSide options choose Leading
-  or Trailing; ExpressionsAlignment chooses Operand or Block.
+  or Trailing. ExpressionsAlignment = Block shares the enclosing
+  continuation; Operand aligns to the first operand. Indented adds
+  ContinuationOffset from the first operand line's indentation, even
+  inside a continued call argument. Assignments keep block continuation
+  indentation; ternary delimiters follow TernaryOperatorIndentation.
 - AssignmentsPacking inherits ExpressionsPacking. Fill can keep an RHS
   prefix inline; VerticalWhenBroken splits assignment boundaries.
   AssignmentRhsPlacement = NextLine puts initializers below the operator
@@ -150,6 +154,16 @@ Expression wrapping
     TernaryOperatorSide = Leading
     TernaryLayout = ThreePart
     TernaryOperatorIndentation = Align
+
+Indent a nested expression
+    ExpressionsAlignment = Indented
+    ContinuationOffset = 4
+    # CheckEqual(
+    #     actual,
+    #     prefix +
+    #         converted +
+    #         suffix
+    # );
 
 Keep assignment prefixes inline
     ExpressionsPacking = VerticalWhenBroken

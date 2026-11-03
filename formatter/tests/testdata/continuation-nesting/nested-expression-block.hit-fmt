@@ -1,0 +1,16 @@
+Layout = Canonical
+KeepMultiline = false
+IndentWidth = 4
+ColumnLimit = 120
+WidthDiagnostics = Report
+BodyShape = Expanded
+ListAlignment = Block
+ListFirstItem = NextLine
+ListPacking = VerticalWhenBroken
+ListCloser = OwnLine
+ContinuationOffset = 4
+ExpressionsLayout = Canonical
+ExpressionsBreak = IfNeeded
+ExpressionsPacking = Fill
+ExpressionsAlignment = Block
+BinaryOperatorSide = Trailing
