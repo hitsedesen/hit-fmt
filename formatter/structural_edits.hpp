@@ -234,6 +234,7 @@ struct NamespaceIdentity
     parser::TokenIndex Close;
     parser::TokenIndex Comment; // TokenCount() if absent
     bool ExplanatoryComment = false;
+    parser::TokenIndex Continuation; // TokenCount() if absent
 };
 
 struct NamespaceCommentPlan

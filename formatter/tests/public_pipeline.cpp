@@ -45,6 +45,41 @@ TEST(PublicPipeline, MultilineCommentIndentationHonorsWholeTokenAuthority)
     EXPECT_NE(protectedResult.Text.find("/* note\n * body\n */"), std::string::npos);
 }
 
+TEST(PublicPipeline, SplitNamespaceCommentsRetireConsumedMappingsAndRespectScope)
+{
+    auto style = Canonical();
+    style.NamespaceComments = formatter::NamespaceComments::Fix;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "namespace outer::inner {} // namespace\n  // outer::inner\nint after;\n";
+    const Input input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    const auto result = formatter::Format(tree, prepared, {.SourceMap = true});
+    EXPECT_EQ(result.Text, formatter::Format(input.View(), style));
+    auto consumed = 0;
+
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        if (tree.Kind(i) == tokenizer::TokenKind::Comment) {
+            EXPECT_FALSE(result.OriginalTokens[i].Present);
+            ++consumed;
+        } else {
+            ASSERT_TRUE(result.OriginalTokens[i].Present);
+            const auto output = result.OriginalTokens[i].Output;
+            EXPECT_EQ(std::string_view(result.Text).substr(output.Begin, output.End - output.Begin), tree.TokenText(i));
+        }
+    }
+
+    EXPECT_EQ(consumed, 2);
+    const auto continuation = parser::SourceOffset(source.find("// outer::inner"));
+    const std::array protectedContinuation{parser::SourceRange{continuation, continuation + 1}};
+    const auto protectedResult = FormatInput(source, prepared, {.ImmutableRanges = protectedContinuation});
+    EXPECT_NE(protectedResult.Text.find("// namespace\n"), std::string::npos);
+    EXPECT_NE(protectedResult.Text.find("// outer::inner\n"), std::string::npos);
+    const std::array closingOnly{parser::SourceRange{0, continuation}};
+    const auto scoped = FormatInput(source, prepared, {.EditScope = closingOnly});
+    EXPECT_NE(scoped.Text.find("// namespace\n"), std::string::npos);
+    EXPECT_NE(scoped.Text.find("// outer::inner\n"), std::string::npos);
+}
+
 TEST(PublicPipeline, PreservedNamespaceIndentationRespectsGapAuthority)
 {
     auto style = Canonical();

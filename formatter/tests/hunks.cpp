@@ -243,6 +243,23 @@ TEST(HunkAdapter, NamespaceInteriorSelectionIsNotARequestedCommentFailure)
     }
 }
 
+TEST(HunkAdapter, SplitNamespaceCommentNeedsWholeFootprint)
+{
+    const std::string source = "namespace n {\nint value;\n} // namespace\n// n\nint after;\n";
+    auto style = HunkStyle();
+    style.NamespaceComments = formatter::NamespaceComments::Fix;
+    const formatter::Hunk closeOnly[] = {{3, 3}};
+    const formatter::Hunk continuationOnly[] = {{4, 4}};
+    const formatter::Hunk closingLines[] = {{3, 4}};
+    const formatter::Hunk all[] = {{1, 4}};
+    EXPECT_EQ(Changed(source, closeOnly, false, style).Result.Text, source);
+    EXPECT_EQ(Changed(source, continuationOnly, false, style).Result.Text, source);
+    EXPECT_EQ(Changed(source, closingLines, false, style).Result.Text, source);
+    const auto joined = Changed(source, all, false, style);
+    const Input input(source);
+    EXPECT_EQ(joined.Result.Text, formatter::Format(input.View(), style));
+}
+
 TEST(HunkAdapter, SafeIncludeSpillSortsAtomicallyAndStrictCoverageIsNotMismatch)
 {
     const std::string source = "#include \"z.h\"\n#include \"a.h\"\n\nint f( int x );\n";
