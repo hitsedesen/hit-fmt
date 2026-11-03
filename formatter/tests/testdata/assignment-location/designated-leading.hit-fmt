@@ -1,0 +1,3 @@
+include = "designated-next-line.hit-fmt"
+AssignmentRhsPlacement = InlineIfFits
+AssignmentOperatorSide = Leading

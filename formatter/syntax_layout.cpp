@@ -517,6 +517,7 @@ public:
                     PlanKeywordExpression(i);
                     break;
                 case NodeKind::Initializer:
+                case NodeKind::InitializerElement:
                 case NodeKind::Enumerator:
                 case NodeKind::BinaryExpression:
                 case NodeKind::AssignmentExpression:
@@ -1946,24 +1947,19 @@ private:
             const bool separator = part.Kind == NodeKind::ListSeparator || part.Kind == NodeKind::RangeForSeparator;
 
             if (!separator) {
-                if (canonical && part.Kind == NodeKind::InitializerElement && Syntax_[child].Safe) {
-                    // Designator assignments belong to the list, while the
-                    // value's nested expression plans its own breaks.
-                    DirectTokens(
-                        child,
-                        [&] (Index token) {
-                            if (Tree_.Kind(token) != TokenKind::Operator_Assign) {
-                                return;
+                if (canonical && part.Kind == NodeKind::InitializerElement && Syntax_[child].Safe &&
+                    Policies_.Expressions.Layout != LayoutMode::Canonical)
+                {
+                    // Canonical lists still flatten designator prefixes when
+                    // expression layout preserves its own boundaries.
+                    if (const auto token = AssignmentPrefixOperator(child); token != None) {
+                        for (auto gap : {token, token + 1}) {
+                            if (Tree_.Kind(gap - 1) != TokenKind::Comment && Tree_.Kind(gap) != TokenKind::Comment) {
+                                Own(gap, group, Boundary::Flat);
+                                Gaps_[gap].SpaceFallback = Safety_.Gaps()[gap].HasLineFeed;
                             }
-
-                            for (auto gap : {token, token + 1}) {
-                                if (Tree_.Kind(gap - 1) != TokenKind::Comment && Tree_.Kind(gap) != TokenKind::Comment)
-                                {
-                                    Own(gap, group, Boundary::Flat);
-                                    Gaps_[gap].SpaceFallback = Safety_.Gaps()[gap].HasLineFeed;
-                                }
-                            }
-                        });
+                        }
+                    }
                 }
 
                 if (canonical && part.Kind == NodeKind::ParameterDeclaration && Syntax_[child].Safe &&
@@ -2522,9 +2518,46 @@ private:
             });
     }
 
+    Index AssignmentPrefixOperator(Index id) const
+    {
+        const auto& node = Region(Syntax_[id]);
+        const auto kind = node.Kind;
+
+        if (node.Tokens.Empty()) {
+            return None;
+        }
+
+        if (kind == NodeKind::Initializer) {
+            return Tree_.Kind(node.Tokens.Begin) == TokenKind::Operator_Assign ? node.Tokens.Begin : None;
+        }
+
+        const auto value = LastChild_[id];
+
+        if (value == None ||
+            (kind != NodeKind::InitializerElement &&
+                (kind != NodeKind::Enumerator || Region(Syntax_[value]).Kind != NodeKind::EnumeratorValue)))
+        {
+            return None;
+        }
+
+        auto beforeValue = Region(Syntax_[value]).Tokens.Begin;
+
+        while (beforeValue > node.Tokens.Begin && Tree_.Kind(beforeValue - 1) == TokenKind::Comment) {
+            --beforeValue;
+        }
+
+        return beforeValue > node.Tokens.Begin && Tree_.Kind(beforeValue - 1) == TokenKind::Operator_Assign
+            ? beforeValue - 1
+            : None;
+    }
+
     void PlanExpression(Index id)
     {
         const auto& node = Region(Syntax_[id]);
+
+        if (node.Kind == NodeKind::InitializerElement && Policies_.Expressions.Layout != LayoutMode::Canonical) {
+            return;
+        }
 
         if (const auto opening = NamedCastOpening(id); opening != None && Safety_.Gaps()[opening + 1].HasLineFeed) {
             // Keep an existing operand line, but give it its own structural
@@ -2550,14 +2583,14 @@ private:
         }
 
         const auto kind = node.Kind;
-        const bool declarationAssignment = !node.Tokens.Empty() &&
-            ((kind == NodeKind::Initializer && Tree_.Kind(node.Tokens.Begin) == TokenKind::Operator_Assign) ||
-                (kind == NodeKind::Enumerator && LastChild_[id] != None &&
-                    Region(Syntax_[LastChild_[id]]).Kind == NodeKind::EnumeratorValue));
+        const auto assignmentOperator = AssignmentPrefixOperator(id);
+        const bool assignmentPrefix = assignmentOperator != None;
 
-        // Build dispatches expression kinds and string sequences directly;
-        // initializers/enumerators participate only through actual assignment.
-        if ((kind == NodeKind::Initializer || kind == NodeKind::Enumerator) && !declarationAssignment) {
+        // These containers participate only through an assignment prefix;
+        // ordinary initializer elements leave layout to their expression.
+        if ((kind == NodeKind::Initializer || kind == NodeKind::InitializerElement || kind == NodeKind::Enumerator) &&
+            !assignmentPrefix)
+        {
             return;
         }
 
@@ -2612,7 +2645,7 @@ private:
             int32_t(indentation.ContinuationOffset),
             indentation);
 
-        if (policy.Alignment == ExpressionAlignment::Operand && !declarationAssignment &&
+        if (policy.Alignment == ExpressionAlignment::Operand && !assignmentPrefix &&
             kind != NodeKind::AssignmentExpression)
         {
             Groups_[group].Indent.Alignment = ContinuationAlignment::Delimiter;
@@ -2630,15 +2663,16 @@ private:
 
         const bool defaultArgument = kind == NodeKind::Initializer && declaration != None &&
             Region(Syntax_[declaration]).Kind == NodeKind::ParameterDeclaration;
-        const bool indentedExpression = policy.Alignment == ExpressionAlignment::Indented && !declarationAssignment &&
+        const bool itemAssignment = defaultArgument || kind == NodeKind::InitializerElement;
+        const bool indentedExpression = policy.Alignment == ExpressionAlignment::Indented && !assignmentPrefix &&
             kind != NodeKind::AssignmentExpression;
-        // A default starts a continuation from its parameter's physical line,
-        // not the parameter list's already-realized continuation level.
-        GroupSpecs_[group].ExpressionContinuation = !defaultArgument;
+        // An assignment in a list continues from its item's physical line,
+        // rather than the list's already-realized continuation level.
+        GroupSpecs_[group].ExpressionContinuation = !itemAssignment;
         // Indented expressions likewise own a level beyond their starting
         // line, even when an enclosing argument has already continued.
-        GroupSpecs_[group].StructuralBase = defaultArgument || indentedExpression;
-        GroupSpecs_[group].LineBase = defaultArgument || indentedExpression;
+        GroupSpecs_[group].StructuralBase = itemAssignment || indentedExpression;
+        GroupSpecs_[group].LineBase = itemAssignment || indentedExpression;
         GroupSpecs_[group].Continuation = true;
 
         if (canonical && threePart && parent != None && Region(Syntax_[parent]).Kind == NodeKind::Initializer &&
@@ -2660,7 +2694,7 @@ private:
         GroupSpecs_[group].ChildBreaks =
             (kind != NodeKind::BinaryExpression || comparison) && kind != NodeKind::ConditionalExpression;
         GroupSpecs_[group].ForceBreak = canonical && policy.Break == BreakRequirement::Always &&
-            (declarationAssignment || kind == NodeKind::BinaryExpression || kind == NodeKind::AssignmentExpression ||
+            (assignmentPrefix || kind == NodeKind::BinaryExpression || kind == NodeKind::AssignmentExpression ||
                 kind == NodeKind::ConditionalExpression || Syntax_[id].String);
 
         if (kind == NodeKind::ConditionalExpression) {
@@ -2695,15 +2729,19 @@ private:
             }
         }
 
-        const auto packing = declarationAssignment || kind == NodeKind::AssignmentExpression
+        const auto packing = assignmentPrefix || kind == NodeKind::AssignmentExpression
             ? policy.AssignmentPacking
             : policy.Packing;
         const auto boundary = packing != ListPacking::Fill && !threePart ? Boundary::Conditional : Boundary::Soft;
         auto segment = id;
         const auto planToken = [&] (Index t) {
-            const auto role = declarationAssignment && Tree_.Kind(t) == TokenKind::Operator_Assign
-                ? PunctuationRole::AssignmentOperator
-                : Tree_.Role(t);
+            // A designator can contain operators of its own, as in an
+            // indexed designator. Only its final assignment starts the RHS.
+            if (assignmentPrefix && t < assignmentOperator) {
+                return;
+            }
+
+            const auto role = t == assignmentOperator ? PunctuationRole::AssignmentOperator : Tree_.Role(t);
 
             if (canonical &&
                 (kind == NodeKind::ParenthesizedExpression || kind == NodeKind::RequirementExpression ||
@@ -2723,7 +2761,7 @@ private:
                 role == PunctuationRole::ShiftOperator || role == PunctuationRole::AssignmentOperator ||
                 role == PunctuationRole::ConditionalDelimiter;
 
-            if (op && (t > node.Tokens.Begin || declarationAssignment) && t + 1 < node.Tokens.End) {
+            if (op && (t > node.Tokens.Begin || assignmentPrefix) && t + 1 < node.Tokens.End) {
                 const auto side = role == PunctuationRole::AssignmentOperator
                     ? policy.Assignment
                     : role == PunctuationRole::ShiftOperator

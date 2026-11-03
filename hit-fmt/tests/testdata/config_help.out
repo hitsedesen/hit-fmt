@@ -128,7 +128,8 @@ Expressions and chains
 - AssignmentsPacking inherits ExpressionsPacking. Fill can keep an RHS
   prefix inline; VerticalWhenBroken splits assignment boundaries.
   AssignmentRhsPlacement = NextLine puts initializers below the operator
-  in canonical expressions. Always breaks still apply.
+  in canonical expressions, including designated initializer values.
+  Always breaks still apply.
   With StringLiteralFragmentsAsArguments, broken string initializers also
   start their first fragment below the assignment operator.
 - TernaryLayout = ThreePart breaks ? and : together when wrapping;

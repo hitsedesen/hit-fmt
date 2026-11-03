@@ -728,7 +728,7 @@ public:
                 const bool afterComment = begin > 0 && Tree_.Kind(begin - 1) == TK::Comment;
 
                 if (!afterComment && parent && parent->Kind == NK::InitializerElement && parent->Tokens.Begin < begin) {
-                    Mark(begin, F::AssignmentOperatorSpacing, *parent, C::Initializers, 3);
+                    Mark(begin, F::AssignmentOperatorSpacing, *parent, C::Initializers, 3, true);
                 }
 
                 if (!afterComment &&

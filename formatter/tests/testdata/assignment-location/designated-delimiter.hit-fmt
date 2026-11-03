@@ -1,0 +1,2 @@
+include = "designated-next-line.hit-fmt"
+InitializersAlignment = Delimiter

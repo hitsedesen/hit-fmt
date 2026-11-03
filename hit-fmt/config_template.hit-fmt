@@ -577,6 +577,8 @@ RequiresClausePosition = Preserve
 # Values: false | true
 IndentRequiresClause = true
 
+# Places assignment RHS values, including designated initializer values,
+# below the operator in canonical expressions when set to NextLine.
 # Values: InlineIfFits | NextLine
 AssignmentRhsPlacement = InlineIfFits
 

@@ -20,19 +20,22 @@ Document sampleDocument() {
                     {.Number = 1,
                      .Blocks = {
                                 {.Id = 10, .Geometry = {36, 28, 480, 32},
-                                 .Payload = Text{"A quieter reading room",
-                                                 TextRole::Heading, 1}},
-                                {.Id = 11, .Geometry = {36, 76, 480, 64},
-                                 .Payload = Text{
-                          "Morning light reaches the shared desks "
-                              "before the shelves."}},
-                                {.Id = 12, .Geometry = {36, 160, 240,
-                                                        180}, .Payload = Image{
-                          "room.png", "Desks beside a window", std::nullopt}},
+                                 .Payload =
+                                     Text{"A quieter reading room",
+                                          TextRole::Heading, 1}},
+                                {.Id = 11, .Geometry = {36, 76, 480,
+                                                        64}, .Payload = Text{
+                                    "Morning light reaches the shared desks "
+                                        "before the shelves."}},
+                                {.Id = 12, .Geometry = {36, 160, 240, 180},
+                                 .Payload =
+                                     Image{"room.png", "Desks beside a window",
+                                           std::nullopt}},
                                 {.Id = 13, .Geometry = {36, 360, 480, 90},
-                                 .Payload = Table{{"Zone", "Seats"},
-                                                  {{"Window", "8"},
-                                                   {"Shelves", "12"}}}}}}}};
+                                 .Payload =
+                                     Table{{"Zone", "Seats"},
+                                           {{"Window", "8"},
+                                             {"Shelves", "12"}}}}}}}};
 }
 } // namespace
 
@@ -80,9 +83,8 @@ void Session::exportTo(std::string_view Path, ExportMode Mode) {
 }
 
 void Session::run() {
-  auto Window = ActiveDesktop
-      .window(SourceDocument.Title,
-              {.Width = 1120, .Height = 760, .Resizable = true});
+  auto Window = ActiveDesktop.window(SourceDocument.Title, {.Width =
+          1120, .Height = 760, .Resizable = true});
   Window.toolbar().toggle("Images", Settings.KeepImages)
       .toggle("Page markers", Settings.IncludePageBreaks);
   Window.split(0.46).left(ActiveDesktop.pdf().open(SourceDocument))
@@ -141,9 +143,8 @@ Task<void> openPdf(Desktop &ActiveDesktop) {
                              Total == 0 ? 0
                              : static_cast<unsigned>(100.0 * Done / Total));
                  });
-    Session{ActiveDesktop, std::move(SourceDocument),
-            {.KeepImages = true, .AssetDirectory = Path->stem() + "-assets"}}
-        .run();
+    Session{ActiveDesktop, std::move(SourceDocument), {.KeepImages =
+                true, .AssetDirectory = Path->stem() + "-assets"}}.run();
   } catch (const std::exception &Error) {
     ActiveDesktop.toast("Could not read PDF", Error.what());
   }

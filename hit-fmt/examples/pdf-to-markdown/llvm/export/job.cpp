@@ -62,8 +62,8 @@ Result ExportJob::run(ExportMode Mode) const {
   for (std::size_t PageIndex = 0; PageIndex < SourceDocument.Pages.size();
        ++PageIndex) {
     if (ProgressCallbackValue) {
-      ProgressCallbackValue({.Kind = ProgressKind::Page, .Value = {
-              .Page = SourceDocument.Pages[PageIndex].Number}},
+      ProgressCallbackValue({.Kind = ProgressKind::Page, .Value = {.Page =
+                  SourceDocument.Pages[PageIndex].Number}},
                             ProgressCallbackContext);
     }
   }

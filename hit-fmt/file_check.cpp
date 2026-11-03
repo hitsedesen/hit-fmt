@@ -357,8 +357,8 @@ CheckedFile FormatAndCheckFile(
         .TokenMap = tokenMap,
         .Changes = diagnostics == DiagnosticDetail::Full,
         .ChangeSummary = true,
-        .DiagnosticLocations = (locations || changed.has_value()) &&
-            configuration.Formatting.Policies.ColumnLimit != 0 &&
+        .DiagnosticLocations =
+            (locations || changed.has_value()) && configuration.Formatting.Policies.ColumnLimit != 0 &&
             configuration.Formatting.Policies.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Report,
         .InputProtection = debug,
     };

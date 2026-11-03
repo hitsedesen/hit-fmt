@@ -2617,6 +2617,18 @@ std::vector<FormatCase> FormatCases()
         data / "assignment-location",
         {"large-rhs", "large-rhs-leading", "large-rhs-next-line"},
         "large-rhs.input.cpp");
+    AddCases(
+        cases,
+        data / "assignment-location",
+        {
+            "designated-next-line",
+            "designated-inline",
+            "designated-leading",
+            "designated-preserve",
+            "designated-delimiter",
+            "designated-indented",
+        },
+        "designated.input.cpp");
     AddCases(cases, data / "call-expression-indent", {"aligned", "aligned-no-call-reflow", "indent-width", "preserve"});
     AddCases(
         cases,
@@ -5048,6 +5060,10 @@ INSTANTIATE_TEST_SUITE_P(
         LayoutDiagnosticCase{"line-length", "strict", "input.cpp", "soft", true},
         LayoutDiagnosticCase{"assignment-location", "leading"},
         LayoutDiagnosticCase{"assignment-location", "trailing"},
+        LayoutDiagnosticCase{"assignment-location", "designated-next-line", "designated.input.cpp"},
+        LayoutDiagnosticCase{"assignment-location", "designated-inline", "designated.input.cpp"},
+        LayoutDiagnosticCase{"assignment-location", "designated-delimiter", "designated.input.cpp"},
+        LayoutDiagnosticCase{"assignment-location", "designated-indented", "designated.input.cpp"},
         LayoutDiagnosticCase{
             "call-reflow",
             "typed-declarations",

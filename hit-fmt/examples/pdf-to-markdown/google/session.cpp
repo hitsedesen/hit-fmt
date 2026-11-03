@@ -18,19 +18,22 @@ Document SampleDocument() {
                     {.number = 1,
                      .blocks = {
                                 {.id = 10, .bounds = {36, 28, 480, 32},
-                                 .content = Text{"A quieter reading room",
-                                                 TextRole::kHeading, 1}},
-                                {.id = 11, .bounds = {36, 76, 480, 64},
-                                 .content = Text{
-                          "Morning light reaches the shared desks "
-                              "before the shelves."}},
-                                {.id = 12, .bounds = {36, 160, 240,
-                                                      180}, .content = Image{
-                          "room.png", "Desks beside a window", std::nullopt}},
+                                 .content =
+                                     Text{"A quieter reading room",
+                                          TextRole::kHeading, 1}},
+                                {.id = 11, .bounds = {36, 76, 480,
+                                                      64}, .content = Text{
+                                    "Morning light reaches the shared desks "
+                                        "before the shelves."}},
+                                {.id = 12, .bounds = {36, 160, 240, 180},
+                                 .content =
+                                     Image{"room.png", "Desks beside a window",
+                                           std::nullopt}},
                                 {.id = 13, .bounds = {36, 360, 480, 90},
-                                 .content = Table{{"Zone", "Seats"},
-                                                  {{"Window", "8"},
-                                                   {"Shelves", "12"}}}}}}}};
+                                 .content =
+                                     Table{{"Zone", "Seats"},
+                                           {{"Window", "8"},
+                                             {"Shelves", "12"}}}}}}}};
 }
 } // namespace
 
@@ -76,9 +79,8 @@ void Session::ExportTo(std::string_view path, ExportMode mode) {
 }
 
 void Session::Run() {
-  auto window = desktop_
-      .Window(document_.title,
-              {.width = 1120, .height = 760, .resizable = true});
+  auto window = desktop_.Window(document_.title, {.width =
+          1120, .height = 760, .resizable = true});
   window.Toolbar().Toggle("Images", options_.keep_images)
       .Toggle("Page markers", options_.include_page_breaks);
   window.Split(0.46).Left(desktop_.Pdf().Open(document_))
@@ -134,9 +136,8 @@ Task<void> OpenPdf(Desktop& desktop) {
                              total == 0 ? 0
                              : static_cast<unsigned>(100.0 * done / total));
                  });
-    Session{desktop, std::move(document),
-            {.keep_images = true, .asset_directory = path->stem() + "-assets"}}
-        .Run();
+    Session{desktop, std::move(document), {.keep_images =
+                true, .asset_directory = path->stem() + "-assets"}}.Run();
   } catch (const std::exception& error) {
     desktop.Toast("Could not read PDF", error.what());
   }
