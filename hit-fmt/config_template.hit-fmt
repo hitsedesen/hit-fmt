@@ -19,6 +19,18 @@
 # IncludeCategoryOrder = QuotedFirst (default) puts quoted before angled;
 # AngledFirst reverses them. IncludeMatchingHeader = First stays first;
 # IncludeStandardHeaders = Last keeps unclaimed standard headers last.
+# IncludeSortPriority = CategoryFirst (default) orders quote/angle categories
+# before semantic groups. GroupFirst applies priorities, IncludeGroupOrder
+# and directory subgroup ordering before IncludeCategoryOrder.
+# Mixed delimiters remain separate subgroups within each semantic group.
+# Matching headers stay first; unclaimed standard headers stay last.
+# IncludeGrouping = Preserve ignores this policy. Delimiters are unchanged.
+# Example: IncludeSortPriority = GroupFirst, IncludeGrouping = Regroup,
+# IncludeGroupOrder = Configured, with IncludeGroups =
+# [{Prefix = "vendor/", Priority = 1}, {Prefix = "framework/", Priority = 2},
+#  {Prefix = "shared/", Priority = 3}, {Prefix = "app/", Priority = 4}]
+# orders <vendor/api.hpp>, "framework/api.hpp", <shared/api.hpp>, <app/api.hpp>
+# with one blank line between groups.
 # IncludeMatchingHeader = First selects quoted same-stem headers
 # (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.
 # Pairing is disabled for header inputs or missing filenames.
@@ -32,7 +44,8 @@
 # Entries must be unique normalized relative paths.
 # Depth defaults to 127; Priority defaults to 0.
 # Priority is an integer from -128 to 127.
-# Lower values sort first within each quote/angle category.
+# Lower values sort first within each quote/angle category under CategoryFirst,
+# or across categories under GroupFirst.
 # Unmatched headers have priority zero.
 # Priority never changes first-match selection; equal priorities
 # use IncludeGroupOrder and the usual directory/header ordering.
@@ -973,6 +986,9 @@ IncludeOrder = Preserve
 
 # Values: QuotedFirst | AngledFirst
 IncludeCategoryOrder = QuotedFirst
+
+# Values: CategoryFirst | GroupFirst
+IncludeSortPriority = CategoryFirst
 
 # Values: Preserve | QuotedLocal
 IncludeDelimiters = Preserve

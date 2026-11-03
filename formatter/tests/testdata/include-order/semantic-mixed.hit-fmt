@@ -1,0 +1,14 @@
+IncludeOrder = Sort
+IncludeSortPriority = GroupFirst
+IncludeGrouping = Regroup
+IncludeGroupOrder = Configured
+IncludeCategoryOrder = AngledFirst
+IncludeMatchingHeader = First
+IncludeStandardHeaders = Last
+IncludeDirectoryOrder = Alphabetical
+IncludeGroups = [
+    {Prefix = "vendor/", Priority = 1},
+    {Prefix = "framework/", Priority = 1},
+    {StandardHeaders = true, Prefixes = ["compat.h"], Priority = 2},
+    {Prefix = "shared/", Priority = 3}
+]

@@ -553,6 +553,8 @@ void Includes(
     const auto inputDirectory = Directory(context.InputFilePath);
     const bool inputAbsolute = inputDirectory.starts_with('/');
     const bool nearestHeaders = options.InGroupOrder == IncludeInGroupOrder::NearestFirst;
+    const bool groupFirst =
+        options.SortPriority == IncludeSortPriority::GroupFirst && options.Grouping != IncludeGrouping::Preserve;
     const bool needPaths = options.Grouping != IncludeGrouping::Preserve ||
         options.MatchingHeader == IncludeMatchingHeader::First || nearestHeaders;
     auto distance = [&] (std::span<const std::string_view> path, bool absolute) {
@@ -734,7 +736,7 @@ void Includes(
                     return !standard(a);
                 }
 
-                if (a.Angled != b.Angled) {
+                if (!groupFirst && a.Angled != b.Angled) {
                     return options.CategoryOrder == IncludeCategoryOrder::AngledFirst ? a.Angled : !a.Angled;
                 }
 
@@ -776,11 +778,19 @@ void Includes(
                         return left != right ? left < right : key(a).Rule < key(b).Rule;
                     }
 
+                    if (groupFirst && a.Angled != b.Angled) {
+                        return options.CategoryOrder == IncludeCategoryOrder::AngledFirst ? a.Angled : !a.Angled;
+                    }
+
                     if (!nearestHeaders && options.Grouping == IncludeGrouping::Directory &&
                         key(a).Depth == IncludeGroupRule::MaxDepth && Filename(a.Path) != Filename(b.Path))
                     {
                         return Filename(a.Path) < Filename(b.Path);
                     }
+                }
+
+                if (groupFirst && a.Angled != b.Angled) {
+                    return options.CategoryOrder == IncludeCategoryOrder::AngledFirst ? a.Angled : !a.Angled;
                 }
 
                 if (nearestHeaders && !matching(a) && !standard(a) && !key(a).RuleStandard &&

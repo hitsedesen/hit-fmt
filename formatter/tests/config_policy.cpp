@@ -1064,7 +1064,7 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritance)
         "StandaloneCommentBlankLinesAfter = 2\n" "MaxEmptyLines = 2\n" "BreakAfterTemplateHeader = true\n"
         "ExpressionsAlignment = Operand\n" "IncludeMatchingHeader = First\n" "IncludeGrouping = Regroup\n"
         "IncludeGroups = [{Prefix = \"engine/\", Depth = 2}, " "{Prefix = \"engine/detail/\", Depth = 1}]\n"
-        "IncludeGroupOrder = Configured\n" "IncludeDirectoryOrder = Alphabetical\n"
+        "IncludeGroupOrder = Configured\n" "IncludeSortPriority = GroupFirst\n" "IncludeDirectoryOrder = Alphabetical\n"
         "IncludeInGroupOrder = NearestFirst\n" "IncludePathBase = ProjectRoot\n" "IncludeStandardHeaders = Last\n");
     auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
     const auto policies = formatter::CompilePolicies(style);
@@ -1083,6 +1083,8 @@ TEST(ConfigPolicy, StagedOptionsResolveFinalInheritance)
     EXPECT_EQ(prepared.Structural.InGroupOrder, formatter::IncludeInGroupOrder::NearestFirst);
     EXPECT_EQ(policies.Includes.GroupOrder, formatter::IncludeGroupOrder::Configured);
     EXPECT_EQ(prepared.Structural.GroupOrder, formatter::IncludeGroupOrder::Configured);
+    EXPECT_EQ(policies.Includes.SortPriority, formatter::IncludeSortPriority::GroupFirst);
+    EXPECT_EQ(prepared.Structural.SortPriority, formatter::IncludeSortPriority::GroupFirst);
     EXPECT_EQ(prepared.IncludeGroups.Depth(0), 2u);
     EXPECT_EQ(prepared.IncludeGroups.Depth(1), 1u);
     EXPECT_EQ(prepared.Structural.StandardHeaders, formatter::IncludeStandardHeaders::Last);
@@ -1151,6 +1153,11 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
     const TemporaryConfig badGroupOrder("IncludeGroupOrder = Reverse\n");
     EXPECT_THROW((void)formatter::LoadConfigFile(badGroupOrder.Path), std::runtime_error);
     formatter::Style invalidCategoryOrder;
+    formatter::Style invalidSortPriority;
+    invalidSortPriority.IncludeSortPriority = static_cast<formatter::IncludeSortPriority>(255);
+    EXPECT_THROW((void)formatter::PreparedFormat(invalidSortPriority), std::invalid_argument);
+    const TemporaryConfig badSortPriority("IncludeSortPriority = Reverse\n");
+    EXPECT_THROW((void)formatter::LoadConfigFile(badSortPriority.Path), std::runtime_error);
     invalidCategoryOrder.IncludeCategoryOrder = static_cast<formatter::IncludeCategoryOrder>(255);
     EXPECT_THROW((void)formatter::PreparedFormat(invalidCategoryOrder), std::invalid_argument);
     const TemporaryConfig badCategoryOrder("IncludeCategoryOrder = Reverse\n");
