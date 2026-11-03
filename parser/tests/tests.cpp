@@ -2558,7 +2558,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"separated_lists"},
         GoldenCase{"lambda_init_captures"},
         GoldenCase{"template_parameters_recovery", true},
-        GoldenCase{"preprocessing", true},
+        GoldenCase{"preprocessing"},
         GoldenCase{"conditional_shared_headers", true, false, {"UTEST"}},
         GoldenCase{"preprocessing_fragments"},
         GoldenCase{"modules_and_concepts"},

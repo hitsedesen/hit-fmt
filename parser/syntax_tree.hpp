@@ -43,6 +43,7 @@ struct TokenRange
 #define SYNTAX_NODE_KINDS                                                      \
     SYNTAX_NODE_KIND(TranslationUnit, "translation-unit")                      \
     SYNTAX_NODE_KIND(PreprocessingConditional, "preprocessing-conditional")    \
+    SYNTAX_NODE_KIND(PreprocessingBody, "preprocessing-body")                  \
     SYNTAX_NODE_KIND(PreprocessingBranch, "preprocessing-branch")              \
     SYNTAX_NODE_KIND(PreprocessingDirective, "preprocessing-directive")        \
     SYNTAX_NODE_KIND(Comment, "comment")                                       \

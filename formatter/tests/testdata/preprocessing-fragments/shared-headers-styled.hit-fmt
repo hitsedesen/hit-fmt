@@ -1,0 +1,5 @@
+Layout = Canonical
+IndentationKind = Spaces
+AssignmentOperatorSpacing = Space
+BinaryOperatorSpacing = Space
+FunctionBracePlacement = NextLine

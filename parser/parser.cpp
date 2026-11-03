@@ -1927,6 +1927,66 @@ private:
         return hasElseBranch ? commonDelta.value_or(0) : 0;
     }
 
+    [[nodiscard]] Node* ConditionalBranchBody(Node& branch) const
+    {
+        auto* body = branch.LastChild;
+
+        while (body && body->Kind != NodeKind::CompoundStatement) {
+            body = body->LastChild;
+        }
+
+        return body && body->Tokens.End == branch.Tokens.End && body->LastChild &&
+            body->LastChild->Kind == NodeKind::MissingToken && body->LastChild->Tokens.Begin == branch.Tokens.End
+            ? body
+            : nullptr;
+    }
+
+    bool HasSharedConditionalBody(Node& conditional) const
+    {
+        std::optional<NodeKind> ownerKind;
+
+        for (auto* branch = conditional.FirstChild; branch; branch = branch->NextSibling) {
+            if (branch->Kind != NodeKind::PreprocessingBranch) {
+                continue;
+            }
+
+            if (!ConditionalBranchBody(*branch) || (ownerKind && *ownerKind != branch->LastChild->Kind)) {
+                return false;
+            }
+
+            ownerKind = branch->LastChild->Kind;
+        }
+
+        return true;
+    }
+
+    void CompleteConditionalBranchBodies(Node& conditional)
+    {
+        for (auto* branch = conditional.FirstChild; branch; branch = branch->NextSibling) {
+            if (branch->Kind != NodeKind::PreprocessingBranch) {
+                continue;
+            }
+
+            auto* body = ConditionalBranchBody(*branch);
+            auto* missing = body->LastChild;
+            body->LastChild = nullptr;
+
+            for (auto* child = body->FirstChild; child != missing; child = child->NextSibling) {
+                body->LastChild = child;
+            }
+
+            if (body->LastChild) {
+                body->LastChild->NextSibling = nullptr;
+            } else {
+                body->FirstChild = nullptr;
+            }
+
+            // There is no unique matching opener for the shared closing brace.
+            Tree_.Tokens_.SetMatchingDelimiter(body->Tokens.Begin, std::numeric_limits<TokenIndex>::max());
+            Tree_.Tokens_.SetRole(body->Tokens.Begin, PunctuationRole::BlockDelimiter);
+        }
+    }
+
     void PushConditionalBraceScope()
     {
         if (ConditionalBraceScopeOverflow_ != 0 || ConditionalBraceScopeDepth_ == MaximumParseDepth) {
@@ -2006,6 +2066,14 @@ private:
 
                 if (BranchParseDepth_ == 0 && !HasDelimiterMap_) {
                     auto braceDelta = CommonConditionalBraceDelta(*conditional);
+
+                    if (braceDelta == 1 && ConditionalBraceScopeOverflow_ == 0 &&
+                        ConditionalBraceScopeDepth_ < MaximumParseDepth && HasSharedConditionalBody(*conditional))
+                    {
+                        CompleteConditionalBranchBodies(*conditional);
+                        Append(parent, *ParseCompoundStatement(nullptr, conditional));
+                        return true;
+                    }
 
                     if (braceDelta > 0 && ConditionalBraceScopeOverflow_ == 0 && ConditionalBraceScopeDepth_ != 0) {
                         ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] += static_cast<size_t>(braceDelta);
@@ -8190,17 +8258,24 @@ private:
         }
     }
 
-    Node* ParseCompoundStatement(const Node* functionDeclaration = nullptr)
+    Node* ParseCompoundStatement(const Node* functionDeclaration = nullptr, Node* conditional = nullptr)
     {
-        auto start = Cursor_;
-        auto* node = MakeNode(NodeKind::CompoundStatement, start);
+        auto start = conditional ? conditional->Tokens.Begin : Cursor_;
+        auto* node = MakeNode(conditional ? NodeKind::PreprocessingBody : NodeKind::CompoundStatement, start);
 
-        if (CurrentKind() != TK::Operator_OpenBrace) {
+        if (!conditional && CurrentKind() != TK::Operator_OpenBrace) {
             ErrorAt(Cursor_, "expected compound statement");
             return node;
         }
 
-        ++Cursor_;
+        if (conditional) {
+            // The alternative openers stay in their branches; the continuation
+            // and its single closing brace belong to this shared body once.
+            Append(*node, *conditional);
+        } else {
+            ++Cursor_;
+        }
+
         PushScope();
         PushConditionalBraceScope();
 
@@ -8237,7 +8312,13 @@ private:
         PopScope();
 
         if (CurrentKind() == TK::Operator_CloseBrace) {
-            RecordParsedBodyDelimiters(start, PunctuationRole::BlockDelimiter);
+            if (conditional) {
+                Tree_.Tokens_.SetMatchingDelimiter(Cursor_, std::numeric_limits<TokenIndex>::max());
+                Tree_.Tokens_.SetRole(Cursor_, PunctuationRole::BlockDelimiter);
+            } else {
+                RecordParsedBodyDelimiters(start, PunctuationRole::BlockDelimiter);
+            }
+
             ++Cursor_;
         } else {
             ErrorAt(start, "unterminated compound statement; formatting checking is incomplete", true);
@@ -11117,7 +11198,8 @@ private:
         return kind == NodeKind::TranslationUnit || kind == NodeKind::NamespaceDeclaration ||
             kind == NodeKind::RecordDeclaration || kind == NodeKind::MacroRecordDeclaration ||
             kind == NodeKind::EnumDeclaration || kind == NodeKind::CompoundStatement ||
-            kind == NodeKind::PreprocessingBranch || kind == NodeKind::LambdaBody;
+            kind == NodeKind::PreprocessingBranch || kind == NodeKind::PreprocessingBody ||
+            kind == NodeKind::LambdaBody;
     }
 
     void MarkRangeRole(TokenIndex begin, TokenIndex end, PunctuationRole role)
@@ -11433,6 +11515,7 @@ private:
             case NodeKind::TranslationUnit:
             case NodeKind::PreprocessingConditional:
             case NodeKind::PreprocessingBranch:
+            case NodeKind::PreprocessingBody:
             case NodeKind::NamespaceDeclaration:
             case NodeKind::RecordDeclaration:
             case NodeKind::MacroRecordDeclaration:

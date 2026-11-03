@@ -436,7 +436,7 @@ void PrintSummary(size_t mismatchCount, bool changedHunks, const Terminal& termi
 
     if (mismatchCount == 0) {
         std::cout << terminal.BoldGreen
-            << (changedHunks ? "No hunk or spillover violations found." : "All checked files are formatted.")
+            << (changedHunks ? "No hunk or spillover violations found." : "No style violations found.")
             << terminal.Reset << '\n';
     } else {
         std::cout << terminal.BoldRed << mismatchCount << " file" << (mismatchCount == 1 ? "" : "s")

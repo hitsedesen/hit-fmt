@@ -276,7 +276,8 @@ public:
                     // A macro's default access is unknown until an explicit access label.
                     context = {VariableScope::Record, TK::Identifier};
                 } else if (node.Kind == NK::FunctionDefinition || node.Kind == NK::MacroFunctionDefinition ||
-                    node.Kind == NK::LambdaExpression || node.Kind == NK::RequiresExpression)
+                    node.Kind == NK::LambdaExpression || node.Kind == NK::RequiresExpression ||
+                    node.Kind == NK::PreprocessingBody)
                 {
                     context = {VariableScope::Local, TK::Keyword_public};
                 } else if (node.Kind == NK::AccessSpecifier) {

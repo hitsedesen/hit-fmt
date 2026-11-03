@@ -302,8 +302,8 @@ bool SimpleStatementBoundary(const parser::SyntaxTree& tree, const parser::Node&
     using NK = parser::NodeKind;
     const auto tokens = node.Tokens;
 
-    if ((parent != NK::CompoundStatement && parent != NK::LambdaBody) || tokens.Empty() ||
-        tree.Kind(tokens.End - 1) != TK::Operator_Semicolon)
+    if ((parent != NK::CompoundStatement && parent != NK::PreprocessingBody && parent != NK::LambdaBody) ||
+        tokens.Empty() || tree.Kind(tokens.End - 1) != TK::Operator_Semicolon)
     {
         return false;
     }
@@ -1136,6 +1136,9 @@ SourceAnalysis BuildSourceAnalysis(
             return;
         }
 
+        const bool statementBody =
+            node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::PreprocessingBody ||
+                node.Kind == parser::NodeKind::LambdaBody || node.Kind == parser::NodeKind::RequirementBody;
         stack.push_back({
             child,
             id,
@@ -1143,12 +1146,7 @@ SourceAnalysis BuildSourceAnalysis(
                 node.Kind == parser::NodeKind::PreprocessingBranch
                 ? boundaryParent
                 : id,
-            result.Regions_[id].StatementBoundary
-                ? id
-                : node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::LambdaBody ||
-                    node.Kind == parser::NodeKind::RequirementBody
-                    ? NoRegion
-                    : enclosingStatement,
+            result.Regions_[id].StatementBoundary ? id : statementBody ? NoRegion : enclosingStatement,
         });
     };
     visit(tree.Root(), NoRegion);

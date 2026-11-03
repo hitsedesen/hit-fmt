@@ -1695,6 +1695,19 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../preprocessing-fragments", "opaque-blocks");
     addProfileCase("../preprocessing-fragments", "canonical");
     addProfileCase("../preprocessing-fragments", "shared-scopes");
+    AddCases(
+        cases,
+        data / "preprocessing-fragments",
+        {"shared-headers", "shared-headers-styled"},
+        "shared-headers.input.cpp");
+    {
+        auto preserved = cases.back();
+        preserved.Name = "shared-headers-preserve";
+        preserved.Style = formatter::Style{};
+        preserved.Expected = preserved.Input;
+        cases.push_back(std::move(preserved));
+    }
+
     addProfileCase("../preprocessing-fragments", "case-comments");
     addProfileCase("../preprocessing-fragments", "case-blocks");
 

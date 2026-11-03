@@ -320,39 +320,14 @@ CheckedFile FormatAndCheckFile(
     bool debug)
 {
     CheckedFile checked;
-    std::vector<parser::ParseError> incomplete;
     auto tree = parser::Parse(
         source,
         [&] (parser::ParseError error) {
             if (debug) {
                 checked.Debug.push_back({error.Position, error.Position, "parser: " + error.Message});
             }
-
-            if (error.CheckingIncomplete) {
-                incomplete.push_back(std::move(error));
-            }
         },
         configuration.Formatting.ParsingOptions());
-    std::sort(
-        incomplete.begin(),
-        incomplete.end(),
-        [] (const auto& a, const auto& b) {
-            return Before(a.Position, b.Position);
-        });
-    parser::TokenIndex token = 0;
-
-    for (auto& error : incomplete) {
-        for (; token < tree.TokenCount(); ++token) {
-            const auto position = tree.TokenPosition(token);
-
-            if (position.Line == error.Position.Line && position.Column == error.Position.Column) {
-                checked.RequiredChanges
-                    .push_back({error.Position, {}, std::move(error.Message), {token, tree.Token(token).Text.Begin}});
-                break;
-            }
-        }
-    }
-
     const bool locations = diagnostics != DiagnosticDetail::Summary;
     checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
 
@@ -375,8 +350,7 @@ CheckedFile FormatAndCheckFile(
     const auto namespacePolicy = configuration.Formatting.NamespaceComments.Policy;
     const bool namespaceDiagnostics = namespacePolicy == formatter::NamespaceCommentPolicy::Fix ||
         namespacePolicy == formatter::NamespaceCommentPolicy::AddMissing;
-    const bool tokenMap = locations &&
-        (changed.has_value() || !checked.Semantic.empty() || !checked.RequiredChanges.empty() || namespaceDiagnostics);
+    const bool tokenMap = locations && (changed.has_value() || !checked.Semantic.empty() || namespaceDiagnostics);
     std::vector<formatter::Hunk> selected, permitted;
     const formatter::FormatRequest request{
         .InputFilePath = inputFilePath,

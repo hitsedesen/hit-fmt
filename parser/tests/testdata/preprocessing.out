@@ -152,40 +152,34 @@
     )
     (compound-statement
       "{"
-      (preprocessing-conditional
-        (preprocessing-branch
-          (preprocessing-directive "#if FIRST")
-          (if-statement
-            "if"
-            (condition
-              "("
-              (identifier-expression "first")
-              ")"
-            )
-            (compound-statement
-              "{"
-              (missing-token)
-            )
-          )
-        )
-        (preprocessing-branch
-          (preprocessing-directive "#else")
-          (if-statement
-            "if"
-            (condition
-              "("
-              (identifier-expression "second")
-              ")"
-            )
-            (compound-statement
-              "{"
-              (missing-token)
+      (preprocessing-body
+        (preprocessing-conditional
+          (preprocessing-branch
+            (preprocessing-directive "#if FIRST")
+            (if-statement
+              "if"
+              (condition
+                "("
+                (identifier-expression "first")
+                ")"
+              )
+              (compound-statement "{")
             )
           )
+          (preprocessing-branch
+            (preprocessing-directive "#else")
+            (if-statement
+              "if"
+              (condition
+                "("
+                (identifier-expression "second")
+                ")"
+              )
+              (compound-statement "{")
+            )
+          )
+          (preprocessing-directive "#endif")
         )
-        (preprocessing-directive "#endif")
-      )
-      (unparsed-syntax
         (expression-statement
           (call-expression
             (identifier-expression "use")
@@ -193,7 +187,7 @@
           )
           ";"
         )
-        (unparsed-syntax "}")
+        "}"
       )
       (expression-statement
         (call-expression
@@ -226,55 +220,46 @@
         )
         (compound-statement
           "{"
-          (preprocessing-conditional
-            (preprocessing-branch
-              (preprocessing-directive "#if FEATURE")
-              (if-statement
-                "if"
-                (condition
-                  "("
-                  (identifier-expression "ready")
-                  ")"
-                )
-                (compound-statement
-                  "{"
-                  (missing-token)
-                )
-              )
-            )
-            (preprocessing-branch
-              (preprocessing-directive "#elif ALTERNATIVE")
-              (if-statement
-                "if"
-                (condition
-                  "("
-                  (identifier-expression "alternate")
-                  ")"
-                )
-                (compound-statement
-                  "{"
-                  (missing-token)
+          (preprocessing-body
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#if FEATURE")
+                (if-statement
+                  "if"
+                  (condition
+                    "("
+                    (identifier-expression "ready")
+                    ")"
+                  )
+                  (compound-statement "{")
                 )
               )
-            )
-            (preprocessing-branch
-              (preprocessing-directive "#else")
-              (if-statement
-                "if"
-                (condition
-                  "("
-                  (identifier-expression "fallback")
-                  ")"
-                )
-                (compound-statement
-                  "{"
-                  (missing-token)
+              (preprocessing-branch
+                (preprocessing-directive "#elif ALTERNATIVE")
+                (if-statement
+                  "if"
+                  (condition
+                    "("
+                    (identifier-expression "alternate")
+                    ")"
+                  )
+                  (compound-statement "{")
                 )
               )
+              (preprocessing-branch
+                (preprocessing-directive "#else")
+                (if-statement
+                  "if"
+                  (condition
+                    "("
+                    (identifier-expression "fallback")
+                    ")"
+                  )
+                  (compound-statement "{")
+                )
+              )
+              (preprocessing-directive "#endif")
             )
-            (preprocessing-directive "#endif")
-          )
-          (unparsed-syntax
             (expression-statement
               (call-expression
                 (identifier-expression "Release")
@@ -282,7 +267,7 @@
               )
               ";"
             )
-            (unparsed-syntax "}")
+            "}"
           )
           "}"
         )
@@ -392,40 +377,34 @@
         )
         (compound-statement
           "{"
-          (preprocessing-conditional
-            (preprocessing-branch
-              (preprocessing-directive "#ifndef FEATURE")
-              (while-statement
-                "while"
-                (condition
-                  "("
-                  (identifier-expression "ready")
-                  ")"
-                )
-                (compound-statement
-                  "{"
-                  (missing-token)
-                )
-              )
-            )
-            (preprocessing-branch
-              (preprocessing-directive "#else")
-              (while-statement
-                "while"
-                (condition
-                  "("
-                  (identifier-expression "fallback")
-                  ")"
-                )
-                (compound-statement
-                  "{"
-                  (missing-token)
+          (preprocessing-body
+            (preprocessing-conditional
+              (preprocessing-branch
+                (preprocessing-directive "#ifndef FEATURE")
+                (while-statement
+                  "while"
+                  (condition
+                    "("
+                    (identifier-expression "ready")
+                    ")"
+                  )
+                  (compound-statement "{")
                 )
               )
+              (preprocessing-branch
+                (preprocessing-directive "#else")
+                (while-statement
+                  "while"
+                  (condition
+                    "("
+                    (identifier-expression "fallback")
+                    ")"
+                  )
+                  (compound-statement "{")
+                )
+              )
+              (preprocessing-directive "#endif")
             )
-            (preprocessing-directive "#endif")
-          )
-          (unparsed-syntax
             (expression-statement
               (call-expression
                 (identifier-expression "Poll")
@@ -433,7 +412,7 @@
               )
               ";"
             )
-            (unparsed-syntax "}")
+            "}"
           )
           "}"
         )

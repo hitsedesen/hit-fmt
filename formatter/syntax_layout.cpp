@@ -435,6 +435,15 @@ public:
                     }
 
                     break;
+                case NodeKind::PreprocessingBody: {
+                    const auto body = entry.SequenceBody;
+
+                    if (entry.ItemSequence) {
+                        PlanBody(i, body.Begin - 1, body.End, PolicyForBody(i), false);
+                    }
+
+                    break;
+                }
                 case NodeKind::FunctionDeclaration:
                 case NodeKind::FunctionDefinition:
                 case NodeKind::MacroFunctionDefinition:
@@ -712,6 +721,31 @@ private:
         }
     }
 
+    bool SharedBodyFragment(Index id) const
+    {
+        const auto& node = Region(Syntax_[id]);
+
+        if (node.Kind != NodeKind::CompoundStatement || node.Tokens.Empty() ||
+            Tree_.MatchingDelimiter(node.Tokens.Begin) != None)
+        {
+            return false;
+        }
+
+        auto parent = node.Parent;
+
+        while (parent != None && Region(Syntax_[parent]).Kind != NodeKind::PreprocessingBranch) {
+            parent = Region(Syntax_[parent]).Parent;
+        }
+
+        if (parent == None || node.Tokens.End != Region(Syntax_[parent]).Tokens.End) {
+            return false;
+        }
+
+        const auto conditional = Region(Syntax_[parent]).Parent;
+        const auto body = conditional == None ? None : Region(Syntax_[conditional]).Parent;
+        return body != None && Region(Syntax_[body]).Kind == NodeKind::PreprocessingBody;
+    }
+
     // Preorder projection visits each node once. Reverse order computes shared
     // callee roots/string eligibility and safety. No overlapping range scans.
     void ProjectSyntax()
@@ -735,6 +769,7 @@ private:
             const auto& region = regions[id];
             switch (region.Kind) {
                 case NodeKind::TranslationUnit:
+                case NodeKind::PreprocessingBody:
                 case NodeKind::NamespaceDeclaration:
                 case NodeKind::RecordDeclaration:
                 case NodeKind::MacroRecordDeclaration:
@@ -831,7 +866,16 @@ private:
             if (entry.ItemSequence) {
                 entry.SequenceBody = node.Tokens;
 
-                if (node.Kind == NodeKind::MacroRecordDeclaration) {
+                if (node.Kind == NodeKind::PreprocessingBody) {
+                    entry.ItemSequence = node.FirstChild != None && !node.Tokens.Empty() &&
+                        Tree_.Kind(node.Tokens.End - 1) == TokenKind::Operator_CloseBrace;
+
+                    if (entry.ItemSequence) {
+                        entry.SequenceBody = {Region(Syntax_[node.FirstChild]).Tokens.End, node.Tokens.End - 1};
+                    }
+                } else if (SharedBodyFragment(i)) {
+                    entry.SequenceBody = {node.Tokens.Begin + 1, node.Tokens.End};
+                } else if (node.Kind == NodeKind::MacroRecordDeclaration) {
                     const auto first = node.FirstChild;
                     const auto last = LastChild_[i];
                     entry.ItemSequence =
@@ -3374,6 +3418,12 @@ private:
     {
         auto kind = Region(Syntax_[id]).Kind;
 
+        if (kind == NodeKind::PreprocessingBody) {
+            const auto conditional = Region(Syntax_[id]).FirstChild;
+            const auto branch = Region(Syntax_[conditional]).FirstChild;
+            kind = Region(Syntax_[LastChild_[branch]]).Kind;
+        }
+
         if (kind == NodeKind::LambdaBody || kind == NodeKind::LambdaExpression) {
             return Policies_.LambdaBodies;
         }
@@ -3474,7 +3524,8 @@ private:
                 gap.Reindent = true;
             }
 
-            PlanBody(id, node.Tokens.Begin, node.Tokens.End - 1, PolicyForBody(id), false);
+            const bool fragment = SharedBodyFragment(id);
+            PlanBody(id, node.Tokens.Begin, node.Tokens.End - (fragment ? 0 : 1), PolicyForBody(id), false, fragment);
             return;
         }
 
@@ -3745,12 +3796,13 @@ private:
         }
     }
 
-    void PlanBody(Index id, Index opening, Index close, const BodyPolicy& policy, bool record)
+    void PlanBody(Index id, Index opening, Index close, const BodyPolicy& policy, bool record, bool fragment = false)
     {
         const bool macroRecord = Region(Syntax_[id]).Kind == NodeKind::MacroRecordDeclaration;
+        const bool shared = Region(Syntax_[id]).Kind == NodeKind::PreprocessingBody;
 
-        if (opening >= close || close >= Tree_.TokenCount() ||
-            (!macroRecord &&
+        if (opening >= close || close >= Tree_.TokenCount() || (fragment && opening + 1 == close) ||
+            (!macroRecord && !shared && !fragment &&
                 (Tree_.Kind(opening) != TokenKind::Operator_OpenBrace ||
                     Tree_.Kind(close) != TokenKind::Operator_CloseBrace || Tree_.MatchingDelimiter(opening) != close)))
         {
@@ -3773,9 +3825,11 @@ private:
             Gaps_[opening].Reindent = true;
         }
 
-        // Macro delimiters must remain separate invocations, not collapse
-        // together under a compact/empty brace-body policy.
-        auto shape = macroRecord ? BodyShape::Expanded : opening + 1 == close ? policy.EmptyShape : policy.Shape;
+        // Macro invocations and preprocessing boundaries must remain separate
+        // under compact/empty brace-body policies too.
+        auto shape = macroRecord || shared || fragment
+            ? BodyShape::Expanded
+            : opening + 1 == close ? policy.EmptyShape : policy.Shape;
 
         if (shape == BodyShape::CompactSingleStatementIfFits) {
             const auto& body = Region(Syntax_[id]);
@@ -3795,7 +3849,7 @@ private:
                 (linkage && Policies_.Indentation.LinkageBlocks.Mode != BodyIndentation::Preserve);
         const auto group = GroupAt(
             GapPosition(opening + 1),
-            GapPosition(close + 1),
+            GapPosition(close + (fragment ? 0 : 1)),
             layout::GroupMode::Consistent,
             offset,
             LayoutIndentation{ContinuationAlignment::Block, uint32_t(offset), uint32_t(offset)});
@@ -3832,7 +3886,10 @@ private:
                 (parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression));
         BlockOf_[id] = group;
         Groups_[group].SyntaxBody = true;
-        Gaps_[opening].BodyOpening = true;
+
+        if (!shared) {
+            Gaps_[opening].BodyOpening = true;
+        }
 
         if (canonical) {
             const bool expanded = shape == BodyShape::Expanded;
@@ -3846,12 +3903,17 @@ private:
                 Gaps_[opening + 1].PreserveIndent = true;
             }
 
-            Own(close, group, expanded ? Boundary::Hard : Boundary::Soft, layout::GapKind::Flat, true);
+            if (!fragment) {
+                Own(close, group, expanded ? Boundary::Hard : Boundary::Soft, layout::GapKind::Flat, true);
+            }
         } else {
             Own(opening + 1, group, Boundary::Preserve);
-            Own(close, group, Boundary::Preserve, layout::GapKind::Flat, true);
             Reindent(opening + 1, group, false, independentIndent);
-            Reindent(close, group, true, linkage && independentIndent);
+
+            if (!fragment) {
+                Own(close, group, Boundary::Preserve, layout::GapKind::Flat, true);
+                Reindent(close, group, true, linkage && independentIndent);
+            }
         }
 
         bool inCase = false;
@@ -5541,7 +5603,7 @@ private:
 
         if (!sequence.ItemSequence ||
             (kind != NodeKind::CompoundStatement && kind != NodeKind::LambdaBody &&
-                kind != NodeKind::PreprocessingBranch))
+                kind != NodeKind::PreprocessingBody && kind != NodeKind::PreprocessingBranch))
         {
             return;
         }

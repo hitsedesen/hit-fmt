@@ -1007,6 +1007,44 @@ TEST(FileCheck, IncompleteHunkCoverageAndRequiredChangesStayDistinct)
     }
 }
 
+TEST(FileCheck, ParserLimitationsDoNotFailStyleChecks)
+{
+    const hit_fmt::PreparedConfiguration prepared(Configuration());
+
+    for (const bool styleIssue : {false, true}) {
+        const Input input(
+            std::string(styleIssue ? "void Extra(){Call(left,right);}\n" : "") + "void Open() {\n    Work();\n");
+
+        for (const auto detail :
+            {hit_fmt::DiagnosticDetail::Summary, hit_fmt::DiagnosticDetail::Locations, hit_fmt::DiagnosticDetail::Full})
+        {
+            for (const bool debug : {false, true}) {
+                const auto checked =
+                    hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, detail, debug);
+                EXPECT_EQ(checked.FormattingMismatch, styleIssue);
+                EXPECT_EQ(checked.HasFailures(false), styleIssue);
+                EXPECT_FALSE(checked.HasFailures(true));
+                EXPECT_TRUE(checked.RequiredChanges.empty());
+                EXPECT_EQ(
+                    std::ranges::any_of(
+                        checked.Debug,
+                        [] (const auto& diagnostic) {
+                            return diagnostic.Message.find("formatting checking is incomplete") != std::string::npos;
+                        }),
+                    debug);
+
+                for (const bool fix : {false, true}) {
+                    std::ostringstream output, summary;
+                    hit_fmt::PrintFileIssues(output, "sample.cpp", input.View().View(), checked, fix);
+                    hit_fmt::PrintFileSummaryIssues(summary, checked, fix);
+                    EXPECT_TRUE(output.str().empty());
+                    EXPECT_EQ(summary.str(), styleIssue && !fix ? "formatting mismatch" : "");
+                }
+            }
+        }
+    }
+}
+
 TEST(FileCheck, UnsupportedPreparationFailsClosed)
 {
     auto raw = Configuration();
@@ -1017,7 +1055,7 @@ TEST(FileCheck, UnsupportedPreparationFailsClosed)
     EXPECT_THROW(hit_fmt::PreparedConfiguration{raw}, std::invalid_argument);
 }
 
-TEST(FileCheck, SharedConditionalBodiesCannotClaimConformance)
+TEST(FileCheck, SharedConditionalBodiesAreCheckedWhenCompatible)
 {
     auto settings = Configuration();
     settings.FormattingStyle.FunctionBodyMacroNames = {"UTEST"};
@@ -1028,18 +1066,19 @@ TEST(FileCheck, SharedConditionalBodiesCannotClaimConformance)
         const Input input(std::string("#if DISABLED\n") + header + " {\n#else\n" + header +
             " {\n#endif\n    auto value=ReadValue();\n    EXPECT_EQ(value,1);\n}\n");
         const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration);
-        EXPECT_TRUE(checked.HasFailures(false));
-        EXPECT_TRUE(checked.HasFailures(true));
-        ASSERT_FALSE(checked.RequiredChanges.empty());
-        EXPECT_EQ(checked.RequiredChanges.front().Original.Line, 6u);
+        const bool compatible = std::string_view(header).starts_with("void");
+        EXPECT_EQ(checked.HasFailures(false), compatible);
+        EXPECT_FALSE(checked.HasFailures(true));
+        EXPECT_TRUE(checked.RequiredChanges.empty());
 
         for (bool fix : {false, true}) {
             std::ostringstream summary, details;
             hit_fmt::PrintFileSummaryIssues(summary, checked, fix);
             hit_fmt::PrintFileIssues(details, "sample.cpp", input.View().View(), checked, fix);
-            EXPECT_NE(summary.str().find("cannot be checked safely"), std::string::npos);
-            diagnostics << header << (fix ? " fix\n" : " check\n") << details.str() << "summary: " << summary.str()
-                << '\n';
+            EXPECT_EQ(summary.str().find("cannot be checked safely"), std::string::npos);
+            EXPECT_EQ(details.str().find("cannot be checked safely"), std::string::npos);
+            diagnostics << header << (fix ? " fix\n" : " check\n") << details.str() << "summary:"
+                << (summary.str().empty() ? "" : " ") << summary.str() << '\n';
         }
     }
 
@@ -1048,9 +1087,9 @@ TEST(FileCheck, SharedConditionalBodiesCannotClaimConformance)
     const Input wrapped("NAMESPACE_BEGIN\n#if FIRST\nUTEST(Poll, First) {\n"
         "#else\nUTEST(Poll, Second) {\n#endif\n    Work();\n}\nNAMESPACE_END\n");
     const auto recovered = hit_fmt::FormatAndCheckFile(wrapped.View(), configuration);
-    EXPECT_TRUE(recovered.HasFailures(false));
-    EXPECT_TRUE(recovered.HasFailures(true));
-    EXPECT_FALSE(recovered.RequiredChanges.empty());
+    EXPECT_FALSE(recovered.HasFailures(false));
+    EXPECT_FALSE(recovered.HasFailures(true));
+    EXPECT_TRUE(recovered.RequiredChanges.empty());
     const auto debugged = hit_fmt::FormatAndCheckFile(
         wrapped.View(),
         configuration,
@@ -1059,10 +1098,14 @@ TEST(FileCheck, SharedConditionalBodiesCannotClaimConformance)
         hit_fmt::DiagnosticDetail::Full,
         true);
     EXPECT_EQ(debugged.Formatting.Text, recovered.Formatting.Text);
-    EXPECT_TRUE(debugged.HasFailures(true));
-    ASSERT_EQ(debugged.RequiredChanges.size(), recovered.RequiredChanges.size());
-    ASSERT_FALSE(debugged.RequiredChanges.empty());
-    EXPECT_EQ(debugged.RequiredChanges.front().Message, recovered.RequiredChanges.front().Message);
+    EXPECT_FALSE(debugged.HasFailures(false));
+    EXPECT_FALSE(debugged.HasFailures(true));
+    EXPECT_TRUE(debugged.RequiredChanges.empty());
+    EXPECT_TRUE(std::ranges::any_of(
+        debugged.Debug,
+        [] (const auto& diagnostic) {
+            return diagnostic.Message.find("cannot be checked safely") != std::string::npos;
+        }));
     const Input complete("#if FIRST\nvoid First() { Work(); }\n#else\nvoid Second() { Other(); }\n#endif\n");
     EXPECT_TRUE(hit_fmt::FormatAndCheckFile(complete.View(), configuration).RequiredChanges.empty());
     const formatter::Hunk outside[] = {{1, 1}};

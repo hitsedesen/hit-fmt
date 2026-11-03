@@ -1118,6 +1118,12 @@ public:
             case NK::MemberPointerOperator:
                 Pointer(node, state);
                 break;
+            case NK::PreprocessingBody:
+                state.Owner = Id(node);
+                state.Category = C::Bodies;
+                state.ListOwner = NoRegion;
+                state.ListCategory = C::None;
+                break;
             case NK::LambdaBody:
             case NK::CompoundStatement:
             case NK::RequirementBody:

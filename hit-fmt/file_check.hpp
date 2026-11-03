@@ -44,7 +44,7 @@ struct CheckedFile
 {
     formatter::FormatResult Formatting;
     std::vector<SemanticDiagnostic> Semantic;
-    // Required edits that cannot be applied automatically.
+    // Confirmed required edits that cannot be applied automatically.
     std::vector<SemanticDiagnostic> RequiredChanges;
     // Original byte ranges that were not fully checked.
     std::vector<formatter::HunkCoverage> Incomplete;
@@ -53,7 +53,7 @@ struct CheckedFile
     std::uint16_t ColumnLimit = 0;
     bool FormattingMismatch = false;
 
-    // Fix mode ignores applied formatting changes.
+    // Only confirmed style violations fail; fix mode ignores applied formatting.
     [[nodiscard]] bool HasFailures(bool fix) const;
 };
 

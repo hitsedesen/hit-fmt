@@ -62,72 +62,63 @@
     )
     (unparsed-syntax "}")
   )
-  (preprocessing-conditional
+  (preprocessing-body
     (leading-trivia
       (whitespace "\n\n")
     )
-    (preprocessing-branch
-      (preprocessing-directive
-        (leading-trivia
-          (whitespace "\n\n")
-        )
-        "#if FIRST"
+    (preprocessing-conditional
+      (leading-trivia
+        (whitespace "\n\n")
       )
-      (function-definition
-        (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "First")
-              (function-declarator
-                (parameter-list "(" ")")
+      (preprocessing-branch
+        (preprocessing-directive
+          (leading-trivia
+            (whitespace "\n\n")
+          )
+          "#if FIRST"
+        )
+        (function-definition
+          (declaration-specifiers "void")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "First")
+                (function-declarator
+                  (parameter-list "(" ")")
+                )
               )
             )
           )
-        )
-        (compound-statement
-          "{"
-          (missing-token)
+          (compound-statement "{")
         )
       )
-    )
-    (preprocessing-branch
-      (preprocessing-directive "#else")
-      (function-definition
-        (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Second")
-              (function-declarator
-                (parameter-list "(" ")")
+      (preprocessing-branch
+        (preprocessing-directive "#else")
+        (function-definition
+          (declaration-specifiers "void")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (declarator-name "Second")
+                (function-declarator
+                  (parameter-list "(" ")")
+                )
               )
             )
           )
-        )
-        (compound-statement
-          "{"
-          (missing-token)
+          (compound-statement "{")
         )
       )
+      (preprocessing-directive "#endif")
     )
-    (preprocessing-directive "#endif")
-  )
-  (unparsed-syntax
-    (function-declaration
-      (declaration-specifiers "Work")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list "(" ")")
-            )
-          )
-        )
+    (expression-statement
+      (call-expression
+        (identifier-expression "Work")
+        (argument-list "(" ")")
       )
       ";"
     )
-    (unparsed-syntax "}")
+    "}"
   )
   (preprocessing-conditional
     (leading-trivia
