@@ -54,8 +54,8 @@ auto generic = [] <
 		   class SecondLongParameterName
 >(FirstLongParameterName first,
     SecondLongParameterName second) {
-	return first;
-    };
+    return first;
+};
 
 // hit-fmt off
 template< class FirstLongParameterName ,  class SecondLongParameterName > struct Disabled {};

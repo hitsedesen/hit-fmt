@@ -31,6 +31,6 @@ void Inspect()
         {
             .Name = "protected_argument",
         }, YT_DEFINE_ERROR_ENUM((Opaque, 1)), [] (Options* value) { if (external::Handle* current = Acquire(value)) {
-            value->SetCurrent(current);
-        } });
+                value->SetCurrent(current);
+            } });
 }

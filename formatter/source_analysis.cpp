@@ -1003,6 +1003,17 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
 
+        if (node.Kind == parser::NodeKind::ParameterList && tokens.Size() >= 3 &&
+            tree.Kind(tokens.Begin) == TK::Operator_OpenParenthesis &&
+            tree.Kind(tokens.End - 1) == TK::Operator_CloseParenthesis &&
+            tree.MatchingDelimiter(tokens.Begin) == tokens.End - 1 && tree.Kind(tokens.End - 2) == TK::Comment &&
+            tree.TokenText(tokens.End - 2).starts_with("/*"))
+        {
+            // Moving the closer does not change a trailing block comment's
+            // attachment to its parameter. Internal comment links stay fixed.
+            result.Gaps_[tokens.End - 1].LineBoundary = GapLineBoundary::Any;
+        }
+
         if (node.Kind == parser::NodeKind::HeaderName) {
             // Whitespace inside header delimiters is part of the filename.
             protect(begin, end, ProtectionReason::HeaderName);

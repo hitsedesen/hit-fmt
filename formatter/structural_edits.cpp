@@ -1095,160 +1095,150 @@ StructuralPlan PlanStructuralEditsImpl(
         bool previousTrailingLabel,
         size_t region) {
 
-            if (controlEdits && Control(node.Kind)) {
-                bool attributes = false, labels = false, directives = false;
+        if (controlEdits && Control(node.Kind)) {
+            bool attributes = false, labels = false, directives = false;
 
-                Children(
-                    node,
-                    regions,
-                    [&] (const auto& child) {
-                        attributes |= Attribute(child.Kind);
-                        labels |= child.Kind == NK::CaseLabel || child.Kind == NK::LabelStatement;
-                        directives |=
-                            child.Kind == NK::PreprocessingDirective || child.Kind == NK::PreprocessingConditional;
-                    });
+            Children(
+                node,
+                regions,
+                [&] (const auto& child) {
+                    attributes |= Attribute(child.Kind);
+                    labels |= child.Kind == NK::CaseLabel || child.Kind == NK::LabelStatement;
+                    directives |=
+                        child.Kind == NK::PreprocessingDirective || child.Kind == NK::PreprocessingConditional;
+                });
 
-                Children(
-                    node,
-                    regions,
-                    [&] (const auto& body) {
-                        if (Header(body.Kind) || Attribute(body.Kind) || body.Kind == NK::CompoundStatement ||
-                            body.Kind == NK::Comment || body.Kind == NK::PreprocessingDirective || body.Tokens.Empty())
-                        {
-                            return;
-                        }
+            Children(
+                node,
+                regions,
+                [&] (const auto& body) {
+                    if (Header(body.Kind) || Attribute(body.Kind) || body.Kind == NK::CompoundStatement ||
+                        body.Kind == NK::Comment || body.Kind == NK::PreprocessingDirective || body.Tokens.Empty())
+                    {
+                        return;
+                    }
 
-                        auto tokens = body.Tokens;
-                        bool null = body.Kind == NK::ExpressionStatement && tokens.Size() == 1 &&
-                            tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
+                    auto tokens = body.Tokens;
+                    bool null = body.Kind == NK::ExpressionStatement && tokens.Size() == 1 &&
+                        tree.Kind(tokens.Begin) == TK::Operator_Semicolon;
 
-                        if (!(null ? options.EmptyControlBody : options.AddMissingControlBraces)) {
-                            return;
-                        }
+                    if (!(null ? options.EmptyControlBody : options.AddMissingControlBraces)) {
+                        return;
+                    }
 
-                        // Preserve the conventional else-if chain; nested
-                        // then-controls are wrapped together, with closes
-                        // ordered deepest-first.
-                        if (body.Kind == NK::IfStatement && tokens.Begin &&
-                            tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
-                        {
-                            return;
-                        }
+                    // Preserve the conventional else-if chain; nested
+                    // then-controls are wrapped together, with closes
+                    // ordered deepest-first.
+                    if (body.Kind == NK::IfStatement && tokens.Begin && tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
+                    {
+                        return;
+                    }
 
-                        auto action = null
-                            ? StructuralAction::EmptyControlBody
-                            : StructuralAction::AddMissingControlBraces;
-                        auto range = Range(tree, tokens);
+                    auto action = null ? StructuralAction::EmptyControlBody : StructuralAction::AddMissingControlBraces;
+                    auto range = Range(tree, tokens);
 
-                        // Replacing a null body's semicolon cannot capture comments
-                        // elsewhere in the control; only directly attached comments fence it.
-                        if (status != RegionStatus::Complete) {
-                            Skip(plan, action, tokens, StructuralSkip::Incomplete);
-                        } else if (attributes) {
-                            Skip(plan, action, tokens, StructuralSkip::Attributes);
-                        } else if (trailingLabel || labels || body.Kind == NK::LabelStatement ||
-                            body.Kind == NK::CaseLabel)
-                        {
-                            Skip(plan, action, tokens, StructuralSkip::LabelBody);
-                        } else if (directives) {
-                            Skip(plan, action, tokens, StructuralSkip::DirectiveBoundary);
-                        } else if ((!null && hasBarrier(node.Tokens)) || AdjacentComment(tree, tokens)) {
-                            Skip(plan, action, tokens, StructuralSkip::CommentAttached);
-                        } else if (safety.IntersectsImmutable(range) ||
-                            // Null bodies replace only the semicolon.
-                            // A protected following gap fences inserted
-                            // closes, not replacements ending at its boundary.
-                            (!null && safety.IntersectsImmutable({range.End, range.End})) ||
-                            (safety.Gaps()[tokens.Begin].Preserve && safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                            (!null && safety.Gaps()[tokens.End].Preserve && safety.Gaps()[tokens.End].Source.Empty()))
-                        {
-                            Skip(plan, action, tokens, StructuralSkip::Protected);
+                    // Replacing a null body's semicolon cannot capture comments
+                    // elsewhere in the control; only directly attached comments fence it.
+                    if (status != RegionStatus::Complete) {
+                        Skip(plan, action, tokens, StructuralSkip::Incomplete);
+                    } else if (attributes) {
+                        Skip(plan, action, tokens, StructuralSkip::Attributes);
+                    } else if (trailingLabel || labels || body.Kind == NK::LabelStatement || body.Kind == NK::CaseLabel)
+                    {
+                        Skip(plan, action, tokens, StructuralSkip::LabelBody);
+                    } else if (directives) {
+                        Skip(plan, action, tokens, StructuralSkip::DirectiveBoundary);
+                    } else if ((!null && hasBarrier(node.Tokens)) || AdjacentComment(tree, tokens)) {
+                        Skip(plan, action, tokens, StructuralSkip::CommentAttached);
+                    } else if (safety.IntersectsImmutable(range) ||
+                        // Null bodies replace only the semicolon.
+                        // A protected following gap fences inserted
+                        // closes, not replacements ending at its boundary.
+                        (!null && safety.IntersectsImmutable({range.End, range.End})) ||
+                        (safety.Gaps()[tokens.Begin].Preserve && safety.Gaps()[tokens.Begin].Source.Empty()) ||
+                        (!null && safety.Gaps()[tokens.End].Preserve && safety.Gaps()[tokens.End].Source.Empty()))
+                    {
+                        Skip(plan, action, tokens, StructuralSkip::Protected);
+                    } else {
+                        auto id = Operation(plan, action, tokens);
+
+                        if (null) {
+                            Literal(plan, range, "{}", id, depth());
                         } else {
-                            auto id = Operation(plan, action, tokens);
-
-                            if (null) {
-                                Literal(plan, range, "{}", id, depth());
-                            } else {
-                                Literal(plan, {range.Begin, range.Begin}, "{", id, depth(), StructuralEdit::Edge::Open);
-                                Literal(plan, {range.End, range.End}, "}", id, depth(), StructuralEdit::Edge::Close);
-                            }
+                            Literal(plan, {range.Begin, range.Begin}, "{", id, depth(), StructuralEdit::Edge::Open);
+                            Literal(plan, {range.End, range.End}, "}", id, depth(), StructuralEdit::Edge::Close);
                         }
-                    });
-            }
+                    }
+                });
+        }
 
-            bool nullStatement = options.RemoveNullStatements && parent == NK::CompoundStatement &&
-                node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
-            bool declarationParent = parent == NK::TranslationUnit || parent == NK::NamespaceDeclaration ||
-                parent == NK::LinkageSpecification || parent == NK::ExportDeclaration;
-            bool nullDeclaration = options.RemoveNullDeclarations && declarationParent &&
-                node.Kind == NK::EmptyDeclaration && node.Tokens.Size() == 1;
-            bool functionSuffix = options.RemoveNullDeclarations && node.Kind == NK::FunctionDefinition &&
-                !node.Tokens.Empty() && tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
+        bool nullStatement = options.RemoveNullStatements && parent == NK::CompoundStatement &&
+            node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
+        bool declarationParent = parent == NK::TranslationUnit || parent == NK::NamespaceDeclaration ||
+            parent == NK::LinkageSpecification || parent == NK::ExportDeclaration;
+        bool nullDeclaration = options.RemoveNullDeclarations && declarationParent &&
+            node.Kind == NK::EmptyDeclaration && node.Tokens.Size() == 1;
+        bool functionSuffix = options.RemoveNullDeclarations && node.Kind == NK::FunctionDefinition &&
+            !node.Tokens.Empty() && tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
 
-            if (!(nullStatement || nullDeclaration || functionSuffix)) {
-                return;
-            }
+        if (!(nullStatement || nullDeclaration || functionSuffix)) {
+            return;
+        }
 
-            TI token = functionSuffix ? node.Tokens.End - 1 : node.Tokens.Begin;
+        TI token = functionSuffix ? node.Tokens.End - 1 : node.Tokens.Begin;
 
-            if (tree.Kind(token) != TK::Operator_Semicolon) {
-                return;
-            }
+        if (tree.Kind(token) != TK::Operator_Semicolon) {
+            return;
+        }
 
-            // A namespace's same-line null-declaration suffix is
-            // redundant even when a comment follows it. Remove only the
-            // semicolon atoms, retaining the authored comment and gaps.
-            bool namespaceSuffix = nullDeclaration && token && Horizontal(tree.WhitespaceBefore(token)) &&
-                ((previous == NK::NamespaceDeclaration && tree.Kind(token - 1) == TK::Operator_CloseBrace) ||
-                    (previous == NK::EmptyDeclaration && namespaceSuffixEnd == token));
+        // A namespace's same-line null-declaration suffix is
+        // redundant even when a comment follows it. Remove only the
+        // semicolon atoms, retaining the authored comment and gaps.
+        bool namespaceSuffix = nullDeclaration && token && Horizontal(tree.WhitespaceBefore(token)) &&
+            ((previous == NK::NamespaceDeclaration && tree.Kind(token - 1) == TK::Operator_CloseBrace) ||
+                (previous == NK::EmptyDeclaration && namespaceSuffixEnd == token));
 
-            if (namespaceSuffix) {
-                namespaceSuffixEnd = token + 1;
-            }
+        if (namespaceSuffix) {
+            namespaceSuffixEnd = token + 1;
+        }
 
-            auto action = nullStatement
-                ? StructuralAction::RemoveNullStatements
-                : StructuralAction::RemoveNullDeclarations;
-            parser::TokenRange tokens{token, token + 1};
-            const auto requiredContext = functionSuffix
-                ? KnownSyntax | KnownAfter
-                : KnownSyntax | KnownBefore | KnownAfter;
+        auto action = nullStatement ? StructuralAction::RemoveNullStatements : StructuralAction::RemoveNullDeclarations;
+        parser::TokenRange tokens{token, token + 1};
+        const auto requiredContext = functionSuffix ? KnownSyntax | KnownAfter : KnownSyntax | KnownBefore | KnownAfter;
 
-            if (status != RegionStatus::Complete || !hasNullContext(region, requiredContext)) {
-                Skip(plan, action, tokens, StructuralSkip::Incomplete);
-            } else if ((nullDeclaration && !declarationSequence) ||
-                (nullStatement && (grandparent == NK::Argument || grandparent == NK::StatementExpression)))
-            {
-                // GNU statement expressions can change from void to a
-                // value if their final null statement disappears. Macro
-                // braced arguments and non-sequence exported declarations
-                // are not redundant bodies.
-                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
-            } else if (nullStatement &&
-                (previousTrailingLabel || previous == NK::CaseLabel || previous == NK::LabelStatement))
-            {
-                Skip(plan, action, tokens, StructuralSkip::LabelBody);
-            } else if (!namespaceSuffix && AdjacentComment(tree, tokens)) {
-                Skip(plan, action, tokens, StructuralSkip::CommentAttached);
-            } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
-                (safety.Gaps()[tokens.Begin].Preserve && safety.Gaps()[tokens.Begin].Source.Empty()) ||
-                (safety.Gaps()[tokens.End].Preserve && safety.Gaps()[tokens.End].Source.Empty()))
-            {
-                Skip(plan, action, tokens, StructuralSkip::Protected);
-            } else if (options.PreserveBareCR && safety.Gaps()[token].HasBareCR &&
-                safety.Original(token).ends_with('\r'))
-            {
-                // Retain the first original separator of a zero-gap
-                // deletion chain before admission: no cancellation or ID
-                // remapping.
-                Skip(plan, action, tokens, StructuralSkip::RequiredBody);
-            } else {
-                auto id = Operation(plan, action, tokens);
-                // Token-only removal cannot take neighboring comments
-                // or gaps.
-                Literal(plan, Range(tree, tokens), "", id);
-            }
-        };
+        if (status != RegionStatus::Complete || !hasNullContext(region, requiredContext)) {
+            Skip(plan, action, tokens, StructuralSkip::Incomplete);
+        } else if ((nullDeclaration && !declarationSequence) ||
+            (nullStatement && (grandparent == NK::Argument || grandparent == NK::StatementExpression)))
+        {
+            // GNU statement expressions can change from void to a
+            // value if their final null statement disappears. Macro
+            // braced arguments and non-sequence exported declarations
+            // are not redundant bodies.
+            Skip(plan, action, tokens, StructuralSkip::RequiredBody);
+        } else if (nullStatement &&
+            (previousTrailingLabel || previous == NK::CaseLabel || previous == NK::LabelStatement))
+        {
+            Skip(plan, action, tokens, StructuralSkip::LabelBody);
+        } else if (!namespaceSuffix && AdjacentComment(tree, tokens)) {
+            Skip(plan, action, tokens, StructuralSkip::CommentAttached);
+        } else if (safety.IntersectsImmutable(Range(tree, tokens)) ||
+            (safety.Gaps()[tokens.Begin].Preserve && safety.Gaps()[tokens.Begin].Source.Empty()) ||
+            (safety.Gaps()[tokens.End].Preserve && safety.Gaps()[tokens.End].Source.Empty()))
+        {
+            Skip(plan, action, tokens, StructuralSkip::Protected);
+        } else if (options.PreserveBareCR && safety.Gaps()[token].HasBareCR && safety.Original(token).ends_with('\r')) {
+            // Retain the first original separator of a zero-gap
+            // deletion chain before admission: no cancellation or ID
+            // remapping.
+            Skip(plan, action, tokens, StructuralSkip::RequiredBody);
+        } else {
+            auto id = Operation(plan, action, tokens);
+            // Token-only removal cannot take neighboring comments
+            // or gaps.
+            Literal(plan, Range(tree, tokens), "", id);
+        }
+    };
     if constexpr (Certified) {
         CheckAnalysisSource(tree, safety);
         std::pmr::vector<uint32_t> depths(&scratchMemory);
@@ -1341,20 +1331,20 @@ StructuralPlan PlanStructuralEditsImpl(
                 RegionStatus status,
                 bool trailingLabel,
                 bool previousTrailingLabel) {
-                    visit(
-                        node,
-                        parent,
-                        previous,
-                        grandparent,
-                        sequence,
-                        [depth] {
-                            return depth;
-                        },
-                        status,
-                        trailingLabel,
-                        previousTrailingLabel,
-                        regionIndex++);
-                },
+                visit(
+                    node,
+                    parent,
+                    previous,
+                    grandparent,
+                    sequence,
+                    [depth] {
+                        return depth;
+                    },
+                    status,
+                    trailingLabel,
+                    previousTrailingLabel,
+                    regionIndex++);
+            },
             trailingLabels);
     }
     std::string relativeInput;

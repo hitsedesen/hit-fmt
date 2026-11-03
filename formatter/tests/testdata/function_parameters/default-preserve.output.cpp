@@ -28,5 +28,5 @@ void Existing(
 auto configure = [] (
     int count = DefaultElementCountForCurrentProcessingStage,
     int other = 0) {
-        return count;
-    };
+    return count;
+};

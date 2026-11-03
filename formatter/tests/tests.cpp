@@ -3743,6 +3743,8 @@ std::vector<FormatCase> FormatCases()
     }
 
     cases.push_back({lambdaAnchors, "authored-anchor", "authored-anchor.input.cpp"});
+    cases.push_back({lambdaAnchors, "wrapped-parameters-same-line", "wrapped-parameters-same-line.input.cpp"});
+    cases.push_back({lambdaAnchors, "wrapped-parameters-comments", "wrapped-parameters-comments.input.cpp"});
 
     for (const auto* name : {"attributed-blocks", "attributed-blocks-canonical", "attributed-blocks-tabs"}) {
         cases.push_back({lambdaAnchors, name, "attributed-blocks.input.cpp"});

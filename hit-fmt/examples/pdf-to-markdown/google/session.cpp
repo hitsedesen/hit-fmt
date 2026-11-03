@@ -125,15 +125,15 @@ Task<void> OpenPdf(Desktop& desktop) {
 #if defined(PAPER_ENABLE_OCR)
     reader.Ocr({.language = "eng", .minimum_confidence = 0.85});
 #endif
-    auto document = co_await reader.Extract(*path, [&desktop,
-                                                    label = path->filename()](
-        unsigned done,
-        unsigned total) {
-          desktop.Status()
-              .Show(label,
-                    total == 0 ? 0
-                    : static_cast<unsigned>(100.0 * done / total));
-        });
+    auto document = co_await reader
+        .Extract(*path,
+                 [&desktop, label = path->filename()](unsigned done,
+                                                      unsigned total) {
+                   desktop.Status()
+                       .Show(label,
+                             total == 0 ? 0
+                             : static_cast<unsigned>(100.0 * done / total));
+                 });
     Session{desktop, std::move(document),
             {.keep_images = true, .asset_directory = path->stem() + "-assets"}}
         .Run();
