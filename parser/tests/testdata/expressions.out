@@ -821,7 +821,7 @@
             (member-expression
               (identifier-expression "object")
               "."
-              (identifier-expression "operator" "bool")
+              (operator-function-name "operator" "bool")
             )
             (argument-list "(" ")")
           )
@@ -832,7 +832,7 @@
             (member-expression
               (identifier-expression "object")
               "."
-              (identifier-expression "operator" "(" ")")
+              (operator-function-name "operator" "(" ")")
             )
             (argument-list "(" ")")
           )
@@ -1948,7 +1948,7 @@
             (member-expression
               (identifier-expression "object")
               "."
-              (identifier-expression "operator" "bool")
+              (operator-function-name "operator" "bool")
               (trailing-trivia
                 (comment "/* trailing */")
               )

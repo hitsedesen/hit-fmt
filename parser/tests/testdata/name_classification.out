@@ -593,7 +593,7 @@
                   (argument-list "(" ")")
                 )
                 "."
-                (identifier-expression "operator" "->")
+                (operator-function-name "operator" "->")
               )
               (argument-list "(" ")")
             )
