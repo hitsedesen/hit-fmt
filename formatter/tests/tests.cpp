@@ -1522,6 +1522,39 @@ std::vector<FormatCase> FormatCases()
     }
 
     AddCases(cases, chains, {"always", "continuation", "preserve"});
+    cases.push_back({chains, "subscripts-width", "subscripts-width.input.cpp", "subscripts"});
+    cases.push_back({chains, "subscripts", "subscripts.input.cpp"});
+
+    for (const auto* profile :
+        {
+            "subscripts-preserve",
+            "subscripts-selected",
+            "subscripts-expressions-preserve",
+            "subscripts-always",
+            "subscripts-vertical",
+            "subscripts-all-or-vertical",
+        })
+    {
+        cases.push_back({chains, profile, "subscripts.input.cpp"});
+        auto style = formatter::LoadConfigFile(chains / "subscripts.hit-fmt").FormattingStyle;
+
+        if (std::string_view(profile) == "subscripts-preserve") {
+            style.ChainsLayout = CategoryLayout::Preserve;
+        } else if (std::string_view(profile) == "subscripts-selected") {
+            style.ChainedCallRootNames = {"data"};
+        } else if (std::string_view(profile) == "subscripts-expressions-preserve") {
+            style.ExpressionsLayout = CategoryLayout::Preserve;
+        } else if (std::string_view(profile) == "subscripts-always") {
+            style.ChainsBreak = BreakRequirement::Always;
+        } else if (std::string_view(profile) == "subscripts-vertical") {
+            style.ChainsPacking = ListPacking::VerticalWhenBroken;
+        } else {
+            style.ChainsPacking = ListPacking::AllOrVertical;
+        }
+
+        cases.back().Style = std::move(style);
+    }
+
     cases.push_back({chains, "overflow", "overflow.input.cpp"});
     AddCases(cases, chains, {"moved-root", "moved-root-preserve", "moved-root-tabs"}, "moved-root.input.cpp");
     cases.push_back({chains, "child-fitting", "child-fitting.input.cpp"});

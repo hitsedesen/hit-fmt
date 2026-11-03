@@ -188,7 +188,8 @@ bool IsControl(NodeKind kind)
 
 bool IsSpine(NodeKind kind)
 {
-    return kind == NodeKind::CallExpression || kind == NodeKind::MemberExpression;
+    return kind == NodeKind::CallExpression || kind == NodeKind::MemberExpression ||
+        kind == NodeKind::SubscriptExpression;
 }
 
 class Planner
@@ -522,7 +523,6 @@ public:
                 case NodeKind::ConditionalExpression:
                 case NodeKind::ParenthesizedExpression:
                 case NodeKind::RequirementExpression:
-                case NodeKind::SubscriptExpression:
                 case NodeKind::CastExpression:
                 case NodeKind::TypeConstructionExpression:
                     PlanExpression(i);
@@ -532,6 +532,10 @@ public:
                         PlanExpression(i);
                     }
 
+                    break;
+                case NodeKind::SubscriptExpression:
+                    PlanSubscriptInterior(i);
+                    PlanChain(i);
                     break;
                 case NodeKind::CallExpression:
                 case NodeKind::MemberExpression:
@@ -2663,8 +2667,8 @@ private:
 
             if (canonical &&
                 (kind == NodeKind::ParenthesizedExpression || kind == NodeKind::RequirementExpression ||
-                    kind == NodeKind::SubscriptExpression || kind == NodeKind::CastExpression ||
-                    kind == NodeKind::TypeConstructionExpression) && Tree_.Kind(t) != TokenKind::Comment)
+                    kind == NodeKind::CastExpression || kind == NodeKind::TypeConstructionExpression) &&
+                Tree_.Kind(t) != TokenKind::Comment)
             {
                 if (t > node.Tokens.Begin) {
                     Own(t, group, Boundary::Flat);
@@ -4180,6 +4184,30 @@ private:
         gap.Reindent = true;
     }
 
+    void PlanSubscriptInterior(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+
+        if (!Syntax_[id].Safe || node.FirstChild == None || Policies_.Expressions.Layout != LayoutMode::Canonical) {
+            return;
+        }
+
+        const auto opening = NextNonComment(Region(Syntax_[node.FirstChild]).Tokens.End);
+        const auto group = GroupAt(TokenPosition(opening), GapPosition(node.Tokens.End), layout::GroupMode::Fill);
+
+        // Only the bracket interior belongs to expressions. The postfix spine
+        // owns the boundary before '[', independently of nested index syntax.
+        DirectTokens(
+            id,
+            [&] (Index token) {
+                if (Tree_.Kind(token) == TokenKind::Operator_OpenBracket) {
+                    Own(token + 1, group, Boundary::Flat);
+                } else if (Tree_.Kind(token) == TokenKind::Operator_CloseBracket) {
+                    Own(token, group, Boundary::Flat);
+                }
+            });
+    }
+
     bool IsChainLink(Index spine) const
     {
         const auto callee = Region(Syntax_[spine]).FirstChild;
@@ -4192,6 +4220,7 @@ private:
         const auto token = NextNonComment(Region(Syntax_[callee]).Tokens.End);
         return token < part.Tokens.End &&
             ((part.Kind == NodeKind::MemberExpression && Tree_.Kind(token) != TokenKind::Operator_ScopeResolution) ||
+                part.Kind == NodeKind::SubscriptExpression ||
                 (part.Kind == NodeKind::CallExpression && Region(Syntax_[callee]).Kind == NodeKind::CallExpression));
     }
 
@@ -4707,7 +4736,7 @@ private:
         if (Region(entry).Parent != None && IsSpine(Region(Syntax_[Region(entry).Parent]).Kind) &&
             Region(Syntax_[Region(entry).Parent]).FirstChild == id)
         {
-            return; // Only the maximal callee/member spine owns link gaps.
+            return; // Only the maximal postfix spine owns link gaps.
         }
 
         if (Policies_.Chains.Layout != LayoutMode::Canonical) {

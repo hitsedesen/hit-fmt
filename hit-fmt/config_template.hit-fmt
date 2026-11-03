@@ -521,11 +521,15 @@ TernaryLayout = Flexible
 # Values: Align | Indent
 TernaryOperatorIndentation = Align
 
+# Controls member, repeated-call and subscript suffix boundaries.
+# Index expressions keep their own expression/list policies.
+# Example: data["group"] may continue with ["settings"] on the next line.
 # Values: Inherit | Preserve | Canonical
 ChainsLayout = Inherit
 
 # In control headers, chains break only when needed.
 # Even with Always, prefer non-chain breaks.
+# Always counts calls, not fields or subscript suffixes.
 # Lambda bodies keep their ordinary chain policy.
 # AlwaysBreakChainRootNames and AlwaysBreakChainCallNames
 # still require their configured breaks in control headers.

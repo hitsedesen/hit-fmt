@@ -24,8 +24,8 @@ void inspect() {
                 .collect(firstArgument, secondArgument);
             auto sameBounds =
                 boundaries_[item.Range.Begin] == boundaries_[item.Range.End];
-            return cache_.BlockAt(index / EntriesPerBlock)
-                ->Entries[index % EntriesPerBlock];
+            return cache_.BlockAt(index / EntriesPerBlock)->Entries
+                [index % EntriesPerBlock];
         }
     }
 }

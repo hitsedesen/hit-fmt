@@ -29,6 +29,16 @@ formatter::Style Canonical()
     return style;
 }
 
+TEST(PublicPipeline, SubscriptChainAssignmentFitsWithoutWidthDiagnostics)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../chained-calls";
+    const auto source = test::golden::ReadFile(directory / "subscripts-width.input.cpp");
+    const auto style = formatter::LoadConfigFile(directory / "subscripts.hit-fmt").FormattingStyle;
+    const formatter::PreparedFormat prepared(style);
+    const auto result = FormatInput(source, prepared);
+    EXPECT_TRUE(result.Diagnostics.empty());
+}
+
 TEST(PublicPipeline, MultilineCommentIndentationHonorsWholeTokenAuthority)
 {
     auto style = Canonical();

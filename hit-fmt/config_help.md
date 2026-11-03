@@ -145,10 +145,14 @@ BinaryOperatorSide = Leading
   Flexible may split them independently. TernaryOperatorIndentation
   = Indent adds a level when the condition starts on a continued line;
   Align shares the continuation.
-- Chains include . / -> calls and factory()(arg), not nested arguments.
+- Chains include . / -> members, factory()(arg), and subscript suffixes.
+  Nested arguments and index expressions keep their own layout policies.
+  ChainsLayout controls breaks before [, while ExpressionsLayout controls
+  bracket interiors. For example, data["group"]["settings"] can wrap before
+  ["settings"] with the configured chain continuation indentation.
   ChainsBreak = Always needs multiple calls after the receiver;
-  fields and single calls wrap as needed. Control headers prefer other
-  breaks; nested lambdas keep ordinary chain rules.
+  fields, subscripts and single calls wrap as needed. Control headers prefer
+  other breaks; nested lambdas keep ordinary chain rules.
 - AllOrVertical keeps a chain tail together or splits all its links.
   For expressions and IfConditionsPacking it means VerticalWhenBroken.
 
