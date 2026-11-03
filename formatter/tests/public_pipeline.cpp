@@ -1127,6 +1127,20 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
     }
 }
 
+TEST(PublicPipeline, MatchingHeaderSuffixOutlivesStyle)
+{
+    const auto directory = std::filesystem::path(__FILE__).parent_path() / "testdata/include-matching-suffix";
+    const auto source = test::golden::ReadFile(directory / "default.output.cpp");
+    const auto prepared = [&] {
+        auto style = formatter::LoadConfigFile(directory / "suffix.hit-fmt").FormattingStyle;
+        style.IncludeMatchingHeaderSuffix = "_integration_test";
+        return formatter::PreparedFormat(style);
+    }();
+    const auto copied = prepared;
+    const auto result = FormatInput(source, copied, {.InputFilePath = "example_integration_test.cpp"});
+    EXPECT_EQ(result.Text, test::golden::ReadFile(directory / "report.input.cpp"));
+}
+
 TEST(PublicPipeline, IncludeRegroupingRetainsLineEndingsAndIncompleteAtoms)
 {
     formatter::Style style;

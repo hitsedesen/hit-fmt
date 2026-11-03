@@ -602,6 +602,7 @@
         formatter::IncludeDelimiters::Preserve) \
     OPT(formatter::IncludeMatchingHeader, IncludeMatchingHeader, \
         formatter::IncludeMatchingHeader::Off) \
+    OPT(std::string, IncludeMatchingHeaderSuffix, {}) \
     OPT(formatter::IncludeGrouping, IncludeGrouping, \
         formatter::IncludeGrouping::Preserve) \
     OPT(std::vector<formatter::IncludeGroupRule>, IncludeGroups, {}) \

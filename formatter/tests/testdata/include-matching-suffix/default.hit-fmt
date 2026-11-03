@@ -1,0 +1,4 @@
+IncludeOrder = Sort
+IncludeCategoryOrder = AngledFirst
+IncludeMatchingHeader = First
+IncludeGrouping = Regroup

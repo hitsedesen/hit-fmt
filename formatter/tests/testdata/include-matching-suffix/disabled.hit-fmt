@@ -1,0 +1,5 @@
+IncludeOrder = Sort
+IncludeCategoryOrder = AngledFirst
+IncludeGrouping = Regroup
+IncludeMatchingHeaderSuffix = "_test"
+IncludeMatchingHeader = Off

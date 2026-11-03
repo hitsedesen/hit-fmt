@@ -1,0 +1,6 @@
+IncludeOrder = Sort
+IncludeCategoryOrder = AngledFirst
+IncludeMatchingHeader = First
+IncludeGrouping = Regroup
+IncludeMatchingHeaderSuffix = "_test"
+IncludePathBase = ProjectRoot

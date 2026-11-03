@@ -474,6 +474,8 @@ void ParseField(T& field, std::string_view value, const std::filesystem::path& p
         field = ParseBoolean(value, path, line);
     } else if constexpr (std::is_same_v<T, size_t>) {
         field = ParseNonnegativeInteger(value, path, line);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+        field = ParseString(value, path, line);
     } else {
         static_assert(std::is_same_v<T, void>, "unsupported config field type");
     }

@@ -1220,6 +1220,47 @@ std::vector<FormatCase> FormatCases()
         }
     }
 
+    {
+        const auto directory = data / "include-matching-suffix";
+
+        for (const auto& [name, path, config, input] :
+            std::initializer_list<std::array<const char*, 4>>{
+                {"report", "example_test.cpp", "suffix", "report.input.cpp"},
+                {"default", "example_test.cpp", "default", "report.input.cpp"},
+                {"ordinary", "example.cpp", "suffix", "report.input.cpp"},
+                {"other-directory", "other/example_test.cpp", "project-root", "directory.input.cpp"},
+                {"same-directory", "project/example_test.cpp", "project-root", "directory.input.cpp"},
+                {"header", "example_test.hpp", "suffix", "report.input.cpp"},
+                {"unmatched", "example_tests.cpp", "suffix", "report.input.cpp"},
+                {"case-sensitive", "example_TEST.cpp", "suffix", "report.input.cpp"},
+                {"not-terminal", "example_test_extra.cpp", "suffix", "report.input.cpp"},
+                {"missing-path", "", "suffix", "report.input.cpp"},
+                {"candidates", "project/example_test.cpp", "suffix", "candidates.input.cpp"},
+                {"remove-once", "project/example_test_test.cpp", "suffix", "candidates.input.cpp"},
+                {"empty-stem", "project/_test.cpp", "suffix", "candidates.input.cpp"},
+                {"disabled", "project/example_test.cpp", "disabled", "candidates.input.cpp"},
+            })
+        {
+            FormatCase value{directory, name, input, config};
+            value.InputFilePath = path;
+            cases.push_back(std::move(value));
+        }
+
+        for (const bool complete : {false, true}) {
+            FormatCase value{
+                directory,
+                complete ? "full-hunk" : "partial-hunk",
+                "default.output.cpp",
+                "suffix",
+                {{1, complete ? 3u : 1u}},
+                false,
+            };
+            value.InputFilePath = "example_test.cpp";
+            value.Expected = complete ? "report.input.cpp" : "default.output.cpp";
+            cases.push_back(std::move(value));
+        }
+    }
+
     AddCases(cases, BRACE_SPACING_TESTDATA_DIR, {"preserve", "single-space", "mixed"});
     AddCases(cases, LAMBDA_SPACING_TESTDATA_DIR, {"preserve", "space", "no-space"});
     AddCases(cases, CONTROL_SPACING_TESTDATA_DIR, {"preserve", "space", "no-space"});

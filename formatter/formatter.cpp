@@ -1382,6 +1382,7 @@ PreparedFormat::PreparedFormat(const Style& style)
     , IncludeGroups(style.IncludeGrouping != IncludeGrouping::Preserve
         ? std::span<const IncludeGroupRule>(style.IncludeGroups)
         : std::span<const IncludeGroupRule>{})
+    , IncludeMatchingHeaderSuffix(style.IncludeMatchingHeaderSuffix)
     , Structural{
         style.AddMissingControlBraces,
         style.EmptyControlBody == EmptyControlBody::EmptyBlock,
@@ -1489,7 +1490,7 @@ FormatResult detail::FormatWithAnalysis(
         prepared.Structural,
         file,
         scratch,
-        {request.InputFilePath, &prepared.IncludeGroups});
+        {request.InputFilePath, &prepared.IncludeGroups, prepared.IncludeMatchingHeaderSuffix});
     scratch.release();
     const auto namespacePlanner = owned ? detail::PlanNamespaceCommentsCertified : PlanNamespaceComments;
     auto namespacePlan = namespacePlanner(original, safety, prepared.NamespaceComments, file, scratch);

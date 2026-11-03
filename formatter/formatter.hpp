@@ -55,6 +55,7 @@ public:
     const CompiledPolicies Policies;
     const LibraryAnnotations Annotations;
     const PreparedIncludeGroups IncludeGroups;
+    const std::string IncludeMatchingHeaderSuffix;
     const StructuralOptions Structural;
     const NamespaceCommentOptions NamespaceComments;
     const bool HonorClangFormatDirectives;

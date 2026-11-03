@@ -577,6 +577,15 @@ void Includes(
 
     IncludeDelimiterResolver delimiters(options.Delimiters, options.PathBase, context.InputFilePath, scratch);
     const auto sourceName = Filename(context.InputFilePath);
+    const auto sourceStem = Stem(sourceName);
+    auto pairedStem = sourceStem;
+
+    if (options.MatchingHeader == IncludeMatchingHeader::First && !context.MatchingHeaderSuffix.empty() &&
+        sourceStem.size() > context.MatchingHeaderSuffix.size() && sourceStem.ends_with(context.MatchingHeaderSuffix))
+    {
+        pairedStem.remove_suffix(context.MatchingHeaderSuffix.size());
+    }
+
     std::pmr::string directories(&scratch);
     std::pmr::vector<StructuralPiece> pieces(&scratch);
     std::pmr::vector<IncludeKey> keys(&scratch);
@@ -694,7 +703,8 @@ void Includes(
                 const auto name = Filename(atom.Path);
                 key.Matching = options.MatchingHeader == IncludeMatchingHeader::First && !atom.Angled &&
                     !sourceName.empty() && !HeaderFilename(sourceName) && HeaderFilename(name) &&
-                    Stem(name) == Stem(sourceName) && absolute == inputAbsolute && parts == current;
+                    (Stem(name) == sourceStem || Stem(name) == pairedStem) && absolute == inputAbsolute &&
+                    parts == current;
             }
 
             auto key = [&] (const Include& atom) -> const IncludeKey& {

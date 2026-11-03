@@ -644,6 +644,12 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
   Preserve disables sorting. IncludeMatchingHeader = First pairs a
   source with a same-directory, same-stem .h/.hh/.hpp/.hxx/.h++ header.
   Header inputs or missing source filenames disable pairing.
+- IncludeMatchingHeaderSuffix: a literal, case-sensitive suffix removed once
+  from the source stem for additional matches; exact-stem matches still pair.
+  Default "" disables removal; an empty remaining stem never pairs.
+  For example, "_test" also pairs example_test.cpp with example.hpp in the
+  same directory when IncludeMatchingHeader = First. Header inputs, angled
+  includes and headers in other directories remain unpaired.
 - IncludeCategoryOrder: QuotedFirst (default) or AngledFirst orders quoted
   and angled headers in every grouping mode. Matching headers stay first
   and IncludeStandardHeaders = Last keeps unclaimed standard headers last.

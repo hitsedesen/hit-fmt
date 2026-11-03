@@ -81,6 +81,7 @@ struct IncludeSortContext
 {
     std::string_view InputFilePath;
     const PreparedIncludeGroups* Groups = nullptr;
+    std::string_view MatchingHeaderSuffix = {};
 };
 
 using StructuralActionId = uint32_t;

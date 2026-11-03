@@ -22,6 +22,11 @@
 # IncludeMatchingHeader = First selects quoted same-stem headers
 # (.h/.hh/.hpp/.hxx/.h++) in the input file's directory.
 # Pairing is disabled for header inputs or missing filenames.
+# IncludeMatchingHeaderSuffix removes one literal, case-sensitive suffix
+# from the source stem for additional matches; exact-stem matches still pair.
+# Default "" disables removal; an empty remaining stem never pairs.
+# Example: "_test" also pairs example_test.cpp with same-directory example.hpp.
+# Header inputs, angled includes and other directories remain unpaired.
 # IncludeGrouping = Preserve retains existing blank boundaries;
 # Regroup groups by IncludeGroups rules; Directory additionally
 # subdivides each rule by its directory suffix and Depth.
@@ -979,6 +984,9 @@ IncludeDelimiters = Preserve
 
 # Values: Off | First
 IncludeMatchingHeader = Off
+
+# Values: a quoted literal suffix; "" disables removal
+IncludeMatchingHeaderSuffix = ""
 
 # Values: Preserve | Regroup | Directory
 IncludeGrouping = Preserve

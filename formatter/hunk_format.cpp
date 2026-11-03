@@ -331,7 +331,7 @@ ChangedFormatResult FormatChanged(
         prepared.Structural,
         file,
         scratch,
-        {request.InputFilePath, &prepared.IncludeGroups});
+        {request.InputFilePath, &prepared.IncludeGroups, prepared.IncludeMatchingHeaderSuffix});
     scratch.release();
     auto namespacePlan = PlanNamespaceComments(tree, safety, prepared.NamespaceComments, file, scratch);
     eligible.Skipped.insert(eligible.Skipped.end(), namespacePlan.Skipped.begin(), namespacePlan.Skipped.end());
