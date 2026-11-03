@@ -497,7 +497,19 @@ ExpressionsPacking = Fill
 # Values: Inherit | Fill | VerticalWhenBroken | AllOrVertical
 AssignmentsPacking = Inherit
 
-# Values: Block | Operand
+# Block shares the enclosing continuation level. Operand
+# aligns non-assignment continuations to the first operand.
+# Indented gives non-assignment expressions their own level
+# from the indentation of their first operand's line, using
+# ContinuationOffset (0 uses IndentWidth). Ternary delimiters
+# follow TernaryOperatorIndentation. For example:
+# CheckEqual(
+#     actual,
+#     prefix +
+#         converted +
+#         suffix
+# );
+# Values: Block | Operand | Indented
 ExpressionsAlignment = Block
 
 # Values: Inherit | Preserve | Canonical

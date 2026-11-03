@@ -2817,7 +2817,24 @@ std::vector<FormatCase> FormatCases()
         }
     }
 
-    AddCases(cases, data / "continuation-nesting", {"shared", "tabs"});
+    AddCases(cases, data / "continuation-nesting", {"shared", "tabs", "shared-indented"});
+    ShareExpected(cases, data / "continuation-nesting", "shared-indented.output.cpp", "shared.output.cpp");
+    cases.push_back({data / "continuation-nesting", "indented-contexts", "indented-contexts.input.cpp"});
+    AddCases(
+        cases,
+        data / "continuation-nesting",
+        {"nested-expression-block", "nested-expression-operand", "nested-expression-indented"},
+        "nested-expression.input.cpp");
+    ShareExpected(
+        cases,
+        data / "continuation-nesting",
+        "nested-expression-operand.output.cpp",
+        "nested-expression-block.output.cpp");
+    AddCases(
+        cases,
+        data / "continuation-nesting",
+        {"argument-indented", "argument-indented-leading", "argument-indented-tabs"},
+        "argument-precedence.input.cpp");
     AddCases(
         cases,
         data / "continuation-nesting",

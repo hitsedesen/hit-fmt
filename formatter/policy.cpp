@@ -264,7 +264,8 @@ void ValidatePolicyStyle(const Style& style)
         throw std::invalid_argument("IfConditionsPacking has invalid value");
     }
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
-        style.ExpressionsAlignment != ExpressionAlignment::Operand)
+        style.ExpressionsAlignment != ExpressionAlignment::Operand &&
+        style.ExpressionsAlignment != ExpressionAlignment::Indented)
     {
         throw std::invalid_argument("ExpressionsAlignment has invalid value");
     }
