@@ -109,18 +109,17 @@ std::string summarizeExport(const Document &InputDocument,
                   ExportedBlocks = ExportResult.SourceOffsets.size(),
                   TotalPages = InputDocument.Pages.size()](
       std::size_t MaximumCharacters) {
-        const MarkdownView View{ExportResult.Markdown.data(),
-                                std::min(MaximumCharacters,
-                                         ExportResult.Markdown.size())};
-        auto Bytes = std::unique_ptr<char[]>(new char[View.Size + 1]);
-        for (std::size_t Index = 0; Index < View.Size; ++Index) {
-          Bytes[Index] = View[Index];
-        }
-        Bytes[View.Size] = '\0';
-        Output << ", preview of " << InputDocument.Title << ": " <<
-            Bytes.get() << " (" << Status << ", " << ExportedBlocks <<
-            " blocks on " << TotalPages << " pages)";
-      };
+    const MarkdownView View{ExportResult.Markdown
+            .data(), std::min(MaximumCharacters, ExportResult.Markdown.size())};
+    auto Bytes = std::unique_ptr<char[]>(new char[View.Size + 1]);
+    for (std::size_t Index = 0; Index < View.Size; ++Index) {
+      Bytes[Index] = View[Index];
+    }
+    Bytes[View.Size] = '\0';
+    Output << ", preview of " << InputDocument.Title << ": " << Bytes.get() <<
+        " (" << Status << ", " << ExportedBlocks << " blocks on " <<
+        TotalPages << " pages)";
+  };
   Preview(/*MaximumCharacters=*/80);
   return Output.str();
 }

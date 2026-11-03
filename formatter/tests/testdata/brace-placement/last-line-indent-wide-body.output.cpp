@@ -56,9 +56,9 @@ struct Derived :
                 auto callback = [](
                     Request request,
                     Settings settings) {
-                            Prepare();
-                            Execute();
-                    };
+                        Prepare();
+                        Execute();
+                };
         }
 };
 void WithComment(

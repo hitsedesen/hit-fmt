@@ -30,8 +30,8 @@ template <
 auto generic = [] <
     class FirstParameter,
     class SecondParameter>(FirstParameter first, SecondParameter second) {
-        return first;
-    };
+    return first;
+};
 auto value = ConvertRecord<
     int,
     long>(firstLongInputDescription, secondLongInputDescription);

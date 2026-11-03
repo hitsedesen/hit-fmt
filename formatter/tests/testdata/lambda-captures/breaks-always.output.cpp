@@ -7,8 +7,8 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool previousTrailingLabel) {
-            VisitNode(node, parent, previous, previousTrailingLabel);
-        };
+        VisitNode(node, parent, previous, previousTrailingLabel);
+    };
     auto copy = [
         =
     ] (
@@ -16,8 +16,8 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool previousTrailingLabel) {
-            VisitNode(node, parent, previous, previousTrailingLabel);
-        };
+        VisitNode(node, parent, previous, previousTrailingLabel);
+    };
     auto single = [
         previousTrailingLabel
     ] (
@@ -25,8 +25,8 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool trailingLabel) {
-            VisitNode(node, parent, previous, trailingLabel);
-        };
+        VisitNode(node, parent, previous, trailingLabel);
+    };
     auto several = [
         &,
         previousTrailingLabel
@@ -35,8 +35,8 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool trailingLabel) {
-            VisitNode(node, parent, previous, trailingLabel);
-        };
+        VisitNode(node, parent, previous, trailingLabel);
+    };
     auto initialized = [
         label = MakeLabel()
     ] (
@@ -44,15 +44,15 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool trailingLabel) {
-            VisitNode(node, parent, previous, trailingLabel);
-        };
+        VisitNode(node, parent, previous, trailingLabel);
+    };
     auto empty = [] (
         const Node* node,
         NodeKind parent,
         NodeKind previous,
         bool trailingLabel) {
-            VisitNode(node, parent, previous, trailingLabel);
-        };
+        VisitNode(node, parent, previous, trailingLabel);
+    };
     auto wide = [
         firstLabel = MakeFirstLabel(),
         secondLabel = MakeSecondLabel(),
@@ -72,8 +72,8 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool trailingLabel) {
-            VisitNode(node, parent, previous, trailingLabel);
-        };
+        VisitNode(node, parent, previous, trailingLabel);
+    };
     auto multiline = [
         &
     ] (
@@ -81,6 +81,6 @@ void Visit()
         NodeKind parent,
         NodeKind previous,
         bool previousTrailingLabel) {
-            VisitNode(node, parent, previous, previousTrailingLabel);
-        };
+        VisitNode(node, parent, previous, previousTrailingLabel);
+    };
 }

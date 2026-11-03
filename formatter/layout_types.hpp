@@ -120,6 +120,9 @@ struct AnchorSpec
     // Requires StructuralBase and excludes sharing an enclosing continuation.
     // Continuation starters retain logical compact-body indentation as a floor.
     bool LineBase = false;
+    // Use the opening line resumed by a preceding header, rather than its
+    // final physical continuation line. Requires LineBase.
+    bool ResumedLineBase = false;
     // Immutable layout can constrain the structural base to a known column.
     // Requires StructuralBase; excludes LineBase and continuation sharing.
     std::uint32_t FixedBase = InvalidId;
@@ -135,6 +138,10 @@ struct GroupSpec
     bool KeepMultiline : 1 = false;
     // A compact/pinned owner had no legal break until one was promoted.
     bool KeepMultilineFallback : 1 = false;
+    // Resume this group's opening indentation for a following body.
+    bool ResumeOpeningLine : 1 = false;
+    // LineBase consumes the opening indentation resumed by its header.
+    bool ResumedLineBase : 1 = false;
     // Compare coupled owned breaks with Fill during bounded layout selection.
     bool ProbeConsistent : 1 = false;
     // Prospective visual continuation, realized only by this group's line gaps.

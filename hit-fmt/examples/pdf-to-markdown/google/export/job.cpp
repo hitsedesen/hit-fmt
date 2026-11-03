@@ -108,17 +108,17 @@ std::string SummarizeExport(const Document& document, const Result& result,
   auto preview = [&document, &result, &output, status, exported_blocks = result
                   .source_offsets.size(), total_pages = document.pages.size()](
       std::size_t maximum_characters) {
-        const MarkdownView view{result.markdown
-                .data(), std::min(maximum_characters, result.markdown.size())};
-        auto bytes = std::unique_ptr<char[]>(new char[view.size + 1]);
-        for (std::size_t index = 0; index < view.size; ++index) {
-          bytes[index] = view[index];
-        }
-        bytes[view.size] = '\0';
-        output << ", preview of " << document.title << ": " << bytes.get() <<
-            " (" << status << ", " << exported_blocks << " blocks on " <<
-            total_pages << " pages)";
-      };
+    const MarkdownView view{result.markdown
+            .data(), std::min(maximum_characters, result.markdown.size())};
+    auto bytes = std::unique_ptr<char[]>(new char[view.size + 1]);
+    for (std::size_t index = 0; index < view.size; ++index) {
+      bytes[index] = view[index];
+    }
+    bytes[view.size] = '\0';
+    output << ", preview of " << document.title << ": " << bytes.get() <<
+        " (" << status << ", " << exported_blocks << " blocks on " <<
+        total_pages << " pages)";
+  };
   preview(/*maximum_characters=*/80);
   return output.str();
 }

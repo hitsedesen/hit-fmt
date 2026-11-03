@@ -3,15 +3,15 @@ void Recover()
     auto callback = [state] (
         int requestId,
         int additionalRequestId) -> Result {
-            UnknownValue value;
-            auto chosenId = requestId;
+        UnknownValue value;
+        auto chosenId = requestId;
 
-            if (chosenId > 0) {
-                return value;
-            }
-
+        if (chosenId > 0) {
             return value;
-        };
+        }
+
+        return value;
+    };
     Use(callback);
 }
 
@@ -19,10 +19,10 @@ void RecoverLater()
 {
     auto callback = [state] (
         int requestId) {
-            Prepare();
-            UnknownValue value;
-            Finish(value);
-        };
+        Prepare();
+        UnknownValue value;
+        Finish(value);
+    };
 }
 
 void RecoverNested()
@@ -30,15 +30,15 @@ void RecoverNested()
     auto callback = [state] (
         int requestId,
         int additionalRequestId) {
-            Prepare();
+        Prepare();
 
-            if (requestId) {
-                UnknownValue value;
-                Finish(value);
-            }
+        if (requestId) {
+            UnknownValue value;
+            Finish(value);
+        }
 
-            Finish(requestId);
-        };
+        Finish(requestId);
+    };
     Use(callback);
 }
 
@@ -48,7 +48,7 @@ void Known()
 {
     auto callback = [state] (
         int requestId) {
-            KnownValue value;
-            Finish(value);
-        };
+        KnownValue value;
+        Finish(value);
+    };
 }

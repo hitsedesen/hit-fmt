@@ -3673,6 +3673,7 @@ private:
         GroupSpecs_[group].StructuralBase = true;
         GroupSpecs_[group].FixedBase = fixedBase;
         GroupSpecs_[group].LineBase = fixedBase == None && node.Kind == NodeKind::LambdaExpression;
+        GroupSpecs_[group].ResumeOpeningLine = GroupSpecs_[group].LineBase;
 
         if (node.Kind == NodeKind::LambdaExpression) {
             // Prefer an independent body break over splitting a fitting header.
@@ -3874,10 +3875,6 @@ private:
             offset,
             LayoutIndentation{ContinuationAlignment::Block, uint32_t(offset), uint32_t(offset)});
         GroupSpecs_[group].StructuralBase = true;
-        // Canonical lambda headers can end on a parameter continuation line.
-        // Preserved bodies retain the enclosing structural level in that case.
-        // Other lambda bodies follow their opening line, including opaque calls
-        // without a continuation frame.
         const auto parent = Region(Syntax_[id]).Parent;
         GroupSpecs_[group].FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
 
@@ -3899,11 +3896,15 @@ private:
         const bool linkageLineBase =
             linkage && (!independentIndent || StartsSourceLine(Region(Syntax_[id]).Tokens.Begin));
         GroupSpecs_[group].LineBase = contentIndent == None &&
-            !(parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression &&
-                Policies_.DeclarationHeaders == LayoutMode::Canonical && policy.Layout == LayoutMode::Preserve) &&
             (linkageLineBase || Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
                 (parent != None && Region(Syntax_[parent]).Kind == NodeKind::LambdaExpression));
+        // The lambda may start on an enclosing continuation line, then wrap
+        // its own header. Reuse that starting line, not the brace's line or
+        // the enclosing expression's structural base.
+        const auto header = Gaps_[opening].Owner;
+        GroupSpecs_[group].ResumedLineBase =
+            GroupSpecs_[group].LineBase && header != None && GroupSpecs_[header].ResumeOpeningLine;
         BlockOf_[id] = group;
         Groups_[group].SyntaxBody = true;
 
@@ -7188,6 +7189,7 @@ private:
                 GroupSpecs_[id].Continuation,
                 layout::InvalidId,
                 GroupSpecs_[id].LineBase,
+                GroupSpecs_[id].ResumedLineBase,
                 GroupSpecs_[id].FixedBase,
             });
         }
@@ -7227,6 +7229,7 @@ private:
                 GroupSpecs_[id].Continuation,
                 sharedAnchor ? Layout_.AnchorAt(continuation, group.BeginOrder, true) : layout::InvalidId,
                 GroupSpecs_[id].LineBase,
+                GroupSpecs_[id].ResumedLineBase,
                 GroupSpecs_[id].FixedBase,
             });
         }

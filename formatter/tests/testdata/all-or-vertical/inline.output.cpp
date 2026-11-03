@@ -67,8 +67,8 @@ auto capture = [first,
     second,
     third,
     fourth] {
-        Use(first, second);
-    };
+    Use(first, second);
+};
 struct Item
     : First, Second, Third {
     Item(): first(1)

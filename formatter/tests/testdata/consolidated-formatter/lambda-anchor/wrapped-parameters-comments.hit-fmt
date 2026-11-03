@@ -1,0 +1,14 @@
+Layout = Canonical
+KeepMultiline = false
+IndentWidth = 4
+ColumnLimit = 120
+WidthDiagnostics = Report
+BodyShape = Expanded
+ListAlignment = Block
+ListFirstItem = NextLine
+ListPacking = VerticalWhenBroken
+ListCloser = OwnLine
+ContinuationOffset = 4
+ParametersCloser = OwnLine
+LambdaBodyShape = CompactIfFits
+LambdaBracePlacement = Attached

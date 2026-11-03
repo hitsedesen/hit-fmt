@@ -178,11 +178,11 @@ TEST(SyntaxLayout, PartialGapPoliciesAndAnchorsGolden)
         const formatter::Style& style,
         std::span<const parser::SourceRange> ranges,
         const formatter::SyntaxLayoutOptions& options = {}) {
-            formatter::SourceAnalysisOptions scope;
-            scope.EditScope = ranges;
-            records += "=== " + std::string(name) + " ===\n";
-            records += Lower(input, style, options, scope).Text;
-        };
+        formatter::SourceAnalysisOptions scope;
+        scope.EditScope = ranges;
+        records += "=== " + std::string(name) + " ===\n";
+        records += Lower(input, style, options, scope).Text;
+    };
     auto style = Canonical(80);
     const std::string line = "void f() {\n      work();\n}\n";
     const auto begin = parser::SourceOffset(line.find("      work"));

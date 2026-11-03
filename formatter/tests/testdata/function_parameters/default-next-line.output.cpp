@@ -42,5 +42,5 @@ auto configure =
             DefaultElementCountForCurrentProcessingStage,
         int other =
             0) {
-                return count;
-            };
+        return count;
+    };

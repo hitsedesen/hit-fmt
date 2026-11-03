@@ -184,32 +184,32 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         Order lastBreak,
         Order ownedBreak,
         bool guaranteedLine) {
-            // Retain the earliest affordable opportunity for each penalty, not
-            // merely the first break or the globally cheapest one. An expensive
-            // intervening list must not hide a cheaper suffix; a nearer medium-
-            // cost break may still be needed when that suffix is too far away.
-            for (std::size_t penalty = 1; penalty <= summary.BreakPrefixes.size(); ++penalty) {
-                auto& prefix = summary.BreakPrefixes[penalty - 1];
-                prefix = flat.Line
-                    ? flat.Prefix
-                    : std::min(
-                        childBreakPrefixes[penalty - 1],
-                        flexible.Line && firstBreakPenalty < penalty ? flexible.Prefix : AddWidth(flat.Prefix, prefix));
-            }
+        // Retain the earliest affordable opportunity for each penalty, not
+        // merely the first break or the globally cheapest one. An expensive
+        // intervening list must not hide a cheaper suffix; a nearer medium-
+        // cost break may still be needed when that suffix is too far away.
+        for (std::size_t penalty = 1; penalty <= summary.BreakPrefixes.size(); ++penalty) {
+            auto& prefix = summary.BreakPrefixes[penalty - 1];
+            prefix = flat.Line
+                ? flat.Prefix
+                : std::min(
+                    childBreakPrefixes[penalty - 1],
+                    flexible.Line && firstBreakPenalty < penalty ? flexible.Prefix : AddWidth(flat.Prefix, prefix));
+        }
 
-            Prepend(summary.Flat, flat);
-            Prepend(summary.Broken, broken);
+        Prepend(summary.Flat, flat);
+        Prepend(summary.Broken, broken);
 
-            if (summary.LastBreak == NoOrder) {
-                summary.LastBreak = lastBreak;
-            }
+        if (summary.LastBreak == NoOrder) {
+            summary.LastBreak = lastBreak;
+        }
 
-            if (summary.OwnedLastBreak == NoOrder) {
-                summary.OwnedLastBreak = ownedBreak;
-            }
+        if (summary.OwnedLastBreak == NoOrder) {
+            summary.OwnedLastBreak = ownedBreak;
+        }
 
-            summary.GuaranteedLine = summary.GuaranteedLine || guaranteedLine;
-        };
+        summary.GuaranteedLine = summary.GuaranteedLine || guaranteedLine;
+    };
     Measure fixedRun;
     bool hasFixedRun = false;
     const auto accumulateFixed = [&] (const Measure& measured) {
@@ -551,7 +551,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     ? current->ContinuationBase
                     : current->Indent - current->PendingExpressionIndent,
                     continuationLineIndent())
-                : lineIndent;
+                : spec.ResumedLineBase ? continuationLineIndent() : lineIndent;
         }
 
         if (current->HasContinuation) {
@@ -871,7 +871,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 false,
                 reversible,
                 spec.Continuation ? base : current->ContinuationBase,
-                continuationLineIndent(),
+                spec.ResumeOpeningLine ? base : continuationLineIndent(),
                 spec.Continuation || (!spec.StructuralBase && current->HasContinuation),
                 (shared || (!spec.Continuation && !spec.StructuralBase)) && current->RealizedContinuationLine,
                 current->RealizedContinuationIndent,
@@ -910,9 +910,11 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const bool continuationRealized = current->RealizedContinuationLine && !current->StructuralBase;
         const auto continuationIndent = current->RealizedContinuationIndent;
 
-        if (multiline && GroupSpecs_[id].LineBase && GroupSpecs_[id].Continuation) {
-            // Closing an independent line-based continuation resumes the
-            // enclosing line where it opened.
+        if (GroupSpecs_[id].ResumeOpeningLine ||
+            (multiline && GroupSpecs_[id].LineBase && GroupSpecs_[id].Continuation))
+        {
+            // Headers and independent continuations resume their opening
+            // line before wrapped children changed its physical indentation.
             resumedLineIndent = current->OpeningLineIndent;
         }
 

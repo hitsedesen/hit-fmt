@@ -25,8 +25,8 @@ auto defaulted = [] (int value = calculate(1, 2)) {
 auto commented = [] (
     Ref<int()> // keep
     callback) {
-        return callback();
-    };
+    return callback();
+};
 
 auto grouped = [] (int (*callback)(int)) {
     return callback(1);

@@ -49,6 +49,6 @@ void Example() {
     );
     Call([firstLengthyCaptureName, secondLengthyCaptureName,
         thirdLengthyCaptureName] {
-            Work();
-        });
+        Work();
+    });
 }
