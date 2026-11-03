@@ -1084,6 +1084,9 @@ EmptyControlBody = Preserve
 # Values: Preserve | Remove | AddMissing | Fix
 # Fix and Remove rewrite only namespace closing labels (// namespace Name
 # or a bare matching namespace name). Explanatory comments stay intact.
+# Fix also merges // namespace with an immediately following line comment
+# containing only the exact namespace name. Blank gaps and protected
+# comments prevent merging.
 # Fix and AddMissing still report a missing label when an explanatory
 # comment prevents a safe fix. ShortNamespaceLines exemptions apply.
 NamespaceComments = Preserve

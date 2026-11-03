@@ -906,6 +906,9 @@ AlignMacroBackslashes = false
 
 NamespaceComments Fix and Remove rewrite only namespace closing labels,
 such as `// namespace Name` or a bare matching namespace name.
+Fix also merges `// namespace` with an immediately following line comment
+containing only the exact namespace name. Blank gaps and protected comments
+prevent merging.
 Explanatory comments stay intact. With Fix or AddMissing, a missing closing
 label is still reported when an explanatory comment prevents a safe fix.
 ShortNamespaceLines exemptions apply to missing labels.

@@ -171,6 +171,7 @@ NamespaceCommentPlan CheckedNamespaceComments(
         EXPECT_EQ(actual.Close, expected.Close);
         EXPECT_EQ(actual.Comment, expected.Comment);
         EXPECT_EQ(actual.ExplanatoryComment, expected.ExplanatoryComment);
+        EXPECT_EQ(actual.Continuation, expected.Continuation);
     }
 
     EXPECT_EQ(certified.Skipped.size(), plan.Skipped.size());
@@ -963,6 +964,67 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         normalized.Scratch);
     EXPECT_EQ(comments.Edits.size(), 2u);
     EXPECT_TRUE(comments.Skipped.empty());
+}
+
+TEST(StructuralEdits, SplitNamespaceRequiresMappedAdjacentUnprotectedContinuation)
+{
+    File file("namespace outer::inner {} // namespace\n  // outer::inner\nint after;\n");
+    const auto plan = CheckedNamespaceComments(
+        file.Tree,
+        file.Safety,
+        {.Policy = NamespaceCommentPolicy::Fix},
+        file.Memory,
+        file.Scratch);
+    ASSERT_EQ(plan.Namespaces.size(), 1u);
+    const auto continuation = plan.Namespaces.front().Continuation;
+    ASSERT_LT(continuation, file.Tree.TokenCount());
+    const auto source = file.Tree.Source();
+    const auto mapping = MapOutput(file.Tree, source);
+
+    for (const auto invalid : {continuation, continuation + 1}) {
+        auto missing = mapping;
+        missing[invalid].Present = false;
+
+        if (invalid != continuation) {
+            missing[invalid + 1].Output = mapping[continuation].Output;
+        }
+
+        const auto resolved = ResolveNamespaceComments(file.Tree, plan, source, missing, {}, file.Memory, file.Scratch);
+        EXPECT_TRUE(resolved.Edits.empty());
+        ASSERT_EQ(resolved.Skipped.size(), 1u);
+        EXPECT_EQ(resolved.Skipped.front().Reason, StructuralSkip::InvalidMapping);
+    }
+
+    std::string changed(source);
+    changed[changed.find("// outer::inner") + 3] = 'O';
+    const auto stale = ResolveNamespaceComments(file.Tree, plan, changed, mapping, {}, file.Memory, file.Scratch);
+    EXPECT_TRUE(stale.Edits.empty());
+    EXPECT_EQ(stale.Skipped.front().Reason, StructuralSkip::InvalidMapping);
+
+    const std::array protection{mapping[continuation].Output};
+    const auto protectedOutput =
+        ResolveNamespaceComments(file.Tree, plan, source, mapping, protection, file.Memory, file.Scratch);
+    EXPECT_TRUE(protectedOutput.Edits.empty());
+    EXPECT_EQ(protectedOutput.Skipped.front().Reason, StructuralSkip::Protected);
+
+    const auto protectedSafety =
+        BuildSourceAnalysis(file.Tree, {.ImmutableRanges = protection}, file.Memory, file.Scratch);
+    const auto protectedPlan = CheckedNamespaceComments(
+        file.Tree,
+        protectedSafety,
+        {.Policy = NamespaceCommentPolicy::Fix},
+        file.Memory,
+        file.Scratch);
+    EXPECT_TRUE(protectedPlan.Namespaces.empty());
+    EXPECT_EQ(protectedPlan.Skipped.front().Reason, StructuralSkip::Protected);
+
+    changed = source;
+    changed.insert(changed.find('\n'), "\n");
+    const auto separated = MapOutput(file.Tree, changed);
+    const auto separatedPlan =
+        ResolveNamespaceComments(file.Tree, plan, changed, separated, {}, file.Memory, file.Scratch);
+    EXPECT_TRUE(separatedPlan.Edits.empty());
+    EXPECT_EQ(separatedPlan.Skipped.front().Reason, StructuralSkip::InvalidMapping);
 }
 
 } // namespace

@@ -950,6 +950,15 @@ std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
             add(ns.Comment);
         }
 
+        if (ns.Continuation != count) {
+            add(ns.Continuation);
+            const auto next = nextSurvivor(ns.Continuation + 1);
+
+            if (next != none) {
+                add(next);
+            }
+        }
+
         const auto previous = previousSurvivor(ns.Header.Begin);
         const auto next = nextSurvivor(ns.Close + 1);
 

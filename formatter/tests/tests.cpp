@@ -3094,6 +3094,9 @@ std::vector<FormatCase> FormatCases()
         {"preserve", "remove", "add_missing", "fix", "fix_spaced", "fix_newline"});
     cases.push_back({data / "namespace_comments", "crlf_fix", "crlf.input.cpp"});
     cases.push_back({data / "namespace_comments", "composes-spacing", "composes-spacing.input.cpp"});
+    cases.push_back({data / "namespace_comments", "split", "split.input.cpp"});
+    cases.push_back({data / "namespace_comments", "split-controls", "split-controls.input.cpp"});
+    cases.push_back({data / "namespace_comments", "split-crlf", "split-crlf.input.cpp"});
 
     for (const auto* profile :
         {"semicolon-fix", "semicolon-add", "semicolon-preserve", "semicolon-add-remove", "semicolon-remove"})

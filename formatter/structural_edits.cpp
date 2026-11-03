@@ -1648,22 +1648,55 @@ void detail::MaterializeOriginalTokenOffsets(
 
 namespace {
 
-bool NamespaceClosingComment(const parser::SyntaxTree& tree, parser::TokenRange header, TI comment)
+std::string_view NamespaceCommentText(const parser::SyntaxTree& tree, TI comment)
 {
     auto text = tree.TokenText(comment);
 
     if (!text.starts_with("//")) {
-        return false;
+        return {};
     }
 
     text.remove_prefix(2);
-    const auto trim = [&] {
-        const auto begin = text.find_first_not_of(" \t\r");
-        text = begin == std::string_view::npos ? std::string_view{} : text.substr(begin);
-        const auto end = text.find_last_not_of(" \t\r");
-        text = end == std::string_view::npos ? std::string_view{} : text.substr(0, end + 1);
-    };
-    trim();
+    const auto begin = text.find_first_not_of(" \t\r");
+    text = begin == std::string_view::npos ? std::string_view{} : text.substr(begin);
+    const auto end = text.find_last_not_of(" \t\r");
+    return end == std::string_view::npos ? std::string_view{} : text.substr(0, end + 1);
+}
+
+bool NamespaceNameMatches(const parser::SyntaxTree& tree, parser::TokenRange header, std::string_view text)
+{
+    bool named = false;
+
+    for (auto token = header.Begin; token < header.End; ++token) {
+        if (tree.Kind(token) != TK::Identifier && tree.Kind(token) != TK::Operator_ScopeResolution) {
+            continue;
+        }
+
+        const auto name = tree.TokenText(token);
+
+        if (!text.starts_with(name)) {
+            return false;
+        }
+
+        text.remove_prefix(name.size());
+        named = true;
+    }
+
+    return named && text.empty();
+}
+
+bool NamespaceContinuationGap(std::string_view text)
+{
+    if (text.starts_with('\r')) {
+        text.remove_prefix(1);
+    }
+
+    return text.starts_with('\n') && Horizontal(text.substr(1));
+}
+
+bool NamespaceClosingComment(const parser::SyntaxTree& tree, parser::TokenRange header, TI comment)
+{
+    auto text = NamespaceCommentText(tree, comment);
 
     if (text == "anonymous namespace" || text == "unnamed namespace" || text == "Unnamed namespace") {
         return true;
@@ -1675,7 +1708,7 @@ bool NamespaceClosingComment(const parser::SyntaxTree& tree, parser::TokenRange 
 
     if (text.starts_with("namespace") && text.size() > 9 && (text[9] == ' ' || text[9] == '\t')) {
         text.remove_prefix(9);
-        trim();
+        text.remove_prefix(text.find_first_not_of(" \t\r"));
         bool start = true;
 
         while (!text.empty()) {
@@ -1701,24 +1734,7 @@ bool NamespaceClosingComment(const parser::SyntaxTree& tree, parser::TokenRange 
     }
 
     // A bare label is unambiguous only when it spells this namespace's name.
-    bool named = false;
-
-    for (auto token = header.Begin; token < header.End; ++token) {
-        if (tree.Kind(token) != TK::Identifier && tree.Kind(token) != TK::Operator_ScopeResolution) {
-            continue;
-        }
-
-        const auto name = tree.TokenText(token);
-
-        if (!text.starts_with(name)) {
-            return false;
-        }
-
-        text.remove_prefix(name.size());
-        named = true;
-    }
-
-    return named && text.empty();
+    return NamespaceNameMatches(tree, header, text);
 }
 
 template <bool Certified>
@@ -1826,6 +1842,18 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
         }
 
         SR window{begin, comment == original.TokenCount() ? begin : original.Token(comment).Text.End};
+        const parser::TokenRange header{node.Tokens.Begin, open};
+        auto continuation = original.TokenCount();
+
+        if (options.Policy == NamespaceCommentPolicy::Fix && comment != original.TokenCount() &&
+            NamespaceCommentText(original, comment) == "namespace" && comment + 1 < original.TokenCount() &&
+            original.Kind(comment + 1) == TK::Comment &&
+            NamespaceContinuationGap(original.WhitespaceBefore(comment + 1)) &&
+            NamespaceNameMatches(original, header, NamespaceCommentText(original, comment + 1)))
+        {
+            continuation = comment + 1;
+            window.End = original.Token(continuation).Text.End;
+        }
 
         if (safety.IntersectsImmutable(Range(original, {node.Tokens.Begin, open + 1})) ||
             safety.IntersectsImmutable(Range(original, {close, close + 1})) || safety.IntersectsImmutable(window))
@@ -1834,10 +1862,9 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
             return;
         }
 
-        const parser::TokenRange header{node.Tokens.Begin, open};
         const bool explanatory =
             comment != original.TokenCount() && !NamespaceClosingComment(original, header, comment);
-        plan.Namespaces.push_back({node.Tokens, header, open, close, comment, explanatory});
+        plan.Namespaces.push_back({node.Tokens, header, open, close, comment, explanatory, continuation});
     };
 
     if constexpr (Certified) {
@@ -2033,7 +2060,8 @@ StructuralPlan ResolveNamespaceCommentsImpl(
         }
 
         if (!validHeader || !valid(ns.Open) || !valid(ns.Close) || (existing && !valid(ns.Comment)) ||
-            headerEnd > mapping[ns.Open].Output.Begin || mapping[ns.Open].Output.End > mapping[ns.Close].Output.Begin)
+            (ns.Continuation != count && !valid(ns.Continuation)) || headerEnd > mapping[ns.Open].Output.Begin ||
+            mapping[ns.Open].Output.End > mapping[ns.Close].Output.Begin)
         {
             skip(StructuralSkip::InvalidMapping);
             continue;
@@ -2123,6 +2151,29 @@ StructuralPlan ResolveNamespaceCommentsImpl(
 
             if (plan.Options.Policy == NamespaceCommentPolicy::AddMissing) {
                 continue;
+            }
+
+            if (ns.Continuation != count) {
+                const auto continuation = mapping[ns.Continuation].Output;
+                auto next = ns.Continuation + 1;
+
+                while (next < count && !mapping[next].Present) {
+                    ++next;
+                }
+
+                if (!valid(ns.Continuation) || continuation.Begin < end ||
+                    !NamespaceContinuationGap(output.substr(end, continuation.Begin - end)) ||
+                    (next < count && (!valid(next) || mapping[next].Output.Begin < continuation.End)))
+                {
+                    skip(StructuralSkip::InvalidMapping);
+                    continue;
+                }
+
+                end = continuation.End;
+
+                if (end > begin && output[end - 1] == '\r' && end < output.size() && output[end] == '\n') {
+                    --end;
+                }
             }
         } else {
             if (plan.Options.Policy == NamespaceCommentPolicy::Remove) {
