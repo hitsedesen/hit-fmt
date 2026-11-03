@@ -1,0 +1,6 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 120
+CallsFirstItem = NextLine
+StringLiteralFragmentsAsArguments = true
+KeepMultiline = true

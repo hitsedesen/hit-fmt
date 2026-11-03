@@ -2401,12 +2401,14 @@ private:
                 : Syntax_[Region(Syntax_[parent]).Parent].ListGroup
             : initializer ? Gaps_[node.Tokens.Begin].Owner : None;
 
+        if (initializer && canonical && enclosing != None) {
+            // The assignment and its fragments share the Calls continuation.
+            GroupSpecs_[enclosing].Indent = int32_t(policy.Indent.ContinuationOffset);
+            Groups_[enclosing].Indent = policy.Indent;
+        }
+
         if (enclosing != None && (canonical || argument) && !Policies_.KeepMultiline) {
             if (initializer) {
-                // The initializer owns the assignment boundary, but its string
-                // fragments continue with the Calls indentation policy.
-                GroupSpecs_[enclosing].Indent = int32_t(policy.Indent.ContinuationOffset);
-                Groups_[enclosing].Indent = policy.Indent;
                 GroupSpecs_[enclosing].ForceBreak |= policy.Break == BreakRequirement::Always;
 
                 if (Gaps_[node.Tokens.Begin].Shape != Boundary::Hard) {
@@ -2446,9 +2448,9 @@ private:
         GroupSpecs_[group].StructuralBase = true;
         GroupSpecs_[group].LineBase = !Policies_.KeepMultiline || !argument;
 
-        if (Policies_.KeepMultiline && argument && enclosing != None) {
-            // The independent fragment shape still uses its argument list's
-            // continuation column, including a first fragment on its own line.
+        if (Policies_.KeepMultiline && (canonical || argument) && enclosing != None) {
+            // Independent fragment breaks share the enclosing continuation,
+            // including a first fragment on its own line.
             Groups_[group].IndentGroup = enclosing;
         }
 

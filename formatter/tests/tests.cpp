@@ -2504,6 +2504,7 @@ std::vector<FormatCase> FormatCases()
         "constructs.input.cpp");
     const auto strings = data / "concat-strings";
     AddCases(cases, strings, {"overflow", "preserve"});
+    AddCases(cases, strings, {"initializers", "initializers-offsets"}, "initializers.input.cpp");
     AddCases(
         cases,
         strings,
