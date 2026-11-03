@@ -1168,13 +1168,31 @@ private:
     bool CanPlanAroundOpaqueChildren(Index id) const
     {
         const auto& node = Region(Syntax_[id]);
+        Index opaqueChild = None;
         switch (node.Kind) {
             case NodeKind::CallExpression:
             case NodeKind::MemberExpression: {
                 const auto callee = node.FirstChild;
 
-                if (callee == None || !Syntax_[callee].ChainSafe) {
+                if (callee == None) {
                     return false;
+                }
+
+                const auto& root = Region(Syntax_[callee]);
+                // A recovered callee can remain an exact atom while proven
+                // suffix calls reflow. This does not resolve ambiguous template
+                // arguments as templates or expose their protected punctuation.
+                const bool opaqueCallee = node.Kind == NodeKind::CallExpression &&
+                    root.Kind == NodeKind::UnparsedSyntax && root.FirstChild == None && !root.Tokens.Empty() &&
+                    root.Tokens.Begin == node.Tokens.Begin && Safety_.Gaps()[root.Tokens.Begin].RecoveryBoundary &&
+                    Syntax_[callee].OpaqueSafe && !Syntax_[callee].Preprocessing;
+
+                if (!Syntax_[callee].ChainSafe && !opaqueCallee) {
+                    return false;
+                }
+
+                if (opaqueCallee) {
+                    opaqueChild = callee;
                 }
 
                 for (auto child = Region(Syntax_[callee]).NextSibling;
@@ -1195,7 +1213,21 @@ private:
                             return false;
                         }
                     } else if (!Syntax_[child].Safe) {
-                        return false;
+                        // A qualified/member callee can likewise retain its
+                        // terminal name exactly. The enclosing invocation must
+                        // still prove its own argument delimiters below.
+                        const auto parent = node.Parent;
+                        const bool opaqueName = node.Kind == NodeKind::MemberExpression && parent != None &&
+                            Region(Syntax_[parent]).Kind == NodeKind::CallExpression &&
+                            Region(Syntax_[parent]).FirstChild == id && part.Kind == NodeKind::UnparsedSyntax &&
+                            part.FirstChild == None && !part.Tokens.Empty() && part.Tokens.End == node.Tokens.End &&
+                            part.NextSibling == None && Syntax_[child].OpaqueSafe && !Syntax_[child].Preprocessing;
+
+                        if (!opaqueName) {
+                            return false;
+                        }
+
+                        opaqueChild = child;
                     }
                 }
 
@@ -1256,6 +1288,10 @@ private:
 
         for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
             const auto& part = Region(Syntax_[child]);
+
+            if (child == opaqueChild) {
+                continue;
+            }
 
             if (part.Kind == NodeKind::UnparsedSyntax || part.Kind == NodeKind::MissingToken ||
                 part.Kind == NodeKind::UnexpectedToken || part.Kind == NodeKind::AmbiguousStatement ||
@@ -4734,7 +4770,12 @@ private:
             }
         }
 
-        if (!entry.ChainSafe) {
+        // A recovered suffix means this is only a fragment of its enclosing
+        // expression. Keep a partial chain with that protected tail.
+        const auto next = Region(entry).NextSibling;
+        const bool opaqueTail = !entry.Safe && next != None && !Syntax_[next].Safe;
+
+        if (!entry.ChainSafe || opaqueTail) {
             PlanPreservedChain(id, true);
             return;
         }

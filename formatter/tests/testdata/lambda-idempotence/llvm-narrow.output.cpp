@@ -3,8 +3,8 @@ void dump() {
     {
       {
         emitChild([=] {
-          visit(convert<SpecialClause>(
-              node)->getExpression());
+          visit(convert<SpecialClause>(node)
+                ->getExpression());
         });
       }
     }

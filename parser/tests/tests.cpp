@@ -2588,6 +2588,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"lambda_argument_ownership"},
         GoldenCase{"lambda_argument_tail_recovery"},
         GoldenCase{"template_argument_tail"},
+        GoldenCase{"value_template_calls"},
         GoldenCase{"statements"},
         GoldenCase{"macro_generated_cases", false, true},
         GoldenCase{"name_classification"},
