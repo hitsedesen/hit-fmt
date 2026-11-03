@@ -1,0 +1,2 @@
+include = "report.hit-fmt"
+RequiresExpressionBodyShape = CompactIfFits

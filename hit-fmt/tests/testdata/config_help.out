@@ -190,6 +190,13 @@ Braces and bodies
   directives prevent single-statement compaction. Comment-only bodies
   are not empty; empty bodies use EmptyBodyShape. The single-statement
   mode expands empty bodies. Enums, lists and requirements use their own rules.
+- RequiresExpressionBodyShape overrides requires-expression bodies, including
+  compound and nested requirements. Inherit (default) uses BodyShape,
+  independently of function, control and lambda overrides. Expanded puts
+  requirements on separate lines; CompactIfFits keeps the whole body inline
+  within ColumnLimit. BodiesLayout and KeepMultiline still apply.
+  CompactSingleStatementIfFits expands requirement bodies. Requires clauses
+  use RequiresClausePosition instead.
 - LambdaBodiesLayout, LambdaBodyShape and LambdaEmptyBodyShape can
   override body policies independently. LambdaBodyShape inherits BodyShape,
   independently of FunctionBodyShape and ControlBodyShape.
@@ -214,6 +221,7 @@ Braces and body shapes
     BodyShape = Expanded
     FunctionBodyShape = CompactSingleStatementIfFits
     ControlBodyShape = Expanded
+    RequiresExpressionBodyShape = CompactIfFits
     EmptyBodyShape = CompactIfFits
     LambdaBodiesLayout = Inherit
     LambdaBodyShape = CompactIfFits

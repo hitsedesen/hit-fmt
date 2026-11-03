@@ -3431,6 +3431,10 @@ private:
             return Policies_.LambdaBodies;
         }
 
+        if (kind == NodeKind::RequirementBody) {
+            return Policies_.RequiresExpressionBodies;
+        }
+
         if (kind == NodeKind::CompoundStatement) {
             if (IsSoleCaseBlock(id)) {
                 return Policies_.ControlBodies;

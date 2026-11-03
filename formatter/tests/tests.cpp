@@ -3207,6 +3207,38 @@ std::vector<FormatCase> FormatCases()
         (std::filesystem::path(PARSER_TESTDATA_DIR) / "requires_return_boundaries.in").string(),
         "own-line",
     });
+    AddCases(cases, data / "requires-body-shape", {"report", "compact"}, "report.input.cpp");
+    {
+        const auto directory = data / "requires-body-shape";
+        const auto base = formatter::LoadConfigFile(directory / "compact.hit-fmt").FormattingStyle;
+
+        for (const auto* profile : {"forms", "expanded", "inherited", "single", "narrow", "preserve", "keep-multiline"})
+        {
+            cases.push_back({directory, profile, "input.cpp", "compact"});
+            auto style = base;
+
+            if (std::string_view(profile) == "expanded") {
+                style.BodyShape = BodyShape::CompactIfFits;
+                style.RequiresExpressionBodyShape = BodyShape::Expanded;
+            } else if (std::string_view(profile) == "inherited") {
+                style.BodyShape = BodyShape::CompactIfFits;
+                style.RequiresExpressionBodyShape.reset();
+                style.FunctionBodyShape = BodyShape::Expanded;
+                style.LambdaBodyShape = BodyShape::Expanded;
+            } else if (std::string_view(profile) == "single") {
+                style.RequiresExpressionBodyShape = BodyShape::CompactSingleStatementIfFits;
+            } else if (std::string_view(profile) == "narrow") {
+                style.ColumnLimit = 60;
+            } else if (std::string_view(profile) == "preserve") {
+                style.BodiesLayout = CategoryLayout::Preserve;
+            } else if (std::string_view(profile) == "keep-multiline") {
+                style.KeepMultiline = true;
+            }
+
+            cases.back().Style = style;
+        }
+    }
+
     AddCases(cases, data / "requires-lambdas", {"canonical", "narrow", "preserve"});
     cases.push_back({data / "requires-lambdas", "continuation", "continuation.input.cpp"});
     cases.push_back({data / "requires-lambdas", "continuation-own-line", "continuation.input.cpp"});
