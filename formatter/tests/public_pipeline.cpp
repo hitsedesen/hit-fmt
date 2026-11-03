@@ -986,7 +986,7 @@ TEST(PublicPipeline, InvalidPreparedRequestsAndActualEmittedWidthDiagnostics)
     EXPECT_TRUE(unlimited.Diagnostics.empty());
     style = Canonical();
     style.CallLikeMacroNames = {"CALL_HINT"};
-    EXPECT_THROW(formatter::PreparedFormat{style}, std::invalid_argument);
+    EXPECT_NO_THROW(formatter::PreparedFormat{style});
     style = Canonical();
     style.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
     EXPECT_THROW(formatter::PreparedFormat{style}, std::invalid_argument);
@@ -2507,6 +2507,61 @@ TEST(PublicPipeline, FlatSourceSpansPreserveTextAndFailurePositions)
             }
         }
     }
+}
+
+TEST(PublicPipeline, CallLikeMacrosHonorHintsWidthAndProtection)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path() / "call-like-macro";
+    const auto source = test::golden::ReadFile(directory / "registration.input.cpp");
+    auto style = formatter::LoadConfigFile(directory / "registration.hit-fmt").FormattingStyle;
+    const formatter::PreparedFormat prepared(style);
+    const auto formatted = FormatInput(source, prepared);
+    EXPECT_NE(formatted.Text, source);
+    EXPECT_TRUE(formatted.Diagnostics.empty());
+    Input input(source);
+    const auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
+    EXPECT_EQ(formatter::Format(tree, prepared).Text, formatted.Text);
+
+    style.CallLikeMacroNames.clear();
+    const auto opaque = FormatInput(source, formatter::PreparedFormat(style));
+    EXPECT_EQ(opaque.Text, source);
+    EXPECT_FALSE(opaque.Diagnostics.empty());
+    style.CallLikeMacroNames = {"REGISTER_HANDLER_EXTRA"};
+    EXPECT_EQ(FormatInput(source, formatter::PreparedFormat(style)).Text, source);
+    style.CallLikeMacroNames = {"REGISTER_HANDLER"};
+    style.WhitespaceSensitiveMacros = {"REGISTER_HANDLER"};
+    const auto protectedResult = FormatInput(source, formatter::PreparedFormat(style));
+    EXPECT_EQ(protectedResult.Text, source);
+    EXPECT_FALSE(protectedResult.Diagnostics.empty());
+
+    const std::array immutable{parser::SourceRange{0, parser::SourceOffset(source.size())}};
+    EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
+    const auto disabled = "// hit-fmt off\n" + source + "// hit-fmt on\n";
+    EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
+}
+
+TEST(PublicPipeline, CallLikeHintsSurviveNormalizationWithoutLeakingBindings)
+{
+    auto style = Canonical();
+    style.CallLikeMacroNames = {"bind_handler"};
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    style.AddMissingControlBraces = true;
+    style.RemoveNullStatements = true;
+    style.RemoveNullDeclarations = true;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "#include <z.h>\n#include <a.h>\nusing Shared = int;\n"
+        "bind_handler([](int Shared) { ; if(Shared) use(Shared); Shared * value; })\n"
+        "bind_handler([] { return 1; }) /* keep */;\n" "Shared * following;\n";
+    const auto result = FormatInput(source, prepared, {.Changes = true});
+    EXPECT_TRUE(result.Text.starts_with("#include <a.h>\n#include <z.h>"));
+    EXPECT_EQ(result.Text.find("; if"), std::string::npos);
+    EXPECT_NE(result.Text.find("use(Shared);"), std::string::npos);
+    EXPECT_NE(result.Text.find("/* keep */;"), std::string::npos);
+    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    Input input(result.Text);
+    const auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
+    ASSERT_NE(tree.Root().LastChild, nullptr);
+    EXPECT_EQ(tree.Root().LastChild->Kind, parser::NodeKind::Declaration);
 }
 
 } // namespace

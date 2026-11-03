@@ -34,10 +34,6 @@ CompiledPolicies PreparePolicies(const Style& style)
 {
     auto policies = CompilePolicies(style);
 
-    if (!style.CallLikeMacroNames.empty()) {
-        throw std::invalid_argument("CallLikeMacroNames syntax hints are not yet supported by the " "public pipeline");
-    }
-
     if (style.AmbiguousTemplateDeclarationSpacing != GapPolicy::Preserve) {
         throw std::invalid_argument("AmbiguousTemplateDeclarationSpacing is unsupported");
     }
@@ -1411,6 +1407,7 @@ PreparedFormat::PreparedFormat(const Style& style)
     , NamespaceComments(CommentOptions(style))
     , HonorClangFormatDirectives(style.HonorClangFormatDirectives)
     , WhitespaceSensitiveMacros(style.WhitespaceSensitiveMacros)
+    , CallLikeMacroNames(style.CallLikeMacroNames)
     , FunctionBodyMacroNames(style.FunctionBodyMacroNames)
     , ClassMacroNames(style.ClassMacroNames)
     , EnumMacroNames(style.EnumMacroNames)

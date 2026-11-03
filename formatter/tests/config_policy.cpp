@@ -1220,12 +1220,7 @@ TEST(ConfigPolicy, SupportedOptionsKeepExistingRejections)
         EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
         EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
         style.CallLikeMacroNames = {"REGISTER_ITEM"};
-        try {
-            (void)formatter::PreparedFormat(style);
-            FAIL() << "existing CallLike rejection disappeared";
-        } catch (const std::invalid_argument& error) {
-            EXPECT_NE(std::string(error.what()).find("CallLikeMacroNames syntax hints"), std::string::npos);
-        }
+        EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
 
         style.CallLikeMacroNames.clear();
         style.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
@@ -1596,6 +1591,33 @@ TEST(ConfigPolicy, TrailingCommentSpacesPreserveAndValidateBounds)
     EXPECT_THROW((void)formatter::PreparedFormat(invalid), std::invalid_argument);
     invalid.TrailingCommentSpaces = formatter::TrailingCommentSpaceSetting{10000};
     EXPECT_NO_THROW((void)formatter::PreparedFormat(invalid));
+}
+
+TEST(ConfigPolicy, CallLikeHintsRejectInvalidAndConflictingGrammar)
+{
+    formatter::Style style;
+
+    for (const auto& names :
+        std::vector<std::vector<std::string>>{{""}, {"ns::REGISTER"}, {"REGISTER*"}, {"REGISTER", "REGISTER"}})
+    {
+        style.CallLikeMacroNames = names;
+        EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    }
+
+    style.CallLikeMacroNames = {"REGISTER"};
+    style.WhitespaceSensitiveMacros = {"REGISTER"};
+    EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
+    style.FunctionBodyMacroNames = {"REGISTER"};
+    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    style.FunctionBodyMacroNames.clear();
+    style.EnumMacroNames = {"REGISTER"};
+    EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    style.EnumMacroNames.clear();
+
+    for (const auto pair : {"REGISTER:END", "BEGIN:REGISTER"}) {
+        style.ClassMacroNames = {pair};
+        EXPECT_THROW((void)formatter::PreparedFormat(style), std::invalid_argument);
+    }
 }
 
 } // namespace

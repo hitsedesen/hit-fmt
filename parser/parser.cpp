@@ -256,6 +256,13 @@ public:
         : Tree_(tree)
         , ErrorHandler_(errorHandler)
     {
+        CallLikeMacroNames_.reserve(options.CallLikeMacroNames.size());
+
+        for (const auto& name : options.CallLikeMacroNames) {
+            CallLikeMacroNames_.push_back(name);
+        }
+
+        std::sort(CallLikeMacroNames_.begin(), CallLikeMacroNames_.end());
         FunctionBodyMacroNames_.reserve(options.FunctionBodyMacroNames.size());
 
         for (const auto& name : options.FunctionBodyMacroNames) {
@@ -2193,6 +2200,59 @@ private:
         return node;
     }
 
+    Node* TryParseCallLikeMacro()
+    {
+        if (CallLikeMacroNames_.empty()) {
+            return nullptr;
+        }
+
+        const auto first = NextSignificant(Cursor_);
+
+        if (Kind(first) != TK::Identifier ||
+            !std::binary_search(CallLikeMacroNames_.begin(), CallLikeMacroNames_.end(), Text(first)))
+        {
+            return nullptr;
+        }
+
+        const auto end = MacroInvocationEnd(first, Text(first));
+        if (end == std::numeric_limits<TokenIndex>::max() || Kind(NextSignificant(end)) == TK::Operator_OpenBrace) {
+            return nullptr;
+        }
+
+        const auto following = Kind(NextSignificant(end));
+
+        if (GetBinaryOperatorInfo(following).Precedence != 0 || following == TK::Operator_Conditional ||
+            following == TK::Operator_OpenParenthesis || following == TK::Operator_OpenBracket ||
+            following == TK::Operator_ClassMemberAccess || following == TK::Operator_IndirectClassMemberAccess ||
+            following == TK::Operator_ScopeResolution || following == TK::Operator_Increment ||
+            following == TK::Operator_Decrement)
+        {
+            return nullptr;
+        }
+
+        // Bound expression parsing to this invocation. In particular, an
+        // absent semicolon must not absorb the following declaration.
+        auto cursor = first;
+        auto* expression = ParseExpressionSyntax(cursor, end);
+        auto* node = MakeNode(NodeKind::ExpressionStatement, Cursor_);
+
+        if (expression && cursor == end && expression->Kind == NodeKind::CallExpression) {
+            Append(*node, *expression);
+        } else {
+            node->Kind = NodeKind::UnparsedSyntax;
+        }
+
+        Cursor_ = end;
+        const auto semicolon = NextSignificant(end);
+
+        if (Kind(semicolon) == TK::Operator_Semicolon) {
+            Cursor_ = semicolon + 1;
+        }
+
+        node->Tokens.End = Cursor_;
+        return node;
+    }
+
     Node* TryParseFunctionBodyMacro()
     {
         if (FunctionBodyMacroNames_.empty()) {
@@ -2370,7 +2430,8 @@ private:
 
         const auto name = Text(index);
 
-        if (std::binary_search(EnumMacroNames_.begin(), EnumMacroNames_.end(), name) ||
+        if (std::binary_search(CallLikeMacroNames_.begin(), CallLikeMacroNames_.end(), name) ||
+            std::binary_search(EnumMacroNames_.begin(), EnumMacroNames_.end(), name) ||
             std::binary_search(FunctionBodyMacroNames_.begin(), FunctionBodyMacroNames_.end(), name))
         {
             return true;
@@ -2388,6 +2449,10 @@ private:
 
     Node* ParseDeclaration(bool statementContext = false)
     {
+        if (auto* macro = TryParseCallLikeMacro()) {
+            return macro;
+        }
+
         if (auto* macro = TryParseEnumMacro()) {
             return macro;
         }
@@ -8331,6 +8396,10 @@ private:
 
     Node* ParseStatement()
     {
+        if (auto* macro = TryParseCallLikeMacro()) {
+            return macro;
+        }
+
         if (auto* macro = TryParseEnumMacro()) {
             return macro;
         }
@@ -11662,6 +11731,7 @@ private:
     ErrorHandler& ErrorHandler_;
     std::pmr::monotonic_buffer_resource ScratchMemory_{detail::InitialMemoryResourceSize};
     std::pmr::vector<std::string_view> RecordNames_{&ScratchMemory_};
+    std::pmr::vector<std::string_view> CallLikeMacroNames_{&ScratchMemory_};
     std::pmr::vector<std::string_view> FunctionBodyMacroNames_{&ScratchMemory_};
     std::pmr::vector<std::string_view> EnumMacroNames_{&ScratchMemory_};
     std::pmr::vector<std::pair<std::string_view, std::string_view>> ClassMacroPairs_{&ScratchMemory_};

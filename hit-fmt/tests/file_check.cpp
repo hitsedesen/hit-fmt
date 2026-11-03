@@ -1049,7 +1049,7 @@ TEST(FileCheck, UnsupportedPreparationFailsClosed)
 {
     auto raw = Configuration();
     raw.FormattingStyle.CallLikeMacroNames = {"CALL_HINT"};
-    EXPECT_THROW(hit_fmt::PreparedConfiguration{raw}, std::invalid_argument);
+    EXPECT_NO_THROW(hit_fmt::PreparedConfiguration{raw});
     raw.FormattingStyle.CallLikeMacroNames.clear();
     raw.FormattingStyle.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
     EXPECT_THROW(hit_fmt::PreparedConfiguration{raw}, std::invalid_argument);

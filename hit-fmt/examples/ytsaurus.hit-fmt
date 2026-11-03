@@ -141,9 +141,7 @@ EmptyControlBody = EmptyBlock
 RemoveNullStatements = true
 RemoveNullDeclarations = true
 
-# Nonempty CallLikeMacroNames is rejected by the public pipeline. Protect the
-# affected invocation byte-for-byte instead; this is NOT macro-language formatting.
-# Other semantic macro protection remains intact (not aesthetic name exceptions).
+# Macro expression grammar is opt-in. Keep semantic macro protection intact.
 CallLikeMacroNames = []
 # GoogleTest declarations introduce function bodies, not call expressions.
 FunctionBodyMacroNames = [

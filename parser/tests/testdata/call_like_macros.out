@@ -1,0 +1,340 @@
+(translation-unit
+  (expression-statement
+    (call-expression
+      (identifier-expression "bind_handler")
+      (argument-list
+        "("
+        (argument
+          (literal-expression "\"root\"")
+        )
+        (list-separator ",")
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (lambda-body
+              "{"
+              (return-statement
+                "return"
+                (call-expression
+                  (identifier-expression "build")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+  )
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "following")
+        )
+      )
+    )
+    ";"
+  )
+  (using-declaration
+    "using" "Shared" "="
+    (type-id "int")
+    ";"
+  )
+  (expression-statement
+    (call-expression
+      (identifier-expression "bind_handler")
+      (argument-list
+        "("
+        (argument
+          (lambda-expression
+            (lambda-capture-list "[" "]")
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator-list
+                  (init-declarator
+                    (declarator
+                      (declarator-name "Shared")
+                    )
+                  )
+                )
+              )
+              ")"
+            )
+            (lambda-body
+              "{"
+              (expression-statement
+                (binary-expression
+                  (identifier-expression "Shared")
+                  "*"
+                  (identifier-expression "value")
+                )
+                ";"
+              )
+              "}"
+            )
+          )
+        )
+        ")"
+      )
+    )
+  )
+  (declaration
+    (declaration-specifiers "Shared")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (pointer-operator "*")
+          (declarator-name "pointer")
+        )
+      )
+    )
+    ";"
+  )
+  (namespace-declaration
+    "namespace" "Routes" "{"
+    (expression-statement
+      (call-expression
+        (identifier-expression "bind_handler")
+        (argument-list
+          "("
+          (argument
+            (literal-expression "\"nested\"")
+          )
+          (list-separator ",")
+          (argument
+            (lambda-expression
+              (lambda-capture-list "[" "]")
+              (lambda-body
+                "{"
+                (return-statement
+                  "return"
+                  (literal-expression "1")
+                  ";"
+                )
+                "}"
+              )
+            )
+          )
+          ")"
+        )
+      )
+      ";"
+    )
+    "}"
+  )
+  (record-declaration
+    "struct" "Registry" "{"
+    (expression-statement
+      (call-expression
+        (identifier-expression "bind_handler")
+        (argument-list
+          "("
+          (argument
+            (literal-expression "\"member\"")
+          )
+          (list-separator ",")
+          (argument
+            (lambda-expression
+              (lambda-capture-list "[" "]")
+              (lambda-body
+                "{"
+                (return-statement
+                  "return"
+                  (literal-expression "2")
+                  ";"
+                )
+                "}"
+              )
+            )
+          )
+          ")"
+        )
+      )
+    )
+    "}" ";"
+  )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "install")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (expression-statement
+        (call-expression
+          (identifier-expression "bind_handler")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "\"local\"")
+            )
+            (list-separator ",")
+            (argument
+              (lambda-expression
+                (lambda-capture-list "[" "]")
+                (lambda-body
+                  "{"
+                  (return-statement
+                    "return"
+                    (literal-expression "3")
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+            ")"
+          )
+        )
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "bind_handler")
+          (argument-list
+            "("
+            (argument
+              (literal-expression "\"commented\"")
+            )
+            (list-separator ",")
+            (argument
+              (lambda-expression
+                (lambda-capture-list "[" "]")
+                (lambda-body
+                  "{"
+                  (return-statement
+                    "return"
+                    (literal-expression "3")
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+            ")"
+          )
+          (trailing-trivia
+            (comment "/* keep */")
+          )
+        )
+        "/* keep */" ";"
+      )
+      (expression-statement
+        (call-expression
+          (member-expression
+            (call-expression
+              (identifier-expression "bind_handler")
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "\"tail\"")
+                )
+                (list-separator ",")
+                (argument
+                  (lambda-expression
+                    (lambda-capture-list "[" "]")
+                    (lambda-body
+                      "{"
+                      (return-statement
+                        "return"
+                        (literal-expression "4")
+                        ";"
+                      )
+                      "}"
+                    )
+                  )
+                )
+                ")"
+              )
+            )
+            "."
+            (identifier-expression "run")
+          )
+          (argument-list "(" ")")
+        )
+        ";"
+      )
+      (expression-statement
+        (binary-expression
+          (call-expression
+            (identifier-expression "bind_handler")
+            (argument-list
+              "("
+              (argument
+                (literal-expression "\"sum\"")
+              )
+              (list-separator ",")
+              (argument
+                (lambda-expression
+                  (lambda-capture-list "[" "]")
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (literal-expression "5")
+                      ";"
+                    )
+                    "}"
+                  )
+                )
+              )
+              ")"
+            )
+          )
+          "+"
+          (call-expression
+            (identifier-expression "other")
+            (argument-list "(" ")")
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+  (unparsed-syntax "bind_handler_EXTRA" "(" "\"opaque\"" "," "[" "]" "{" "return" "6" ";" "}" ")")
+  (declaration
+    (declaration-specifiers "int")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "tail")
+        )
+      )
+    )
+    ";"
+  )
+)

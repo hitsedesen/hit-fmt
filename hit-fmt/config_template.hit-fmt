@@ -937,6 +937,12 @@ IndentedChainScopePairs = []
 # Values: [] or ["First:Second", ...]
 StickyChainCallPairs = []
 
+# Exact, unqualified standalone macros with C++ expression arguments.
+# Format as calls (Calls options), including lambda bodies, with an optional
+# trailing semicolon. No macro expansion or declaration inference is performed.
+# Do not combine a name with another macro syntax hint. Explicit protection,
+# including WhitespaceSensitiveMacros and off/on directives, still wins.
+# Example: CallLikeMacroNames = ["REGISTER_HANDLER"]
 # Values: [] or ["name", ...]
 CallLikeMacroNames = []
 
