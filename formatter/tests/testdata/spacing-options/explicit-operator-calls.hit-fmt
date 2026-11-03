@@ -1,0 +1,7 @@
+Layout = Canonical
+IndentWidth = 4
+ColumnLimit = 120
+UnaryOperatorSpacing = NoSpace
+BinaryOperatorSpacing = Space
+OperatorOverloadOperatorSpaceBefore = NoSpace
+OperatorOverloadOperatorSpaceAfter = NoSpace

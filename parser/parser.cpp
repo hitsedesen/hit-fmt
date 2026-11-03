@@ -10151,7 +10151,9 @@ private:
             cursor = NextSignificant(cursor + 1);
         }
 
-        auto* name = MakeNode(NodeKind::IdentifierExpression, nameBegin);
+        auto* name = MakeNode(
+            Kind(nameBegin) == TK::Keyword_operator ? NodeKind::OperatorFunctionName : NodeKind::IdentifierExpression,
+            nameBegin);
         // Lookahead skips comments, but they are not part of the member name.
         name->Tokens.End = PreviousSignificant(cursor) + 1;
 
@@ -10433,6 +10435,8 @@ private:
 
                 AddUnparsedSyntax(*left, innerCursor, closing);
             }
+        } else if (kind == TK::Keyword_operator) {
+            left = ParseMemberName(cursor, end);
         } else if (kind == TK::Operator_ScopeResolution) {
             const auto name = NextSignificant(cursor + 1);
 
