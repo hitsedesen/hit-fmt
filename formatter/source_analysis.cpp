@@ -436,8 +436,7 @@ bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
 std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissions(
     std::optional<std::span<const parser::SourceRange>> scope) const
 {
-    std::pmr::vector<PartialGapPermission> permissions(
-        Gaps_.get_allocator().resource());
+    std::pmr::vector<PartialGapPermission> permissions(Gaps_.get_allocator().resource());
     // A directive owns its terminating LF, not the next line's indentation.
     // Keep the same slice authority for unrestricted and scoped formatting.
     for (GapId id = 0; id < Gaps_.size(); ++id) {
@@ -1016,18 +1015,41 @@ SourceAnalysis BuildSourceAnalysis(
             protect(begin, end, ProtectionReason::SensitiveMacro);
         }
 
+        if (node.Kind == parser::NodeKind::Argument && parent != NoRegion &&
+            result.Regions_[parent].Kind == parser::NodeKind::ArgumentList)
+        {
+            const auto owner = result.Regions_[parent].Parent;
+
+            if (owner != NoRegion && result.Regions_[owner].Kind == parser::NodeKind::AmbiguousStatement) {
+                // These items have no expression/declaration children. Preserve
+                // their internal gaps, including insertion after the first
+                // token, while leaving the incoming list boundary mutable.
+                protect(tree.Token(tokens.Begin).Text.End, end, ProtectionReason::Ambiguous);
+            }
+        }
+
         if (recovery || ambiguous) {
             // Complete ambiguous statements and bounded conditions have
             // proven edges, even when their interpretation is unknown.
             // Keep its uncertain head exact, but allow an independently
-            // parsed assignment RHS and let the body indent around it.
+            // parsed initializer and let the body indent around it.
             // Other recovery still owns adjacent trivia and insertion points.
             auto protectedEnd = end;
 
             if (ambiguous) {
                 for (auto* child = node.Child(); child; child = child->NextSibling) {
-                    if (child->Kind == parser::NodeKind::Initializer) {
+                    if (child->Kind == parser::NodeKind::Initializer || child->Kind == parser::NodeKind::ArgumentList) {
                         protectedEnd = tree.Token(child->Tokens.Begin).Text.Begin;
+
+                        if (child->Kind == parser::NodeKind::ArgumentList) {
+                            // The shared list starts after '(', not at its
+                            // incoming gap, including a zero-width adjacency.
+                            auto& gap = result.Gaps_[child->Tokens.Begin];
+                            gap.Preserve = true;
+                            gap.IntrinsicPreserve = true;
+                            gap.Reasons = gap.Reasons | ProtectionReason::Ambiguous;
+                        }
+
                         break;
                     }
                 }

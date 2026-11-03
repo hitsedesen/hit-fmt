@@ -447,10 +447,7 @@ inline FormatResult ProjectHunkFormat(
     }
 
     append({originalCursor, originalSize}, false);
-    std::pmr::vector<StructuralActionId> actions(
-        canonical.StructuralOperations.size(),
-        NoStructuralAction,
-        &memory);
+    std::pmr::vector<StructuralActionId> actions(canonical.StructuralOperations.size(), NoStructuralAction, &memory);
     const auto action = [&] (StructuralActionId id) {
         if (id == NoStructuralAction) {
             return id;

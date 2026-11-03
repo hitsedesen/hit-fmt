@@ -1,0 +1,3 @@
+include = "report.hit-fmt"
+ColumnLimit = 48
+WhitespaceSensitiveMacros = ["KEEP"]

@@ -3218,6 +3218,14 @@ std::vector<FormatCase> FormatCases()
         }
     }
 
+    AddCases(cases, data / "ambiguous-initializers", {"report"}, "report.input.cpp");
+
+    for (const auto* name : {"non-template", "declared-template"}) {
+        cases.push_back({data / "ambiguous-initializers", name, std::string(name) + ".input.cpp", "report"});
+    }
+
+    AddCases(cases, data / "ambiguous-initializers", {"boundaries"}, "boundaries.input.cpp");
+
     AddCases(cases, data / "template-parameters", {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
 
     for (const auto* profile : {"google", "llvm", "ytsaurus"}) {
@@ -4993,6 +5001,7 @@ INSTANTIATE_TEST_SUITE_P(
         LayoutDiagnosticCase{"format-disabled", "regions", "regions.input.cpp", {}, false, ".layout.expected"},
         LayoutDiagnosticCase{"format-disabled", "regions-no-clang", "regions.input.cpp", {}, false, ".layout.expected"},
         LayoutDiagnosticCase{"line-length", "soft"},
+        LayoutDiagnosticCase{"ambiguous-initializers", "report", "report.input.cpp", {}, true, ".layout.expected"},
         LayoutDiagnosticCase{"line-length", "strict", "input.cpp", "soft", true},
         LayoutDiagnosticCase{"assignment-location", "leading"},
         LayoutDiagnosticCase{"assignment-location", "trailing"},

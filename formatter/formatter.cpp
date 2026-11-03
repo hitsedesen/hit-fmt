@@ -1132,7 +1132,8 @@ void ApplyComments(
             .insert(result.StructuralOperations.end(), comments.Operations.begin(), comments.Operations.end());
     }
     std::pmr::vector<NamespaceIdentity> namespaces(
-        namespacePlan.Namespaces.begin(), namespacePlan.Namespaces.end(),
+        namespacePlan.Namespaces.begin(),
+        namespacePlan.Namespaces.end(),
         &scratch);
     std::sort(
         namespaces.begin(),

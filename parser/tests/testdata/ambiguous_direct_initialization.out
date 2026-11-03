@@ -1,0 +1,143 @@
+(translation-unit
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "f")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (argument-list
+          "("
+          (argument "D")
+          (list-separator ",")
+          (argument "E")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "C")
+        "*" "operand" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (argument-list
+          "("
+          (argument "First" "*" "pointer")
+          (list-separator ",")
+          (argument "Second" "&" "reference")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (argument-list
+          "("
+          (argument "int" "first")
+          (list-separator ",")
+          (argument "int" "second")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (argument-list
+          "("
+          (argument "unknown" "<" "left" "," "right" ">" "value" "," "tail")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (argument-list
+          "("
+          (argument "choose" "?" "left" "," "right" ":" "other")
+          (list-separator ",")
+          (argument "tail")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (argument-list
+          "("
+          (argument "nested" "(" "first" "," "second" ")")
+          (list-separator ",")
+          (argument "tail")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "(" "first" "," "second" ")" "+" "tail" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "(" "first" "," "second" ")" "," "other" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "(" "first" "," "," "second" ")" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "(" "first" "," "second" "," ")" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "External")
+        "*" "pointer"
+        (argument-list
+          "("
+          (argument "first")
+          (list-separator ",")
+          (argument "second")
+          ")"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "External")
+        "*" "assigned"
+        (initializer
+          "="
+          (call-expression
+            (identifier-expression "Acquire")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (argument
+                (identifier-expression "second")
+              )
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      "}"
+    )
+  )
+)

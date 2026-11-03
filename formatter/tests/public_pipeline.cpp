@@ -317,7 +317,7 @@ TEST(PublicPipeline, UnbracedControlSeparatorCompactWidthAndMultilineSuffix)
     }
 }
 
-TEST(PublicPipeline, AmbiguousAssignmentRhsRespectsEditScope)
+TEST(PublicPipeline, AmbiguousInitializersRespectEditScope)
 {
     auto style = Canonical();
     style.ColumnLimit = 60;
@@ -326,24 +326,28 @@ TEST(PublicPipeline, AmbiguousAssignmentRhsRespectsEditScope)
     style.CallsFirstItem = formatter::FirstItemPlacement::NextLine;
     style.RemoveNullStatements = true;
     const formatter::PreparedFormat prepared(style);
-    const std::string source = "void f() { External  *  pointer = "
-        "Acquire(firstLongArgument, secondLongArgument, thirdLongArgument); " "; int tail = 0; ; }\n";
-    const auto result = FormatInput(source, prepared);
-    // Retain the null beside ambiguity, but still exercise normalization and
-    // formatting of the independently known tail statement.
-    EXPECT_NE(result.Text.find("External  *  pointer ="), std::string::npos);
-    EXPECT_NE(result.Text.find("Acquire(\n"), std::string::npos);
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-    EXPECT_EQ(FormatInput(source, prepared, {.EditScope = std::span<const parser::SourceRange>{}}).Text, source);
-    const std::array immutable{parser::SourceRange{0, uint32_t(source.size())}};
-    EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
-    const auto begin = uint32_t(source.find("Acquire"));
-    const auto end = uint32_t(source.find(';'));
-    const std::array selected{parser::SourceRange{begin, end}};
-    const auto scoped = FormatInput(source, prepared, {.EditScope = selected});
-    EXPECT_TRUE(scoped.Text.starts_with(source.substr(0, begin)));
-    EXPECT_TRUE(scoped.Text.ends_with(source.substr(end)));
-    EXPECT_NE(scoped.Text.find("Acquire(\n"), std::string::npos);
+
+    for (const std::string_view head : {"External  *  pointer = Acquire", "A  < B >  Acquire"}) {
+        SCOPED_TRACE(head);
+        const std::string source = std::string("void f() { ") + std::string(head) +
+            "(firstLongArgument, secondLongArgument, thirdLongArgument); ; int tail = 0; ; }\n";
+        const auto result = FormatInput(source, prepared);
+        // Retain the null beside ambiguity, but still exercise normalization and
+        // formatting of the independently known tail statement.
+        EXPECT_NE(result.Text.find(head), std::string::npos);
+        EXPECT_NE(result.Text.find("Acquire(\n"), std::string::npos);
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+        EXPECT_EQ(FormatInput(source, prepared, {.EditScope = std::span<const parser::SourceRange>{}}).Text, source);
+        const std::array immutable{parser::SourceRange{0, uint32_t(source.size())}};
+        EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
+        const auto begin = uint32_t(source.find("Acquire"));
+        const auto end = uint32_t(source.find(';'));
+        const std::array selected{parser::SourceRange{begin, end}};
+        const auto scoped = FormatInput(source, prepared, {.EditScope = selected});
+        EXPECT_TRUE(scoped.Text.starts_with(source.substr(0, begin)));
+        EXPECT_TRUE(scoped.Text.ends_with(source.substr(end)));
+        EXPECT_NE(scoped.Text.find("Acquire(\n"), std::string::npos);
+    }
 }
 
 TEST(PublicPipeline, UnknownAnnotationsPreserveRecoveredText)

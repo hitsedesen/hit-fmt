@@ -6,9 +6,7 @@ void Do()
         std::vector<int> values(
             first,
             second);
-        std::vector<String> strings(
-            first,
-            second);
+        std::vector<String> strings(first, second);
         Buffer splitValues
             (
                 first,
@@ -75,8 +73,7 @@ void Nested()
         Run(
                 1,
                 [&] {
-            std::vector<std::pair<Key, Value>> values(
-                first,  /* unchanged spacing */ second);
+            std::vector<std::pair<Key, Value>> values(first, /* unchanged spacing */ second);
             auto literal = R"(literal
     contents)";
         });

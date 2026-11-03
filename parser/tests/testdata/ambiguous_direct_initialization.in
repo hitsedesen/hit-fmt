@@ -1,0 +1,15 @@
+void f() {
+    A < B > C(D, E);
+    C * operand;
+    A<B> C(First * pointer, Second & reference);
+    A<B> C(int first, int second);
+    A<B> C(unknown<left, right> value, tail);
+    A<B> C(choose ? left, right : other, tail);
+    A<B> C(nested(first, second), tail);
+    A<B> C(first, second) + tail;
+    A<B> C(first, second), other;
+    A<B> C(first,,second);
+    A<B> C(first, second,);
+    External * pointer(first, second);
+    External * assigned = Acquire(first, second);
+}

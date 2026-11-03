@@ -2592,6 +2592,7 @@ INSTANTIATE_TEST_SUITE_P(
         GoldenCase{"macro_generated_cases", false, true},
         GoldenCase{"name_classification"},
         GoldenCase{"ambiguity"},
+        GoldenCase{"ambiguous_direct_initialization", false, true},
         GoldenCase{"unknown_record"},
         GoldenCase{"elaborated_initializers", false, true},
         GoldenCase{"ambiguous_call_syntax"},
