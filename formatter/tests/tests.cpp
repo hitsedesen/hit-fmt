@@ -1591,6 +1591,16 @@ std::vector<FormatCase> FormatCases()
     }
 
     cases.push_back({chains, "closed-calls", "closed-calls.input.cpp"});
+    AddCases(cases, chains, {"enum-template-roots"}, "enum-template-roots.input.cpp");
+    cases.push_back({chains, "enum-template-roots-preserve", "enum-template-roots.input.cpp"});
+    cases.back().Style = formatter::LoadConfigFile(chains / "enum-template-roots.hit-fmt").FormattingStyle;
+    cases.back().Style->ChainsLayout = CategoryLayout::Preserve;
+    cases.push_back({
+        chains,
+        "enum-template-roots-recovery",
+        "enum-template-roots-recovery.input.cpp",
+        "enum-template-roots",
+    });
 
     for (const auto* profile : {"template-roots-selected", "template-roots-forced", "template-roots-preserve"}) {
         cases.push_back({chains, profile, "template-roots.input.cpp"});

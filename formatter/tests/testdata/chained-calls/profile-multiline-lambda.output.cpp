@@ -224,7 +224,9 @@ void RecoveredArguments()
         .Second();
     Receiver(items...).Only();
     Receiver(items...).Field.Child;
-    std::forward<Items>(items).First().Second();
+    std::forward<Items>(items)
+        .First()
+        .Second();
 }
 
 void Events()

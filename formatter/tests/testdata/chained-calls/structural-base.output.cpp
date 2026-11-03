@@ -37,8 +37,9 @@ namespace Outer {
     namespace Inner {
         void nested() {
             outer(
-                builder().Configure<Entry>(
-                    argument)
+                builder()
+                    .Configure<Entry>(
+                        argument)
                     .Finish());
         }
     }

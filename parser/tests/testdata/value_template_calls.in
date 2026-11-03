@@ -1,0 +1,24 @@
+void Build()
+{
+    auto value = MakeBuilder<EMode::Map>(EEncoding::Binary).Item("key").Finish();
+    auto number = ns::Create<42>(value).Item("key").Finish();
+    auto qualified = Create<::modes::Map, -2>(value);
+    auto mixed = Create<Unknown, &ns::value>(value);
+    auto member = object.Create<modes::Map>(value);
+    auto argument = Consume(Create<modes::Map, 2>(value), other);
+    auto comparison = left < modes::Map > (value).Item("key").Finish();
+    auto literalComparison = left < 42 > (value).Item("key").Finish();
+    auto compactCallComparison = left<modes::Map>(encoding).Item("key").Finish();
+    auto spaced = Create <modes::Map>(encoding).Item("key").Finish();
+    auto commented = Create< /* mode */ modes::Map>(encoding).Item("key").Finish();
+    auto multiline = Create<
+        modes::Map>(encoding).Item("key").Finish();
+    auto malformed = Create<modes::Map,>(encoding).Item("key").Finish();
+    // hit-fmt off
+    auto disabled = Create<modes::Map>(encoding).Item("key").Finish();
+    // hit-fmt on
+    auto compactComparison = left<modes::Map>right;
+    auto compactLiteralComparison = left<42>right;
+    auto unresolved = Create<value>(argument).Item("key").Finish();
+    auto relationalArgument = Create<modes::Map < limit>(value).Item("key").Finish();
+}
