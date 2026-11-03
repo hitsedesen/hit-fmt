@@ -600,6 +600,8 @@
         formatter::IncludeOrder::Preserve) \
     OPT(formatter::IncludeCategoryOrder, IncludeCategoryOrder, \
         formatter::IncludeCategoryOrder::QuotedFirst) \
+    OPT(formatter::IncludeSortPriority, IncludeSortPriority, \
+        formatter::IncludeSortPriority::CategoryFirst) \
     OPT(formatter::IncludeDelimiters, IncludeDelimiters, \
         formatter::IncludeDelimiters::Preserve) \
     OPT(formatter::IncludeMatchingHeader, IncludeMatchingHeader, \

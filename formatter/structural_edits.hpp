@@ -65,6 +65,7 @@ struct StructuralOptions
     std::size_t RulerLength = 0;
     std::uint8_t IndentWidth = 4;
     IncludeCategoryOrder CategoryOrder = IncludeCategoryOrder::QuotedFirst;
+    IncludeSortPriority SortPriority = IncludeSortPriority::CategoryFirst;
     IncludeDelimiters Delimiters = IncludeDelimiters::Preserve;
     IncludeMatchingHeader MatchingHeader = IncludeMatchingHeader::Off;
     IncludeGrouping Grouping = IncludeGrouping::Preserve;

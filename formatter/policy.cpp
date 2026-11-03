@@ -282,6 +282,9 @@ void ValidatePolicyStyle(const Style& style)
     if (static_cast<std::size_t>(style.IncludeDelimiters) >= ConfigEnumNames<IncludeDelimiters>::Values.size()) {
         throw std::invalid_argument("IncludeDelimiters has invalid value");
     }
+    if (static_cast<std::size_t>(style.IncludeSortPriority) >= ConfigEnumNames<IncludeSortPriority>::Values.size()) {
+        throw std::invalid_argument("IncludeSortPriority has invalid value");
+    }
     if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
         style.IncludeMatchingHeader != IncludeMatchingHeader::First)
     {
@@ -494,8 +497,8 @@ CompiledPolicies CompilePolicies(const Style& style)
         .GenerateCallScopeIndentation = style.GenerateCallScopeIndentation,
         .RulerBlankLinesBefore = CompileBlankLines(style.RulerBlankLinesBefore),
         .RulerBlankLinesAfter = CompileBlankLines(style.RulerBlankLinesAfter),
-        .Includes = {style.IncludeCategoryOrder, style.IncludeDelimiters, style.IncludeMatchingHeader,
-            style.IncludeGrouping, style.IncludeGroupOrder, style.IncludeDirectoryOrder,
+        .Includes = {style.IncludeCategoryOrder, style.IncludeSortPriority, style.IncludeDelimiters,
+            style.IncludeMatchingHeader, style.IncludeGrouping, style.IncludeGroupOrder, style.IncludeDirectoryOrder,
             style.IncludeInGroupOrder, style.IncludePathBase,
             style.IncludeStandardHeaders},
     };

@@ -1,0 +1,10 @@
+IncludeOrder = Sort
+IncludeGrouping = Regroup
+IncludeCategoryOrder = AngledFirst
+IncludeGroupOrder = Configured
+IncludeGroups = [
+    {Prefix = "vendor/", Priority = 1},
+    {Prefix = "framework/", Priority = 2},
+    {Prefix = "shared/", Priority = 3},
+    {Prefix = "app/", Priority = 4}
+]

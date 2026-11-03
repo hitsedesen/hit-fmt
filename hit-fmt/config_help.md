@@ -661,6 +661,12 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
 - IncludeCategoryOrder: QuotedFirst (default) or AngledFirst orders quoted
   and angled headers in every grouping mode. Matching headers stay first
   and IncludeStandardHeaders = Last keeps unclaimed standard headers last.
+- IncludeSortPriority: CategoryFirst (default) sorts quote/angle categories
+  before semantic groups. GroupFirst applies priorities, IncludeGroupOrder
+  and directory subgroup ordering before IncludeCategoryOrder. Mixed
+  delimiters remain separate subgroups within each semantic group.
+  Matching headers stay first and unclaimed standard headers stay last.
+  IncludeGrouping = Preserve ignores this policy. Delimiters are unchanged.
 - IncludeGrouping: Preserve keeps adjacent blocks and blank lines;
   Regroup merges across blanks by rule; Directory groups by directory.
   Regroup/Directory insert one blank line, conflicting with MaxEmptyLines
@@ -680,7 +686,8 @@ StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
   A matched standard group overrides Last and uses ordinary group ordering;
   it stays alphabetical and ignores Depth. At most one such rule is allowed.
   Put it before an empty-prefix fallback, which otherwise claims its headers.
-- Priority: -128..127, lower first within quoted/angled categories.
+- Priority: -128..127, lower first; within quoted/angled categories under
+  CategoryFirst, or across them under GroupFirst.
   IncludeGroupOrder: Directory or Configured (rule order); unmatched
   groups use priority 0 and follow matched groups in a configured tier.
   Priority affects output order, not matching. Rules validate even if inactive.
@@ -715,6 +722,23 @@ IncludeGroups = [
     { Prefix = "util/", Depth = 1 }
 ]
 # library/core/a.hpp and library/core/detail/b.hpp share a group.
+```
+
+## Order semantic groups before quote/angle categories
+```config
+IncludeOrder = Sort
+IncludeGrouping = Regroup
+IncludeSortPriority = GroupFirst
+IncludeCategoryOrder = AngledFirst
+IncludeGroupOrder = Configured
+IncludeGroups = [
+    { Prefix = "vendor/", Priority = 1 },
+    { Prefix = "framework/", Priority = 2 },
+    { Prefix = "shared/", Priority = 3 },
+    { Prefix = "app/", Priority = 4 }
+]
+# <vendor/api.hpp>, "framework/api.hpp", <shared/api.hpp>, <app/api.hpp>
+# appear in that order, with one blank line between groups.
 ```
 
 ## Put standard headers before unknown projects and system headers

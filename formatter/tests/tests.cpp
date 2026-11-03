@@ -1025,6 +1025,49 @@ std::vector<FormatCase> FormatCases()
         AddCases(cases, directory, {"standard", "standard-preserve", "standard-adjacent"}, "standard.input.cpp");
         AddCases(cases, directory, {"standard-group"}, "standard.input.cpp");
 
+        for (const bool groupFirst : {false, true}) {
+            FormatCase value{directory, groupFirst ? "semantic-first" : "semantic", "semantic.input.cpp", "semantic"};
+            value.Style = formatter::LoadConfigFile(directory / "semantic.hit-fmt").FormattingStyle;
+
+            if (groupFirst) {
+                value.Style->IncludeSortPriority = formatter::IncludeSortPriority::GroupFirst;
+            }
+
+            cases.push_back(std::move(value));
+        }
+
+        for (const auto grouping : {formatter::IncludeGrouping::Regroup, formatter::IncludeGrouping::Directory}) {
+            for (const auto order : {formatter::IncludeGroupOrder::Configured, formatter::IncludeGroupOrder::Directory})
+            {
+                for (const auto category :
+                    {formatter::IncludeCategoryOrder::AngledFirst, formatter::IncludeCategoryOrder::QuotedFirst})
+                {
+                    FormatCase value{
+                        directory,
+                        "semantic-" + std::string(formatter::SerializeConfigEnum(grouping)) + "-" +
+                            std::string(formatter::SerializeConfigEnum(order)) + "-" +
+                            std::string(formatter::SerializeConfigEnum(category)),
+                        "semantic-mixed.input.cpp",
+                        "semantic-mixed",
+                    };
+                    value.Style = formatter::LoadConfigFile(directory / "semantic-mixed.hit-fmt").FormattingStyle;
+                    value.Style->IncludeGrouping = grouping;
+                    value.Style->IncludeGroupOrder = order;
+                    value.Style->IncludeCategoryOrder = category;
+                    value.InputFilePath = "widget.cpp";
+                    cases.push_back(std::move(value));
+                }
+            }
+        }
+
+        {
+            FormatCase value{directory, "semantic-standard-last", "semantic-mixed.input.cpp", "semantic-mixed"};
+            value.Style = formatter::LoadConfigFile(directory / "semantic-mixed.hit-fmt").FormattingStyle;
+            value.Style->IncludeGroups[2].StandardHeaders = false;
+            value.InputFilePath = "widget.cpp";
+            cases.push_back(std::move(value));
+        }
+
         for (const auto profile :
             {"system-directory", "system-regroup", "system-configured", "system-adjacent", "header-names"})
         {
@@ -1151,6 +1194,7 @@ std::vector<FormatCase> FormatCases()
             // Preserve must ignore both grouping rules and their ordering.
             if (std::string_view(profile) == "matching") {
                 value.Style->IncludeGroups = {{{"project/"}, 1, -1}};
+                value.Style->IncludeSortPriority = formatter::IncludeSortPriority::GroupFirst;
             }
 
             value.InputFilePath = "project/engine/widget.cpp";

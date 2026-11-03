@@ -1395,6 +1395,7 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.RulerLength,
         static_cast<std::uint8_t>(style.IndentWidth),
         style.IncludeCategoryOrder,
+        style.IncludeSortPriority,
         style.IncludeDelimiters,
         style.IncludeMatchingHeader,
         style.IncludeGrouping,
