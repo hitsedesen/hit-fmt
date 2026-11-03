@@ -647,6 +647,22 @@ TEST(SourceAnalysis, AmbiguousAssignmentsProtectOnlyTheirUncertainHeads)
     }
 }
 
+TEST(SourceAnalysis, AmbiguousParenthesizedListsExposeOnlySharedBoundaries)
+{
+    Input input("void f() { A  < B >  C(First  *  pointer,second); }\n");
+    auto tree = Parse(input);
+    std::pmr::monotonic_buffer_resource memory;
+    auto analysis = Analyze(tree, memory);
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "<"), ""));
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "C"), ""));
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "(", 1), "\n    "));
+    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "First"), "\n        "));
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "*"), ""));
+    EXPECT_FALSE(analysis.CanReplaceGap(Before(tree, "pointer"), ""));
+    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "second"), "\n        "));
+    EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, ")", 1), "\n    "));
+}
+
 TEST(SourceAnalysis, AcceptedGapEditsKeepExactTokensIndividuallyAndTogether)
 {
     Input input("void f() { int alpha = 1; int beta = 2; " "alpha = beta + +alpha; "
@@ -905,7 +921,7 @@ TEST(SourceAnalysis, CompleteOpaqueStatementsPermitOnlyFinalIndentation)
 {
     for (const std::string_view source :
         {
-            "void f() { std::vector<String> values(\n    first,\nsecond); }\n",
+            "void f() { std::vector<String> values(\n    first,\nsecond) SUFFIX; }\n",
             "void f() { DEFER {\n    first();\nsecond();\n}; }\n",
             "void f() {\n#if FEATURE\nDEFER {\n" "    first();\nsecond();\n};\n#endif\n}\n",
         })
@@ -1483,8 +1499,7 @@ TEST(SourceAnalysis, IterativeClassificationScalesWithScopes)
     // Scope and protection each reserve once; only the sparse permission
     // vector grows incrementally. Use this library's vector growth policy.
     CountingResource permissionMemory;
-    std::pmr::vector<formatter::PartialGapPermission> permissions(
-        &permissionMemory);
+    std::pmr::vector<formatter::PartialGapPermission> permissions(&permissionMemory);
     for (size_t i = 0; i < deferred.PartialGapPermissions().size(); ++i) {
         permissions.emplace_back();
     }

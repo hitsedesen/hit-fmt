@@ -83,7 +83,8 @@ void Sample()
     ExternalBuffer* incomplete = Acquire(firstLongArgument, secondLongArgument, thirdLongArgument) +;
     ExternalBuffer* comparison == Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
     ExternalBuffer* compound += Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
-    ExternalBuffer* nestedOnly(Acquire(target = firstLongArgument, secondLongArgument, thirdLongArgument));
+    ExternalBuffer* nestedOnly(
+        Acquire(target = firstLongArgument, secondLongArgument, thirdLongArgument));
     multiplier * product =
         Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
     int knownValue;

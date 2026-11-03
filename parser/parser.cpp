@@ -8599,7 +8599,7 @@ private:
                 // just as in a block statement. Only its assignment RHS is shared.
                 auto* statement = MakeNode(kind, begin);
                 statement->Tokens.End = semicolons[0];
-                AddAmbiguousAssignmentRhs(*statement, semicolons[0]);
+                AddAmbiguousInitializer(*statement, semicolons[0]);
                 Append(*initializer, *statement);
             }
         }
@@ -8751,7 +8751,7 @@ private:
             // Unavailable type bindings remain ambiguous, not invented.
             // The complete assignment RHS is shared by both interpretations.
             declaration->Kind = NodeKind::AmbiguousStatement;
-            AddAmbiguousAssignmentRhs(*declaration, end);
+            AddAmbiguousInitializer(*declaration, end);
         }
 
         Append(header, *declaration);
@@ -10824,11 +10824,74 @@ private:
         RegisterDeclaredNames(declaration, NameKind::Value);
     }
 
-    void AddAmbiguousAssignmentRhs(Node& statement, size_t end)
+    void AddAmbiguousParenthesizedList(Node& statement, TokenIndex opening, TokenIndex end)
     {
-        // Both a declaration and an expression can have this head. Bound its
-        // assignment without choosing pointer/reference or binary roles, and
-        // do not search through conditionals, other declarators or macros.
+        if (ArgumentPairEnd(opening, end) != end ||
+            Tree_.Tokens_.FindPreprocessingDirective(opening + 1, end - 1) < end - 1)
+        {
+            return;
+        }
+
+        // The final parentheses belong to a direct initializer, parameter
+        // list or call in every supported reading. Only their boundaries are
+        // shared: keep each item's interior opaque, including unknown types,
+        // pointer operators, template angles and nested macro invocations.
+        auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
+        arguments->Tokens.End = end;
+        auto cursor = NextSignificant(opening + 1);
+        size_t work = 4096;
+
+        while (cursor < end - 1) {
+            if (Kind(cursor) == TK::Operator_Comma) {
+                return;
+            }
+
+            const auto itemEnd = ArgumentExpressionEnd(cursor, end - 1, work);
+
+            if (itemEnd <= cursor || work == 0) {
+                return;
+            }
+
+            auto* argument = MakeNode(NodeKind::Argument, cursor);
+            argument->Tokens.End = itemEnd;
+            Append(*arguments, *argument);
+            cursor = NextSignificant(itemEnd);
+
+            if (cursor == end - 1) {
+                break;
+            }
+
+            if (Kind(cursor) != TK::Operator_Comma) {
+                return;
+            }
+
+            // Append marks punctuation immediately. Defer separator roles
+            // until the entire list is proven, including its final item.
+            auto* comma = MakeNode(NodeKind::UnparsedSyntax, cursor);
+            comma->Tokens.End = cursor + 1;
+            Append(*arguments, *comma);
+            cursor = NextSignificant(cursor + 1);
+
+            if (cursor == end - 1) {
+                return;
+            }
+        }
+
+        for (auto* item = arguments->FirstChild; item; item = item->NextSibling) {
+            if (item->Kind == NodeKind::UnparsedSyntax) {
+                item->Kind = NodeKind::ListSeparator;
+                MarkPunctuationRoles(*item);
+            }
+        }
+
+        Append(statement, *arguments);
+    }
+
+    void AddAmbiguousInitializer(Node& statement, size_t end, bool allowParenthesized = false)
+    {
+        // Bound the shared tail without choosing declaration or expression
+        // roles for this head. Conditions share only an assignment RHS;
+        // ordinary statements can also share a final parenthesized list.
         TokenIndex cursor = SkipDeclarationTypeName(SkipAttributeSpecifiers(statement.Tokens.Begin), end, true);
 
         while (cursor < end &&
@@ -10843,13 +10906,17 @@ private:
             return;
         }
 
-        const auto assignment = NextSignificant(cursor + 1);
+        const auto suffix = NextSignificant(cursor + 1);
 
-        if (Kind(assignment) != TK::Operator_Assign) {
+        if (Kind(suffix) != TK::Operator_Assign) {
+            if (allowParenthesized && Kind(suffix) == TK::Operator_OpenParenthesis) {
+                AddAmbiguousParenthesizedList(statement, suffix, end);
+            }
+
             return;
         }
 
-        cursor = NextSignificant(assignment + 1);
+        cursor = NextSignificant(suffix + 1);
         // A comma can separate declarators rather than expressions. Only a
         // complete assignment-expression RHS is shared by both readings.
         auto* expression = ParseExpressionSyntax(cursor, end, 2);
@@ -10858,7 +10925,7 @@ private:
             return;
         }
 
-        auto* initializer = MakeNode(NodeKind::Initializer, assignment);
+        auto* initializer = MakeNode(NodeKind::Initializer, suffix);
         initializer->Tokens.End = end;
         Append(*initializer, *expression);
         Append(statement, *initializer);
@@ -10950,7 +11017,7 @@ private:
                 }
 
                 if (Kind(node->Tokens.End - 1) == TK::Operator_Semicolon) {
-                    AddAmbiguousAssignmentRhs(*node, node->Tokens.End - 1);
+                    AddAmbiguousInitializer(*node, node->Tokens.End - 1, true);
                 }
             }
 

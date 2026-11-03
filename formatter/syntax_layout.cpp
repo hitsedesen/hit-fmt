@@ -250,8 +250,7 @@ public:
         PrefixProtection_.resize(size_t(count) + 1);
         PrefixOpaqueFences_.resize(size_t(count) + 1);
         const auto protection = Safety_.Protection();
-        std::pmr::vector<uint8_t> opaqueFences(
-            PrefixOpaqueFences_.get_allocator().resource());
+        std::pmr::vector<uint8_t> opaqueFences(PrefixOpaqueFences_.get_allocator().resource());
         opaqueFences.reserve(protection.size());
 
         for (const auto& range : protection) {
@@ -1250,7 +1249,13 @@ private:
             return false;
         }
 
-        if (!Syntax_[id].OpaqueSafe) {
+        const bool sharedAmbiguousList = node.Kind == NodeKind::ArgumentList && node.Parent != None &&
+            Region(Syntax_[node.Parent]).Kind == NodeKind::AmbiguousStatement;
+
+        // These lists deliberately expose only their proven delimiters and
+        // separators. Their opaque items may move as exact atoms even though
+        // no declaration/expression interpretation of their interiors is known.
+        if (!Syntax_[id].OpaqueSafe && !sharedAmbiguousList) {
             return false;
         }
 

@@ -854,8 +854,7 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
 {
     size_t size = CheckedSourceAnalysisSize(source.size());
     size_t cursor = 0;
-    std::pmr::vector<uint8_t> ownership(
-        plan.Operations.size(), 0, plan.Edits.get_allocator().resource());
+    std::pmr::vector<uint8_t> ownership(plan.Operations.size(), 0, plan.Edits.get_allocator().resource());
     const StructuralEdit* previous = nullptr;
 
     for (const auto& edit : plan.Edits) {
@@ -1553,10 +1552,8 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
         }
     } else {
         // Linear nearest-survivor tables bound chains of neighboring deletions.
-        std::pmr::vector<TI> before(
-            tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
-        std::pmr::vector<TI> after(
-            tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
+        std::pmr::vector<TI> before(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
+        std::pmr::vector<TI> after(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
         for (TI i = 0; i < tree.TokenCount(); ++i) {
             before[i + 1] = result.OriginalTokens[i].Present ? i : before[i];
         }

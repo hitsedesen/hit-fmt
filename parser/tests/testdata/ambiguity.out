@@ -738,7 +738,13 @@
         )
         (ambiguous-statement
           (unknown-type-name "ExternalCount")
-          "*" "nestedOnly" "(" "Acquire" "(" "target" "=" "first" "," "second" ")" ")" ";"
+          "*" "nestedOnly"
+          (argument-list
+            "("
+            (argument "Acquire" "(" "target" "=" "first" "," "second" ")")
+            ")"
+          )
+          ";"
         )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
@@ -1004,11 +1010,27 @@
         )
         (ambiguous-statement
           (unknown-type-name "left")
-          "<" "middle" ">" "right" "(" "1" "," "2" ")" ";"
+          "<" "middle" ">" "right"
+          (argument-list
+            "("
+            (argument "1")
+            (list-separator ",")
+            (argument "2")
+            ")"
+          )
+          ";"
         )
         (ambiguous-statement
           (unknown-type-name "external")
-          "::" "left" "<" "middle" ">" "right" "(" "1" "," "2" ")" ";"
+          "::" "left" "<" "middle" ">" "right"
+          (argument-list
+            "("
+            (argument "1")
+            (list-separator ",")
+            (argument "2")
+            ")"
+          )
+          ";"
         )
         (ambiguous-statement
           (unknown-type-name "external")
