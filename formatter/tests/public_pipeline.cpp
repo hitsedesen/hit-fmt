@@ -1,9 +1,11 @@
 #include <formatter/config.hpp>
+#include <formatter/format_pipeline.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/source_analysis.hpp>
 
 #include <gtest/gtest.h>
 
+#include <tests/format_changes.hpp>
 #include <tests/formatting.hpp>
 #include <tests/golden.hpp>
 
@@ -13,6 +15,7 @@
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 
 namespace {
 
@@ -2395,6 +2398,140 @@ TEST(PublicPipeline, ConsumedNormalizationPreservesProtectionAndNamespaceValidat
             EXPECT_EQ(formatter::Format(input.View(), style), expected);
             const Input formatted(expected);
             EXPECT_EQ(formatter::Format(formatted.View(), style), expected);
+        }
+    }
+}
+
+TEST(PublicPipeline, AnalyzedPipelineOwnershipPreservesRequestsAndBorrowedInputs)
+{
+    auto style = Canonical();
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    style.RulerPlacement = formatter::RulerPlacement::NamespaceBoundaries;
+    style.RulerLength = 16;
+    style.NamespaceComments = formatter::NamespaceComments::Fix;
+    style.ShortNamespaceLines = 0;
+    style.WhitespaceSensitiveMacros = {"TEXT"};
+    const formatter::PreparedFormat prepared(style);
+    const std::string source =
+        "#include <z.h>\n#include <a.h>\n" "namespace n {\nTEXT(alpha   + beta);\nint value;\n}\n";
+    const Input input(source);
+    const std::array sensitive{std::string_view("TEXT")};
+    const std::array ranges{parser::SourceRange{0, parser::SourceOffset(source.find("namespace"))}};
+
+    for (unsigned mode = 0; mode != 5; ++mode) {
+        SCOPED_TRACE(mode);
+        formatter::FormatRequest request{.InputProtection = true};
+        const bool widthDiagnostics = mode == 4;
+
+        if (mode == 1) {
+            request.SourceMap = true;
+            request.TokenMap = true;
+            request.Changes = true;
+            request.DiagnosticLocations = true;
+        } else if (mode == 2) {
+            request.EditScope = ranges;
+        } else if (mode == 3) {
+            request.ImmutableRanges = ranges;
+        }
+
+        auto original = parser::Parse(input.View(), {}, prepared.ParsingOptions());
+        std::pmr::monotonic_buffer_resource file, scratch;
+        auto safety = formatter::BuildSourceAnalysis(
+            original,
+            {
+                .WhitespaceSensitiveMacros = sensitive,
+                .ImmutableRanges = request.ImmutableRanges,
+                .EditScope = request.EditScope,
+            },
+            file,
+            scratch);
+        scratch.release();
+        const auto* root = &original.Root();
+        const auto* gaps = safety.Gaps().data();
+        const auto* regions = safety.Regions().data();
+        const auto expected = formatter::detail::FormatWithAnalysis(
+            original,
+            prepared,
+            safety,
+            sensitive,
+            request,
+            file,
+            scratch,
+            widthDiagnostics);
+        EXPECT_EQ(&original.Root(), root);
+        EXPECT_EQ(safety.Gaps().data(), gaps);
+        EXPECT_EQ(safety.Regions().data(), regions);
+        EXPECT_EQ(
+            formatter::detail::FormatWithAnalysis(
+                original,
+                prepared,
+                safety,
+                sensitive,
+                request,
+                file,
+                scratch,
+                widthDiagnostics).Text,
+            expected.Text);
+
+        const auto consumed = [&] {
+            auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
+            std::pmr::monotonic_buffer_resource ownedFile, ownedScratch;
+            auto analysis = formatter::BuildSourceAnalysis(
+                tree,
+                {
+                    .WhitespaceSensitiveMacros = sensitive,
+                    .ImmutableRanges = request.ImmutableRanges,
+                    .EditScope = request.EditScope,
+                },
+                ownedFile,
+                ownedScratch);
+            ownedScratch.release();
+            return formatter::detail::ConsumeFormatWithAnalysis(
+                std::move(tree),
+                prepared,
+                std::move(analysis),
+                sensitive,
+                request,
+                ownedFile,
+                ownedScratch,
+                widthDiagnostics);
+        }();
+        EXPECT_EQ(consumed.Text, expected.Text);
+        const auto mappingFacts = [] (const formatter::FormatMapping& mapping) {
+            return std::tuple{
+                mapping.Output.Begin,
+                mapping.Output.End,
+                mapping.Original.Begin,
+                mapping.Original.End,
+                mapping.OriginalToken,
+                mapping.Action,
+                mapping.HasOriginal,
+                mapping.Exact,
+                mapping.Protected,
+                mapping.Generated,
+            };
+        };
+        EXPECT_TRUE(
+            std::ranges::equal(consumed.Map, expected.Map, std::ranges::equal_to{}, mappingFacts, mappingFacts));
+        ASSERT_EQ(consumed.InputProtection.size(), expected.InputProtection.size());
+
+        for (size_t i = 0; i < consumed.InputProtection.size(); ++i) {
+            EXPECT_EQ(consumed.InputProtection[i].Source.Begin, expected.InputProtection[i].Source.Begin);
+            EXPECT_EQ(consumed.InputProtection[i].Source.End, expected.InputProtection[i].Source.End);
+            EXPECT_EQ(consumed.InputProtection[i].Reasons, expected.InputProtection[i].Reasons);
+        }
+
+        ASSERT_EQ(consumed.OriginalTokens.size(), expected.OriginalTokens.size());
+
+        for (size_t i = 0; i < consumed.OriginalTokens.size(); ++i) {
+            EXPECT_EQ(consumed.OriginalTokens[i].Present, expected.OriginalTokens[i].Present);
+            EXPECT_EQ(consumed.OriginalTokens[i].Output.Begin, expected.OriginalTokens[i].Output.Begin);
+            EXPECT_EQ(consumed.OriginalTokens[i].Output.End, expected.OriginalTokens[i].Output.End);
+        }
+
+        if (request.Changes) {
+            test::ExpectFormatChanges(source, consumed);
+            test::ExpectChangeSummary(consumed, expected);
         }
     }
 }
