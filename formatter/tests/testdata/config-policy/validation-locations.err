@@ -1,0 +1,12 @@
+single offset:
+<config>/child:2: ContinuationOffset: indentation offset must not exceed 32 [ContinuationOffset at <config>/child:1]
+similar cap names:
+<config>/child:1: MemberGroupMaxEmptyLines must not exceed 10000 [MemberGroupMaxEmptyLines at <config>/nested/../base:1]
+cross setting:
+<config>/child:2: MemberDefinitionBlankLines exceeds MaxEmptyLines [MemberDefinitionBlankLines at <config>/nested/middle:2] [MaxEmptyLines at <config>/child:1]
+inherited global cap:
+<config>/child:2: MemberDefinitionBlankLines (inherited from DefinitionBlankLines) exceeds MaxEmptyLines [DefinitionBlankLines at <config>/nested/../base:1] [MemberDefinitionBlankLines at <config>/nested/middle:2] [MaxEmptyLines at <config>/child:1]
+inherited member cap:
+<config>/child:2: MemberDefinitionBlankLines exceeds MemberGroupMaxEmptyLines [DefinitionBlankLines at <config>/nested/../base:1] [MemberDefinitionBlankLines at <config>/nested/middle:2] [MemberGroupMaxEmptyLines at <config>/child:1]
+include group:
+<config>/child:1: IncludeGroups has duplicate prefix [IncludeGroups at <config>/nested/../base:1]
