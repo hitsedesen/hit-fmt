@@ -3406,6 +3406,9 @@ std::vector<FormatCase> FormatCases()
     }
 
     AddCases(cases, data / "unhinted-body-recovery", {"canonical"});
+    AddCases(cases, data / "operator-name-recovery", {"canonical"});
+    AddCases(cases, data / "pipeline-recovery", {"canonical"});
+    ShareExpected(cases, data / "pipeline-recovery", "canonical.output.cpp", "input.cpp");
     AddCases(cases, data / "macro-generated-cases", {"canonical", "preserve"});
     cases.push_back({
         data / "macro-generated-cases",

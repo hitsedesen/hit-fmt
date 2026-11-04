@@ -1,6 +1,8 @@
 #include <formatter/config.hpp>
+#include <formatter/format_failure_internal.hpp>
 #include <formatter/format_pipeline.hpp>
 #include <formatter/formatter.hpp>
+#include <formatter/hunks.hpp>
 #include <formatter/source_analysis.hpp>
 
 #include <gtest/gtest.h>
@@ -30,6 +32,184 @@ formatter::Style Canonical()
     style.CommaSpaceBefore = formatter::GapPolicy::GeneratedNoSpace;
     style.ControlBlockKeywordSpacing = formatter::GapPolicy::Space;
     return style;
+}
+
+class FailingFormatMemory
+    : public std::pmr::memory_resource
+{
+public:
+    std::optional<parser::SourceRange> Source;
+    bool AllocationFailure = false;
+    bool SizeFailure = false;
+
+private:
+    void* do_allocate(size_t /*size*/, size_t /*alignment*/) override
+    {
+        if (AllocationFailure) {
+            throw std::bad_alloc();
+        }
+
+        if (SizeFailure) {
+            throw std::length_error("output exceeds its bounded domain");
+        }
+
+        if (!Source) {
+            throw std::runtime_error("unlocated pipeline failure");
+        }
+
+        throw formatter::detail::FormatFailure("failed pipeline operation", Source);
+    }
+
+    void do_deallocate(void* /*storage*/, size_t /*size*/, size_t /*alignment*/) override
+    { }
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override
+    {
+        return this == &other;
+    }
+};
+
+TEST(PublicPipeline, FailedPipelinePreservesRegionAndContinuesWithFreshState)
+{
+    auto style = Canonical();
+    style.AddMissingControlBraces = true;
+    style.IncludeOrder = formatter::IncludeOrder::Sort;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "#include <z.h>\n#include <a.h>\nint barrier;\n"
+        "void uncertain(){if(a)invoke( x,y );}\nvoid safe(){if(b)invoke(x,y);}\n";
+    const Input input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    std::pmr::monotonic_buffer_resource analysisMemory;
+    std::pmr::monotonic_buffer_resource scratch;
+    const auto safety = formatter::BuildSourceAnalysis(tree, {}, analysisMemory, scratch);
+    FailingFormatMemory memory;
+    const auto begin = parser::SourceOffset(source.find("void uncertain"));
+    const auto end = parser::SourceOffset(source.find("\nvoid safe"));
+    memory.Source = parser::SourceRange{begin, end};
+    const auto result = formatter::detail::FormatWithAnalysis(
+        tree,
+        prepared,
+        safety,
+        {},
+        {.SourceMap = true, .Changes = true, .InputProtection = true},
+        memory,
+        scratch);
+    EXPECT_NE(result.Text.find(source.substr(begin, end - begin)), std::string::npos);
+    EXPECT_TRUE(result.Text.starts_with("#include <a.h>\n#include <z.h>\n")) << result.Text;
+    EXPECT_NE(result.Text.find("invoke(x, y)"), std::string::npos);
+    EXPECT_NE(result.Text.find("if (b) {"), std::string::npos);
+    ASSERT_EQ(result.OriginalTokens.size(), tree.TokenCount());
+
+    for (parser::TokenIndex id = 0; id < tree.TokenCount(); ++id) {
+        const auto& token = result.OriginalTokens[id];
+        ASSERT_TRUE(token.Present);
+        EXPECT_EQ(
+            std::string_view(result.Text).substr(token.Output.Begin, token.Output.End - token.Output.Begin),
+            tree.TokenText(id));
+    }
+
+    ASSERT_TRUE(result.Changes);
+    EXPECT_FALSE(result.Changes->Edits.empty());
+    EXPECT_EQ(formatter::Format(tree, style), FormatInput(source, prepared).Text);
+
+    const auto safeBegin = parser::SourceOffset(source.find("void safe"));
+    const std::array scope{parser::SourceRange{safeBegin, parser::SourceOffset(source.size())}};
+    const auto scopedSafety = formatter::BuildSourceAnalysis(tree, {.EditScope = scope}, analysisMemory, scratch);
+    const auto scoped = formatter::detail::FormatWithAnalysis(
+        tree,
+        prepared,
+        scopedSafety,
+        {},
+        {.SourceMap = true, .EditScope = scope, .Changes = true},
+        memory,
+        scratch);
+    EXPECT_TRUE(scoped.Text.starts_with(source.substr(0, safeBegin)));
+    EXPECT_NE(scoped.Text.find("invoke(x, y)"), std::string::npos);
+}
+
+TEST(PublicPipeline, UnlocalizedPipelineFailureReturnsHonestUnchangedMetadata)
+{
+    auto style = Canonical();
+    style.AddMissingControlBraces = true;
+    const formatter::PreparedFormat prepared(style);
+    const std::string source = "void f(){if(a)invoke( x,y );}\n";
+    const Input input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
+    std::pmr::monotonic_buffer_resource analysisMemory;
+    std::pmr::monotonic_buffer_resource scratch;
+    const auto safety = formatter::BuildSourceAnalysis(tree, {}, analysisMemory, scratch);
+    FailingFormatMemory memory;
+    const auto result = formatter::detail::FormatWithAnalysis(
+        tree,
+        prepared,
+        safety,
+        {},
+        {.SourceMap = true, .TokenMap = true, .Changes = true, .ChangeSummary = true, .InputProtection = true},
+        memory,
+        scratch);
+    EXPECT_EQ(result.Text, source);
+    ASSERT_TRUE(result.Changes);
+    EXPECT_TRUE(result.Changes->Edits.empty());
+    ASSERT_TRUE(result.Summary);
+    EXPECT_FALSE(result.Summary->OtherChanges);
+    EXPECT_TRUE(result.StructuralOperations.empty());
+    ASSERT_EQ(result.OriginalTokens.size(), tree.TokenCount());
+
+    for (parser::TokenIndex id = 0; id < tree.TokenCount(); ++id) {
+        EXPECT_TRUE(result.OriginalTokens[id].Present);
+        EXPECT_EQ(result.OriginalTokens[id].Output.Begin, tree.Token(id).Text.Begin);
+        EXPECT_EQ(result.OriginalTokens[id].Output.End, tree.Token(id).Text.End);
+    }
+
+    ASSERT_FALSE(result.Map.empty());
+    EXPECT_TRUE(result.Map.front().Exact);
+    EXPECT_TRUE(result.Map.front().HasOriginal);
+    EXPECT_FALSE(result.OutputProtection.empty());
+    EXPECT_FALSE(result.InputProtection.empty());
+
+    for (const auto request :
+        std::array<formatter::FormatRequest, 4>{
+            formatter::FormatRequest{},
+            {.TokenMap = true},
+            {.Changes = true, .DiagnosticLocations = true},
+            {.ChangeSummary = true, .InputProtection = true},
+        })
+    {
+        const auto quiet = formatter::detail::FormatWithAnalysis(tree, prepared, safety, {}, request, memory, scratch);
+        EXPECT_EQ(quiet.Text, source);
+        EXPECT_TRUE(quiet.Map.empty());
+        EXPECT_EQ(quiet.OriginalTokens.empty(), !request.TokenMap);
+        EXPECT_TRUE(quiet.OutputProtection.empty());
+        EXPECT_EQ(quiet.Changes.has_value(), request.Changes);
+        EXPECT_EQ(quiet.Summary.has_value(), request.Changes || request.ChangeSummary);
+        EXPECT_EQ(quiet.InputProtection.empty(), !request.InputProtection);
+    }
+
+    memory.AllocationFailure = true;
+    EXPECT_THROW(
+        (void)formatter::detail::FormatWithAnalysis(tree, prepared, safety, {}, {}, memory, scratch),
+        std::bad_alloc);
+    memory.AllocationFailure = false;
+    memory.SizeFailure = true;
+    EXPECT_THROW(
+        (void)formatter::detail::FormatWithAnalysis(tree, prepared, safety, {}, {}, memory, scratch),
+        std::length_error);
+}
+
+TEST(PublicPipeline, FailedCanonicalPipelineRemainsSafeForHunkProjection)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../pipeline-recovery";
+    const auto source = test::golden::ReadFile(directory / "input.cpp");
+    const auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
+    const formatter::PreparedFormat prepared(style);
+    const Input input(source);
+    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { }, prepared.ParsingOptions());
+    const auto last = formatter::SourceLines(source).Count();
+    const std::array hunks{formatter::Hunk{last, last}};
+    const auto result = formatter::FormatChanged(tree, prepared, hunks, false, {.SourceMap = true, .Changes = true});
+    EXPECT_EQ(result.Result.Text, source);
+    ASSERT_TRUE(result.Result.Changes);
+    EXPECT_TRUE(result.Result.Changes->Edits.empty());
 }
 
 TEST(PublicPipeline, SubscriptChainAssignmentFitsWithoutWidthDiagnostics)

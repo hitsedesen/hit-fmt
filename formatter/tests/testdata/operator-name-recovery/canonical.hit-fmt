@@ -1,0 +1,9 @@
+Layout = Canonical
+BodyShape = Expanded
+IndentWidth = 4
+CommaSpaceBefore = NoSpace
+CommaSpaceAfter = Space
+AssignmentOperatorSpacing = Space
+FunctionBraceSpacing = Space
+IncludeOrder = Sort
+AddMissingControlBraces = true
