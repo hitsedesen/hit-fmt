@@ -1,7 +1,6 @@
 auto build(Handle value) {
   return Storage::CreateWithCleanup(data, count(size), [](
-      const void*,
-      void* state) {
+      const void*, void* state) {
     destroy_resource((Resource*)state);
   }, value.release());
 }
