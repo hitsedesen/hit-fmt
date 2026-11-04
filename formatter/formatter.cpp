@@ -21,6 +21,7 @@
 #include <memory_resource>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
 
 namespace formatter {
 
@@ -1424,12 +1425,12 @@ PreparedFormat::PreparedFormat(const Style& style)
 
 namespace {
 
+template <class Tree>
 FormatResult FormatTree(
-    const parser::SyntaxTree& original,
+    Tree&& original,
     const PreparedFormat& prepared,
     const FormatRequest& request,
-    bool widthDiagnostics,
-    parser::SyntaxTree* owned = nullptr)
+    bool widthDiagnostics)
 {
     // Bound the initial input-local backing block. Consolidating the common
     // case avoids repeated heap growth/trim during arena teardown; larger
@@ -1459,17 +1460,28 @@ FormatResult FormatTree(
         file,
         scratch);
     scratch.release();
-    return detail::FormatWithAnalysis(
-        original,
-        prepared,
-        safety,
-        sensitive,
-        request,
-        file,
-        scratch,
-        widthDiagnostics,
-        owned,
-        owned ? &safety : nullptr);
+
+    if constexpr (std::is_rvalue_reference_v<Tree&&>) {
+        return detail::ConsumeFormatWithAnalysis(
+            std::move(original),
+            prepared,
+            std::move(safety),
+            sensitive,
+            request,
+            file,
+            scratch,
+            widthDiagnostics);
+    } else {
+        return detail::FormatWithAnalysis(
+            original,
+            prepared,
+            safety,
+            sensitive,
+            request,
+            file,
+            scratch,
+            widthDiagnostics);
+    }
 }
 
 } // namespace
@@ -1479,19 +1491,20 @@ FormatResult Format(const parser::SyntaxTree& original, const PreparedFormat& pr
     return FormatTree(original, prepared, request, true);
 }
 
-FormatResult detail::FormatWithAnalysis(
-    const parser::SyntaxTree& original,
+namespace {
+
+template <bool consuming>
+FormatResult FormatAnalyzedTree(
+    std::conditional_t<consuming, parser::SyntaxTree, const parser::SyntaxTree>& original,
     const PreparedFormat& prepared,
-    const SourceAnalysis& safety,
+    std::conditional_t<consuming, SourceAnalysis, const SourceAnalysis>& safety,
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
     std::pmr::monotonic_buffer_resource& scratch,
-    bool widthDiagnostics,
-    parser::SyntaxTree* owned,
-    SourceAnalysis* ownedSafety)
+    bool widthDiagnostics)
 {
-    const auto structuralPlanner = owned ? detail::PlanStructuralEditsCertified : PlanStructuralEdits;
+    const auto structuralPlanner = consuming ? detail::PlanStructuralEditsCertified : PlanStructuralEdits;
     auto plan = structuralPlanner(
         original,
         safety,
@@ -1500,7 +1513,7 @@ FormatResult detail::FormatWithAnalysis(
         scratch,
         {request.InputFilePath, &prepared.IncludeGroups, prepared.IncludeMatchingHeaderSuffix});
     scratch.release();
-    const auto namespacePlanner = owned ? detail::PlanNamespaceCommentsCertified : PlanNamespaceComments;
+    const auto namespacePlanner = consuming ? detail::PlanNamespaceCommentsCertified : PlanNamespaceComments;
     auto namespacePlan = namespacePlanner(original, safety, prepared.NamespaceComments, file, scratch);
     scratch.release();
     FormatResult result;
@@ -1520,7 +1533,7 @@ FormatResult detail::FormatWithAnalysis(
     std::pmr::vector<StructuralProvenance> unchanged(&file);
     std::span<const StructuralProvenance> provenance;
     if (!plan.Edits.empty()) {
-        normalized.emplace(owned
+        normalized.emplace(consuming
             ? detail::MaterializeStructuralEditsCompact(original, plan, file, scratch, copied)
             : MaterializeStructuralEdits(original, plan, file, scratch));
         scratch.release();
@@ -1547,47 +1560,52 @@ FormatResult detail::FormatWithAnalysis(
         std::pmr::vector<parser::TokenIndex> grammarMapping(&scratch);
         std::pmr::vector<parser::detail::NormalizedCommentInsertion> commentInsertions(&scratch);
         bool tokenView = false;
-        const bool canConsumeAnalysis = owned && ownedSafety && !widthDiagnostics && !request.SourceMap &&
-            !request.TokenMap && !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations &&
-            !request.EditScope && request.ImmutableRanges.empty();
-        if (owned && commentsAndIncludes) {
-            pieces.reserve(normalized->Provenance.size());
+        const bool canConsumeAnalysis = consuming && !widthDiagnostics && !request.SourceMap && !request.TokenMap &&
+            !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations && !request.EditScope &&
+            request.ImmutableRanges.empty();
+        if constexpr (consuming) {
+            if (commentsAndIncludes) {
+                pieces.reserve(normalized->Provenance.size());
 
-            for (const auto& piece : normalized->Provenance) {
-                pieces.push_back({piece.Output, piece.Original, piece.Generated});
-            }
-            std::pmr::vector<Range> edits(&scratch);
-            edits.reserve(plan.Edits.size());
+                for (const auto& piece : normalized->Provenance) {
+                    pieces.push_back({piece.Output, piece.Original, piece.Generated});
+                }
+                std::pmr::vector<Range> edits(&scratch);
+                edits.reserve(plan.Edits.size());
 
-            for (const auto& edit : plan.Edits) {
-                edits.push_back(edit.Source);
-            }
-
-            if (CanReuseNormalizedSourceAnalysis(original, safety, edits, pieces, scratch)) {
-                if (canConsumeAnalysis) {
-                    const parser::detail::NormalizedRegionTopology topology{
-                        safety.Regions().data(),
-                        static_cast<uint32_t>(safety.Regions().size()),
-                        [] (const void* rows, uint32_t id) {
-                            return static_cast<const SourceRegion*>(rows)[id].FirstChild;
-                        },
-                        [] (const void* rows, uint32_t id) {
-                            return static_cast<const SourceRegion*>(rows)[id].NextSibling;
-                        },
-                    };
-                    normalizedTree = parser::detail::TryBuildNormalizedTokenView(
-                        original,
-                        normalizedSource,
-                        pieces,
-                        topology,
-                        grammarMapping,
-                        commentInsertions);
-                    tokenView = normalizedTree.has_value();
+                for (const auto& edit : plan.Edits) {
+                    edits.push_back(edit.Source);
                 }
 
-                if (!normalizedTree) {
-                    normalizedTree =
-                        parser::detail::TryConsumeNormalizedSyntax(*owned, normalizedSource, pieces, grammarMapping);
+                if (CanReuseNormalizedSourceAnalysis(original, safety, edits, pieces, scratch)) {
+                    if (canConsumeAnalysis) {
+                        const parser::detail::NormalizedRegionTopology topology{
+                            safety.Regions().data(),
+                            static_cast<uint32_t>(safety.Regions().size()),
+                            [] (const void* rows, uint32_t id) {
+                                return static_cast<const SourceRegion*>(rows)[id].FirstChild;
+                            },
+                            [] (const void* rows, uint32_t id) {
+                                return static_cast<const SourceRegion*>(rows)[id].NextSibling;
+                            },
+                        };
+                        normalizedTree = parser::detail::TryBuildNormalizedTokenView(
+                            original,
+                            normalizedSource,
+                            pieces,
+                            topology,
+                            grammarMapping,
+                            commentInsertions);
+                        tokenView = normalizedTree.has_value();
+                    }
+
+                    if (!normalizedTree) {
+                        normalizedTree = parser::detail::TryConsumeNormalizedSyntax(
+                            original,
+                            normalizedSource,
+                            pieces,
+                            grammarMapping);
+                    }
                 }
             }
         }
@@ -1614,58 +1632,62 @@ FormatResult detail::FormatWithAnalysis(
             currentScope = selected;
         }
 
-        if (!grammarMapping.empty()) {
-            const bool consumeIdentity = canConsumeAnalysis && tree->TokenCount() == original.TokenCount();
-            auto reused = tokenView
-                ? detail::ConsumeNormalizedTokenViewAnalysis(
-                    original,
-                    *tree,
-                    std::move(*ownedSafety),
-                    grammarMapping,
-                    pieces,
-                    commentInsertions,
-                    inherited,
-                    file,
-                    scratch)
-                : consumeIdentity
-                    ? detail::ConsumeIdentityNormalizedSourceAnalysis(
+        if constexpr (consuming) {
+            if (!grammarMapping.empty()) {
+                const bool consumeIdentity = canConsumeAnalysis && tree->TokenCount() == original.TokenCount();
+                auto reused = tokenView
+                    ? detail::ConsumeNormalizedTokenViewAnalysis(
                         original,
                         *tree,
-                        std::move(*ownedSafety),
+                        std::move(safety),
                         grammarMapping,
                         pieces,
+                        commentInsertions,
                         inherited,
                         file,
                         scratch)
-                    : ReuseNormalizedSourceAnalysis(
-                        original,
-                        *tree,
-                        safety,
-                        grammarMapping,
-                        pieces,
-                        inherited,
-                        file,
-                        scratch);
+                    : consumeIdentity
+                        ? detail::ConsumeIdentityNormalizedSourceAnalysis(
+                            original,
+                            *tree,
+                            std::move(safety),
+                            grammarMapping,
+                            pieces,
+                            inherited,
+                            file,
+                            scratch)
+                        : ReuseNormalizedSourceAnalysis(
+                            original,
+                            *tree,
+                            safety,
+                            grammarMapping,
+                            pieces,
+                            inherited,
+                            file,
+                            scratch);
 
-            if (reused) {
-                normalizedSafety.emplace(std::move(*reused));
+                if (reused) {
+                    normalizedSafety.emplace(std::move(*reused));
+                }
             }
         }
 
         if (!normalizedSafety) {
-            if (tokenView) {
-                // Analysis refusal may consume its arrays. The original AST is
-                // still intact, so retain the established parser/fresh fallback.
-                normalizedTree =
-                    parser::detail::TryConsumeNormalizedSyntax(*owned, normalizedSource, pieces, grammarMapping);
+            if constexpr (consuming) {
+                if (tokenView) {
+                    // Analysis refusal may consume its arrays. The original AST is
+                    // still intact, so retain the established parser/fresh fallback.
+                    normalizedTree =
+                        parser::detail::TryConsumeNormalizedSyntax(original, normalizedSource, pieces, grammarMapping);
 
-                if (!normalizedTree) {
-                    normalizedTree.emplace(
-                        parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+                    if (!normalizedTree) {
+                        normalizedTree.emplace(
+                            parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+                    }
+
+                    tree = &*normalizedTree;
+                    copiedCertified = !grammarMapping.empty() && CertifyCopiedTokenRuns(*tree, original, copied);
                 }
-
-                tree = &*normalizedTree;
-                copiedCertified = !grammarMapping.empty() && CertifyCopiedTokenRuns(*tree, original, copied);
             }
 
             normalizedSafety.emplace(BuildSourceAnalysis(
@@ -1694,7 +1716,7 @@ FormatResult detail::FormatWithAnalysis(
     }
     scratch.release();
     SyntaxLayoutOptions options;
-    const bool flatSpans = owned && !request.EditScope && !widthDiagnostics && !request.SourceMap &&
+    const bool flatSpans = consuming && !request.EditScope && !widthDiagnostics && !request.SourceMap &&
         !request.TokenMap && !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations;
     auto spacing = flatSpans
         ? detail::BuildFlatSyntaxSpacing(
@@ -1761,7 +1783,7 @@ FormatResult detail::FormatWithAnalysis(
             normalized ? &*normalized : nullptr,
             layout,
             scratch,
-            normalized && owned ? &copied : nullptr);
+            normalized && consuming ? &copied : nullptr);
         scratch.release();
     }
 
@@ -1774,7 +1796,7 @@ FormatResult detail::FormatWithAnalysis(
     if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&
         !request.DiagnosticLocations && needNamespaceAnchors)
     {
-        if (normalized && owned && !copiedCertified) {
+        if (normalized && consuming && !copiedCertified) {
             detail::MaterializeOriginalTokenOffsets(original, *normalized, copied);
         }
 
@@ -1790,7 +1812,7 @@ FormatResult detail::FormatWithAnalysis(
         scratch.release();
     }
 
-    if (normalized && owned && needMaps && !sparseNamespaces) {
+    if (normalized && consuming && needMaps && !sparseNamespaces) {
         detail::MaterializeOriginalTokenOffsets(original, *normalized, copied);
     }
 
@@ -1979,6 +2001,34 @@ FormatResult detail::FormatWithAnalysis(
     return result;
 }
 
+} // namespace
+
+FormatResult detail::FormatWithAnalysis(
+    const parser::SyntaxTree& original,
+    const PreparedFormat& prepared,
+    const SourceAnalysis& safety,
+    std::span<const std::string_view> sensitive,
+    const FormatRequest& request,
+    std::pmr::memory_resource& file,
+    std::pmr::monotonic_buffer_resource& scratch,
+    bool widthDiagnostics)
+{
+    return FormatAnalyzedTree<false>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
+}
+
+FormatResult detail::ConsumeFormatWithAnalysis(
+    parser::SyntaxTree&& original,
+    const PreparedFormat& prepared,
+    SourceAnalysis&& safety,
+    std::span<const std::string_view> sensitive,
+    const FormatRequest& request,
+    std::pmr::memory_resource& file,
+    std::pmr::monotonic_buffer_resource& scratch,
+    bool widthDiagnostics)
+{
+    return FormatAnalyzedTree<true>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
+}
+
 FormatResult Format(util::PaddedSourceView source, const PreparedFormat& prepared, const FormatRequest& request)
 {
     auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
@@ -1999,7 +2049,7 @@ std::string Format(util::PaddedSourceView source, const Style& style)
 {
     const PreparedFormat prepared(style);
     auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
-    return FormatTree(tree, prepared, {}, false, &tree).Text;
+    return FormatTree(std::move(tree), prepared, {}, false).Text;
 }
 
 std::string Format(util::PaddedSourceView source)
