@@ -318,6 +318,12 @@ void CheckFunction(
 
 std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTree& tree, const Configuration& config)
 {
+    if (config.FunctionDeclarationParameterNames == FunctionDeclarationParameterNames::Unchecked &&
+        config.FunctionDefinitionParameterNames == FunctionDefinitionParameterNames::Unchecked)
+    {
+        return {};
+    }
+
     std::vector<ParameterNameDiagnostic> diagnostics;
     std::vector<const Node*> stack{&tree.Root()};
 
