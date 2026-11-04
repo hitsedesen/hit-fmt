@@ -34,24 +34,24 @@ std::uint8_t ResolveOffset(std::size_t offset, std::size_t indentWidth)
 void CheckOffset(std::size_t offset, std::string_view key)
 {
     if (offset > 32) {
-        throw std::invalid_argument(std::string(key) + ": indentation offset must not exceed 32");
+        throw PolicyStyleError(std::string(key) + ": indentation offset must not exceed 32", {key});
     }
 }
 
 void CheckBlankSetting(BlankLineSetting setting, std::string_view key, bool allowInherit = false)
 {
     if (setting.EmptyLines > 10000) {
-        throw std::invalid_argument(std::string(key) + " must not exceed 10000");
+        throw PolicyStyleError(std::string(key) + " must not exceed 10000", {key});
     }
 
     if (setting.Mode == BlankLineMode::Inherit && !allowInherit) {
-        throw std::invalid_argument(std::string(key) + " does not accept Inherit");
+        throw PolicyStyleError(std::string(key) + " does not accept Inherit", {key});
     }
 
     if (setting.Mode != BlankLineMode::Preserve && setting.Mode != BlankLineMode::Inherit &&
         setting.Mode != BlankLineMode::Exact && setting.Mode != BlankLineMode::Minimum)
     {
-        throw std::invalid_argument(std::string(key) + " has invalid blank-line mode");
+        throw PolicyStyleError(std::string(key) + " has invalid blank-line mode", {key});
     }
 }
 
@@ -69,12 +69,22 @@ BlankLineSetting ResolveMemberDeclarationBlankLines(const Style& style)
         : style.MemberDeclarationBlankLines;
 }
 
-void CheckBlankCap(BlankLineSetting setting, std::optional<std::size_t> cap, std::string_view key)
+void CheckBlankCap(
+    BlankLineSetting setting,
+    std::optional<std::size_t> cap,
+    std::string_view key,
+    std::string_view inheritedKey = {})
 {
     if (cap && (setting.Mode == BlankLineMode::Exact || setting.Mode == BlankLineMode::Minimum) &&
         setting.EmptyLines > *cap)
     {
-        throw std::invalid_argument(std::string(key) + " exceeds MaxEmptyLines");
+        std::string message(key);
+
+        if (!inheritedKey.empty()) {
+            message += " (inherited from " + std::string(inheritedKey) + ")";
+        }
+
+        throw PolicyStyleError(message + " exceeds MaxEmptyLines", {key, "MaxEmptyLines", inheritedKey});
     }
 }
 
@@ -90,29 +100,34 @@ VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
 
 } // namespace
 
+PolicyStyleError::PolicyStyleError(const std::string& message, std::array<std::string_view, 3> settings)
+    : std::invalid_argument(message)
+    , Settings(settings)
+{ }
+
 void ValidatePolicyStyle(const Style& style)
 {
     if (style.IndentWidth == 0 || style.IndentWidth > 32) {
-        throw std::invalid_argument("IndentWidth must be between 1 and 32");
+        throw PolicyStyleError("IndentWidth must be between 1 and 32", {"IndentWidth"});
     }
 
     if (style.LineEnding != LineEnding::Preserve && style.LineEnding != LineEnding::LF &&
         style.LineEnding != LineEnding::CRLF)
     {
-        throw std::invalid_argument("LineEnding has invalid value");
+        throw PolicyStyleError("LineEnding has invalid value", {"LineEnding"});
     }
 
     if (style.ColumnLimit > 10000) {
-        throw std::invalid_argument("ColumnLimit must be between 0 and 10000");
+        throw PolicyStyleError("ColumnLimit must be between 0 and 10000", {"ColumnLimit"});
     }
 
     if (style.RulerLength != 0 && (style.RulerLength < 3 || style.RulerLength > 10000)) {
-        throw std::invalid_argument("RulerLength must be 0 or between 3 and 10000");
+        throw PolicyStyleError("RulerLength must be 0 or between 3 and 10000", {"RulerLength"});
     }
 
     CheckBlankSetting(style.RulerBlankLinesBefore, "RulerBlankLinesBefore");
     if (static_cast<std::size_t>(style.RulerPlacement) >= ConfigEnumNames<RulerPlacement>::Values.size()) {
-        throw std::invalid_argument("RulerPlacement has invalid value");
+        throw PolicyStyleError("RulerPlacement has invalid value", {"RulerPlacement"});
     }
     CheckBlankSetting(style.RulerBlankLinesAfter, "RulerBlankLinesAfter");
     CheckBlankCap(style.RulerBlankLinesBefore, style.MaxEmptyLines, "RulerBlankLinesBefore");
@@ -120,24 +135,24 @@ void ValidatePolicyStyle(const Style& style)
     if (static_cast<std::size_t>(style.AssignmentRhsPlacement) >=
         ConfigEnumNames<FirstItemPlacement>::Values.size())
     {
-        throw std::invalid_argument("AssignmentRhsPlacement has invalid value");
+        throw PolicyStyleError("AssignmentRhsPlacement has invalid value", {"AssignmentRhsPlacement"});
     }
     if (style.AssignmentsPacking &&
         static_cast<std::size_t>(*style.AssignmentsPacking) >=
             ConfigEnumNames<ListPacking>::Values.size())
     {
-        throw std::invalid_argument("AssignmentsPacking has invalid value");
+        throw PolicyStyleError("AssignmentsPacking has invalid value", {"AssignmentsPacking"});
     }
     if (style.DestructorBracePlacement &&
         static_cast<std::size_t>(*style.DestructorBracePlacement) >=
             ConfigEnumNames<BracePlacement>::Values.size())
     {
-        throw std::invalid_argument("DestructorBracePlacement has invalid value");
+        throw PolicyStyleError("DestructorBracePlacement has invalid value", {"DestructorBracePlacement"});
     }
     if (static_cast<std::size_t>(style.RequiresClausePosition) >=
         ConfigEnumNames<RequiresClausePosition>::Values.size())
     {
-        throw std::invalid_argument("RequiresClausePosition has invalid value");
+        throw PolicyStyleError("RequiresClausePosition has invalid value", {"RequiresClausePosition"});
     }
     CheckOffset(style.ContinuationOffset, "ContinuationOffset");
     CheckOffset(style.AlignmentFallbackOffset, "AlignmentFallbackOffset");
@@ -152,8 +167,8 @@ void ValidatePolicyStyle(const Style& style)
         *style.CallsSoleArgumentFirstItem != FirstItemPlacement::InlineIfFits &&
         *style.CallsSoleArgumentFirstItem != FirstItemPlacement::NextLine)
     {
-        throw std::invalid_argument(
-            "CallsSoleArgumentFirstItem has invalid value");
+        throw PolicyStyleError(
+            "CallsSoleArgumentFirstItem has invalid value", {"CallsSoleArgumentFirstItem"});
     }
     CheckOffset(style.AccessModifierIndentWidth, "AccessModifierIndentWidth");
     CheckOffset(style.MemberIndentWidth, "MemberIndentWidth");
@@ -179,19 +194,28 @@ void ValidatePolicyStyle(const Style& style)
     CheckBlankSetting(style.MacroBlankLinesAround, "MacroBlankLinesAround");
 
     if (style.MemberGroupMaxEmptyLines && *style.MemberGroupMaxEmptyLines > 10000) {
-        throw std::invalid_argument("MemberGroupMaxEmptyLines must not exceed 10000");
+        throw PolicyStyleError("MemberGroupMaxEmptyLines must not exceed 10000", {"MemberGroupMaxEmptyLines"});
     }
 
     if (style.MemberGroupMaxEmptyLines) {
-        const auto checkMemberCap = [&] (BlankLineSetting setting, std::string_view key) {
-            if ((setting.Mode == BlankLineMode::Exact || setting.Mode == BlankLineMode::Minimum) &&
-                setting.EmptyLines > *style.MemberGroupMaxEmptyLines)
-            {
-                throw std::invalid_argument(std::string(key) + " exceeds MemberGroupMaxEmptyLines");
-            }
-        };
-        checkMemberCap(ResolveMemberDeclarationBlankLines(style), "MemberDeclarationBlankLines");
-        checkMemberCap(ResolveMemberBlankLines(style), "MemberDefinitionBlankLines");
+        const auto checkMemberCap =
+            [&] (BlankLineSetting setting, std::string_view key, std::string_view inheritedKey = {}) {
+                if ((setting.Mode == BlankLineMode::Exact || setting.Mode == BlankLineMode::Minimum) &&
+                    setting.EmptyLines > *style.MemberGroupMaxEmptyLines)
+                {
+                    throw PolicyStyleError(
+                        std::string(key) + " exceeds MemberGroupMaxEmptyLines",
+                        {key, "MemberGroupMaxEmptyLines", inheritedKey});
+                }
+            };
+        checkMemberCap(
+            ResolveMemberDeclarationBlankLines(style),
+            "MemberDeclarationBlankLines",
+            style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit ? "DeclarationBlankLines" : "");
+        checkMemberCap(
+            ResolveMemberBlankLines(style),
+            "MemberDefinitionBlankLines",
+            style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit ? "DefinitionBlankLines" : "");
         checkMemberCap(style.DeclarationCategoryBlankLines, "DeclarationCategoryBlankLines");
         checkMemberCap(style.BlockBlankLinesAfter, "BlockBlankLinesAfter");
 
@@ -216,7 +240,7 @@ void ValidatePolicyStyle(const Style& style)
     CheckBlankSetting(style.StandaloneCommentBlankLinesAfter, "StandaloneCommentBlankLinesAfter");
 
     if (style.MaxEmptyLines && *style.MaxEmptyLines > 10000) {
-        throw std::invalid_argument("MaxEmptyLines must not exceed 10000");
+        throw PolicyStyleError("MaxEmptyLines must not exceed 10000", {"MaxEmptyLines"});
     }
 
     CheckBlankCap(style.NamespaceBlankLinesAfterOpen, style.MaxEmptyLines, "NamespaceBlankLinesAfterOpen");
@@ -230,15 +254,13 @@ void ValidatePolicyStyle(const Style& style)
     CheckBlankCap(
         ResolveMemberDeclarationBlankLines(style),
         style.MaxEmptyLines,
-        style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit
-        ? "MemberDeclarationBlankLines " "(inherited from DeclarationBlankLines)"
-        : "MemberDeclarationBlankLines");
+        "MemberDeclarationBlankLines",
+        style.MemberDeclarationBlankLines.Mode == BlankLineMode::Inherit ? "DeclarationBlankLines" : "");
     CheckBlankCap(
         ResolveMemberBlankLines(style),
         style.MaxEmptyLines,
-        style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit
-        ? "MemberDefinitionBlankLines (inherited from DefinitionBlankLines)"
-        : "MemberDefinitionBlankLines");
+        "MemberDefinitionBlankLines",
+        style.MemberDefinitionBlankLines.Mode == BlankLineMode::Inherit ? "DefinitionBlankLines" : "");
     CheckBlankCap(style.DefinitionBlankLines, style.MaxEmptyLines, "DefinitionBlankLines");
     CheckBlankCap(style.CaseBlankLines, style.MaxEmptyLines, "CaseBlankLines");
     CheckBlankCap(style.BlockBlankLinesAfter, style.MaxEmptyLines, "BlockBlankLinesAfter");
@@ -248,102 +270,108 @@ void ValidatePolicyStyle(const Style& style)
     CheckBlankCap(style.StandaloneCommentBlankLinesAfter, style.MaxEmptyLines, "StandaloneCommentBlankLinesAfter");
 
     if (style.IncludeGrouping != IncludeGrouping::Preserve && style.MaxEmptyLines && *style.MaxEmptyLines == 0) {
-        throw std::invalid_argument("IncludeGrouping = " + std::string(SerializeConfigEnum(style.IncludeGrouping)) +
-            " requires one empty line, exceeding " "MaxEmptyLines = 0");
+        throw PolicyStyleError(
+            "IncludeGrouping = " + std::string(SerializeConfigEnum(style.IncludeGrouping)) +
+            " requires one empty line, exceeding " "MaxEmptyLines = 0",
+            {"IncludeGrouping", "MaxEmptyLines"});
     }
 
-    ValidateIncludeGroups(style.IncludeGroups);
+    try {
+        ValidateIncludeGroups(style.IncludeGroups);
+    } catch (const std::invalid_argument& error) {
+        throw PolicyStyleError(error.what(), {"IncludeGroups"});
+    }
     if (static_cast<std::size_t>(style.IndentPreprocessingDirectives) >=
         ConfigEnumNames<BodyIndentation>::Values.size())
     {
-        throw std::invalid_argument("IndentPreprocessingDirectives has invalid value");
+        throw PolicyStyleError("IndentPreprocessingDirectives has invalid value", {"IndentPreprocessingDirectives"});
     }
     if (static_cast<std::size_t>(style.IfConditionsPacking) >=
         ConfigEnumNames<ListPacking>::Values.size())
     {
-        throw std::invalid_argument("IfConditionsPacking has invalid value");
+        throw PolicyStyleError("IfConditionsPacking has invalid value", {"IfConditionsPacking"});
     }
     if (style.ExpressionsAlignment != ExpressionAlignment::Block &&
         style.ExpressionsAlignment != ExpressionAlignment::Operand &&
         style.ExpressionsAlignment != ExpressionAlignment::Indented)
     {
-        throw std::invalid_argument("ExpressionsAlignment has invalid value");
+        throw PolicyStyleError("ExpressionsAlignment has invalid value", {"ExpressionsAlignment"});
     }
 
     if (style.TernaryOperatorIndentation != TernaryOperatorIndentation::Align &&
         style.TernaryOperatorIndentation != TernaryOperatorIndentation::Indent)
     {
-        throw std::invalid_argument("TernaryOperatorIndentation has invalid value");
+        throw PolicyStyleError("TernaryOperatorIndentation has invalid value", {"TernaryOperatorIndentation"});
     }
     if (static_cast<std::size_t>(style.IncludeCategoryOrder) >=
         ConfigEnumNames<IncludeCategoryOrder>::Values.size())
     {
-        throw std::invalid_argument("IncludeCategoryOrder has invalid value");
+        throw PolicyStyleError("IncludeCategoryOrder has invalid value", {"IncludeCategoryOrder"});
     }
     if (static_cast<std::size_t>(style.IncludeDelimiters) >= ConfigEnumNames<IncludeDelimiters>::Values.size()) {
-        throw std::invalid_argument("IncludeDelimiters has invalid value");
+        throw PolicyStyleError("IncludeDelimiters has invalid value", {"IncludeDelimiters"});
     }
     if (static_cast<std::size_t>(style.IncludeSortPriority) >= ConfigEnumNames<IncludeSortPriority>::Values.size()) {
-        throw std::invalid_argument("IncludeSortPriority has invalid value");
+        throw PolicyStyleError("IncludeSortPriority has invalid value", {"IncludeSortPriority"});
     }
     if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
         style.IncludeMatchingHeader != IncludeMatchingHeader::First)
     {
-        throw std::invalid_argument("IncludeMatchingHeader has invalid value");
+        throw PolicyStyleError("IncludeMatchingHeader has invalid value", {"IncludeMatchingHeader"});
     }
     if (static_cast<std::size_t>(style.IncludeGrouping) >=
         ConfigEnumNames<IncludeGrouping>::Values.size())
     {
-        throw std::invalid_argument("IncludeGrouping has invalid value");
+        throw PolicyStyleError("IncludeGrouping has invalid value", {"IncludeGrouping"});
     }
     if (static_cast<std::size_t>(style.IncludeGroupOrder) >=
         ConfigEnumNames<IncludeGroupOrder>::Values.size())
     {
-        throw std::invalid_argument("IncludeGroupOrder has invalid value");
+        throw PolicyStyleError("IncludeGroupOrder has invalid value", {"IncludeGroupOrder"});
     }
     if (static_cast<std::size_t>(style.IncludeDirectoryOrder) >=
         ConfigEnumNames<IncludeDirectoryOrder>::Values.size())
     {
-        throw std::invalid_argument("IncludeDirectoryOrder has invalid value");
+        throw PolicyStyleError("IncludeDirectoryOrder has invalid value", {"IncludeDirectoryOrder"});
     }
     if (static_cast<std::size_t>(style.IncludeInGroupOrder) >=
         ConfigEnumNames<IncludeInGroupOrder>::Values.size())
     {
-        throw std::invalid_argument("IncludeInGroupOrder has invalid value");
+        throw PolicyStyleError("IncludeInGroupOrder has invalid value", {"IncludeInGroupOrder"});
     }
     if (static_cast<std::size_t>(style.IncludePathBase) >=
         ConfigEnumNames<IncludePathBase>::Values.size())
     {
-        throw std::invalid_argument("IncludePathBase has invalid value");
+        throw PolicyStyleError("IncludePathBase has invalid value", {"IncludePathBase"});
     }
     if (static_cast<std::size_t>(style.IncludeStandardHeaders) >=
         ConfigEnumNames<IncludeStandardHeaders>::Values.size())
     {
-        throw std::invalid_argument("IncludeStandardHeaders has invalid value");
+        throw PolicyStyleError("IncludeStandardHeaders has invalid value", {"IncludeStandardHeaders"});
     }
     if (style.ConstructorBracePlacement &&
         static_cast<std::size_t>(*style.ConstructorBracePlacement) >= ConfigEnumNames<BracePlacement>::Values.size())
     {
-        throw std::invalid_argument("ConstructorBracePlacement has invalid value");
+        throw PolicyStyleError("ConstructorBracePlacement has invalid value", {"ConstructorBracePlacement"});
     }
     if (style.FunctionCvRefQualifierSpacing &&
         static_cast<std::size_t>(*style.FunctionCvRefQualifierSpacing) >=
             ConfigEnumNames<GapPolicy>::Values.size())
     {
-        throw std::invalid_argument("FunctionCvRefQualifierSpacing has invalid value");
+        throw PolicyStyleError("FunctionCvRefQualifierSpacing has invalid value", {"FunctionCvRefQualifierSpacing"});
     }
     if (style.ShortNamespaceLines > 10000) {
-        throw std::invalid_argument("ShortNamespaceLines must not exceed 10000");
+        throw PolicyStyleError("ShortNamespaceLines must not exceed 10000", {"ShortNamespaceLines"});
     }
 
     if (style.TrailingCommentSpaces && style.TrailingCommentSpaces->Count &&
         *style.TrailingCommentSpaces->Count > 10000)
     {
-        throw std::invalid_argument("TrailingCommentSpaces must be between 0 and 10000");
+        throw PolicyStyleError("TrailingCommentSpaces must be between 0 and 10000", {"TrailingCommentSpaces"});
     }
 
     if (style.NamespaceCommentSpaces == 0 || style.NamespaceCommentSpaces > 32) {
-        throw std::invalid_argument("NamespaceCommentSpaces must be between 1 and 32");
+        throw PolicyStyleError("NamespaceCommentSpaces must be between 1 and 32", {"NamespaceCommentSpaces"});
     }
 }
 

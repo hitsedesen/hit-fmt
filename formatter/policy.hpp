@@ -3,9 +3,13 @@
 #include "config_enum.hpp"
 #include "config_options.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace formatter {
@@ -266,6 +270,15 @@ static_assert(std::is_trivially_copyable_v<CompiledPolicies>);
 // Throws invalid_argument for out-of-range widths/offsets, including those in
 // programmatic Styles. Compile once per style; reuse the snapshot across files.
 [[nodiscard]] CompiledPolicies CompilePolicies(const Style& style);
+
+struct PolicyStyleError final
+    : std::invalid_argument
+{
+    PolicyStyleError(const std::string& message, std::array<std::string_view, 3> settings);
+
+    // Static option identifiers; unused entries are empty.
+    const std::array<std::string_view, 3> Settings;
+};
 
 void ValidatePolicyStyle(const Style& style);
 

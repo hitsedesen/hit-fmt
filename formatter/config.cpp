@@ -698,9 +698,8 @@ void ValidateStyleLimits(
 {
     try {
         ValidatePolicyStyle(style);
-    } catch (const std::invalid_argument& error) {
-        const std::string_view reason = error.what();
-        std::string message(reason);
+    } catch (const PolicyStyleError& error) {
+        std::string message(error.what());
 
         for (std::size_t index = 0; index < Options.size(); ++index) {
             if (settingLines[index].Line == 0) {
@@ -708,22 +707,10 @@ void ValidateStyleLimits(
             }
 
             const auto key = Options[index].Name;
-            auto at = reason.find(key);
 
-            while (at != std::string_view::npos) {
-                const auto identifier = [] (char value) {
-                    return std::isalnum(static_cast<unsigned char>(value)) || value == '_';
-                };
-
-                if ((at == 0 || !identifier(reason[at - 1])) &&
-                    (at + key.size() == reason.size() || !identifier(reason[at + key.size()])))
-                {
-                    message += " [" + std::string(key) + " at " + settingLines[index].Path.string() + ":" +
-                        std::to_string(settingLines[index].Line) + "]";
-                    break;
-                }
-
-                at = reason.find(key, at + key.size());
+            if (std::find(error.Settings.begin(), error.Settings.end(), key) != error.Settings.end()) {
+                message += " [" + std::string(key) + " at " + settingLines[index].Path.string() + ":" +
+                    std::to_string(settingLines[index].Line) + "]";
             }
         }
 

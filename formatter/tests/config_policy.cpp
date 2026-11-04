@@ -6,6 +6,9 @@
 
 #include <hit-fmt/config_template.hpp>
 
+#include <tests/golden.hpp>
+
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -615,6 +618,73 @@ TEST(ConfigPolicy, CapConflictsUseFinalOverridesAndReportSettingLocations)
         }
     }
 #undef OFFSET_KEYS
+}
+
+TEST(ConfigPolicy, ValidationLocationsGolden)
+{
+    TemporaryConfigTree tree;
+    std::string diagnostics;
+
+    for (const auto& [name, base, middle, local] :
+        {
+            std::array<std::string_view, 4>{
+                "single offset",
+                "ContinuationOffset = 33\n",
+                "CallsContinuationOffset = 4\n",
+                "ContinuationOffset = 34\n",
+            },
+            {"similar cap names", "MemberGroupMaxEmptyLines = 10001\n", "MaxEmptyLines = 4\n", ""},
+            {
+                "cross setting",
+                "MemberDefinitionBlankLines = 2\nMaxEmptyLines = 1\n",
+                "MemberDefinitionBlankLines = 3\n",
+                "MaxEmptyLines = 2\n",
+            },
+            {
+                "inherited global cap",
+                "DefinitionBlankLines = 3\nMaxEmptyLines = 1\n",
+                "MemberDefinitionBlankLines = Inherit\n",
+                "MaxEmptyLines = 2\n",
+            },
+            {
+                "inherited member cap",
+                "DefinitionBlankLines = 3\nMemberGroupMaxEmptyLines = 1\nMaxEmptyLines = 4\n",
+                "MemberDefinitionBlankLines = Inherit\n",
+                "MemberGroupMaxEmptyLines = 2\n",
+            },
+            {
+                "include group",
+                "IncludeGroups = [{Prefix = \"engine/\"}, {Prefix = \"engine/\"}]\n",
+                "IncludeGrouping = Preserve\n",
+                "",
+            },
+        })
+    {
+        SCOPED_TRACE(name);
+        tree.Write("base", base);
+        tree.Write("nested/middle", "include = \"../base\"\n" + std::string(middle));
+        tree.Write("child", std::string(local) + "include = \"nested/middle\"\n");
+        try {
+            (void)formatter::LoadConfigFile(tree.Path / "child");
+            FAIL() << "invalid final style was accepted";
+        } catch (const std::runtime_error& error) {
+            std::string message = error.what();
+            const auto root = tree.Path.string();
+
+            for (auto at = message.find(root); at != std::string::npos; at = message.find(root, at + 8)) {
+                message.replace(at, root.size(), "<config>");
+            }
+
+            diagnostics += std::string(name) + ":\n" + message + "\n";
+
+            if (!local.empty()) {
+                tree.Write("child", "include = \"nested/middle\"\n" + std::string(local));
+                EXPECT_THROW((void)formatter::LoadConfigFile(tree.Path / "child"), std::runtime_error);
+            }
+        }
+    }
+
+    test::golden::ExpectGolden(ConfigData("validation-locations").replace_extension(".err"), diagnostics);
 }
 
 TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
