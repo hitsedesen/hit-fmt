@@ -10178,6 +10178,13 @@ private:
             }
         } else if (Kind(cursor) == TK::Keyword_operator) {
             cursor = NextSignificant(cursor + 1);
+
+            if (cursor >= end) {
+                // Leave the incomplete name for expression recovery, without
+                // consuming a delimiter or a following statement's tokens.
+                cursor = nameBegin;
+                return nullptr;
+            }
             if (Kind(cursor) == TK::Operator_OpenParenthesis || Kind(cursor) == TK::Operator_OpenBracket) {
                 auto operatorEnd = FindBalancedEnd(cursor);
                 cursor = operatorEnd != std::numeric_limits<TokenIndex>::max() && operatorEnd <= end

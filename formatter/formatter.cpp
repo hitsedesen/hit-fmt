@@ -3,6 +3,7 @@
 #include "diagnostic_locations.hpp"
 #include "flat_span_internal.hpp"
 #include "format_changes_internal.hpp"
+#include "format_failure_internal.hpp"
 #include "format_pipeline.hpp"
 #include "layout_plan.hpp"
 #include "namespace_comments_internal.hpp"
@@ -16,6 +17,8 @@
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <format>
 #include <limits>
 #include <memory_resource>
@@ -30,6 +33,139 @@ namespace {
 using Range = parser::SourceRange;
 
 using Offset = parser::SourceOffset;
+
+using detail::FormatFailure;
+
+std::optional<Range> OriginalFailureRange(Range source, std::span<const StructuralProvenance> provenance)
+{
+    if (source.Begin > source.End) {
+        return std::nullopt;
+    }
+
+    Range original{std::numeric_limits<Offset>::max(), 0};
+    auto cursor = source.Begin;
+
+    for (const auto& piece : provenance) {
+        const auto begin = std::max(cursor, piece.Output.Begin);
+        const auto end = std::min(source.End, piece.Output.End);
+
+        if (begin > end || (begin == end && !source.Empty())) {
+            continue;
+        }
+
+        if (begin != cursor || piece.Original.Begin > piece.Original.End) {
+            return std::nullopt;
+        }
+
+        const auto range = piece.Generated
+            ? piece.Original
+            : Range{piece.Original.Begin + begin - piece.Output.Begin, piece.Original.Begin + end - piece.Output.Begin};
+
+        if (range.End > piece.Original.End) {
+            return std::nullopt;
+        }
+
+        original.Begin = std::min(original.Begin, range.Begin);
+        original.End = std::max(original.End, range.End);
+        cursor = end;
+
+        if (cursor == source.End) {
+            return original;
+        }
+    }
+
+    return std::nullopt;
+}
+
+// Work on a fresh private parse, never the caller's tree or consumed syntax.
+// A sequence element provides a boundary independent of its damaged children.
+std::optional<Range> ProtectFailedRegion(parser::SyntaxTree& tree, Range source)
+{
+    if (source.Begin > source.End || source.End > tree.Source().size()) {
+        return std::nullopt;
+    }
+
+    using NK = parser::NodeKind;
+    struct Item
+    {
+        parser::Node* Node;
+        const parser::Node* Parent;
+    };
+
+    std::vector<Item> pending;
+
+    for (auto* child = tree.Root().FirstChild; child; child = child->NextSibling) {
+        pending.push_back({child, &tree.Root()});
+    }
+    parser::Node* selected = nullptr;
+    Range selectedRange{0, CheckedSourceAnalysisSize(tree.Source().size())};
+
+    while (!pending.empty()) {
+        const auto [node, parent] = pending.back();
+        pending.pop_back();
+        const auto tokens = node->Tokens;
+
+        if (tokens.Begin >= tokens.End || tokens.End > tree.TokenCount() || tokens.Begin < parent->Tokens.Begin ||
+            tokens.End > parent->Tokens.End)
+        {
+            continue;
+        }
+
+        const auto range = Range{tree.Token(tokens.Begin).Text.Begin, tree.Token(tokens.End - 1).Text.End};
+
+        if (range.Begin > source.Begin || source.End > range.End || (source.Empty() && source.Begin == range.End)) {
+            continue;
+        }
+
+        const bool sequence = parent->Kind == NK::TranslationUnit || parent->Kind == NK::CompoundStatement ||
+            parent->Kind == NK::LambdaBody || parent->Kind == NK::PreprocessingBody;
+
+        if (sequence && node->Kind != NK::UnparsedSyntax &&
+            range.End - range.Begin <= selectedRange.End - selectedRange.Begin)
+        {
+            selected = node;
+            selectedRange = range;
+        }
+
+        for (auto* child = node->FirstChild; child; child = child->NextSibling) {
+            pending.push_back({child, node});
+        }
+    }
+
+    if (!selected) {
+        return std::nullopt;
+    }
+
+    selected->Kind = NK::UnparsedSyntax;
+    selected->FirstChild = selected->LastChild = nullptr;
+    return selectedRange;
+}
+
+void ProtectNormalizedRegions(
+    parser::SyntaxTree& tree,
+    std::span<const Range> preserved,
+    std::span<const StructuralProvenance> provenance)
+{
+    for (const auto range : preserved) {
+        bool found = false;
+
+        for (const auto& piece : provenance) {
+            if (!piece.Generated && piece.Original.Begin <= range.Begin && range.End <= piece.Original.End) {
+                found = ProtectFailedRegion(
+                    tree,
+                    {
+                        piece.Output.Begin + range.Begin - piece.Original.Begin,
+                        piece.Output.Begin + range.End - piece.Original.Begin,
+                    }).has_value();
+                break;
+            }
+        }
+
+        if (!found) {
+            throw FormatFailure("normalization lost a preserved recovery region");
+        }
+    }
+}
 
 CompiledPolicies PreparePolicies(const Style& style)
 {
@@ -125,14 +261,27 @@ std::pmr::vector<Range> ProjectEditScope(
             // insertions. Replacement literals inherit only its byte authority;
             // their output End is still excluded unless selected copied bytes
             // follow. A deletion emits no literal and grants no new authority.
-            if (piece.Operation == NoStructuralAction ||
+            if (piece.Operation == NoStructuralAction || piece.Operation >= plan.Operations.size() ||
                 ((plan.Operations[piece.Operation].Kind == StructuralAction::DirectiveWhitespace ||
                     plan.Operations[piece.Operation].Kind == StructuralAction::IncludeDelimiters ||
                     plan.Operations[piece.Operation].Kind == StructuralAction::IncludeOrder)
                     ? !CanRewriteTextAtom(safety, piece.Original, true)
                     : safety.IntersectsImmutable(piece.Original)))
             {
-                throw std::runtime_error("unauthorized structural literal");
+                throw FormatFailure(
+                    std::format(
+                        "unauthorized structural literal: operation {} (count {}), kind {}, "
+                        "source [{}, {}), output [{}, {})",
+                        piece.Operation,
+                        plan.Operations.size(),
+                        piece.Operation < plan.Operations.size()
+                        ? std::format("{}", static_cast<unsigned>(plan.Operations[piece.Operation].Kind))
+                        : "unavailable",
+                        piece.Original.Begin,
+                        piece.Original.End,
+                        piece.Output.Begin,
+                        piece.Output.End),
+                    piece.Original);
             }
 
             if (!piece.Output.Empty()) {
@@ -289,6 +438,21 @@ std::pmr::vector<layout::Identity> OriginalIdentities(
                 break;
             }
 
+            if (id >= normalized->OriginalTokens.size()) {
+                throw FormatFailure(
+                    std::format(
+                        "normalization lost an original token identity: original token {} (count {}), "
+                        "source [{}, {}), " "missing mapping (count {}), normalized token {} (count {})",
+                        id,
+                        original.TokenCount(),
+                        original.Token(id).Text.Begin,
+                        original.Token(id).Text.End,
+                        normalized->OriginalTokens.size(),
+                        next,
+                        tree.TokenCount()),
+                    Range{original.Token(id).Text.Begin, original.Token(id).Text.End});
+            }
+
             const auto& expected = normalized->OriginalTokens[id];
 
             while (next < tree.TokenCount() && tree.Token(next).Text.End <= expected.Output.Begin) {
@@ -296,13 +460,45 @@ std::pmr::vector<layout::Identity> OriginalIdentities(
             }
 
             if (!expected.Present || next == tree.TokenCount()) {
-                throw std::runtime_error("normalization lost an original token identity");
+                throw FormatFailure(
+                    std::format(
+                        "normalization lost an original token identity: original token {} (count {}), "
+                        "source [{}, {}), "
+                        "expected output [{}, {}), present {}, normalized token {} (count {}), actual output {}",
+                        id,
+                        original.TokenCount(),
+                        original.Token(id).Text.Begin,
+                        original.Token(id).Text.End,
+                        expected.Output.Begin,
+                        expected.Output.End,
+                        expected.Present,
+                        next,
+                        tree.TokenCount(),
+                        next < tree.TokenCount()
+                        ? std::format("[{}, {})", tree.Token(next).Text.Begin, tree.Token(next).Text.End)
+                        : "unavailable"),
+                    Range{original.Token(id).Text.Begin, original.Token(id).Text.End});
             }
 
             const auto range = tree.Token(next).Text;
 
             if (range.Begin != expected.Output.Begin || range.End != expected.Output.End) {
-                throw std::runtime_error("normalization changed an original token identity");
+                throw FormatFailure(
+                    std::format(
+                        "normalization changed an original token identity: original token {} (count {}), "
+                        "source [{}, {}), "
+                        "normalized token {} (count {}), expected output [{}, {}), actual output [{}, {})",
+                        id,
+                        original.TokenCount(),
+                        original.Token(id).Text.Begin,
+                        original.Token(id).Text.End,
+                        next,
+                        tree.TokenCount(),
+                        expected.Output.Begin,
+                        expected.Output.End,
+                        range.Begin,
+                        range.End),
+                    Range{original.Token(id).Text.Begin, original.Token(id).Text.End});
             }
 
             identities[next++] = id;
@@ -347,12 +543,35 @@ layout::Identity RecordRenderAnchors(
         const auto count = identities.empty() ? result.OriginalTokens.size() : identities.size();
 
         if (map.Source.Identity >= count) {
-            throw std::runtime_error("invalid rendered token identity");
+            throw FormatFailure(std::format(
+                "invalid rendered token identity: token {} (count {}, original token count {}), "
+                "source [{}, {}), output [{}, {})",
+                map.Source.Identity,
+                count,
+                result.OriginalTokens.size(),
+                map.Source.Begin,
+                map.Source.End,
+                output.Begin,
+                output.End));
         }
 
         original = identities.empty() ? map.Source.Identity : identities[map.Source.Identity];
 
         if (original != layout::NoIdentity) {
+            if (original >= result.OriginalTokens.size()) {
+                throw FormatFailure(std::format(
+                    "invalid rendered token identity: token {} (count {}), original token {} (count {}), "
+                    "source [{}, {}), output [{}, {})",
+                    map.Source.Identity,
+                    count,
+                    original,
+                    result.OriginalTokens.size(),
+                    map.Source.Begin,
+                    map.Source.End,
+                    output.Begin,
+                    output.End));
+            }
+
             result.OriginalTokens[original] = {output, true};
         }
     }
@@ -361,7 +580,16 @@ layout::Identity RecordRenderAnchors(
         const auto source = Range{map.Source.Begin, map.Source.End};
 
         if (output.End - output.Begin != source.End - source.Begin) {
-            throw std::runtime_error("invalid exact render mapping");
+            throw FormatFailure(std::format(
+                "invalid exact render mapping: token {}, source [{}, {}) (expected length {}), "
+                "output [{}, {}) (actual length {})",
+                map.Source.Identity,
+                source.Begin,
+                source.End,
+                int64_t(source.End) - source.Begin,
+                output.Begin,
+                output.End,
+                int64_t(output.End) - output.Begin));
         }
 
         auto it = std::lower_bound(
@@ -1184,7 +1412,7 @@ void ApplyComments(
                 });
 
             if (identity == namespaces.end() || identity->Owner.Begin != owner.Begin) {
-                throw std::runtime_error("missing namespace action identity");
+                throw FormatFailure("missing namespace action identity");
             }
 
             const auto anchor = original.Token(identity->Close).Text.End;
@@ -1243,7 +1471,7 @@ void ApplyComments(
         const auto* copy = containing(range.Source);
 
         if (!copy) {
-            throw std::runtime_error("namespace edit intersects output protection");
+            throw FormatFailure("namespace edit intersects output protection");
         }
 
         range.Source = {
@@ -1425,12 +1653,26 @@ PreparedFormat::PreparedFormat(const Style& style)
 
 namespace {
 
+template <bool consuming>
+FormatResult FormatAnalyzedTree(
+    std::conditional_t<consuming, parser::SyntaxTree, const parser::SyntaxTree>& original,
+    const PreparedFormat& prepared,
+    std::conditional_t<consuming, SourceAnalysis, const SourceAnalysis>& safety,
+    std::span<const std::string_view> sensitive,
+    const FormatRequest& request,
+    std::pmr::memory_resource& file,
+    std::pmr::monotonic_buffer_resource& scratch,
+    bool widthDiagnostics,
+    std::span<const Range> preserved = {});
+
 template <class Tree>
 FormatResult FormatTree(
     Tree&& original,
     const PreparedFormat& prepared,
     const FormatRequest& request,
-    bool widthDiagnostics)
+    bool widthDiagnostics,
+    bool recover = true,
+    std::span<const Range> preserved = {})
 {
     // Bound the initial input-local backing block. Consolidating the common
     // case avoids repeated heap growth/trim during arena teardown; larger
@@ -1460,6 +1702,19 @@ FormatResult FormatTree(
         file,
         scratch);
     scratch.release();
+
+    if (!recover) {
+        return FormatAnalyzedTree<false>(
+            original,
+            prepared,
+            safety,
+            sensitive,
+            request,
+            file,
+            scratch,
+            widthDiagnostics,
+            preserved);
+    }
 
     if constexpr (std::is_rvalue_reference_v<Tree&&>) {
         return detail::ConsumeFormatWithAnalysis(
@@ -1502,7 +1757,8 @@ FormatResult FormatAnalyzedTree(
     const FormatRequest& request,
     std::pmr::memory_resource& file,
     std::pmr::monotonic_buffer_resource& scratch,
-    bool widthDiagnostics)
+    bool widthDiagnostics,
+    std::span<const Range> preserved)
 {
     const auto structuralPlanner = consuming ? detail::PlanStructuralEditsCertified : PlanStructuralEdits;
     auto plan = structuralPlanner(
@@ -1620,6 +1876,10 @@ FormatResult FormatAnalyzedTree(
         if (!normalizedTree) {
             normalizedTree
                 .emplace(parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+        }
+
+        if (!preserved.empty()) {
+            ProtectNormalizedRegions(*normalizedTree, preserved, normalized->Provenance);
         }
 
         tree = &*normalizedTree;
@@ -1762,11 +2022,15 @@ FormatResult FormatAnalyzedTree(
         options);
 
     if (!built) {
-        throw std::runtime_error(std::format(
-            "syntax lowering failed: code {} token {} core {}",
-            int(built.Code),
-            built.Token,
-            int(built.Core.Code)));
+        throw FormatFailure(
+            std::format(
+                "syntax lowering failed: code {} token {} core {}",
+                int(built.Code),
+                built.Token,
+                int(built.Core.Code)),
+            built.Token < tree->TokenCount()
+            ? OriginalFailureRange({tree->Token(built.Token).Text.Begin, tree->Token(built.Token).Text.End}, provenance)
+            : std::nullopt);
     }
 
     options.GeneratedAdjacencies = {};
@@ -1874,7 +2138,7 @@ FormatResult FormatAnalyzedTree(
         return output;
     }();
     if (!rendered.State) {
-        throw std::runtime_error(std::format(
+        throw FormatFailure(std::format(
             "layout rendering failed: code {} position {}",
             int(rendered.State.Code),
             rendered.State.Position));
@@ -1899,11 +2163,32 @@ FormatResult FormatAnalyzedTree(
             if (sourceMap) {
                 ComposeMaps(result, rendered, *currentSafety, identities, provenance);
             } else {
+                const auto count = identities.empty() ? original.TokenCount() : identities.size();
+
+                if (rendered.Tokens.size() != count) {
+                    throw FormatFailure(std::format(
+                        "invalid rendered token identity table: count {}, expected {}",
+                        rendered.Tokens.size(),
+                        count));
+                }
+
                 for (parser::TokenIndex id = 0; id < rendered.Tokens.size(); ++id) {
                     const auto& token = rendered.Tokens[id];
                     const auto originalId = identities.empty() ? id : identities[id];
 
                     if (token.Present && originalId != layout::NoIdentity) {
+                        if (originalId >= result.OriginalTokens.size() || token.Begin > token.End ||
+                            token.End > result.Text.size())
+                        {
+                            throw FormatFailure(std::format(
+                                "invalid rendered token identity: token {}, original {}, count {}, output [{}, {})",
+                                id,
+                                originalId,
+                                result.OriginalTokens.size(),
+                                token.Begin,
+                                token.End));
+                        }
+
                         result.OriginalTokens[originalId] = {{token.Begin, token.End}, true};
                     }
                 }
@@ -2001,6 +2286,159 @@ FormatResult FormatAnalyzedTree(
     return result;
 }
 
+FormatResult PreserveInput(
+    const parser::SyntaxTree& tree,
+    const PreparedFormat& prepared,
+    const FormatRequest& request,
+    bool widthDiagnostics)
+{
+    FormatResult result;
+    result.Text = tree.Source();
+    std::pmr::monotonic_buffer_resource file;
+    std::pmr::monotonic_buffer_resource scratch;
+    const std::array recovery{
+        ProtectedSourceRange{{0, CheckedSourceAnalysisSize(tree.Source().size())}, ProtectionReason::Recovery},
+    };
+    std::pmr::vector<std::string_view> sensitive(&file);
+    for (const auto& name : prepared.WhitespaceSensitiveMacros) {
+        sensitive.push_back(name);
+    }
+
+    const auto safety = BuildSourceAnalysis(
+        tree,
+        {
+            .HonorClangFormatDirectives = prepared.HonorClangFormatDirectives,
+            .WhitespaceSensitiveMacros = sensitive,
+            .EnumMacroNames = prepared.EnumMacroNames,
+            .ImmutableRanges = request.ImmutableRanges,
+            .InheritedProtection = recovery,
+            .EditScope = request.EditScope,
+        },
+        file,
+        scratch);
+
+    if (request.InputProtection) {
+        result.InputProtection.assign(safety.Protection().begin(), safety.Protection().end());
+    }
+
+    if (request.SourceMap) {
+        const auto range = recovery.front().Source;
+
+        if (!range.Empty()) {
+            result.Map.push_back({range, range, layout::NoIdentity, NoStructuralAction, true, true, true, false});
+        }
+
+        result.OutputProtection.assign(safety.Protection().begin(), safety.Protection().end());
+    }
+
+    if (request.SourceMap || request.TokenMap || request.DiagnosticLocations) {
+        result.OriginalTokens.reserve(tree.TokenCount());
+
+        for (parser::TokenIndex id = 0; id < tree.TokenCount(); ++id) {
+            result.OriginalTokens.push_back({{tree.Token(id).Text.Begin, tree.Token(id).Text.End}, true});
+        }
+    }
+
+    if (request.Changes || request.ChangeSummary) {
+        detail::BuildChangeMetadata(tree, result, request.Changes, scratch);
+    }
+    if (widthDiagnostics) {
+        if (request.SourceMap || request.DiagnosticLocations) {
+            WidthDiagnostics<true>(result, prepared.Policies, 8);
+        } else {
+            WidthDiagnostics<false>(result, prepared.Policies, 8);
+        }
+    }
+    if (request.DiagnosticLocations) {
+        detail::MapWidthLocations(tree, result, scratch);
+    }
+
+    if (!request.SourceMap && !request.TokenMap) {
+        result.OriginalTokens = std::vector<TokenOutputOffset>{};
+    }
+
+    return result;
+}
+
+FormatResult RecoverFormat(
+    util::PaddedSourceView source,
+    const PreparedFormat& prepared,
+    const FormatRequest& request,
+    bool widthDiagnostics,
+    std::optional<Range> failure)
+{
+    std::vector<Range> preserved;
+    std::vector<Range> immutable(request.ImmutableRanges.begin(), request.ImmutableRanges.end());
+    // Bound retries and arena growth even if several independent regions fail.
+    // Each retry owns its parse and processing arenas; none survives the try.
+    for (unsigned attempt = 0; failure && attempt < 2; ++attempt) {
+        auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
+        bool restored = true;
+
+        for (const auto range : preserved) {
+            restored &= ProtectFailedRegion(tree, range).has_value();
+        }
+
+        const auto range = restored ? ProtectFailedRegion(tree, *failure) : std::nullopt;
+
+        if (!range) {
+            break;
+        }
+
+        preserved.push_back(*range);
+        immutable.push_back(*range);
+        auto retry = request;
+        retry.ImmutableRanges = immutable;
+        try {
+            return FormatTree(tree, prepared, retry, widthDiagnostics, false, preserved);
+        } catch (const FormatFailure& error) {
+            failure = error.Source;
+        } catch (const std::runtime_error&) {
+            break;
+        } catch (const std::length_error&) {
+            throw;
+        } catch (const std::logic_error&) {
+            break;
+        }
+    }
+
+    const auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
+    return PreserveInput(tree, prepared, request, widthDiagnostics);
+}
+
+template <bool consuming>
+FormatResult FormatWithRecovery(
+    std::conditional_t<consuming, parser::SyntaxTree, const parser::SyntaxTree>& original,
+    const PreparedFormat& prepared,
+    std::conditional_t<consuming, SourceAnalysis, const SourceAnalysis>& safety,
+    std::span<const std::string_view> sensitive,
+    const FormatRequest& request,
+    std::pmr::memory_resource& file,
+    std::pmr::monotonic_buffer_resource& scratch,
+    bool widthDiagnostics)
+{
+    const util::PaddedSourceView source{original.Source().data(), CheckedSourceAnalysisSize(original.Source().size())};
+    std::optional<Range> failure;
+    try {
+        return FormatAnalyzedTree<consuming>(
+            original,
+            prepared,
+            safety,
+            sensitive,
+            request,
+            file,
+            scratch,
+            widthDiagnostics);
+    } catch (const FormatFailure& error) {
+        failure = error.Source;
+    } catch (const std::runtime_error&) { } catch (const std::length_error&) {
+        throw;
+    } catch (const std::logic_error&) { }
+
+    scratch.release();
+    return RecoverFormat(source, prepared, request, widthDiagnostics, failure);
+}
+
 } // namespace
 
 FormatResult detail::FormatWithAnalysis(
@@ -2013,7 +2451,7 @@ FormatResult detail::FormatWithAnalysis(
     std::pmr::monotonic_buffer_resource& scratch,
     bool widthDiagnostics)
 {
-    return FormatAnalyzedTree<false>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
+    return FormatWithRecovery<false>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
 }
 
 FormatResult detail::ConsumeFormatWithAnalysis(
@@ -2026,7 +2464,7 @@ FormatResult detail::ConsumeFormatWithAnalysis(
     std::pmr::monotonic_buffer_resource& scratch,
     bool widthDiagnostics)
 {
-    return FormatAnalyzedTree<true>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
+    return FormatWithRecovery<true>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
 }
 
 FormatResult Format(util::PaddedSourceView source, const PreparedFormat& prepared, const FormatRequest& request)

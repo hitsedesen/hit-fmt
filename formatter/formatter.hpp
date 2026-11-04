@@ -154,7 +154,9 @@ struct FormatResult
     std::optional<FormatChanges> Changes;
 };
 
-// Normalize, lower and render once; failures throw without returning source.
+// Normalize, lower and render; failed regions retain their original bytes.
+// Untrustworthy failure locations preserve the whole input. Invalid requests,
+// invalid configuration and resource/size failures still throw.
 // For macro syntax hints, parse tree inputs with prepared.ParsingOptions().
 // Source overloads apply hints automatically. Inputs must survive this
 // call; results own their storage.

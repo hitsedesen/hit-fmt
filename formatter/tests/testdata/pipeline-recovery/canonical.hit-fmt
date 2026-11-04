@@ -1,0 +1,10 @@
+Layout = Canonical
+CommaSpaceAfter = GeneratedSpace
+AddMissingControlBraces = true
+RemoveNullStatements = true
+RemoveNullDeclarations = true
+IncludeOrder = Sort
+NamespaceComments = Fix
+ShortNamespaceLines = 0
+RulerLength = 16
+RulerPlacement = NamespaceBoundaries
