@@ -1245,10 +1245,9 @@ private:
             case NodeKind::Condition:
             case NodeKind::InitializerList:
                 if (node.Tokens.Size() < 2 ||
-                    Tree_.Kind(node.Tokens.Begin) !=
-                        (node.Kind == NodeKind::InitializerList
-                            ? TokenKind::Operator_OpenBrace
-                            : TokenKind::Operator_OpenParenthesis) ||
+                    Tree_.Kind(node.Tokens.Begin) != (node.Kind == NodeKind::InitializerList
+                        ? TokenKind::Operator_OpenBrace
+                        : TokenKind::Operator_OpenParenthesis) ||
                     Tree_.MatchingDelimiter(node.Tokens.Begin) != node.Tokens.End - 1)
                 {
                     return false;

@@ -79,8 +79,8 @@ void Session::ExportTo(std::string_view path, ExportMode mode) {
 }
 
 void Session::Run() {
-  auto window = desktop_.Window(document_.title, {.width =
-          1120, .height = 760, .resizable = true});
+  auto window = desktop_.Window(document_.title, {.width = 1120, .height = 760,
+                                                  .resizable = true});
   window.Toolbar().Toggle("Images", options_.keep_images)
       .Toggle("Page markers", options_.include_page_breaks);
   window.Split(0.46).Left(desktop_.Pdf().Open(document_))

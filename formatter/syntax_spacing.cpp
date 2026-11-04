@@ -2521,9 +2521,8 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
             source.MustStartWithLineFeed)
         {
             gap.Policy = GapPolicy::Preserve;
-            gap.Constraint =
-                static_cast<SpacingConstraint>(static_cast<uint8_t>(gap.Constraint) |
-                    static_cast<uint8_t>(SpacingConstraint::SourceSafety));
+            gap.Constraint = static_cast<SpacingConstraint>(static_cast<uint8_t>(gap.Constraint) |
+                static_cast<uint8_t>(SpacingConstraint::SourceSafety));
         }
 
         if constexpr (CollectFlat) {

@@ -643,8 +643,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const auto penalty = group.BreakPenalty;
         const auto width = tailWidth(current->OwnedFlat ? entry.FlatTail : entry.BrokenTail);
         // Keep costly groups flat when a cheaper following group can break.
-        // An owned-flat parent still requires its complete flat suffix.
-        return !current->OwnedFlat && penalty != 0 ? std::min(width, entry.TailBreakPrefixes[penalty - 1]) : width;
+        // An owned-flat parent can still break in a following child; probes
+        // validate that the complete candidate fits.
+        return penalty != 0 ? std::min(width, entry.TailBreakPrefixes[penalty - 1]) : width;
     };
     auto resolveIndent = [&] (AnchorId id, std::uint32_t requiredWidth) {
         id = ResolveAnchor(id, currentOrder);

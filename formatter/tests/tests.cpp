@@ -356,6 +356,11 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "class-body-macros", {"hinted", "preserve", "unhinted"});
     AddCases(cases, data / "class-body-macros", {"members"}, "members.input.cpp");
     AddCases(cases, data / "declaration-headers", {"wrap", "narrow", "wide"});
+    AddCases(
+        cases,
+        data / "declaration-headers",
+        {"return-parameters", "return-parameters-forced", "return-parameters-narrow"},
+        "return-parameters.input.cpp");
 
     cases.push_back({
         data / "declaration-headers",

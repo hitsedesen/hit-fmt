@@ -1,0 +1,7 @@
+Layout = Canonical
+ColumnLimit = 120
+IndentWidth = 4
+ListPacking = VerticalWhenBroken
+ListFirstItem = NextLine
+ListCloser = SameLine
+PointerReferenceDeclaratorLocation = Left

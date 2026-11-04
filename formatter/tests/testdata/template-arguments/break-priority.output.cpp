@@ -39,10 +39,9 @@ auto generic = [] <class FirstParameter, class SecondParameter>(
     SecondParameter second) {
     return first;
 };
-auto value =
-    ConvertRecord<int, long>(
-        firstLongInputDescription,
-        secondLongInputDescription);
+auto value = ConvertRecord<int, long>(
+    firstLongInputDescription,
+    secondLongInputDescription);
 types::Map<
     ExceptionallyLongFirstTemplateArgument,
     ExceptionallyLongSecondTemplateArgument,
