@@ -2284,17 +2284,22 @@ private:
             return nullptr;
         }
 
-        const auto headerEnd = FindBalancedEnd(arguments);
-        if (headerEnd == std::numeric_limits<TokenIndex>::max() || headerEnd > ParseLimit_) {
-            return nullptr;
-        }
-        for (auto token = arguments; token < headerEnd; ++token) {
-            if (Kind(token) == TK::PreprocessingDirective) {
+        auto headerEnd = arguments;
+        auto body = arguments;
+        do {
+            const auto group = body;
+            headerEnd = FindBalancedEnd(group);
+            if (headerEnd == std::numeric_limits<TokenIndex>::max() || headerEnd > ParseLimit_) {
                 return nullptr;
             }
-        }
+            for (auto token = group; token < headerEnd; ++token) {
+                if (Kind(token) == TK::PreprocessingDirective) {
+                    return nullptr;
+                }
+            }
 
-        const auto body = NextSignificant(headerEnd);
+            body = NextSignificant(headerEnd);
+        } while (Kind(body) == TK::Operator_OpenParenthesis);
 
         if (Kind(body) != TK::Operator_OpenBrace) {
             return nullptr;
@@ -2310,7 +2315,7 @@ private:
         Append(*node, *header);
         Cursor_ = headerEnd;
         ParseTriviaBeforeChild(*node);
-        // Macro arguments are opaque, not C++ parameter declarations. Do not
+        // Header groups are opaque, not C++ parameter declarations. Do not
         // register their names or infer the expanded function's identity.
         Append(*node, *ParseCompoundStatement());
         node->Tokens.End = Cursor_;

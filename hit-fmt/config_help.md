@@ -851,8 +851,10 @@ IndentRequiresClause = true
   Other macro syntax hints for the same name are rejected. Unlisted macros
   keep their existing handling. WhitespaceSensitiveMacros and
   off/on directives still protect invocation bytes.
-- FunctionBodyMacroNames marks balanced invocations followed by function
-  bodies; its arguments stay opaque rather than becoming call arguments.
+- FunctionBodyMacroNames marks balanced invocations followed by zero or more
+  additional balanced parenthesized groups, then function bodies. The complete
+  header stays opaque and preserves its spelling; only the body is formatted.
+  For example, DEFINE_BENCHMARK(Fixture, Run)(State& state) { Use(state); }.
 - ClassMacroNames uses Begin:End pairs of unqualified function-like macros.
   Endpoints must be distinct and unique; nested pairs must match.
 - EnumMacroNames formats YT-style enum sequences in the final argument.

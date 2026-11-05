@@ -92,10 +92,67 @@
         "}"
       )
     )
+    (macro-function-definition
+      (macro-function-header "DEFINE_BENCHMARK" "(" "TFixture" "," "Run" ")" "(" "TState" "&" "state" ")")
+      (compound-statement
+        "{"
+        (expression-statement
+          (call-expression
+            (identifier-expression "Consume")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "state")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
+    (macro-function-definition
+      (macro-function-header
+        "static" "inline" "DEFINE_CASE" "(" "Suite" "," "Curried" ")" "/* parameters */" "(" "void" "(" "*" "callback" ")" "(" "int" ")" "," "Shared" "&" "value" ")" "(" ")"
+        (dangling-trivia
+          (comment "/* parameters */")
+        )
+      )
+      (compound-statement
+        "{"
+        (declaration-statement
+          (declaration-specifiers "Shared")
+          (init-declarator-list
+            (init-declarator
+              (declarator
+                (pointer-operator "*")
+                (declarator-name "pointer")
+              )
+            )
+          )
+          ";"
+        )
+        (expression-statement
+          (call-expression
+            (identifier-expression "callback")
+            (argument-list
+              "("
+              (argument
+                (identifier-expression "value")
+              )
+              ")"
+            )
+          )
+          ";"
+        )
+        "}"
+      )
+    )
     (record-declaration
       "struct" "Holder" "{"
       (macro-function-definition
-        (macro-function-header "DEFINE_METHOD" "(" "Member" "," "Case" ")")
+        (macro-function-header "DEFINE_METHOD" "(" "Member" "," "Case" ")" "(" ")")
         (compound-statement
           "{"
           (declaration-statement
@@ -155,6 +212,37 @@
                 (list-separator ",")
                 (parameter-declaration
                   (declaration-specifiers "DeclarationOnly")
+                )
+                ")"
+              )
+            )
+          )
+        )
+      )
+      ";"
+    )
+    (function-declaration
+      (declaration-specifiers "DEFINE_CASE")
+      (init-declarator-list
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "(" "Suite" ","
+              (declarator-name "DeclarationOnly")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "Shared")
+                  (init-declarator-list
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
+                      )
+                    )
+                  )
                 )
                 ")"
               )
@@ -344,9 +432,10 @@
       )
       (macro-function-definition
         (macro-function-header
-          "DEFINE_CASE" "/* nested header */" "(" "Shared" "," "Nested" "(" "1" "," "(" "2" "+" "3" ")" ")" ")"
+          "DEFINE_CASE" "/* nested header */" "(" "Shared" "," "Nested" "(" "1" "," "(" "2" "+" "3" ")" ")" ")" "/* parameters */" "(" "int" "Shared" ")"
           (dangling-trivia
             (comment "/* nested header */")
+            (comment "/* parameters */")
           )
         )
         (compound-statement
@@ -422,6 +511,39 @@
                   "("
                   (argument
                     (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator-list
+          (init-declarator
+            (declarator
+              (declarator-name "curried")
+            )
+            (initializer
+              "="
+              (call-expression
+                (call-expression
+                  (identifier-expression "DEFINE_CASE")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "value")
+                    )
+                    ")"
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "other")
                   )
                   ")"
                 )

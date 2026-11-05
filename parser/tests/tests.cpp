@@ -2586,7 +2586,12 @@ INSTANTIATE_TEST_SUITE_P(
             {},
             {"BEGIN_SETTER:END_SETTER", "OPEN_RECORD:CLOSE_RECORD"},
         },
-        GoldenCase{"function_body_macros", false, true, {"DEFINE_METHOD", "DEFINE_CASE", "DEFINE_CASE"}},
+        GoldenCase{
+            "function_body_macros",
+            false,
+            true,
+            {"DEFINE_METHOD", "DEFINE_CASE", "DEFINE_CASE", "DEFINE_BENCHMARK"},
+        },
         GoldenCase{"function_body_macros_recovery", true, false, {"DEFINE_CASE"}},
         GoldenCase{"enum_macros", false, false, {}, {}, {"DEFINE_ENUM", "DEFINE_ENUM_WITH_UNDERLYING_TYPE"}},
         GoldenCase{"lambda_argument_ownership"},

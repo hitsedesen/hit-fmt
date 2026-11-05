@@ -5,6 +5,7 @@ FunctionBracePlacement = NextLine
 StructBracePlacement = NextLine
 BodyShape = Expanded
 FunctionCallSpaceBeforeParameters = NoSpace
+NestedDeclaratorSpaceBeforeParentheses = Space
 ControlBlockKeywordSpacing = Space
 ControlBlockConditionSpacing = NoSpace
 CommaSpaceAfter = Space

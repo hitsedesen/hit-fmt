@@ -964,6 +964,11 @@ StickyChainCallPairs = []
 # Values: [] or ["name", ...]
 CallLikeMacroNames = []
 
+# Exact, unqualified macros introducing function bodies. A balanced invocation
+# may have additional balanced parenthesized groups before its brace body.
+# Preserve the complete header; format only the body as function-body grammar.
+# Example: DEFINE_BENCHMARK(Fixture, Run)(State& state) { Use(state); }
+# FunctionBodyMacroNames = ["DEFINE_BENCHMARK"]
 # Values: [] or ["name", ...]
 FunctionBodyMacroNames = []
 

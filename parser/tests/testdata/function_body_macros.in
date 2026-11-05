@@ -8,13 +8,21 @@ DEFINE_CASE /* header */ (Shared, Nested(1, (2 + 3))) {
     }
 }
 DEFINE_CASE() { return; }
+DEFINE_BENCHMARK(TFixture, Run)(TState& state) {
+    Consume(state);
+}
+static inline DEFINE_CASE(Suite, Curried) /* parameters */ (void (*callback)(int), Shared& value) () {
+    Shared* pointer;
+    callback(value);
+}
 struct Holder {
-    DEFINE_METHOD(Member, Case) {
+    DEFINE_METHOD(Member, Case)() {
         int count = 1;
         while (count > 0) { --count; }
     }
 };
 DEFINE_CASE(Suite, DeclarationOnly);
+DEFINE_CASE(Suite, DeclarationOnly)(Shared value);
 UNLISTED_CASE(Suite, Opaque) { untouched = left+right; }
 static DEFINE_CASE(Suite, const Shared& value) { Use(value); }
 static inline DEFINE_CASE(Suite, Helper(alpha + beta)) { Use(value); }
@@ -40,7 +48,7 @@ CloseScope
 
 DEFINE_METHOD(Suite) {
     using Local = int;
-    DEFINE_CASE /* nested header */ (Shared, Nested(1, (2 + 3))) {
+    DEFINE_CASE /* nested header */ (Shared, Nested(1, (2 + 3))) /* parameters */ (int Shared) {
         Local* pointer;
         Write(pointer);
     }
@@ -49,6 +57,7 @@ DEFINE_METHOD(Suite) {
     }
     DEFINE_CASE(DeclarationOnly);
     auto result = DEFINE_CASE(value);
+    auto curried = DEFINE_CASE(value)(other);
     UNLISTED_CASE(Opaque) { untouched = left+right; }
 }
 

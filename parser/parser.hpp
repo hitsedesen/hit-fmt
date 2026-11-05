@@ -24,8 +24,9 @@ using ErrorHandler = std::function<void(ParseError)>;
 
 struct ParseOptions
 {
-    // Exact, unqualified macro names. A balanced invocation followed by a
-    // balanced brace body introduces function-body grammar, not a signature.
+    // Exact, unqualified macro names. A balanced invocation and any additional
+    // balanced parenthesized groups followed by a balanced brace body introduce
+    // function-body grammar. The complete header stays opaque, not a signature.
     // Borrowed for Parse only; the resulting tree retains no configuration.
     std::span<const std::string> FunctionBodyMacroNames = {};
     // Exact Begin:End identifier pairs with distinct, unique endpoints.

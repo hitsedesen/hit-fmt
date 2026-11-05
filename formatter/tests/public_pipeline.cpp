@@ -2289,24 +2289,33 @@ TEST(PublicPipeline, FunctionBodyMacrosRetainHeadersThroughNormalization)
     style.RemoveNullStatements = true;
     style.RemoveNullDeclarations = true;
     const formatter::PreparedFormat prepared(style);
-    const std::string header = "static inline DEFINE_CASE(Shared, Helper(alpha   +  beta), " "const Shared& input)";
-    const std::string source = "using Shared = int;\n" + header +
-        " {Shared* pointer; auto value=left+right; ; " "if(value) Use(value); TOKEN_TEXT(alpha   +  beta);};\n";
-    Input input(source);
-    auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
-    const auto* macro = tree.Root().FirstChild->NextSibling;
-    ASSERT_NE(macro, nullptr);
-    ASSERT_EQ(macro->Kind, parser::NodeKind::MacroFunctionDefinition);
-    const auto* body = macro->FirstChild->NextSibling;
-    ASSERT_NE(body, nullptr);
-    ASSERT_EQ(body->FirstChild->Kind, parser::NodeKind::DeclarationStatement);
-    const auto result = formatter::Format(tree, prepared, {});
-    EXPECT_EQ(result.Text, FormatInput(source, prepared).Text);
-    EXPECT_NE(result.Text.find(header), std::string::npos);
-    EXPECT_NE(result.Text.find("left + right"), std::string::npos);
-    EXPECT_NE(result.Text.find("TOKEN_TEXT(alpha   +  beta)"), std::string::npos);
-    EXPECT_TRUE(result.Text.ends_with("}\n"));
-    EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+
+    for (const std::string header :
+        {
+            "static inline DEFINE_CASE(Shared, Helper(alpha   +  beta), const Shared& input)",
+            "DEFINE_CASE(Suite, Run)(Shared& input)",
+            "static DEFINE_CASE() /* parameters */ (int Shared, void (*callback)(int)) ()",
+        })
+    {
+        SCOPED_TRACE(header);
+        const std::string source = "using Shared = int;\n" + header +
+            " {Shared* pointer; auto value=left+right; ; " "if(value) Use(value); TOKEN_TEXT(alpha   +  beta);};\n";
+        Input input(source);
+        auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
+        const auto* macro = tree.Root().FirstChild->NextSibling;
+        ASSERT_NE(macro, nullptr);
+        ASSERT_EQ(macro->Kind, parser::NodeKind::MacroFunctionDefinition);
+        const auto* body = macro->FirstChild->NextSibling;
+        ASSERT_NE(body, nullptr);
+        ASSERT_EQ(body->FirstChild->Kind, parser::NodeKind::DeclarationStatement);
+        const auto result = formatter::Format(tree, prepared, {});
+        EXPECT_EQ(result.Text, FormatInput(source, prepared).Text);
+        EXPECT_NE(result.Text.find(header), std::string::npos);
+        EXPECT_NE(result.Text.find("left + right"), std::string::npos);
+        EXPECT_NE(result.Text.find("TOKEN_TEXT(alpha   +  beta)"), std::string::npos);
+        EXPECT_TRUE(result.Text.ends_with("}\n"));
+        EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
+    }
 }
 
 TEST(PublicPipeline, ClassMacroHintsSurviveNormalizationAndScopedFormatting)
@@ -2419,26 +2428,51 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
     style.HonorClangFormatDirectives = true;
     style.RemoveNullDeclarations = true;
     const formatter::PreparedFormat prepared(style);
-    const std::string source = "DEFINE_CASE(Suite, Case) {auto sum=left+right; Use(sum);};\n";
-    const auto begin = parser::SourceOffset(source.find('{') + 1);
-    const auto end = parser::SourceOffset(source.find('}'));
-    const std::array selected{parser::SourceRange{begin, end}};
-    const auto limited = FormatInput(source, prepared, {.EditScope = selected});
-    EXPECT_NE(limited.Text.find("left + right"), std::string::npos);
-    EXPECT_TRUE(limited.Text.ends_with("};\n"));
-    const std::array immutable{parser::SourceRange{0, parser::SourceOffset(source.size())}};
-    EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
-    const auto disabled = "// clang-format off\n" + source + "// clang-format on\n";
-    EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
+
+    for (const std::string source :
+        {
+            "DEFINE_CASE(Suite, Case) {auto sum=left+right; Use(sum);};\n",
+            "DEFINE_CASE(Suite, Case)(int value) {auto sum=left+right; Use(sum);};\n",
+        })
+    {
+        SCOPED_TRACE(source);
+        const auto begin = parser::SourceOffset(source.find('{') + 1);
+        const auto end = parser::SourceOffset(source.find('}'));
+        const std::array selected{parser::SourceRange{begin, end}};
+        const auto limited = FormatInput(source, prepared, {.EditScope = selected});
+        EXPECT_NE(limited.Text.find("left + right"), std::string::npos);
+        EXPECT_TRUE(limited.Text.ends_with("};\n"));
+        const std::array immutable{parser::SourceRange{0, parser::SourceOffset(source.size())}};
+        EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
+        const auto disabled = "// clang-format off\n" + source + "// clang-format on\n";
+        EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
+    }
 
     for (const auto malformed :
-        {"DEFINE_CASE(Suite, [bad)) {left+right;}\n", "DEFINE_CASE(Suite, Bad) {left+right;\n"})
+        {
+            "DEFINE_CASE(Suite, [bad)) {left+right;}\n",
+            "DEFINE_CASE(Suite, Bad) {left+right;\n",
+            "DEFINE_CASE(Suite, Bad)(int value[) {left+right;}\n",
+        })
     {
         Input input(malformed);
         auto tree = parser::Parse(input.View(), [] (auto) { }, prepared.ParsingOptions());
         ASSERT_NE(tree.Root().FirstChild, nullptr);
         EXPECT_NE(tree.Root().FirstChild->Kind, parser::NodeKind::MacroFunctionDefinition);
         EXPECT_EQ(FormatInput(malformed, prepared).Text, malformed);
+    }
+
+    for (const auto rejected :
+        {
+            "DEFINE_CASE(Suite, Bad)(int value) {left+right;\n",
+            "DEFINE_CASE(Suite, Case)(\n#if FEATURE\nint value\n#endif\n) {Work();}\n",
+            "DEFINE_CASE(Suite, Case)\n#if FEATURE\n(int value)\n#endif\n {Work();}\n",
+        })
+    {
+        Input input(rejected);
+        auto tree = parser::Parse(input.View(), [] (auto) { }, prepared.ParsingOptions());
+        ASSERT_NE(tree.Root().FirstChild, nullptr);
+        EXPECT_NE(tree.Root().FirstChild->Kind, parser::NodeKind::MacroFunctionDefinition);
     }
 }
 
