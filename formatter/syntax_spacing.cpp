@@ -1712,8 +1712,12 @@ public:
                 return;
         }
 
+        // Requirement terminators are separate siblings, outside the requirement
+        // nodes. Their outgoing edge is still a complete sequence boundary.
+        const bool requirementSeparator = container.Kind == NK::RequirementBody && previous.Kind == NK::ListSeparator;
+
         if (!previous.Tokens.Empty() && !current.Tokens.Empty() && previous.Tokens.End == current.Tokens.Begin &&
-            isItem(previous.Kind) && isItem(current.Kind))
+            (isItem(previous.Kind) || requirementSeparator) && isItem(current.Kind))
         {
             // A complete direct sibling boundary is a sequence edge, not a
             // semicolon heuristic. Specific attribute/comment/colon rules win.

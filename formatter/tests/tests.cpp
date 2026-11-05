@@ -3345,6 +3345,42 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, data / "requires-body-shape", {"report", "compact"}, "report.input.cpp");
     {
         const auto directory = data / "requires-body-shape";
+        const auto base = formatter::LoadConfigFile(directory / "spacing-space.hit-fmt").FormattingStyle;
+
+        for (const auto& [name, policy] :
+            {
+                std::pair{"space", GapPolicy::Space},
+                std::pair{"no-space", GapPolicy::NoSpace},
+                std::pair{"generated-space", GapPolicy::GeneratedSpace},
+                std::pair{"generated-no-space", GapPolicy::GeneratedNoSpace},
+                std::pair{"preserve", GapPolicy::Preserve},
+            })
+        {
+            for (const bool preserve : {false, true}) {
+                cases.push_back({
+                    directory,
+                    std::string("spacing-") + name + (preserve ? "-layout-preserve" : ""),
+                    "spacing.input.cpp",
+                    "spacing-space",
+                });
+                auto style = base;
+                style.StatementSequenceSpacing = policy;
+                style.Layout = preserve ? LayoutMode::Preserve : LayoutMode::Canonical;
+                cases.back().Style = style;
+
+                if (preserve && policy != GapPolicy::Space && policy != GapPolicy::NoSpace) {
+                    cases.back().Expected = "spacing.input.cpp";
+                } else if (policy == GapPolicy::GeneratedSpace) {
+                    cases.back().Expected = "spacing-space.output.cpp";
+                } else if (policy == GapPolicy::GeneratedNoSpace) {
+                    cases.back().Expected = "spacing-no-space.output.cpp";
+                }
+            }
+        }
+    }
+
+    {
+        const auto directory = data / "requires-body-shape";
         const auto base = formatter::LoadConfigFile(directory / "compact.hit-fmt").FormattingStyle;
 
         for (const auto* profile : {"forms", "expanded", "inherited", "single", "narrow", "preserve", "keep-multiline"})

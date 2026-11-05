@@ -56,6 +56,26 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     EXPECT_FALSE(clean.HasFailures(true));
 }
 
+TEST(FileCheck, CompactRequirementsUseStatementSequenceSpacing)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path() / "requires-body-shape";
+    const auto raw = formatter::LoadConfigFile(directory / "spacing-space.hit-fmt");
+    const hit_fmt::PreparedConfiguration configuration(raw);
+    const auto expected = test::golden::ReadFile(directory / "spacing-space.output.cpp");
+    const Input correct(expected);
+    EXPECT_FALSE(hit_fmt::FormatAndCheckFile(correct.View(), configuration).HasFailures(false));
+
+    auto missingSpace = expected;
+    const auto boundary = missingSpace.find("; value.second");
+    ASSERT_NE(boundary, std::string::npos);
+    missingSpace.erase(boundary + 1, 1);
+    const Input incorrect(missingSpace);
+    const auto checked = hit_fmt::FormatAndCheckFile(incorrect.View(), configuration);
+    EXPECT_TRUE(checked.FormattingMismatch);
+    EXPECT_TRUE(checked.HasFailures(false));
+    EXPECT_EQ(checked.Formatting.Text, expected);
+}
+
 TEST(FileCheck, DebugExplainsProtectionAndParserRecoveryWithoutChangingResults)
 {
     const test::golden::Fixture fixture{std::filesystem::path(__FILE__).parent_path() / "testdata/file-check", "debug"};
