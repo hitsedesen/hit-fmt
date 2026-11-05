@@ -1,0 +1,4 @@
+Layout = Canonical
+KeepMultiline = false
+ColumnLimit = 40
+WidthDiagnostics = Report

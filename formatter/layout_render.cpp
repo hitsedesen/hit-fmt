@@ -239,11 +239,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         Measure broken;
         Measure flexible;
         std::uint8_t firstBreakPenalty = 0;
-        std::array<std::uint32_t, 3> childBreakPrefixes{
-            Infinity,
-            Infinity,
-            Infinity,
-        };
+        std::array<std::uint32_t, 3> childBreakPrefixes{Infinity, Infinity, Infinity};
         Order lastBreak = NoOrder;
         Order ownedBreak = NoOrder;
         std::uint32_t expandedGapWidth = 0;
@@ -361,11 +357,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         Measure broken;
         Measure flexible;
         std::uint8_t firstBreakPenalty = 0;
-        std::array<std::uint32_t, 3> childBreakPrefixes{
-            Infinity,
-            Infinity,
-            Infinity,
-        };
+        std::array<std::uint32_t, 3> childBreakPrefixes{Infinity, Infinity, Infinity};
         Order lastBreak = NoOrder;
         Order ownedBreak = NoOrder;
         std::uint32_t expandedGapWidth = 0;

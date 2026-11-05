@@ -13,3 +13,15 @@ void f() {
     External * pointer(first, second);
     External * assigned = Acquire(first, second);
 }
+void braced() {
+    A<B> values{first, second,};
+    A<B> nested{{first, second}, third};
+    A<B> designated{.first = left, .second = right};
+    A<B> comment{first, second} /* end */;
+    A<B> empty{};
+    External * pointer{first, second};
+    A<B> C{first, second} + tail;
+    A<B> C{first, second}, other;
+    A<B> C{first, second} SUFFIX;
+    A<B> C{first; second;};
+}

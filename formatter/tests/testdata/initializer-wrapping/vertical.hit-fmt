@@ -1,0 +1,4 @@
+include = "canonical.hit-fmt"
+InitializersPacking = VerticalWhenBroken
+InitializersFirstItem = NextLine
+InitializersCloser = OwnLine
