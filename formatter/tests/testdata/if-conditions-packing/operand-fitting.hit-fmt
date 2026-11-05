@@ -1,0 +1,5 @@
+Layout = Canonical
+ColumnLimit = 64
+ControlBracePlacement = NextLineIfHeaderBroken
+ExpressionsPacking = Fill
+ChainsPacking = Fill

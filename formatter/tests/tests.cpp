@@ -2335,6 +2335,10 @@ std::vector<FormatCase> FormatCases()
                 "preserve-expressions",
                 "delimiter",
             });
+        cases.push_back({directory, "operand-fitting", "operand-fitting.input.cpp"});
+        cases.push_back({directory, "operand-fitting-leading", "operand-fitting.input.cpp"});
+        cases.push_back({directory, "operand-fitting-wide", "operand-fitting.input.cpp"});
+        cases.back().Expected = "operand-fitting.input.cpp";
     }
 
     cases.push_back({data / "lambda-body", "profile", "input.cpp", profile});

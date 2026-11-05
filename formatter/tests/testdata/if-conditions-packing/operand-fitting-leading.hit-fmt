@@ -1,0 +1,2 @@
+include = "operand-fitting.hit-fmt"
+BinaryOperatorSide = Leading

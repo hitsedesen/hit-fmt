@@ -138,6 +138,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool KeptChild : 1 = false;
         // Eligible layout depths 0..3, with all deeper levels in bit 4.
         uint8_t ProbeLayouts = 0;
+        uint8_t LastBreakPenalty = 0;
     };
 
     struct GapCache
@@ -169,6 +170,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool HasConsistentAlternative = false;
         bool KeptLine = false;
         uint8_t ProbeLayouts = 0;
+        uint8_t LastBreakPenalty = 0;
     };
 
     std::pmr::vector<SummaryFrame> summaries(resource);
@@ -183,6 +185,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         std::uint8_t firstBreakPenalty,
         const std::array<uint32_t, 3>& childBreakPrefixes,
         Order lastBreak,
+        uint8_t lastBreakPenalty,
         Order ownedBreak,
         bool guaranteedLine) {
         // Retain the earliest affordable opportunity for each penalty, not
@@ -203,6 +206,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         if (summary.LastBreak == NoOrder) {
             summary.LastBreak = lastBreak;
+            summary.LastBreakPenalty = lastBreakPenalty;
         }
 
         if (summary.OwnedLastBreak == NoOrder) {
@@ -226,6 +230,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 0,
                 {Infinity, Infinity, Infinity},
                 NoOrder,
+                0,
                 NoOrder,
                 fixedRun.Line);
             fixedRun = {};
@@ -249,6 +254,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         auto& groupEntry = groupCache[id];
         flat = summary.Flat;
         groupEntry.LastBreak = summary.LastBreak;
+        groupEntry.LastBreakPenalty = summary.LastBreakPenalty;
         groupEntry.OwnedLastBreak = summary.OwnedLastBreak;
         groupEntry.GuaranteedLine = summary.GuaranteedLine;
         groupEntry.ShapeSensitive = summary.OwnedShapeChoice;
@@ -316,6 +322,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             firstBreakPenalty,
             childBreakPrefixes,
             lastBreak,
+            groupEntry.LastBreakPenalty,
             ownedBreak,
             guaranteedLine);
         return true;
@@ -451,6 +458,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             firstBreakPenalty,
             childBreakPrefixes,
             lastBreak,
+            summaryOwner == InvalidId ? 0 : GroupSpecs_[summaryOwner].BreakPenalty,
             ownedBreak,
             guaranteedLine);
         return true;
@@ -788,6 +796,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         // wrap. Only a newly promoted compact boundary may defer to a kept child.
         const bool forceOwned =
             (spec.ForceBreak && groupEntry.OwnedLastBreak != NoOrder) || (!probing && keepsOwnedLine(id));
+        // A mandatory fallback must respect boundary costs too: an operator
+        // group should use its own break before a costlier child chain link.
+        const auto lastBreak =
+            !spec.ChildBreaks && groupEntry.OwnedLastBreak != NoOrder && groupEntry.LastBreakPenalty > spec.BreakPenalty
+            ? groupEntry.OwnedLastBreak
+            : groupEntry.LastBreak;
         auto base = current->Indent;
         auto pending = current->PendingExpressionIndent;
         auto reversible = current->ReversibleIndent;
@@ -858,7 +872,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 tail,
                 forceOwned
                     ? groupEntry.OwnedLastBreak
-                    : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? groupEntry.LastBreak : NoOrder,
+                    : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? lastBreak : NoOrder,
                 lines,
                 !broken,
                 !broken || keepOwnedFlat,

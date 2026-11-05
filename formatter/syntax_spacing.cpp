@@ -63,9 +63,8 @@ bool IsArgumentNameComment(std::string_view text)
     while (!text.empty()) {
         const auto cp = unicode::utf8::GetFirstCodePoint(text);
 
-        if (!cp || (cp->Value != '_' && !(start
-            ? unicode::IsXIDStart(cp->Value)
-            : unicode::IsXIDContinue(cp->Value))))
+        if (!cp ||
+            (cp->Value != '_' && !(start ? unicode::IsXIDStart(cp->Value) : unicode::IsXIDContinue(cp->Value))))
         {
             return false;
         }
@@ -2302,8 +2301,8 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
 
 std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const
 {
-    if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count || gap >= Gaps_.size() || gap >=
-        safety.Gaps().size())
+    if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count || gap >= Gaps_.size() ||
+        gap >= safety.Gaps().size())
     {
         return std::nullopt;
     }
