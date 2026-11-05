@@ -1,0 +1,4 @@
+Layout = Canonical
+KeepMultiline = false
+RequiresExpressionBodyShape = CompactIfFits
+StatementSequenceSpacing = Space
