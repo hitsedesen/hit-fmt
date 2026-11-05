@@ -223,7 +223,11 @@ TEST(FileCheck, ExplanatoryNamespaceCommentsKeepMissingLabelDiagnostics)
         const hit_fmt::PreparedConfiguration prepared(raw);
 
         for (const auto detail :
-            {hit_fmt::DiagnosticDetail::Summary, hit_fmt::DiagnosticDetail::Locations, hit_fmt::DiagnosticDetail::Full})
+            {
+                hit_fmt::DiagnosticDetail::Summary,
+                hit_fmt::DiagnosticDetail::Locations,
+                hit_fmt::DiagnosticDetail::Full,
+            })
         {
             const auto checked = hit_fmt::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, detail);
             ASSERT_EQ(checked.RequiredChanges.size(), 4u);
@@ -1056,7 +1060,11 @@ TEST(FileCheck, ParserLimitationsDoNotFailStyleChecks)
             std::string(styleIssue ? "void Extra(){Call(left,right);}\n" : "") + "void Open() {\n    Work();\n");
 
         for (const auto detail :
-            {hit_fmt::DiagnosticDetail::Summary, hit_fmt::DiagnosticDetail::Locations, hit_fmt::DiagnosticDetail::Full})
+            {
+                hit_fmt::DiagnosticDetail::Summary,
+                hit_fmt::DiagnosticDetail::Locations,
+                hit_fmt::DiagnosticDetail::Full,
+            })
         {
             for (const bool debug : {false, true}) {
                 const auto checked =

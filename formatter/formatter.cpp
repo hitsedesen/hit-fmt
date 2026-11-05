@@ -725,7 +725,9 @@ void PruneTextOnlyNamespaceNoOps(
         if (close == none || comment == none || close + 1 != comment || !layout.TokenSurvives(close) ||
             !layout.TokenSurvives(comment) || !layout.TokenSpellingExact(close) ||
             !layout.TokenSpellingExact(comment) || tree.Kind(close) != tokenizer::TokenKind::Operator_CloseBrace ||
-            tree.Kind(comment) != tokenizer::TokenKind::Comment || !layout.GapEmitsSpaces(comment, plan.Options.Spaces))
+            tree.Kind(comment) != tokenizer::TokenKind::Comment || !layout.GapEmitsSpaces(
+                comment,
+                plan.Options.Spaces))
         {
             return false;
         }

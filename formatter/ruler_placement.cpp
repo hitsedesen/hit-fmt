@@ -143,7 +143,8 @@ void PlanRulerEdits(
         for (auto child = node.FirstChild; child != NoRegion; child = regions[child].NextSibling) {
             const auto& part = regions[child];
 
-            if (part.Tokens.Empty() || part.Tokens.Begin < begin || part.Tokens.End > close || part.Kind == NK::Comment)
+            if (part.Tokens.Empty() || part.Tokens.Begin < begin || part.Tokens.End > close || part.Kind ==
+                NK::Comment)
             {
                 continue;
             }

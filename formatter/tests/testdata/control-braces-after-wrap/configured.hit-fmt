@@ -1,5 +1,6 @@
 # Shape preferences apply when broken; fitting canonical groups flatten.
 ExpressionsLayout = Canonical
+CallsLayout = Canonical
 ControlHeadersLayout = Canonical
 ControlBracePlacement = NextLineIfHeaderBroken
 ColumnLimit = 32

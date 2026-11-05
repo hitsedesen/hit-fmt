@@ -1022,7 +1022,8 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
             const auto* middle = conditional->FirstChild->NextSibling;
             ASSERT_NE(middle, nullptr);
 
-            if (middle->Kind == BinaryExpression && tree.SourceText(middle->Tokens).find(',') != std::string_view::npos)
+            if (middle->Kind == BinaryExpression && tree.SourceText(middle->Tokens).find(',') !=
+                std::string_view::npos)
             {
                 commaMiddle = true;
             }
@@ -2961,7 +2962,8 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         const auto* node = pending.back();
         pending.pop_back();
 
-        if (node->Kind == parser::NodeKind::DeclarationStatement && control.SourceText(node->Tokens) == "Pair*marker;")
+        if (node->Kind == parser::NodeKind::DeclarationStatement && control.SourceText(node->Tokens) ==
+            "Pair*marker;")
         {
             ++declarations;
         }
@@ -4081,7 +4083,8 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
             }
 
             while (name && name->Kind != parser::NodeKind::DeclaratorName &&
-                name->Kind != parser::NodeKind::DestructorName && name->Kind != parser::NodeKind::OperatorFunctionName)
+                name->Kind != parser::NodeKind::DestructorName && name->Kind !=
+                    parser::NodeKind::OperatorFunctionName)
             {
                 name = name->NextSibling;
             }

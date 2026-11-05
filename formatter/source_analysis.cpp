@@ -245,7 +245,8 @@ void ClassifyGap(
     }
 
     if (i &&
-        (previousKind == TK::PreprocessingDirective || (previousKind == TK::Comment && previousText.starts_with("//"))))
+        (previousKind == TK::PreprocessingDirective || (previousKind == TK::Comment && previousText
+            .starts_with("//"))))
     {
         gap.MustStartWithLineFeed = true;
 

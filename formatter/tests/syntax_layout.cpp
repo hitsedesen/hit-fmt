@@ -1119,7 +1119,8 @@ TEST(SyntaxLayout, ExpressionsShareRealizedStructuralContinuation)
     style.ExpressionsBreak = formatter::BreakRequirement::Always;
     const std::string input = "void f(){ if(alpha || beta){ return left | right; } }\n";
 
-    for (const auto alignment : {formatter::ContinuationAlignment::Block, formatter::ContinuationAlignment::Delimiter})
+    for (const auto alignment :
+        {formatter::ContinuationAlignment::Block, formatter::ContinuationAlignment::Delimiter})
     {
         style.ControlHeadersAlignment = alignment;
 

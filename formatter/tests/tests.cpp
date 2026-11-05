@@ -636,7 +636,8 @@ std::vector<FormatCase> FormatCases()
         {"boundary-namespace-lf", "boundary-namespace-crlf"},
         "boundary-namespace.input.cpp");
 
-    for (const auto* name : {"canonical-lf", "canonical-crlf", "opaque-lf", "boundary-nulls", "composition-control-lf"})
+    for (const auto* name :
+        {"canonical-lf", "canonical-crlf", "opaque-lf", "boundary-nulls", "composition-control-lf"})
     {
         cases.push_back({data / "line-endings", name, std::string(name) + ".input.cpp"});
     }
@@ -1045,7 +1046,8 @@ std::vector<FormatCase> FormatCases()
         }
 
         for (const auto grouping : {formatter::IncludeGrouping::Regroup, formatter::IncludeGrouping::Directory}) {
-            for (const auto order : {formatter::IncludeGroupOrder::Configured, formatter::IncludeGroupOrder::Directory})
+            for (const auto order :
+                {formatter::IncludeGroupOrder::Configured, formatter::IncludeGroupOrder::Directory})
             {
                 for (const auto category :
                     {formatter::IncludeCategoryOrder::AngledFirst, formatter::IncludeCategoryOrder::QuotedFirst})
@@ -1133,7 +1135,8 @@ std::vector<FormatCase> FormatCases()
         }
 
         for (const auto grouping : {formatter::IncludeGrouping::Directory, formatter::IncludeGrouping::Regroup}) {
-            for (const auto order : {formatter::IncludeGroupOrder::Directory, formatter::IncludeGroupOrder::Configured})
+            for (const auto order :
+                {formatter::IncludeGroupOrder::Directory, formatter::IncludeGroupOrder::Configured})
             {
                 FormatCase value{
                     directory,
@@ -1220,7 +1223,8 @@ std::vector<FormatCase> FormatCases()
             cases.push_back(std::move(value));
         }
 
-        for (const auto name : {"directory-relative", "directory-relative-depth-zero", "directory-relative-depth-two"})
+        for (const auto name :
+            {"directory-relative", "directory-relative-depth-zero", "directory-relative-depth-two"})
         {
             FormatCase relative{directory, name, "relative.input.cpp"};
             relative.InputFilePath = "/project/engine/widget.cpp";
@@ -3400,7 +3404,8 @@ std::vector<FormatCase> FormatCases()
         const auto directory = data / "requires-body-shape";
         const auto base = formatter::LoadConfigFile(directory / "compact.hit-fmt").FormattingStyle;
 
-        for (const auto* profile : {"forms", "expanded", "inherited", "single", "narrow", "preserve", "keep-multiline"})
+        for (const auto* profile :
+            {"forms", "expanded", "inherited", "single", "narrow", "preserve", "keep-multiline"})
         {
             cases.push_back({directory, profile, "input.cpp", "compact"});
             auto style = base;
@@ -4929,7 +4934,8 @@ TEST(Formatter, RequiresLambdasFitAfterBreakingHeadersAndBodies)
     auto style = formatter::LoadConfigFile(directory / "canonical.hit-fmt").FormattingStyle;
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
 
-    for (const auto& path : {directory / "input.cpp", std::filesystem::path(PARSER_TESTDATA_DIR) / "requires_forms.in"})
+    for (const auto& path :
+        {directory / "input.cpp", std::filesystem::path(PARSER_TESTDATA_DIR) / "requires_forms.in"})
     {
         SCOPED_TRACE(path);
         const Input source(ReadFile(path));

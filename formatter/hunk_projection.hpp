@@ -372,7 +372,8 @@ inline FormatResult ProjectHunkFormat(
         // Flattening, inserted breaks and structural atoms stay indivisible;
         // clipping those to a selected line would invent a different layout.
         if (atomic || !whitespace(original) || !whitespace(formatted) ||
-            std::count(original.begin(), original.end(), '\n') != std::count(formatted.begin(), formatted.end(), '\n'))
+            std::count(original.begin(), original.end(), '\n') !=
+                std::count(formatted.begin(), formatted.end(), '\n'))
         {
             consider(before, after);
             return;

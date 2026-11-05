@@ -1620,7 +1620,8 @@ TEST(ConfigPolicy, LineEndingRoundTripsAndValidates)
 {
     formatter::Style style;
 
-    for (const auto ending : {formatter::LineEnding::Preserve, formatter::LineEnding::LF, formatter::LineEnding::CRLF})
+    for (const auto ending :
+        {formatter::LineEnding::Preserve, formatter::LineEnding::LF, formatter::LineEnding::CRLF})
     {
         SCOPED_TRACE(formatter::SerializeConfigEnum(ending));
         TemporaryConfig config("LineEnding = " + std::string(formatter::SerializeConfigEnum(ending)) + "\n");

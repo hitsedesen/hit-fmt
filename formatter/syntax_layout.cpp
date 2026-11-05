@@ -1653,6 +1653,16 @@ private:
         }
 
         GroupSpecs_[group].StructuralBase = true;
+
+        if (canonical && (node.Kind == NodeKind::Condition || node.Kind == NodeKind::ForHeader) &&
+            end < Tree_.TokenCount() && Tree_.Kind(end) == TokenKind::Operator_OpenBrace && Gaps_[end].Owner != None &&
+            Gaps_[end].Shape == Boundary::Conditional)
+        {
+            // A conditional brace follows the header's shape; moving only
+            // that brace must not hide overflow from the condition.
+            GroupSpecs_[group].FitSuffixWidth = AddWidth(FlatWidth(end), TokenWidth(end));
+        }
+
         // An opaque callee or sibling can leave enclosing lists unplanned.
         // Independent children then need their physical opening line's base.
         GroupSpecs_[group].LineBase = node.Kind == NodeKind::ArgumentList ||
@@ -1715,7 +1725,8 @@ private:
 
         if (canonical && node.Kind == NodeKind::Condition && node.Parent != None &&
             Region(Syntax_[node.Parent]).Kind == NodeKind::IfStatement &&
-            Policies_.Expressions.Layout == LayoutMode::Canonical && Policies_.IfConditionsPacking != ListPacking::Fill)
+            Policies_.Expressions.Layout == LayoutMode::Canonical && Policies_.IfConditionsPacking !=
+                ListPacking::Fill)
         {
             Syntax_[id].ListGroup = group;
         }
@@ -1966,7 +1977,8 @@ private:
                 }
 
                 if (canonical && part.Kind == NodeKind::ParameterDeclaration && Syntax_[child].Safe &&
-                    part.FirstChild != None && Region(Syntax_[part.FirstChild]).Kind == NodeKind::DeclarationSpecifiers)
+                    part.FirstChild != None && Region(Syntax_[part.FirstChild]).Kind ==
+                        NodeKind::DeclarationSpecifiers)
                 {
                     // The list owns breaks between parameters; each complete
                     // declaration keeps its type and declarator together.
@@ -3968,7 +3980,8 @@ private:
         if (opening >= close || close >= Tree_.TokenCount() || (fragment && opening + 1 == close) ||
             (!macroRecord && !shared && !fragment &&
                 (Tree_.Kind(opening) != TokenKind::Operator_OpenBrace ||
-                    Tree_.Kind(close) != TokenKind::Operator_CloseBrace || Tree_.MatchingDelimiter(opening) != close)))
+                    Tree_.Kind(close) != TokenKind::Operator_CloseBrace || Tree_.MatchingDelimiter(opening) !=
+                        close)))
         {
             return;
         }
@@ -5245,7 +5258,9 @@ private:
             frozenBody = id;
             labeledBody = false;
 
-            for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling)
+            for (auto child = Region(Syntax_[id]).FirstChild;
+                child != None;
+                child = Region(Syntax_[child]).NextSibling)
             {
                 const auto childKind = Region(Syntax_[child]).Kind;
 
@@ -5257,7 +5272,9 @@ private:
 
             pairs.clear();
 
-            for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling)
+            for (auto child = Region(Syntax_[id]).FirstChild;
+                child != None;
+                child = Region(Syntax_[child]).NextSibling)
             {
                 if (!Syntax_[child].Safe || Region(Syntax_[child]).Kind == NodeKind::PreprocessingDirective ||
                     Region(Syntax_[child]).Kind == NodeKind::PreprocessingConditional || IsCaseLabel(child) ||

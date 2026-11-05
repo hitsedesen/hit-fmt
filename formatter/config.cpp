@@ -576,7 +576,8 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
         if (value == "Preserve") {
             config.FormattingStyle.*Member = {};
         } else if (value == "Inherit") {
-            if constexpr (Member == &Style::MemberDefinitionBlankLines || Member == &Style::MemberDeclarationBlankLines)
+            if constexpr (Member == &Style::MemberDefinitionBlankLines || Member ==
+                &Style::MemberDeclarationBlankLines)
             {
                 config.FormattingStyle.*Member = BlankLineSetting::Inherited();
             } else {
@@ -621,7 +622,8 @@ void AssignConfig(Configuration& config, std::string_view value, const std::file
     if constexpr (std::is_same_v<decltype(Member), decltype(&Configuration::NamingAcronyms)>) {
         if constexpr (Member == &Configuration::NamingAcronyms) {
             for (const auto& acronym : config.NamingAcronyms) {
-                if (acronym.size() < 2 || acronym.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ") != std::string::npos)
+                if (acronym.size() < 2 || acronym.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZ") !=
+                    std::string::npos)
                 {
                     ThrowConfigError(path, line, "NamingAcronyms requires uppercase words of at least two letters");
                 }

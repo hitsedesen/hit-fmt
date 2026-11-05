@@ -36,7 +36,8 @@ void Compare()
         Use();
     }
 
-    if (Find(GetAvailableSerializationFormatIdentifiers(), GetAlternativeSerializationFormatIdentifiers()) != expected)
+    if (Find(GetAvailableSerializationFormatIdentifiers(), GetAlternativeSerializationFormatIdentifiers()) !=
+        expected)
     {
         UseAlternative();
     }

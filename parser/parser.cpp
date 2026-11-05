@@ -893,7 +893,8 @@ public:
                 const auto* node = frame.Next;
                 frame.Next = node->NextSibling;
 
-                if (node->Kind == NodeKind::Comment && node->Tokens.Size() == 1 && mapping[node->Tokens.Begin] == none)
+                if (node->Kind == NodeKind::Comment && node->Tokens.Size() == 1 && mapping[node->Tokens.Begin] ==
+                    none)
                 {
                     if (frame.Original->Kind != NodeKind::TranslationUnit &&
                         frame.Original->Kind != NodeKind::NamespaceDeclaration)
@@ -2891,7 +2892,9 @@ private:
                 }
             }
 
-            if (i < end && delimiterDepth == 0 && angleDepth == 0 && !AdvanceConditionalMiddle(kind, conditionalMiddle))
+            if (i < end && delimiterDepth == 0 && angleDepth == 0 && !AdvanceConditionalMiddle(
+                kind,
+                conditionalMiddle))
             {
                 i = end;
             }
@@ -3074,7 +3077,8 @@ private:
         // Its parentheses are parameters, never a direct initializer.
         std::optional<TokenRange> parameters;
         auto declarator = FindDeclarationSpecifiersEnd(declarationBegin, node->Tokens.End);
-        if (Kind(declarator) == TK::Identifier && Kind(NextSignificant(declarator + 1)) == TK::Operator_OpenParenthesis)
+        if (Kind(declarator) == TK::Identifier && Kind(NextSignificant(declarator + 1)) ==
+            TK::Operator_OpenParenthesis)
         {
             auto open = NextSignificant(declarator + 1);
             auto close = FindBalancedEnd(open);
@@ -4964,7 +4968,9 @@ private:
                 }
             }
 
-            if (!atEnd && delimiterDepth == 0 && angleDepth == 0 && !AdvanceConditionalMiddle(kind, conditionalMiddle))
+            if (!atEnd && delimiterDepth == 0 && angleDepth == 0 && !AdvanceConditionalMiddle(
+                kind,
+                conditionalMiddle))
             {
                 i = parameters.End - 1;
                 atEnd = true;
@@ -5754,7 +5760,8 @@ private:
                         while (pointer < close) {
                             const auto kind = Kind(pointer);
 
-                            if (kind == TK::Operator_Star || kind == TK::Operator_Ampersand || kind == TK::Operator_And)
+                            if (kind == TK::Operator_Star || kind == TK::Operator_Ampersand || kind ==
+                                TK::Operator_And)
                             {
                                 hasPointer = true;
                             } else if (kind != TK::Keyword_const && kind != TK::Keyword_volatile) {
@@ -5849,7 +5856,8 @@ private:
                 auto templateEnd = SkipTemplateArguments(i, end);
 
                 if (templateEnd <= end && templateEnd > i &&
-                    (Kind(templateEnd - 1) == TK::Operator_Greater || Kind(templateEnd - 1) == TK::Operator_RightShift))
+                    (Kind(templateEnd - 1) == TK::Operator_Greater || Kind(templateEnd - 1) ==
+                        TK::Operator_RightShift))
                 {
                     const bool templateParameters = node.Kind == NodeKind::TemplateParameter &&
                         Kind(PreviousSignificant(i)) == TK::Keyword_template;
@@ -5984,7 +5992,8 @@ private:
             bool hasPointer = false;
             auto firstKind = Kind(begin);
 
-            if (firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand || firstKind == TK::Operator_And)
+            if (firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand || firstKind ==
+                TK::Operator_And)
             {
                 hasPointer = true;
                 name = begin + 1;
@@ -6245,8 +6254,11 @@ private:
                 AddDirectiveChildrenInGap(*parameterList, list.Begin, list.End);
                 Append(*result, *parameterList);
 
-                if (auto initializerColon =
-                    AddFunctionSuffixSyntax(*result, list.End, functionEnd, functionKind == FunctionKind::Constructor))
+                if (auto initializerColon = AddFunctionSuffixSyntax(
+                    *result,
+                    list.End,
+                    functionEnd,
+                    functionKind == FunctionKind::Constructor))
                 {
                     // Constructor initializers belong to the function, not
                     // its array declarator suffixes.
@@ -6733,7 +6745,8 @@ private:
                         return proveDirectInitializer ? uncertain() : std::nullopt;
                     }
                     cursor = nested - 1;
-                } else if (kind == TK::Keyword_decltype && SignificantKind(cursor + 1) == TK::Operator_OpenParenthesis)
+                } else if (kind == TK::Keyword_decltype && SignificantKind(cursor + 1) ==
+                    TK::Operator_OpenParenthesis)
                 {
                     auto nested = proveDirectInitializer
                         ? ArgumentPairEnd(ArgumentSignificant(cursor + 1, closing - 1), closing - 1)
@@ -7353,7 +7366,9 @@ private:
         unsigned conditionalMiddle = 0;
         size_t work = 4096;
 
-        for (auto i = ArgumentSignificant(opening + 1, end); i < end && work != 0; i = ArgumentSignificant(i + 1, end))
+        for (auto i = ArgumentSignificant(opening + 1, end);
+            i < end && work != 0;
+            i = ArgumentSignificant(i + 1, end))
         {
             --work;
             const auto kind = Kind(i);
@@ -7982,7 +7997,9 @@ private:
                 if (Kind(previous) == TK::Keyword_decltype || Kind(previous) == TK::Keyword_alignas) {
                     continue;
                 }
-                if (!sawTopLevelParameters && !sawParenthesizedDeclarator && IsParenthesizedDeclarator(begin, Cursor_))
+                if (!sawTopLevelParameters && !sawParenthesizedDeclarator && IsParenthesizedDeclarator(
+                    begin,
+                    Cursor_))
                 {
                     sawParenthesizedDeclarator = true;
                     for (auto nested = NextSignificant(begin + 1);
@@ -8523,7 +8540,8 @@ private:
         // A conditional can either contain the else itself or precede it.
         // Skip complete conditionals for lookahead only; independent branch
         // statements must not be adopted without a following else.
-        while (Kind(branchStart) != TK::Keyword_else && next < ParseLimit_ && Kind(next) == TK::PreprocessingDirective)
+        while (Kind(branchStart) != TK::Keyword_else && next < ParseLimit_ && Kind(next) ==
+            TK::PreprocessingDirective)
         {
             if (GetDirectiveKind(next) == DirectiveKind::If) {
                 int depth = 1;
@@ -9260,7 +9278,8 @@ private:
 
                         hasType = true;
                     } else if (typeKind == TK::Keyword_typename || typeKind == TK::Keyword_struct ||
-                        typeKind == TK::Keyword_class || typeKind == TK::Keyword_enum || typeKind == TK::Keyword_union)
+                        typeKind == TK::Keyword_class || typeKind == TK::Keyword_enum || typeKind ==
+                            TK::Keyword_union)
                     {
                         if (hasType) {
                             break;
@@ -9944,7 +9963,8 @@ private:
         auto* expression = MakeNode(NodeKind::DeleteExpression, start);
         cursor = NextSignificant(cursor + 1);
 
-        if (Kind(cursor) == TK::Operator_OpenBracket && Kind(NextSignificant(cursor + 1)) == TK::Operator_CloseBracket)
+        if (Kind(cursor) == TK::Operator_OpenBracket && Kind(NextSignificant(cursor + 1)) ==
+            TK::Operator_CloseBracket)
         {
             auto closing = NextSignificant(cursor + 1);
             auto* marker = MakeNode(NodeKind::DeleteArrayMarker, cursor);
@@ -11369,7 +11389,8 @@ private:
 
     void MarkDelimiterRole(const Node& node, TK openingKind, TK closingKind, PunctuationRole role)
     {
-        if (!node.Tokens.Empty() && Kind(node.Tokens.Begin) == openingKind && Kind(node.Tokens.End - 1) == closingKind)
+        if (!node.Tokens.Empty() && Kind(node.Tokens.Begin) == openingKind && Kind(node.Tokens.End - 1) ==
+            closingKind)
         {
             Tree_.Tokens_.SetRole(node.Tokens.Begin, role);
             Tree_.Tokens_.SetRole(node.Tokens.End - 1, role);
@@ -11819,8 +11840,15 @@ std::optional<SyntaxTree> ParseContext::NormalizeTokens(
     std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
     std::pmr::vector<CopiedTokenRun> stable(&context.ScratchMemory_);
     if (!context.TokenizePieces(original, pieces, copied, &stable) ||
-        !context
-            .ReuseIncludeSyntax(original, true, nullptr, copied, &originalToNormalized, &topology, &insertions, stable))
+        !context.ReuseIncludeSyntax(
+            original,
+            true,
+            nullptr,
+            copied,
+            &originalToNormalized,
+            &topology,
+            &insertions,
+            stable))
     {
         originalToNormalized.clear();
         insertions.clear();
