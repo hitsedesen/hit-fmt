@@ -1958,6 +1958,7 @@ std::vector<FormatCase> FormatCases()
         "initializer-overflow-one-per-line",
         "initializer-overflow-one-per-line.input.cpp",
     });
+    AddCases(cases, data / "initializer-wrapping", {"canonical", "vertical", "preserve"});
     addProfileCase("../ternary-layout", "profile");
     AddCases(
         cases,
@@ -5013,6 +5014,21 @@ TEST(Formatter, InitializedDeclaratorBreaksResolveWidthDiagnostics)
             const auto result = formatter::Format(tree, formatter::PreparedFormat(style));
             EXPECT_TRUE(result.Diagnostics.empty()) << result.Text;
         }
+    }
+}
+
+TEST(Formatter, InitializerListsResolveWidthDiagnostics)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-wrapping";
+
+    for (const auto* profile : {"canonical", "vertical"}) {
+        SCOPED_TRACE(profile);
+        const auto style = formatter::LoadConfigFile(directory / (std::string(profile) + ".hit-fmt")).FormattingStyle;
+        const auto result = test::FormatInput(ReadFile(directory / "input.cpp"), formatter::PreparedFormat(style));
+        EXPECT_TRUE(result.Diagnostics.empty()) << result.Text;
+        const auto verified = test::FormatInput(result.Text, formatter::PreparedFormat(style));
+        EXPECT_TRUE(verified.Diagnostics.empty());
+        EXPECT_EQ(verified.Text, result.Text);
     }
 }
 

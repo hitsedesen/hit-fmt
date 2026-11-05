@@ -8603,10 +8603,7 @@ private:
 
     void AddForHeaderSyntax(Node& header, size_t begin, size_t end)
     {
-        std::array<size_t, 2> semicolons{
-            Tree_.Tokens_.Size(),
-            Tree_.Tokens_.Size(),
-        };
+        std::array<size_t, 2> semicolons{Tree_.Tokens_.Size(), Tree_.Tokens_.Size()};
         size_t semicolonCount = 0;
         size_t rangeColon = Tree_.Tokens_.Size();
         int delimiterDepth = 0;
@@ -10963,11 +10960,11 @@ private:
         Append(statement, *arguments);
     }
 
-    void AddAmbiguousInitializer(Node& statement, size_t end, bool allowParenthesized = false)
+    void AddAmbiguousInitializer(Node& statement, size_t end, bool allowDirect = false)
     {
         // Bound the shared tail without choosing declaration or expression
         // roles for this head. Conditions share only an assignment RHS;
-        // ordinary statements can also share a final parenthesized list.
+        // ordinary statements can also share a final delimited initializer.
         TokenIndex cursor = SkipDeclarationTypeName(SkipAttributeSpecifiers(statement.Tokens.Begin), end, true);
 
         while (cursor < end &&
@@ -10984,15 +10981,25 @@ private:
 
         const auto suffix = NextSignificant(cursor + 1);
 
-        if (Kind(suffix) != TK::Operator_Assign) {
-            if (allowParenthesized && Kind(suffix) == TK::Operator_OpenParenthesis) {
+        if (Kind(suffix) == TK::Operator_Assign) {
+            cursor = NextSignificant(suffix + 1);
+        } else {
+            if (allowDirect && Kind(suffix) == TK::Operator_OpenParenthesis) {
                 AddAmbiguousParenthesizedList(statement, suffix, end);
             }
 
-            return;
+            // Both a direct initializer and a comparison's construction
+            // operand share these braces. A suffix beyond the matching
+            // closer does not prove a complete initializer tail.
+            if (!allowDirect || Kind(suffix) != TK::Operator_OpenBrace ||
+                NextSignificant(FindBalancedEnd(suffix)) != end)
+            {
+                return;
+            }
+
+            cursor = suffix;
         }
 
-        cursor = NextSignificant(suffix + 1);
         // A comma can separate declarators rather than expressions. Only a
         // complete assignment-expression RHS is shared by both readings.
         auto* expression = ParseExpressionSyntax(cursor, end, 2);

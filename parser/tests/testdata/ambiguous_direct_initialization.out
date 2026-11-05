@@ -140,4 +140,170 @@
       "}"
     )
   )
+  (function-definition
+    (declaration-specifiers "void")
+    (init-declarator-list
+      (init-declarator
+        (declarator
+          (declarator-name "braced")
+          (function-declarator
+            (parameter-list "(" ")")
+          )
+        )
+      )
+    )
+    (compound-statement
+      "{"
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "values"
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (initializer-element
+                (identifier-expression "second")
+              )
+              (list-separator ",")
+              "}"
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "nested"
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (identifier-expression "second")
+                    )
+                    "}"
+                  )
+                )
+              )
+              (list-separator ",")
+              (initializer-element
+                (identifier-expression "third")
+              )
+              "}"
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "designated"
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                "." "first" "="
+                (identifier-expression "left")
+              )
+              (list-separator ",")
+              (initializer-element
+                "." "second" "="
+                (identifier-expression "right")
+              )
+              "}"
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "comment"
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (initializer-element
+                (identifier-expression "second")
+              )
+              "}"
+            )
+            (trailing-trivia
+              (comment "/* end */")
+            )
+          )
+          "/* end */"
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "empty"
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "External")
+        "*" "pointer"
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (identifier-expression "first")
+              )
+              (list-separator ",")
+              (initializer-element
+                (identifier-expression "second")
+              )
+              "}"
+            )
+          )
+        )
+        ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "{" "first" "," "second" "}" "+" "tail" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "{" "first" "," "second" "}" "," "other" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C" "{" "first" "," "second" "}" "SUFFIX" ";"
+      )
+      (ambiguous-statement
+        (unknown-type-name "A")
+        "<" "B" ">" "C"
+        (initializer
+          (unparsed-syntax "{" "first" ";" "second" ";" "}")
+        )
+        ";"
+      )
+      "}"
+    )
+  )
 )

@@ -76,6 +76,26 @@ TEST(FileCheck, CompactRequirementsUseStatementSequenceSpacing)
     EXPECT_EQ(checked.Formatting.Text, expected);
 }
 
+TEST(FileCheck, WrappedInitializerPassesCheckAfterFix)
+{
+    const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../initializer-wrapping";
+    const hit_fmt::PreparedConfiguration configuration(formatter::LoadConfigFile(directory / "canonical.hit-fmt"));
+    const Input input(test::golden::ReadFile(directory / "input.cpp"));
+
+    for (const auto detail : {hit_fmt::DiagnosticDetail::Full, hit_fmt::DiagnosticDetail::Summary}) {
+        const auto checked = hit_fmt::FormatAndCheckFile(input.View(), configuration, {}, std::nullopt, detail);
+        EXPECT_TRUE(checked.FormattingMismatch);
+        EXPECT_TRUE(checked.HasFailures(false));
+        EXPECT_FALSE(checked.HasFailures(true));
+        EXPECT_TRUE(checked.Formatting.Diagnostics.empty());
+        const Input applied(checked.Formatting.Text);
+        const auto clean = hit_fmt::FormatAndCheckFile(applied.View(), configuration, {}, std::nullopt, detail);
+        EXPECT_EQ(clean.Formatting.Text, checked.Formatting.Text);
+        EXPECT_FALSE(clean.HasFailures(false));
+        EXPECT_FALSE(clean.HasFailures(true));
+    }
+}
+
 TEST(FileCheck, DebugExplainsProtectionAndParserRecoveryWithoutChangingResults)
 {
     const test::golden::Fixture fixture{std::filesystem::path(__FILE__).parent_path() / "testdata/file-check", "debug"};
