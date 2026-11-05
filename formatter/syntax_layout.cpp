@@ -550,8 +550,8 @@ public:
             }
         }
 
-        // Classified children plan first. Only unowned continuation gaps in
-        // a bounded opaque statement need the authored relative indentation.
+        // Classified children plan first. Remaining source-owned continuation
+        // gaps follow their statement or declaration's relative indentation.
         flatNode = 0;
 
         for (Index i = 0; i < Syntax_.size(); ++i) {
@@ -565,6 +565,10 @@ public:
 
             if (Syntax_[i].Preprocessing && node.StatementBoundary) {
                 PlanPreservedIndentation(i, node.Tokens.Begin, true);
+            }
+
+            if (node.Kind == NodeKind::Initializer) {
+                PlanInitializerBoundary(i);
             }
         }
 
@@ -2972,6 +2976,72 @@ private:
                 return true;
             default:
                 return false;
+        }
+    }
+
+    void PlanInitializerBoundary(Index id)
+    {
+        const auto& node = Region(Syntax_[id]);
+
+        if (Policies_.IndentationKind == IndentationKind::Preserve || node.Parent == None ||
+            Region(Syntax_[node.Parent]).Kind != NodeKind::InitDeclarator ||
+            Tree_.Kind(node.Tokens.Begin) != TokenKind::Operator_OpenBrace)
+        {
+            return;
+        }
+
+        const auto list = Region(Syntax_[node.Parent]).Parent;
+        const auto declaration = list == None ? None : Region(Syntax_[list]).Parent;
+
+        if (declaration == None) {
+            return;
+        }
+
+        const auto begin = Region(Syntax_[declaration]).Tokens.Begin;
+        auto first = node.Tokens.Begin;
+
+        while (first > begin && Tree_.Kind(first - 1) == TokenKind::Comment) {
+            --first;
+        }
+
+        // Lists own the initializer's interior, but its opener and leading
+        // comments retain their authored indentation relative to the declaration.
+        Index base = None;
+        Index group = None;
+
+        for (auto gap = first; gap <= node.Tokens.Begin; ++gap) {
+            if (Gaps_[gap].Owner != None || Gaps_[gap].Frozen || !CanReindentPreservedGap(gap) ||
+                Safety_.Gaps()[gap].ContextSensitive || RetainsBareCR(gap))
+            {
+                continue;
+            }
+
+            const auto indent = SourceIndent(gap);
+
+            if (indent == None) {
+                continue;
+            }
+
+            if (base == None) {
+                base = SourceLineIndent(begin);
+            }
+
+            const auto delta = int64_t(indent) - int64_t(base);
+
+            if (delta < INT32_MIN || delta > INT32_MAX) {
+                continue;
+            }
+
+            if (group == None) {
+                group = GroupAt(TokenPosition(begin), TokenPosition(node.Tokens.Begin), layout::GroupMode::Fill);
+                GroupSpecs_[group].StructuralBase = true;
+                GroupSpecs_[group].LineBase = true;
+            }
+
+            Reindent(gap, group);
+            Gaps_[gap].OverrideIndent = true;
+            Gaps_[gap].RelativeIndent = true;
+            Gaps_[gap].ExtraIndent = int32_t(delta);
         }
     }
 
