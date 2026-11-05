@@ -1,0 +1,2 @@
+include = "closed-calls.hit-fmt"
+KeepMultiline = true

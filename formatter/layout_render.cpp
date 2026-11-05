@@ -758,6 +758,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         result.Map.clear();
         result.Broken.clear();
     };
+    const auto keepsOwnedLine = [&] (Index id) {
+        const auto& spec = GroupSpecs_[id];
+        const auto& entry = groupCache[id];
+        return spec.KeepMultiline && !entry.GuaranteedLine && !(spec.KeepMultilineFallback && entry.KeptChild) &&
+            entry.OwnedLastBreak != NoOrder;
+    };
     const auto renderBegin = [&] (Index id) -> bool {
         const auto& spec = GroupSpecs_[id];
         const auto i = Groups_[id].BeginOrder;
@@ -766,22 +772,22 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const auto tail = groupTail(spec, groupEntry);
         const bool mandatory = current->Mandatory != NoOrder && current->Mandatory >= i &&
             current->Mandatory <= Groups_[id].EndOrder && lines == current->StartLine;
-        const bool broken = spec.KeepMultiline || mandatory ||
-            (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
+        const bool kept = spec.KeepMultiline && !probing;
+        const bool broken =
+            kept || mandatory || (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
         const bool coupledChain = consistentLayout && spec.ProbeConsistent;
         // Keep the receiver prefix and call openers inline while chains
         // supply the alternative's breaks. Forced list topology still wins.
         const bool inlineForChain = consistentLayout && (spec.LineBase || (!current->ConsistentChain && !coupledChain));
-        const bool keepOwnedFlat =
-            broken && !spec.KeepMultiline && groupEntry.ChildLayoutAllowed && i <= childLayoutEnd &&
-                (inlineForChain ||
-                    (childLayoutDepth && frames.size() - childLayoutBase < childLayoutDepth && !coupledChain));
+        const bool keepOwnedFlat = broken && !kept && groupEntry.ChildLayoutAllowed && i <= childLayoutEnd &&
+            (inlineForChain ||
+                (childLayoutDepth && frames.size() - childLayoutBase < childLayoutDepth && !coupledChain));
+
         result.Broken[id] = broken;
         // Ordinary authored owner breaks stay stable when descendants later
         // wrap. Only a newly promoted compact boundary may defer to a kept child.
-        const bool forceOwned = (spec.ForceBreak ||
-            (spec.KeepMultiline && !groupEntry.GuaranteedLine &&
-                !(spec.KeepMultilineFallback && groupEntry.KeptChild))) && groupEntry.OwnedLastBreak != NoOrder;
+        const bool forceOwned =
+            (spec.ForceBreak && groupEntry.OwnedLastBreak != NoOrder) || (!probing && keepsOwnedLine(id));
         auto base = current->Indent;
         auto pending = current->PendingExpressionIndent;
         auto reversible = current->ReversibleIndent;
@@ -879,6 +885,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         // Shape consumers still observe multiline descendants, even when
         // this group keeps every owned gap flat.
         const bool multiline = lines != current->StartLine;
+
+        // Kept lines constrain a trial rather than changing its shape. Otherwise
+        // newly kept output can expose a different alternative on the next pass.
+        if (probing && GroupSpecs_[id].KeepMultiline && (!multiline || (keepsOwnedLine(id) && !current->OwnedLine))) {
+            return false;
+        }
 
         if (probing && groupCache[id].ShapeSensitive && bool(result.Broken[id]) != multiline) {
             // A later sibling may break without making this owner
