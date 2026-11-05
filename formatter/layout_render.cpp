@@ -40,7 +40,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
     if (policy.Width == 0 || policy.Width == Infinity || policy.TabWidth == 0 || policy.TabWidth > 32 ||
         (policy.LineEnding != Newline::LF && policy.LineEnding != Newline::CRLF) ||
-        (policy.Indentation != layout::IndentationKind::Spaces && policy.Indentation != layout::IndentationKind::Tabs))
+        (policy.Indentation != layout::IndentationKind::Spaces && policy.Indentation !=
+            layout::IndentationKind::Tabs))
     {
         result.State = {Error::InvalidPolicy, InvalidId};
         return result;

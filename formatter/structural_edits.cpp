@@ -1128,7 +1128,8 @@ StructuralPlan PlanStructuralEditsImpl(
                     // Preserve the conventional else-if chain; nested
                     // then-controls are wrapped together, with closes
                     // ordered deepest-first.
-                    if (body.Kind == NK::IfStatement && tokens.Begin && tree.Kind(tokens.Begin - 1) == TK::Keyword_else)
+                    if (body.Kind == NK::IfStatement && tokens.Begin && tree.Kind(tokens.Begin - 1) ==
+                        TK::Keyword_else)
                     {
                         return;
                     }
@@ -1142,7 +1143,8 @@ StructuralPlan PlanStructuralEditsImpl(
                         Skip(plan, action, tokens, StructuralSkip::Incomplete);
                     } else if (attributes) {
                         Skip(plan, action, tokens, StructuralSkip::Attributes);
-                    } else if (trailingLabel || labels || body.Kind == NK::LabelStatement || body.Kind == NK::CaseLabel)
+                    } else if (trailingLabel || labels || body.Kind == NK::LabelStatement || body.Kind ==
+                        NK::CaseLabel)
                     {
                         Skip(plan, action, tokens, StructuralSkip::LabelBody);
                     } else if (directives) {
@@ -1809,7 +1811,8 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
 
         // Opaque body syntax does not change a parsed namespace identity.
         // Its matching brace must still end this declaration exactly.
-        if (close >= node.Tokens.End || close + 1 != node.Tokens.End || original.Kind(close) != TK::Operator_CloseBrace)
+        if (close >= node.Tokens.End || close + 1 != node.Tokens.End || original.Kind(close) !=
+            TK::Operator_CloseBrace)
         {
             fail(StructuralSkip::Incomplete);
             return;

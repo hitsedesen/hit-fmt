@@ -2431,7 +2431,8 @@ TEST(PublicPipeline, FunctionBodyMacroHintsCannotOverrideProtection)
     const auto disabled = "// clang-format off\n" + source + "// clang-format on\n";
     EXPECT_EQ(FormatInput(disabled, prepared).Text, disabled);
 
-    for (const auto malformed : {"DEFINE_CASE(Suite, [bad)) {left+right;}\n", "DEFINE_CASE(Suite, Bad) {left+right;\n"})
+    for (const auto malformed :
+        {"DEFINE_CASE(Suite, [bad)) {left+right;}\n", "DEFINE_CASE(Suite, Bad) {left+right;\n"})
     {
         Input input(malformed);
         auto tree = parser::Parse(input.View(), [] (auto) { }, prepared.ParsingOptions());

@@ -151,7 +151,8 @@ public:
 
         // Matching physical newlines separate indentation and trailing gaps.
         // Reflow with a changed newline count remains one complete gap.
-        if (std::count(original.begin(), original.end(), '\n') == std::count(formatted.begin(), formatted.end(), '\n'))
+        if (std::count(original.begin(), original.end(), '\n') ==
+            std::count(formatted.begin(), formatted.end(), '\n'))
         {
             auto begin = before.Begin;
             auto emitted = after.Begin;
@@ -294,7 +295,8 @@ std::pmr::vector<FormatChange> IncludeBlocks(
         });
 
     for (size_t i = 1; i < blocks.size(); ++i) {
-        if (blocks[i].Original.Begin < blocks[i - 1].Original.End || blocks[i].Output.Begin < blocks[i - 1].Output.End)
+        if (blocks[i].Original.Begin < blocks[i - 1].Original.End || blocks[i].Output.Begin <
+            blocks[i - 1].Output.End)
         {
             throw std::runtime_error("overlapping include diagnostic blocks");
         }

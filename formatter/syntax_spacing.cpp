@@ -63,7 +63,9 @@ bool IsArgumentNameComment(std::string_view text)
     while (!text.empty()) {
         const auto cp = unicode::utf8::GetFirstCodePoint(text);
 
-        if (!cp || (cp->Value != '_' && !(start ? unicode::IsXIDStart(cp->Value) : unicode::IsXIDContinue(cp->Value))))
+        if (!cp || (cp->Value != '_' && !(start
+            ? unicode::IsXIDStart(cp->Value)
+            : unicode::IsXIDContinue(cp->Value))))
         {
             return false;
         }
@@ -562,7 +564,8 @@ public:
         if (kind == NK::BinaryExpression || kind == NK::AssignmentExpression || kind == NK::ConditionalExpression ||
             kind == NK::UnaryExpression || kind == NK::CastExpression || kind == NK::TypeConstructionExpression ||
             kind == NK::FoldExpression || kind == NK::NewExpression || kind == NK::DeleteExpression ||
-            kind == NK::ParenthesizedExpression || kind == NK::RequirementExpression || kind == NK::StatementExpression)
+            kind == NK::ParenthesizedExpression || kind == NK::RequirementExpression || kind ==
+                NK::StatementExpression)
         {
             state.Owner = Id(node);
             state.Category = C::Expressions;
@@ -1348,7 +1351,8 @@ public:
             }
 
             if (node.Kind == NK::EnumDeclaration && i > node.Tokens.Begin) {
-                if (Tree_.Kind(i - 1) == TK::Keyword_enum && (kind == TK::Keyword_class || kind == TK::Keyword_struct))
+                if (Tree_.Kind(i - 1) == TK::Keyword_enum && (kind == TK::Keyword_class || kind ==
+                    TK::Keyword_struct))
                 {
                     Mark(i, F::EnumKeywordSpacing, node, C::DeclarationHeaders, 1, true);
                 } else if (kind == TK::Identifier &&
@@ -1524,7 +1528,8 @@ public:
                 Pair(i, F::MemberAccessOperatorsSpacing, F::MemberAccessOperatorsSpacing, node, C::Chains, 1, false);
             }
 
-            if (node.Kind == NK::NewTypeId && (kind == TK::Operator_OpenParenthesis || kind == TK::Operator_OpenBrace))
+            if (node.Kind == NK::NewTypeId && (kind == TK::Operator_OpenParenthesis || kind ==
+                TK::Operator_OpenBrace))
             {
                 const auto close = Tree_.MatchingDelimiter(i);
 
@@ -1732,7 +1737,8 @@ public:
             // label/access/attribute edge needs the safe sequence fallback.
             auto& gap = Gaps_[current.Tokens.Begin];
 
-            if ((static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) == 0)
+            if ((static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) ==
+                0)
             {
                 gap.FallbackSpace = true;
             }
@@ -2296,7 +2302,8 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
 
 std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const
 {
-    if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count || gap >= Gaps_.size() || gap >= safety.Gaps().size())
+    if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count || gap >= Gaps_.size() || gap >=
+        safety.Gaps().size())
     {
         return std::nullopt;
     }

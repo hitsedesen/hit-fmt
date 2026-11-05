@@ -697,7 +697,8 @@ TEST(StructuralEdits, NamespaceThresholdUsesFinalInteriorLinesNotSource)
         file.Scratch);
     ASSERT_EQ(plan.Namespaces.size(), 1u);
 
-    for (const auto& output : {std::string("namespace n {\nint x;\n}\n"), std::string("namespace n {\n\nint x;\n}\n")})
+    for (const auto& output :
+        {std::string("namespace n {\nint x;\n}\n"), std::string("namespace n {\n\nint x;\n}\n")})
     {
         auto map = MapOutput(file.Tree, output);
         auto resolved = ResolveNamespaceComments(file.Tree, plan, output, map, {}, file.Memory, file.Scratch);

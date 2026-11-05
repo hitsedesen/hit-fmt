@@ -625,7 +625,9 @@ private:
         // constexpr, but their name still belongs to the type.
         if (function &&
             (node.GetFunctionKind() == parser::FunctionKind::Constructor ||
-                node.GetFunctionKind() == parser::FunctionKind::Destructor || !Child(node, NK::DeclarationSpecifiers)))
+                node.GetFunctionKind() == parser::FunctionKind::Destructor || !Child(
+                    node,
+                    NK::DeclarationSpecifiers)))
         {
             return;
         }
@@ -760,7 +762,8 @@ private:
     {
         for (const auto& name : ExemptNamespaces) {
             if (Scope == name ||
-                (Scope.starts_with(name) && Scope.size() > name.size() + 1 && Scope.compare(name.size(), 2, "::") == 0))
+                (Scope.starts_with(name) && Scope.size() > name.size() + 1 && Scope.compare(name.size(), 2, "::") ==
+                    0))
             {
                 return true;
             }
