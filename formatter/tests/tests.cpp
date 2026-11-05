@@ -1574,6 +1574,22 @@ std::vector<FormatCase> FormatCases()
 
     cases.push_back({chains, "comparison-fitting", "comparison-fitting.input.cpp", "child-fitting"});
     cases.push_back({chains, "structural-base", "structural-base.input.cpp"});
+    cases.push_back({chains, "direct-initializers", "direct-initializers.input.cpp"});
+
+    for (const auto* profile : {"direct-initializers-preserve", "direct-initializers-tabs"}) {
+        cases.push_back({chains, profile, "direct-initializers.input.cpp", "direct-initializers"});
+        auto style = formatter::LoadConfigFile(chains / "direct-initializers.hit-fmt").FormattingStyle;
+
+        if (std::string_view(profile) == "direct-initializers-preserve") {
+            style.DeclarationHeadersLayout = CategoryLayout::Preserve;
+            style.InitializersLayout = CategoryLayout::Preserve;
+        } else {
+            style.IndentationKind = IndentationKind::Tabs;
+        }
+
+        cases.back().Style = std::move(style);
+    }
+
     cases.push_back({chains, "namespace-continuation", "namespace-continuation.input.cpp"});
 
     for (const auto* profile :
