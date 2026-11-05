@@ -295,8 +295,8 @@ std::pmr::vector<FormatChange> IncludeBlocks(
         });
 
     for (size_t i = 1; i < blocks.size(); ++i) {
-        if (blocks[i].Original.Begin < blocks[i - 1].Original.End || blocks[i].Output.Begin <
-            blocks[i - 1].Output.End)
+        if (blocks[i].Original.Begin < blocks[i - 1].Original.End ||
+            blocks[i].Output.Begin < blocks[i - 1].Output.End)
         {
             throw std::runtime_error("overlapping include diagnostic blocks");
         }
