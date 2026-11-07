@@ -1,5 +1,8 @@
 #pragma once
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <tokenizer/token.hpp>
 
 #include <algorithm>
@@ -18,7 +21,7 @@
 
 namespace parser {
 
-using TokenIndex = uint32_t;
+using TokenIndex = u32;
 
 using SourceOffset = util::SourceOffset;
 
@@ -206,14 +209,14 @@ struct TokenRange
     SYNTAX_NODE_KIND(RangeForSeparator, "range-for-separator")                 \
     SYNTAX_NODE_KIND(Error, "error")
 
-enum class NodeKind : uint8_t
+enum class NodeKind : u8
 {
 #define SYNTAX_NODE_KIND(value, name) value,
     SYNTAX_NODE_KINDS
 #undef SYNTAX_NODE_KIND
 };
 
-static_assert(static_cast<size_t>(NodeKind::Error) < 256);
+static_assert(static_cast<us>(NodeKind::Error) < 256);
 
 [[nodiscard]] constexpr std::string_view GetNodeKindName(NodeKind kind)
 {
@@ -222,10 +225,10 @@ static_assert(static_cast<size_t>(NodeKind::Error) < 256);
         SYNTAX_NODE_KINDS
 #undef SYNTAX_NODE_KIND
     };
-    return Names[static_cast<size_t>(kind)];
+    return Names[static_cast<us>(kind)];
 }
 
-enum class FunctionKind : uint8_t
+enum class FunctionKind : u8
 {
     Unknown,
     Ordinary,
@@ -244,7 +247,7 @@ struct SourceRange
     }
 };
 
-enum class PunctuationRole : uint8_t
+enum class PunctuationRole : u8
 {
     None,
     Generic,
@@ -331,7 +334,7 @@ private:
 
     // Sparse trivia metadata is resolved through SyntaxTree so nodes do not
     // each carry another pointer.
-    uint32_t TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+    u32 TriviaIndex_ = std::numeric_limits<u32>::max();
 
     friend class SyntaxTree;
     friend class ParseContext;
@@ -343,7 +346,7 @@ static_assert(std::is_trivially_destructible_v<Node>);
 
 namespace detail {
 
-inline constexpr size_t InitialMemoryResourceSize = 64 * 1024;
+inline constexpr us InitialMemoryResourceSize = 64 * 1024;
 
 template <class T, class... Args>
 [[nodiscard]] T* Make(std::pmr::memory_resource& memory, Args&&... args)
@@ -362,15 +365,15 @@ template <class T>
 
 // Grow an arena-owned chunk directory during construction so indexed access
 // remains constant-time both before and after Seal().
-template <class Chunk, uint16_t Capacity>
+template <class Chunk, u16 Capacity>
 class SegmentedStorage
 {
 public:
     struct Slot
     {
         Chunk* ChunkPtr;
-        uint16_t Offset;
-        uint32_t Index;
+        u16 Offset;
+        u32 Index;
     };
 
     explicit SegmentedStorage(std::pmr::memory_resource& memory)
@@ -400,17 +403,17 @@ public:
     [[nodiscard]] Slot Append()
     {
         assert(!Sealed_ && Memory_);
-        assert(Size_ != std::numeric_limits<uint32_t>::max());
+        assert(Size_ != std::numeric_limits<u32>::max());
 
         if (!Last_ || Last_->Size == Capacity) {
             if (ChunkCount_ == ChunkCapacity_) {
-                constexpr auto maxChunks = std::numeric_limits<uint32_t>::max() / Capacity +
-                    (std::numeric_limits<uint32_t>::max() % Capacity != 0);
+                constexpr auto maxChunks =
+                    std::numeric_limits<u32>::max() / Capacity + (std::numeric_limits<u32>::max() % Capacity != 0);
                 const auto capacity = ChunkCapacity_ == 0
-                    ? uint32_t(4)
+                    ? u32(4)
                     : ChunkCapacity_ > maxChunks / 2 ? maxChunks : ChunkCapacity_ * 2;
 
-                if (capacity > std::numeric_limits<size_t>::max() / sizeof(Chunk*)) {
+                if (capacity > std::numeric_limits<us>::max() / sizeof(Chunk*)) {
                     throw std::bad_array_new_length();
                 }
 
@@ -449,19 +452,19 @@ public:
     }
 
     // Formatter-facing access requires completed tokenization.
-    [[nodiscard]] Chunk* ChunkAt(uint32_t index) const
+    [[nodiscard]] Chunk* ChunkAt(u32 index) const
     {
         assert(Sealed_ && index < ChunkCount_);
         return Chunks_[index];
     }
 
-    [[nodiscard]] Chunk* ResolveChunk(uint32_t index) const
+    [[nodiscard]] Chunk* ResolveChunk(u32 index) const
     {
         assert(index < ChunkCount_);
         return Chunks_[index];
     }
 
-    [[nodiscard]] uint32_t Size() const
+    [[nodiscard]] u32 Size() const
     {
         return Size_;
     }
@@ -474,29 +477,29 @@ private:
     Chunk* First_ = nullptr;
     Chunk* Last_ = nullptr;
     Chunk** Chunks_ = nullptr;
-    uint32_t ChunkCount_ = 0;
-    uint32_t ChunkCapacity_ = 0;
-    uint32_t Size_ = 0;
+    u32 ChunkCount_ = 0;
+    u32 ChunkCapacity_ = 0;
+    u32 Size_ = 0;
     bool Sealed_ = false;
 };
 
 struct StoredToken
 {
     util::SourceView Text;
-    uint32_t Line;
-    uint32_t Column;
+    u32 Line;
+    u32 Column;
 };
 
 static_assert(sizeof(StoredToken) == 16);
 
 class TriviaPool
 {
-    static constexpr uint16_t AttachmentsPerChunk = 128;
+    static constexpr u16 AttachmentsPerChunk = 128;
 
     struct Chunk
     {
         Chunk* Next = nullptr;
-        uint16_t Size = 0;
+        u16 Size = 0;
         std::array<TriviaAttachments, AttachmentsPerChunk> Items;
         std::array<Node*, AttachmentsPerChunk> Owners;
     };
@@ -516,7 +519,7 @@ public:
         Storage_.MoveFrom(std::move(other.Storage_));
     }
 
-    [[nodiscard]] uint32_t Add(Node& owner)
+    [[nodiscard]] u32 Add(Node& owner)
     {
         auto slot = Storage_.Append();
         slot.ChunkPtr->Items[slot.Offset] = {};
@@ -529,24 +532,24 @@ public:
         Storage_.Seal();
     }
 
-    [[nodiscard]] uint32_t Size() const
+    [[nodiscard]] u32 Size() const
     {
         return Storage_.Size();
     }
 
-    [[nodiscard]] Node& Owner(uint32_t index) const
+    [[nodiscard]] Node& Owner(u32 index) const
     {
         assert(index < Storage_.Size());
         return *Storage_.ResolveChunk(index / AttachmentsPerChunk)->Owners[index % AttachmentsPerChunk];
     }
 
-    [[nodiscard]] TriviaAttachments& operator[](uint32_t index)
+    [[nodiscard]] TriviaAttachments& operator[](u32 index)
     {
         assert(index < Storage_.Size());
         return Storage_.ResolveChunk(index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
     }
 
-    [[nodiscard]] const TriviaAttachments& operator[](uint32_t index) const
+    [[nodiscard]] const TriviaAttachments& operator[](u32 index) const
     {
         assert(index < Storage_.Size());
         return Storage_.ResolveChunk(index / AttachmentsPerChunk)->Items[index % AttachmentsPerChunk];
@@ -558,12 +561,12 @@ private:
 
 class TokenPool
 {
-    static constexpr uint16_t TokensPerChunk = 512;
+    static constexpr u16 TokensPerChunk = 512;
 
     struct Chunk
     {
         Chunk* Next = nullptr;
-        uint16_t Size = 0;
+        u16 Size = 0;
         bool HasPreprocessingDirective = false;
         bool HasComment = false;
         // Separate kind and role arrays let syntax scans read only the
@@ -626,8 +629,8 @@ public:
         Kinds_ = static_cast<tokenizer::TokenKind*>(Memory_->allocate(
             sizeof(tokenizer::TokenKind) * count,
             alignof(tokenizer::TokenKind)));
-        for (uint32_t begin = 0; begin < count;) {
-            const auto size = std::min<uint32_t>(TokensPerChunk, count - begin);
+        for (u32 begin = 0; begin < count;) {
+            const auto size = std::min<u32>(TokensPerChunk, count - begin);
             std::memcpy(
                 Kinds_ + begin,
                 Storage_.ChunkAt(begin / TokensPerChunk)->Kinds.data(),
@@ -706,6 +709,11 @@ public:
 
     [[nodiscard]] const Node& Root() const;
 
+    [[nodiscard]] std::pmr::memory_resource* MemoryResource() const
+    {
+        return Memory_ ? Memory_->upstream_resource() : std::pmr::get_default_resource();
+    }
+
     [[nodiscard]] std::string_view Source() const
     {
         return Input_;
@@ -749,7 +757,7 @@ public:
 
     [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node) const
     {
-        return node.TriviaIndex_ == std::numeric_limits<uint32_t>::max() ? nullptr : &Trivia_[node.TriviaIndex_];
+        return node.TriviaIndex_ == std::numeric_limits<u32>::max() ? nullptr : &Trivia_[node.TriviaIndex_];
     }
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
@@ -759,7 +767,7 @@ public:
         assert(token < TokenCount());
         auto* begin = token == 0 ? Input_.data() : Input_.data() + Tokens_[token - 1].Text.End;
         auto* end = Input_.data() + Tokens_[token].Text.Begin;
-        return {begin, static_cast<size_t>(end - begin)};
+        return {begin, static_cast<us>(end - begin)};
     }
 
     [[nodiscard]] std::string_view WhitespaceAfter(TokenIndex token) const
@@ -769,14 +777,14 @@ public:
         auto* end = token + 1 == TokenCount()
             ? Input_.data() + Input_.size()
             : Input_.data() + Tokens_[token + 1].Text.Begin;
-        return {begin, static_cast<size_t>(end - begin)};
+        return {begin, static_cast<us>(end - begin)};
     }
 
 private:
-    explicit SyntaxTree(std::string_view input);
+    explicit SyntaxTree(std::string_view input, std::pmr::memory_resource* memory = nullptr);
 
-    std::unique_ptr<std::pmr::monotonic_buffer_resource> Memory_;
-    std::unique_ptr<std::pmr::monotonic_buffer_resource> OriginalMemory_;
+    std::unique_ptr<Arena> Memory_;
+    std::unique_ptr<Arena> OriginalMemory_;
     std::string_view Input_;
     detail::TokenPool Tokens_;
     detail::TriviaPool Trivia_;

@@ -1,10 +1,12 @@
+#include <util/types.hpp>
+
 #include <formatter/config.hpp>
 #include <formatter/include_policy.hpp>
 #include <formatter/policy.hpp>
 
-#include <gtest/gtest.h>
+#include <cli/config_template.hpp>
 
-#include <hit-fmt/config_template.hpp>
+#include <gtest/gtest.h>
 
 #include <tests/golden.hpp>
 
@@ -101,8 +103,8 @@ TEST(ConfigPolicy, FindStyleFileIgnoresMissingCandidatesAndPrefersNearestFile)
     TemporaryConfigTree tree;
     tree.Write("nested/placeholder", "");
     const auto name = tree.Path.filename().string() + ".hit-fmt";
-    std::vector<std::filesystem::path> errors;
-    const auto onError = [&] (const std::filesystem::path& path, const std::error_code&) {
+    std::vector<fs::Path> errors;
+    const auto onError = [&] (const fs::Path& path, const std::error_code&) {
         errors.push_back(path);
     };
 
@@ -127,11 +129,11 @@ TEST(ConfigPolicy, FindStyleFileReportsErrorsAndContinuesWithParentDirectories)
         GTEST_SKIP() << "Cannot create a symbolic link: " << error.message();
     }
 
-    std::vector<std::pair<std::filesystem::path, std::error_code>> errors;
+    std::vector<std::pair<fs::Path, std::error_code>> errors;
     const auto found = formatter::FindStyleFile(
         tree.Path / "nested/deeper",
         formatter::DefaultConfigFileName,
-        [&] (const std::filesystem::path& path, const std::error_code& failure) {
+        [&] (const fs::Path& path, const std::error_code& failure) {
             errors.emplace_back(path, failure);
         });
     EXPECT_EQ(found, tree.Path / ".hit-fmt");
@@ -237,7 +239,7 @@ TEST(ConfigPolicy, InvalidIncludesReportIncludingFileAndLine)
         }
     }
 
-    for (size_t index = 0; index < 65; ++index) {
+    for (us index = 0; index < 65; ++index) {
         tree.Write(
             std::to_string(index),
             index == 64 ? "IndentWidth = 2\n" : "include = \"" + std::to_string(index + 1) + "\"\n");
@@ -690,7 +692,7 @@ TEST(ConfigPolicy, ValidationLocationsGolden)
 TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
 {
     std::ostringstream output;
-    hit_fmt::PrintConfig(output, hit_fmt::ConfigPreset::Default);
+    cli::PrintConfig(output, cli::ConfigPreset::Default);
     const auto text = output.str();
     const TemporaryConfig generated(text);
     const auto parsed = formatter::LoadConfigFile(generated.Path);
@@ -708,11 +710,7 @@ TEST(ConfigPolicy, PreserveTemplateRoundTripsEveryRegisteredDefault)
         SCOPED_TRACE(name);
         EXPECT_NE(text.find("\n" + std::string(name) + " = "), std::string::npos);
 
-        if constexpr (std::is_same_v<T, std::vector<std::regex>>) {
-            EXPECT_EQ(actual.size(), expected.size());
-        } else {
-            EXPECT_EQ(actual, expected);
-        }
+        EXPECT_EQ(actual, expected);
     };
 #define CHECK_CONFIG_DEFAULT(type, name, initial) \
     checkConfigDefault(#name, parsed.name, configDefaults.name);
@@ -915,8 +913,7 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_EQ(config.FormattingStyle.CallLikeMacroNames[0], "REGISTER_NODE");
     EXPECT_EQ(config.FunctionDeclarationParameterNames, formatter::FunctionDeclarationParameterNames::Required);
     EXPECT_EQ(config.Naming.Class.Case, formatter::NameCase::PascalCase);
-    ASSERT_EQ(config.Exclude.size(), 1u);
-    EXPECT_TRUE(std::regex_search("generated/file.cpp", config.Exclude[0]));
+    EXPECT_EQ(config.Exclude, (std::vector<std::string>{"(^|/)generated(/|$)"}));
 
     auto style = config.FormattingStyle;
     const auto annotations = formatter::CompileLibraryAnnotations(style);
@@ -1062,7 +1059,7 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_THROW((void)formatter::CompileLibraryAnnotations(style), std::invalid_argument);
 
     const auto yt = formatter::LoadConfigFile(
-        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../../../../hit-fmt/examples/ytsaurus.hit-fmt");
+        std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../../../../cli/examples/ytsaurus.hit-fmt");
     const auto ytAnnotations = formatter::CompileLibraryAnnotations(yt.FormattingStyle);
     EXPECT_EQ(yt.FormattingStyle.FunctionRefQualifierSpacing, formatter::GapPolicy::Space);
     EXPECT_EQ(yt.FormattingStyle.FunctionCvRefQualifierSpacing, formatter::GapPolicy::Space);
@@ -1337,7 +1334,7 @@ TEST(ConfigPolicy, ClassMacroHintsRejectMalformedOrAmbiguousPairs)
         style.ClassMacroNames = pairs;
         std::string text = "ClassMacroNames = [";
 
-        for (size_t i = 0; i < pairs.size(); ++i) {
+        for (us i = 0; i < pairs.size(); ++i) {
             text += (i ? ", \"" : "\"") + pairs[i] + "\"";
         }
 
@@ -1415,7 +1412,7 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
 
     const formatter::PreparedIncludeGroups wide(many);
 
-    for (std::size_t index = 0; index < many.size(); ++index) {
+    for (us index = 0; index < many.size(); ++index) {
         EXPECT_EQ(wide.Classify(many[index].Prefixes.front() + "item.h").Group, index);
     }
 }

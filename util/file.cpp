@@ -1,11 +1,13 @@
 #include "file.hpp"
 
+#include "types.hpp"
+
 #include <format>
 #include <fstream>
 
 namespace util {
 
-std::string ReadEntireFile(const std::string& filePath, size_t maxSize, size_t padding)
+std::string ReadEntireFile(const std::string& filePath, us maxSize, us padding)
 {
     std::ifstream ifs{filePath, std::ios::in | std::ios::binary};
 
@@ -14,7 +16,7 @@ std::string ReadEntireFile(const std::string& filePath, size_t maxSize, size_t p
     }
 
     ifs.seekg(0, std::ios::end);
-    size_t size = ifs.tellg();
+    us size = ifs.tellg();
 
     if (size > maxSize) {
         throw FileTooLargeError(std::format("File {} is too large: {} > {}", filePath, size, maxSize));

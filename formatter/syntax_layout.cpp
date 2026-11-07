@@ -6,6 +6,8 @@
 #include "text_policies.hpp"
 
 #include <util/ascii.hpp>
+#include <util/memory.hpp>
+#include <util/types.hpp>
 
 #include <parser/operator_info.hpp>
 
@@ -21,7 +23,7 @@ namespace formatter {
 
 namespace detail {
 
-using Index = uint32_t;
+using Index = u32;
 
 using parser::Node;
 
@@ -32,7 +34,7 @@ using parser::PunctuationRole;
 using tokenizer::TokenKind;
 
 // Two ordered positions per token require 33 bits for a 32-bit token index.
-using Position = uint64_t;
+using Position = u64;
 
 constexpr Position GapPosition(Index i)
 {
@@ -46,17 +48,14 @@ constexpr Position TokenPosition(Index i)
 
 struct IndentBasis
 {
-    uint32_t Column;
+    u32 Column;
     bool Saturated;
 };
 
-constexpr IndentBasis AccumulateIndent(IndentBasis parent, int32_t delta)
+constexpr IndentBasis AccumulateIndent(IndentBasis parent, i32 delta)
 {
-    const auto logical = int64_t(parent.Column) + delta;
-    return {
-        uint32_t(std::clamp<int64_t>(logical, 0, int64_t(UINT32_MAX) - 1)),
-        parent.Saturated || logical >= int64_t(UINT32_MAX),
-    };
+    const auto logical = i64(parent.Column) + delta;
+    return {u32(std::clamp<i64>(logical, 0, i64(UINT32_MAX) - 1)), parent.Saturated || logical >= i64(UINT32_MAX)};
 }
 
 // A later negative offset cannot undo information lost by an ancestor clamp.
@@ -64,7 +63,7 @@ static_assert(AccumulateIndent(AccumulateIndent({UINT32_MAX - 2, false}, 3), -32
 
 static_assert(!AccumulateIndent({UINT32_MAX - 2, false}, 1).Saturated);
 
-enum class DeclarationCategory : uint8_t
+enum class DeclarationCategory : u8
 {
     None,
     Type,
@@ -142,7 +141,7 @@ bool HasLine(std::string_view text)
     return text.find('\n') != std::string_view::npos;
 }
 
-Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
+Index HorizontalColumns(std::string_view text, u8 tabWidth)
 {
     // Tree source ranges have 32-bit byte offsets, so even all tabs fit
     // this accumulator. Clamp the complete width rather than each byte.
@@ -152,9 +151,9 @@ Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
         return Index(ascii);
     }
 
-    uint64_t width = ascii;
+    u64 width = ascii;
 
-    for (std::size_t i = ascii; i < text.size(); ++i) {
+    for (us i = ascii; i < text.size(); ++i) {
         const auto c = static_cast<unsigned char>(text[i]);
 
         if (c >= 0x80) {
@@ -168,7 +167,7 @@ Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
         width += c == '\t' ? tabWidth : 1;
     }
 
-    return Index(std::min<uint64_t>(width, None));
+    return Index(std::min<u64>(width, None));
 }
 
 bool IsControl(NodeKind kind)
@@ -216,7 +215,7 @@ public:
         , Groups_(layout.Groups_)
         , GroupSpecs_(layout.GroupSpecs_)
         , Gaps_(layout.Gaps_)
-        , Facts_(size_t(tree.TokenCount()) + 1, &scratch)
+        , Facts_(us(tree.TokenCount()) + 1, &scratch)
         , Commas_(layout.Commas_)
         , Removed_(layout.Removed_)
         , Order_(&scratch)
@@ -233,7 +232,7 @@ public:
         , ChainScopeNames_(&scratch)
         , InlineMessageHeaders_(&scratch)
     {
-        for (size_t i = 0; i < OwnerContexts_.size(); ++i) {
+        for (us i = 0; i < OwnerContexts_.size(); ++i) {
             OwnerContexts_[i] = SpacingOwnerContext(static_cast<SpacingOwner>(i), policies);
         }
     }
@@ -243,29 +242,29 @@ public:
         const auto count = Tree_.TokenCount();
         Layout_.TabWidth_ = Options_.TabWidth;
 
-        if (Safety_.Gaps().size() != size_t(count) + 1 || Spacing_.Gaps().size() != size_t(count) + 1 ||
+        if (Safety_.Gaps().size() != us(count) + 1 || Spacing_.Gaps().size() != us(count) + 1 ||
             Safety_.Source().data() != Tree_.Source().data() || Safety_.Source().size() != Tree_.Source().size())
         {
             return {SyntaxLayoutError::MismatchedInputs};
         }
 
-        PrefixProtection_.resize(size_t(count) + 1);
-        PrefixOpaqueFences_.resize(size_t(count) + 1);
+        PrefixProtection_.resize(us(count) + 1);
+        PrefixOpaqueFences_.resize(us(count) + 1);
         const auto protection = Safety_.Protection();
-        std::pmr::vector<uint8_t> opaqueFences(PrefixOpaqueFences_.get_allocator().resource());
+        Vector<u8> opaqueFences(PrefixOpaqueFences_.get_allocator().resource());
         opaqueFences.reserve(protection.size());
 
         for (const auto& range : protection) {
-            const auto reasons = uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::OutsideEditScope);
+            const auto reasons = u16(range.Reasons) & ~u16(ProtectionReason::OutsideEditScope);
             const bool contextual = reasons != 0;
-            const bool opaque = contextual &&
-                (reasons != uint16_t(ProtectionReason::Recovery) || HasLine(Tree_.SourceText(range.Source)));
-            opaqueFences.push_back(uint8_t(contextual) | (uint8_t(opaque) << 1));
+            const bool opaque =
+                contextual && (reasons != u16(ProtectionReason::Recovery) || HasLine(Tree_.SourceText(range.Source)));
+            opaqueFences.push_back(u8(contextual) | (u8(opaque) << 1));
         }
 
-        size_t firstProtection = 0;
+        us firstProtection = 0;
 
-        size_t flatToken = 0;
+        us flatToken = 0;
 
         for (Index i = 0; i < count; ++i) {
             if (flatToken < Layout_.FlatSpans_.size() && Layout_.FlatSpans_[flatToken].Tokens.Begin == i) {
@@ -356,7 +355,7 @@ public:
                 return a.Name < b.Name;
             });
 
-        size_t flatNode = 0;
+        us flatNode = 0;
 
         for (Index i = 0; i < Syntax_.size(); ++i) {
             while (flatNode < Layout_.FlatSpans_.size() && Layout_.FlatSpans_[flatNode].Root < i) {
@@ -611,29 +610,29 @@ private:
     const SyntaxSpacing& Spacing_;
     detail::LayoutPlan& Layout_;
     const SyntaxLayoutOptions& Options_;
-    std::array<GapContext, size_t(SpacingOwner::TemplateParameters) + 1> OwnerContexts_;
-    std::pmr::vector<Syntax> Syntax_;
-    std::pmr::vector<Group>& Groups_;
-    std::pmr::vector<layout::GroupSpec>& GroupSpecs_;
-    std::pmr::vector<Gap>& Gaps_;
-    std::pmr::vector<GapFacts> Facts_;
-    std::pmr::vector<Comma>& Commas_;
-    std::pmr::vector<uint8_t>& Removed_;
-    std::pmr::vector<Index> Order_;
-    std::pmr::vector<Index> Stack_;
-    std::pmr::vector<Index> LastChild_;
-    std::pmr::vector<Index> BlockOf_;
-    std::pmr::vector<Index> PrefixProtection_;
-    std::pmr::vector<Index> PrefixOpaqueFences_;
-    std::pmr::vector<VisualRange> Visual_;
-    std::pmr::vector<FrozenRange> Frozen_;
+    std::array<GapContext, us(SpacingOwner::TemplateParameters) + 1> OwnerContexts_;
+    Vector<Syntax> Syntax_;
+    Vector<Group>& Groups_;
+    Vector<layout::GroupSpec>& GroupSpecs_;
+    Vector<Gap>& Gaps_;
+    Vector<GapFacts> Facts_;
+    Vector<Comma>& Commas_;
+    Vector<u8>& Removed_;
+    Vector<Index> Order_;
+    Vector<Index> Stack_;
+    Vector<Index> LastChild_;
+    Vector<Index> BlockOf_;
+    Vector<Index> PrefixProtection_;
+    Vector<Index> PrefixOpaqueFences_;
+    Vector<VisualRange> Visual_;
+    Vector<FrozenRange> Frozen_;
     std::pmr::string RootName_;
-    std::pmr::vector<ScopeName> ScopeNames_;
-    std::pmr::vector<ChainLink> ChainLinks_;
-    std::pmr::vector<ScopeName> ChainScopeNames_;
-    std::pmr::vector<parser::TokenRange> InlineMessageHeaders_;
+    Vector<ScopeName> ScopeNames_;
+    Vector<ChainLink> ChainLinks_;
+    Vector<ScopeName> ChainScopeNames_;
+    Vector<parser::TokenRange> InlineMessageHeaders_;
     SyntaxLayoutStatus State_;
-    size_t NextPermission_ = 0;
+    us NextPermission_ = 0;
     bool GapCacheReady_ = false;
     bool NaturalBodies_ = true;
     bool HasPreservedIndentGroups_ = false;
@@ -653,7 +652,7 @@ private:
             });
 
         for (; first != protection.end() && first->Source.Begin < source.End; ++first) {
-            if ((uint16_t(first->Reasons) & ~uint16_t(ProtectionReason::OutsideEditScope)) != 0) {
+            if ((u16(first->Reasons) & ~u16(ProtectionReason::OutsideEditScope)) != 0) {
                 return true;
             }
         }
@@ -666,8 +665,8 @@ private:
         // Projection preserves region order and never relocates entries
         // after initialization; their index is already their region identity.
         const auto id = &syntax - Syntax_.data();
-        assert(id >= 0 && size_t(id) < Syntax_.size());
-        return Safety_.Regions()[size_t(id)];
+        assert(id >= 0 && us(id) < Syntax_.size());
+        return Safety_.Regions()[us(id)];
     }
 
     void Fail(SyntaxLayoutError error, Index token)
@@ -677,7 +676,7 @@ private:
         }
     }
 
-    void SkipFlatInteriors(Index& id, size_t& flat) const
+    void SkipFlatInteriors(Index& id, us& flat) const
     {
         while (flat < Layout_.FlatSpans_.size()) {
             const auto& span = Layout_.FlatSpans_[flat];
@@ -767,7 +766,7 @@ private:
         LastChild_.resize(regions.size(), None);
         BlockOf_.resize(regions.size(), None);
 
-        size_t flat = 0;
+        us flat = 0;
 
         for (Index id = 0; id < regions.size(); ++id) {
             SkipFlatInteriors(id, flat);
@@ -1045,7 +1044,7 @@ private:
         Position begin,
         Position end,
         layout::GroupMode mode,
-        int32_t indent = 0,
+        i32 indent = 0,
         std::optional<LayoutIndentation> anchor = {})
     {
         if (begin >= end) {
@@ -1102,7 +1101,7 @@ private:
 
     bool Uncertain(Index gap) const
     {
-        return (uint8_t(Spacing_.Gaps()[gap].Constraint) & uint8_t(SpacingConstraint::UncertainSyntax)) != 0;
+        return (u8(Spacing_.Gaps()[gap].Constraint) & u8(SpacingConstraint::UncertainSyntax)) != 0;
     }
 
     bool RetainsBareCR(Index gap) const
@@ -1161,8 +1160,7 @@ private:
                 return range.Source.End <= begin;
             });
         return range != protection.end() && range->Source.Begin <= source.Begin && range->Source.End >= source.End &&
-            (uint16_t(range->Reasons) & ~uint16_t(ProtectionReason::Directive | ProtectionReason::OutsideEditScope)) ==
-                0;
+            (u16(range->Reasons) & ~u16(ProtectionReason::Directive | ProtectionReason::OutsideEditScope)) == 0;
     }
 
     bool HasIndependentBodyBoundary(const SourceRegion& node) const
@@ -1525,7 +1523,7 @@ private:
         GroupSpecs_[group].LineBase = true;
         const auto flat = [&] (Index gap, Index spaces) {
             Own(gap, group, Boundary::Flat);
-            Gaps_[gap].FixedSpaces = uint16_t(spaces);
+            Gaps_[gap].FixedSpaces = u16(spaces);
         };
         const auto opening = NextNonComment(header.Tokens.Begin + 1);
         flat(opening, 0);
@@ -1623,7 +1621,7 @@ private:
             prefixed ? GapPosition(begin) : GapPosition(begin + 1),
             GapPosition(sharedCloser ? closer : end),
             layout::GroupMode::Fill,
-            int32_t(policy.Indent.ContinuationOffset),
+            i32(policy.Indent.ContinuationOffset),
             policy.Indent);
 
         if (group == None) {
@@ -2266,7 +2264,7 @@ private:
                 GapPosition(gap),
                 TokenPosition(constraint ? next : gap),
                 layout::GroupMode::Consistent,
-                int32_t(offset));
+                i32(offset));
             GroupSpecs_[group].StructuralBase = true;
             Own(gap, group, Boundary::Hard);
 
@@ -2294,7 +2292,7 @@ private:
                 : Policies_.Parameters.Indent.ContinuationOffset;
             const auto begin = node.Tokens.Begin;
             const auto leading =
-                GroupAt(GapPosition(begin), TokenPosition(begin), layout::GroupMode::Fill, int32_t(offset));
+                GroupAt(GapPosition(begin), TokenPosition(begin), layout::GroupMode::Fill, i32(offset));
             GroupSpecs_[leading].StructuralBase = true;
             Own(begin, leading, ownLine ? Boundary::Hard : Boundary::Soft);
             Gaps_[begin].SpaceFallback = true;
@@ -2395,7 +2393,7 @@ private:
             TokenPosition(node.Tokens.Begin),
             GapPosition(node.Tokens.End),
             layout::GroupMode::Fill,
-            int32_t(indent.ContinuationOffset),
+            i32(indent.ContinuationOffset),
             indent);
         GroupSpecs_[group].StructuralBase = true;
         GroupSpecs_[group].Continuation = true;
@@ -2416,7 +2414,7 @@ private:
             TokenPosition(node.Tokens.Begin),
             GapPosition(node.Tokens.End),
             layout::GroupMode::Fill,
-            int32_t(indent.ContinuationOffset),
+            i32(indent.ContinuationOffset),
             indent);
         GroupSpecs_[group].StructuralBase = true;
         GroupSpecs_[group].Continuation = true;
@@ -2465,7 +2463,7 @@ private:
 
         if (initializer && canonical && enclosing != None) {
             // The assignment and its fragments share the Calls continuation.
-            GroupSpecs_[enclosing].Indent = int32_t(policy.Indent.ContinuationOffset);
+            GroupSpecs_[enclosing].Indent = i32(policy.Indent.ContinuationOffset);
             Groups_[enclosing].Indent = policy.Indent;
         }
 
@@ -2503,7 +2501,7 @@ private:
             canonical && policy.Packing == ListPacking::AllOrVertical
             ? layout::GroupMode::Consistent
             : layout::GroupMode::Fill,
-            int32_t(policy.Indent.ContinuationOffset),
+            i32(policy.Indent.ContinuationOffset),
             policy.Indent);
         // Like call arguments, fragments continue from their opening line
         // independently of the enclosing expression's continuation offset.
@@ -2587,7 +2585,7 @@ private:
                 GapPosition(opening + 1),
                 GapPosition(node.Tokens.End),
                 layout::GroupMode::Fill,
-                int32_t(indent.ContinuationOffset),
+                i32(indent.ContinuationOffset),
                 indent);
 
             if (group != None) {
@@ -2662,7 +2660,7 @@ private:
             kind == NodeKind::Initializer ? GapPosition(node.Tokens.Begin) : TokenPosition(node.Tokens.Begin),
             GapPosition(node.Tokens.End),
             threePart ? layout::GroupMode::Consistent : layout::GroupMode::Fill,
-            int32_t(indentation.ContinuationOffset),
+            i32(indentation.ContinuationOffset),
             indentation);
 
         if (policy.Alignment == ExpressionAlignment::Operand && !assignmentPrefix &&
@@ -2744,7 +2742,7 @@ private:
                     TokenPosition(Region(arm).Tokens.Begin),
                     GapPosition(Region(arm).Tokens.End),
                     layout::GroupMode::Fill,
-                    int32_t(indentation.ContinuationOffset),
+                    i32(indentation.ContinuationOffset),
                     indentation);
                 GroupSpecs_[scope].ExpressionContinuation = true;
                 GroupSpecs_[scope].Continuation = true;
@@ -3046,7 +3044,7 @@ private:
                 base = SourceLineIndent(begin);
             }
 
-            const auto delta = int64_t(indent) - int64_t(base);
+            const auto delta = i64(indent) - i64(base);
 
             if (delta < INT32_MIN || delta > INT32_MAX) {
                 continue;
@@ -3061,7 +3059,7 @@ private:
             Reindent(gap, group);
             Gaps_[gap].OverrideIndent = true;
             Gaps_[gap].RelativeIndent = true;
-            Gaps_[gap].ExtraIndent = int32_t(delta);
+            Gaps_[gap].ExtraIndent = i32(delta);
         }
     }
 
@@ -3098,7 +3096,7 @@ private:
             GapPosition(node.Tokens.Begin),
             GapPosition(end),
             layout::GroupMode::Fill,
-            int32_t(indent.ContinuationOffset),
+            i32(indent.ContinuationOffset),
             indent);
         GroupSpecs_[group].StructuralBase = true;
         GroupSpecs_[group].Continuation = true;
@@ -3145,7 +3143,7 @@ private:
             if (suffix) {
                 // A return type can move intact before breaking its template lists.
                 const auto offset = Policies_.Parameters.Indent.ContinuationOffset;
-                GroupSpecs_[owner].Indent = int32_t(offset);
+                GroupSpecs_[owner].Indent = i32(offset);
                 GroupSpecs_[owner].StructuralBase = true;
                 GroupSpecs_[owner].Continuation = true;
                 Groups_[owner].Indent = {ContinuationAlignment::Block, offset, offset};
@@ -3513,7 +3511,7 @@ private:
                     layout::GapKind::Hard,
                     true);
                 if (canonicalBrace && brace == BracePlacement::NextLineIfHeaderIndented) {
-                    Gaps_[opening].BraceIndentOffset = std::max<uint8_t>(1, policy.IndentWidth);
+                    Gaps_[opening].BraceIndentOffset = std::max<u8>(1, policy.IndentWidth);
                 }
                 if (!canonicalBrace) {
                     Reindent(opening, header, true);
@@ -3525,7 +3523,7 @@ private:
                     GapPosition(opening),
                     GapPosition(body.Tokens.End),
                     layout::GroupMode::Consistent,
-                    int32_t(policy.IndentWidth));
+                    i32(policy.IndentWidth));
                 GroupSpecs_[group].StructuralBase = true;
 
                 if (policy.Layout == LayoutMode::Canonical) {
@@ -3545,9 +3543,9 @@ private:
 
     Index PreservedBodyIndent(Index id, Index opening, Index close) const
     {
-        constexpr auto uncertain = uint8_t(RegionStatus::Ambiguous) | uint8_t(RegionStatus::Recovery);
+        constexpr auto uncertain = u8(RegionStatus::Ambiguous) | u8(RegionStatus::Recovery);
 
-        if ((uint8_t(Region(Syntax_[id]).Status) & uncertain) == 0) {
+        if ((u8(Region(Syntax_[id]).Status) & uncertain) == 0) {
             return None;
         }
 
@@ -3565,7 +3563,7 @@ private:
 
             const auto indent = SourceIndent(part.Tokens.Begin);
 
-            if (indent == None || indent > uint32_t(INT32_MAX)) {
+            if (indent == None || indent > u32(INT32_MAX)) {
                 continue;
             }
 
@@ -3575,16 +3573,15 @@ private:
             // lambdas do not constrain their enclosing statement's level.
             const bool nestedBody =
                 IsControl(part.Kind) || part.Kind == NodeKind::TryStatement || part.Kind == NodeKind::CompoundStatement;
-            const auto reasons = uint16_t(Safety_.Gaps()[part.Tokens.Begin].Reasons);
+            const auto reasons = u16(Safety_.Gaps()[part.Tokens.Begin].Reasons);
 
             // An opaque switch run before any explicit label may contain
             // generated labels. Its fixed indentation anchors this body, not
             // an inferred case-content level. Recovery inside a known labeled
             // region or another body does not establish this level.
-            if ((reasons & uint16_t(ProtectionReason::Ambiguous)) != 0 ||
-                (switchBody && !labeled && (reasons & uint16_t(ProtectionReason::Recovery)) != 0) ||
-                (nestedBody && !Syntax_[child].IndentSafe &&
-                    (uint8_t(part.Status) & uint8_t(RegionStatus::Ambiguous)) != 0))
+            if ((reasons & u16(ProtectionReason::Ambiguous)) != 0 ||
+                (switchBody && !labeled && (reasons & u16(ProtectionReason::Recovery)) != 0) ||
+                (nestedBody && !Syntax_[child].IndentSafe && (u8(part.Status) & u8(RegionStatus::Ambiguous)) != 0))
             {
                 return indent;
             }
@@ -3879,7 +3876,7 @@ private:
         }
     }
 
-    int32_t BodyOffset(const BodyIndentControl& control, int32_t fallback) const
+    i32 BodyOffset(const BodyIndentControl& control, i32 fallback) const
     {
         if (control.Mode == BodyIndentation::NoIndent) {
             return 0;
@@ -3892,7 +3889,7 @@ private:
         return fallback;
     }
 
-    int32_t BodyIndentWidth(Index id, Index opening, const BodyPolicy& policy, bool record) const
+    i32 BodyIndentWidth(Index id, Index opening, const BodyPolicy& policy, bool record) const
     {
         const auto kind = Region(Syntax_[id]).Kind;
 
@@ -3906,17 +3903,15 @@ private:
                 const auto inner = SourceIndent(opening + 1);
                 const auto base = outer == None ? 0 : outer;
 
-                if (inner != None && inner >= base && inner - base <= uint32_t(INT32_MAX)) {
-                    return int32_t(inner - base);
+                if (inner != None && inner >= base && inner - base <= u32(INT32_MAX)) {
+                    return i32(inner - base);
                 }
             }
 
             return BodyOffset(control, 0);
         }
 
-        return record
-            ? BodyOffset(Policies_.Indentation.Members, int32_t(policy.IndentWidth))
-            : int32_t(policy.IndentWidth);
+        return record ? BodyOffset(Policies_.Indentation.Members, i32(policy.IndentWidth)) : i32(policy.IndentWidth);
     }
 
     bool PreprocessingSequence(Index id) const
@@ -3997,11 +3992,11 @@ private:
         const bool canonical = policy.Layout == LayoutMode::Canonical;
         const bool namespaced = Region(Syntax_[id]).Kind == NodeKind::NamespaceDeclaration;
         const bool linkage = Region(Syntax_[id]).Kind == NodeKind::LinkageSpecification;
-        int32_t offset = BodyIndentWidth(id, opening, policy, record);
+        i32 offset = BodyIndentWidth(id, opening, policy, record);
         const auto contentIndent = PreservedBodyIndent(id, opening, close);
 
         if (contentIndent != None) {
-            offset = std::min(offset, int32_t(contentIndent));
+            offset = std::min(offset, i32(contentIndent));
         }
 
         if (IsSoleCaseBlock(id) && Policies_.Indentation.CaseLabels.Mode != BodyIndentation::Preserve) {
@@ -4037,10 +4032,10 @@ private:
             GapPosition(close + (fragment ? 0 : 1)),
             layout::GroupMode::Consistent,
             offset,
-            LayoutIndentation{ContinuationAlignment::Block, uint32_t(offset), uint32_t(offset)});
+            LayoutIndentation{ContinuationAlignment::Block, u32(offset), u32(offset)});
         GroupSpecs_[group].StructuralBase = true;
         const auto parent = Region(Syntax_[id]).Parent;
-        GroupSpecs_[group].FixedBase = contentIndent == None ? None : contentIndent - uint32_t(offset);
+        GroupSpecs_[group].FixedBase = contentIndent == None ? None : contentIndent - u32(offset);
 
         // Without a planned enclosing block, preserved headers and macros
         // extracted from opaque wrappers anchor their bodies to the source.
@@ -4160,7 +4155,7 @@ private:
                         GapPosition(part.Tokens.Begin),
                         GapPosition(part.Tokens.End),
                         layout::GroupMode::Consistent,
-                        int32_t(policy.IndentWidth) + BodyOffset(Policies_.Indentation.CaseLabels, offset) - offset);
+                        i32(policy.IndentWidth) + BodyOffset(Policies_.Indentation.CaseLabels, offset) - offset);
                     GroupSpecs_[contents].StructuralBase = true;
                 } else {
                     Groups_[contents].End = GapPosition(part.Tokens.End);
@@ -4525,7 +4520,7 @@ private:
                     Policies_.Chains.Packing == ListPacking::AllOrVertical
                     ? layout::GroupMode::Consistent
                     : layout::GroupMode::Fill,
-                    int32_t(Policies_.IndentWidth));
+                    i32(Policies_.IndentWidth));
                 GroupSpecs_[scope].ForceBreak = GroupSpecs_[group].ForceBreak;
                 GroupSpecs_[scope].BreakPenalty = 2;
                 // The opening call stays at the enclosing level.
@@ -4676,7 +4671,7 @@ private:
                 base = SourceLineIndent(begin);
             }
 
-            const auto delta = int64_t(indent) - int64_t(base);
+            const auto delta = i64(indent) - i64(base);
 
             if (delta < INT32_MIN || delta > INT32_MAX) {
                 return;
@@ -4691,7 +4686,7 @@ private:
             Reindent(gap, group);
             Gaps_[gap].OverrideIndent = true;
             Gaps_[gap].RelativeIndent = true;
-            Gaps_[gap].ExtraIndent = int32_t(delta);
+            Gaps_[gap].ExtraIndent = i32(delta);
         };
 
         if (!descendants) {
@@ -4735,7 +4730,7 @@ private:
             return;
         }
 
-        size_t flat = 0;
+        us flat = 0;
 
         for (Index id = 0; id < Syntax_.size(); ++id) {
             SkipFlatInteriors(id, flat);
@@ -4775,7 +4770,7 @@ private:
                         return;
                     }
 
-                    const auto delta = int64_t(indent) - Groups_[group].PreservedSourceIndent;
+                    const auto delta = i64(indent) - Groups_[group].PreservedSourceIndent;
 
                     if (delta < INT32_MIN || delta > INT32_MAX) {
                         return;
@@ -4784,7 +4779,7 @@ private:
                     gap.Reindent = true;
                     gap.OverrideIndent = true;
                     gap.RelativeGroup = group;
-                    gap.ExtraIndent = int32_t(delta);
+                    gap.ExtraIndent = i32(delta);
                 });
         }
     }
@@ -4800,7 +4795,7 @@ private:
         const auto& entry = Syntax_[id];
         const auto begin = Region(entry).Tokens.Begin;
         const auto minimum = canonicalIndent && Policies_.Chains.Indent.Alignment == ContinuationAlignment::Block
-            ? int64_t(Policies_.Chains.Indent.ContinuationOffset)
+            ? i64(Policies_.Chains.Indent.ContinuationOffset)
             : INT64_MIN;
         Index base = None;
         Index group = None;
@@ -4822,7 +4817,7 @@ private:
 
                 // Canonical block continuations need a level even when an
                 // enclosing call moves an own-line receiver back inline.
-                const auto delta = std::max(int64_t(indent) - int64_t(base), minimum);
+                const auto delta = std::max(i64(indent) - i64(base), minimum);
 
                 if (delta >= INT32_MIN && delta <= INT32_MAX) {
                     if (group == None) {
@@ -4836,7 +4831,7 @@ private:
 
                     Reindent(gap, group);
                     Gaps_[gap].OverrideIndent = true;
-                    Gaps_[gap].ExtraIndent = int32_t(delta);
+                    Gaps_[gap].ExtraIndent = i32(delta);
                 }
             }
 
@@ -4989,7 +4984,7 @@ private:
             TokenPosition(Region(entry).Tokens.Begin),
             GapPosition(Region(entry).Tokens.End),
             layout::GroupMode::Fill,
-            int32_t(policy.Indent.ContinuationOffset),
+            i32(policy.Indent.ContinuationOffset),
             policy.Indent);
         // A lone member call on a named receiver should wrap its arguments
         // before leaving the receiver alone. Empty calls have no such alternative.
@@ -5060,7 +5055,7 @@ private:
         bool Begin;
     };
 
-    enum class Discovery : uint8_t
+    enum class Discovery : u8
     {
         None,
         Unique,
@@ -5240,8 +5235,8 @@ private:
             [] (const ScopeName& a, const ScopeName& b) {
                 return a.Name < b.Name;
             });
-        std::pmr::vector<Endpoint> pairs(Syntax_.get_allocator().resource());
-        std::pmr::vector<int64_t> frozen(Syntax_.get_allocator().resource());
+        Vector<Endpoint> pairs(Syntax_.get_allocator().resource());
+        Vector<i64> frozen(Syntax_.get_allocator().resource());
         Index frozenBody = None;
         bool labeledBody = false;
         const auto freeze = [&] (Index begin, Index end) {
@@ -5256,7 +5251,7 @@ private:
             // lambdas containing a single unmatched scope endpoint.
             if (begin < end && SourceIndent(begin) != None) {
                 if (frozen.empty()) {
-                    frozen.resize(Tree_.TokenCount() + size_t(2));
+                    frozen.resize(Tree_.TokenCount() + us(2));
                 }
 
                 ++frozen[begin];
@@ -5372,7 +5367,7 @@ private:
             return;
         }
 
-        int64_t level = 0;
+        i64 level = 0;
         Index originalPrefix = 0;
         Index sum = 0;
 
@@ -5405,7 +5400,7 @@ private:
             [] (const FrozenRange& a, const FrozenRange& b) {
                 return a.Begin != b.Begin ? a.Begin < b.Begin : a.End > b.End;
             });
-        size_t merged = 0;
+        us merged = 0;
 
         for (const auto range : Frozen_) {
             if (merged && range.Begin < Frozen_[merged - 1].End) {
@@ -5441,7 +5436,7 @@ private:
                     continue;
                 }
 
-                const auto delta = int64_t(indent) - int64_t(base);
+                const auto delta = i64(indent) - i64(base);
 
                 if (delta < INT32_MIN || delta > INT32_MAX) {
                     continue;
@@ -5458,7 +5453,7 @@ private:
                 plan.Reindent = true;
                 plan.OverrideIndent = true;
                 plan.RelativeIndent = true;
-                plan.ExtraIndent = int32_t(delta);
+                plan.ExtraIndent = i32(delta);
             }
         }
     }
@@ -5482,7 +5477,7 @@ private:
                 GapPosition(beginToken),
                 GapPosition(endToken),
                 layout::GroupMode::Consistent,
-                int32_t(Policies_.IndentWidth));
+                i32(Policies_.IndentWidth));
 
             for (auto interior = range.First; interior != range.End; interior = Region(Syntax_[interior]).NextSibling) {
                 auto& gap = Gaps_[Region(Syntax_[interior]).Tokens.Begin];
@@ -5606,7 +5601,7 @@ private:
         return DeclarationCategory::None;
     }
 
-    void ApplyVerticalGap(Index gap, VerticalGapPolicy policy, uint8_t priority = 0)
+    void ApplyVerticalGap(Index gap, VerticalGapPolicy policy, u8 priority = 0)
     {
         if (policy.Mode == VerticalGapMode::Preserve || !GapMutable(gap) || Gaps_[gap].VerticalPriority > priority) {
             return;
@@ -5635,8 +5630,7 @@ private:
             return;
         }
 
-        plan.NewlineCount =
-            uint16_t(std::min<std::size_t>(UINT16_MAX, std::max<std::size_t>(policy.EmptyLines + 1, originalLines)));
+        plan.NewlineCount = u16(std::min<us>(UINT16_MAX, std::max<us>(policy.EmptyLines + 1, originalLines)));
 
         if (policy.EmptyLines != 0) {
             plan.Shape = Boundary::Hard;
@@ -5988,10 +5982,10 @@ private:
             policy.AccessSectionBlankLinesAfterLabel.Mode != VerticalGapMode::Preserve;
 
         if (sequenceRules) {
-            std::pmr::vector<Index> children(Syntax_.get_allocator().resource());
-            std::pmr::vector<Index> following(Syntax_.get_allocator().resource());
+            Vector<Index> children(Syntax_.get_allocator().resource());
+            Vector<Index> following(Syntax_.get_allocator().resource());
 
-            size_t flat = 0;
+            us flat = 0;
 
             for (Index id = 0; id < Syntax_.size(); ++id) {
                 SkipFlatInteriors(id, flat);
@@ -6046,7 +6040,7 @@ private:
                 following.resize(children.size());
                 Index nextItem = None;
 
-                for (size_t p = children.size(); p-- > 0;) {
+                for (us p = children.size(); p-- > 0;) {
                     following[p] = nextItem;
 
                     if (Region(Syntax_[children[p]]).Kind != NodeKind::Comment) {
@@ -6065,7 +6059,7 @@ private:
                 bool seenSection = false;
                 bool content = false;
 
-                for (size_t p = 0; p < children.size(); ++p) {
+                for (us p = 0; p < children.size(); ++p) {
                     const auto child = children[p];
                     const auto& entry = Syntax_[child];
                     const auto& part = Region(entry);
@@ -6225,7 +6219,7 @@ private:
                     }
 
                     gap.Vertical = true;
-                    gap.NewlineCount = uint16_t(cap.EmptyLines + 1);
+                    gap.NewlineCount = u16(cap.EmptyLines + 1);
                 }
             }
         }
@@ -6240,8 +6234,8 @@ private:
         // Ownership is already canonical: a nested body's lines belong to
         // that body, while an operator's incoming flat gap still identifies
         // the expression whose legal outgoing boundary may take its place.
-        std::pmr::vector<Index> candidate(Groups_.size(), None, Syntax_.get_allocator().resource());
-        std::pmr::vector<uint8_t> breakable(Groups_.size(), 0, Syntax_.get_allocator().resource());
+        Vector<Index> candidate(Groups_.size(), None, Syntax_.get_allocator().resource());
+        Vector<u8> breakable(Groups_.size(), 0, Syntax_.get_allocator().resource());
 
         for (Index i = 0; i < Gaps_.size(); ++i) {
             const auto& gap = Gaps_[i];
@@ -6522,7 +6516,7 @@ private:
             return gap.Context;
         }
 
-        return OwnerContexts_[size_t(Spacing_.Gaps()[i].Category)];
+        return OwnerContexts_[us(Spacing_.Gaps()[i].Category)];
     }
 
     bool RebuildsTopology(Index i) const
@@ -6656,7 +6650,7 @@ private:
     // Balanced syntax bodies already follow the region preorder. Walk their
     // existing projection iteratively and merge specialized interval owners;
     // neither validation nor emission needs a second list of body intervals.
-    Index NextGroup(size_t& special, Index& syntax) const
+    Index NextGroup(us& special, Index& syntax) const
     {
         if (NaturalBodies_) {
             while (syntax < BlockOf_.size() && BlockOf_[syntax] == None) {
@@ -6684,7 +6678,7 @@ private:
         }
 
         Index previous = None;
-        size_t bodies = 0;
+        us bodies = 0;
 
         for (const auto body : BlockOf_) {
             if (body == None) {
@@ -6716,7 +6710,7 @@ private:
             [&] (Index a, Index b) {
                 return BeforeGroup(a, b);
             });
-        std::pmr::vector<Index> delayedAnchors(Syntax_.get_allocator().resource());
+        Vector<Index> delayedAnchors(Syntax_.get_allocator().resource());
         delayedAnchors.reserve(Layout_.Anchors_.size() + Groups_.size());
 
         for (Index id = 0; id < Layout_.Anchors_.size(); ++id) {
@@ -6725,7 +6719,7 @@ private:
 
         Layout_.AnchorOrder_.reserve(Layout_.Anchors_.size() + Groups_.size() * 2);
         Stack_.clear();
-        size_t special = 0;
+        us special = 0;
         Index syntax = 0;
         Index continuation = None;
         Index boundaryWork = 0;
@@ -6828,7 +6822,7 @@ private:
         GapAdjacency adjacency = GapAdjacency::Source) const
     {
         spec.Kind = kind;
-        spec.Spaces = uint16_t(std::min<Index>(FlatWidth(i, adjacency), UINT16_MAX));
+        spec.Spaces = u16(std::min<Index>(FlatWidth(i, adjacency), UINT16_MAX));
 
         if (kind != layout::GapKind::Flat) {
             spec.RequiredWidth = Facts_[i].RequiredWidth;
@@ -6872,7 +6866,7 @@ private:
     void PlanFlatGap(Index i, bool sourceHorizontal = true)
     {
         auto& gap = Layout_.AddGap(Whitespace::Flat, GapOrigin(i));
-        gap.Spaces = uint16_t(std::min<Index>(FlatWidth(i), UINT16_MAX));
+        gap.Spaces = u16(std::min<Index>(FlatWidth(i), UINT16_MAX));
         gap.FlatSource = sourceHorizontal && PreserveFlatSource(i);
     }
 
@@ -7354,7 +7348,7 @@ private:
         }
     }
 
-    Index ResolveGroupAnchors(Index id, Index continuation, std::pmr::vector<Index>& delayedAnchors)
+    Index ResolveGroupAnchors(Index id, Index continuation, Vector<Index>& delayedAnchors)
     {
         auto& group = Groups_[id];
         Index sequence = 0;
@@ -7387,7 +7381,7 @@ private:
         if (group.PrefixGap != None) {
             group.Anchor = capture({
                 layout::AnchorKind::BlockRelative,
-                int32_t(group.Indent.ContinuationOffset),
+                i32(group.Indent.ContinuationOffset),
                 0,
                 0,
                 GroupSpecs_[id].StructuralBase,
@@ -7399,7 +7393,7 @@ private:
             // otherwise capture this scope's new continuation level.
             group.Anchor = capture({
                 .Kind = layout::AnchorKind::BlockRelative,
-                .Offset = int32_t(group.Indent.ContinuationOffset),
+                .Offset = i32(group.Indent.ContinuationOffset),
                 .Continuation = true,
                 .SharedWith = Layout_.AnchorAt(continuation, group.BeginOrder, true),
             });
@@ -7408,11 +7402,9 @@ private:
                 group.Indent.Alignment == ContinuationAlignment::Delimiter
                     ? layout::AnchorKind::DelimiterColumn
                     : layout::AnchorKind::BlockRelative,
-                group.Indent.Alignment == ContinuationAlignment::Delimiter
-                    ? 0
-                    : int32_t(group.Indent.ContinuationOffset),
-                int32_t(group.Indent.FallbackOffset),
-                uint32_t(group.Indent.ContinuationOffset),
+                group.Indent.Alignment == ContinuationAlignment::Delimiter ? 0 : i32(group.Indent.ContinuationOffset),
+                i32(group.Indent.FallbackOffset),
+                u32(group.Indent.ContinuationOffset),
                 GroupSpecs_[id].StructuralBase,
                 GroupSpecs_[id].Continuation,
                 sharedAnchor ? Layout_.AnchorAt(continuation, group.BeginOrder, true) : layout::InvalidId,
@@ -7446,7 +7438,7 @@ private:
             // condition descendants keep the shared continuation.
             group.Anchor = capture({
                 layout::AnchorKind::BlockRelative,
-                int32_t(group.Indent.ContinuationOffset),
+                i32(group.Indent.ContinuationOffset),
                 0,
                 0,
                 true,
@@ -7459,12 +7451,12 @@ private:
         group.InitialContinuationAnchor = group.ContinuationAnchor;
 
         if (group.PrefixGap != None) {
-            const auto fallback = int64_t(group.Indent.FallbackOffset) - int64_t(group.Indent.ContinuationOffset);
-            const auto offset = group.AnchorAfterGap ? 0 : int32_t(FlatWidth(group.PrefixGap));
+            const auto fallback = i64(group.Indent.FallbackOffset) - i64(group.Indent.ContinuationOffset);
+            const auto offset = group.AnchorAfterGap ? 0 : i32(FlatWidth(group.PrefixGap));
             group.PrefixOrder =
                 SourceOrder(GapPosition(group.PrefixGap), 0x80000000u + Facts_[group.PrefixGap].PrefixSequence);
             group.Anchor =
-                Layout_.Capture({layout::AnchorKind::DelimiterColumn, offset, int32_t(fallback), 0}, group.PrefixOrder);
+                Layout_.Capture({layout::AnchorKind::DelimiterColumn, offset, i32(fallback), 0}, group.PrefixOrder);
             delayedAnchors.push_back(group.Anchor);
         }
 
@@ -7499,7 +7491,7 @@ SyntaxLayoutStatus BuildSyntaxLayout(
 layout::Policy SyntaxRenderPolicy(const CompiledPolicies& policies, const SyntaxLayoutOptions& options)
 {
     layout::Policy result;
-    result.Width = policies.ColumnLimit == 0 ? UINT32_MAX - 1 : uint32_t(policies.ColumnLimit);
+    result.Width = policies.ColumnLimit == 0 ? UINT32_MAX - 1 : u32(policies.ColumnLimit);
     result.TabWidth = options.TabWidth;
     result.LineEnding = options.LineEnding;
     result.Indentation = policies.IndentationKind == IndentationKind::Tabs

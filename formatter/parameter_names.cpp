@@ -2,6 +2,8 @@
 
 #include "diagnostic_locations.hpp"
 
+#include <util/types.hpp>
+
 #include <tokenizer/token.hpp>
 
 #include <algorithm>
@@ -226,7 +228,7 @@ void CheckFunction(
         const parser::SourceRange signatureRange{first.Text.Begin, last.Text.End};
         const auto beginLine = tree.TokenPosition(function.Tokens.Begin).Line;
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
-        size_t number = 0;
+        us number = 0;
 
         for (auto* parameter = parameters->Child(); parameter; parameter = parameter->NextSibling) {
             if (parameter->Kind != NK::ParameterDeclaration) {

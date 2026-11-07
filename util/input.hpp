@@ -1,5 +1,7 @@
 #pragma once
 
+#include "types.hpp"
+
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -10,37 +12,36 @@
 
 namespace util {
 
-using SourceOffset = uint32_t;
+using SourceOffset = u32;
 
-inline constexpr size_t SourcePaddingSize = 64;
+inline constexpr us SourcePaddingSize = 64;
 
-inline constexpr size_t MaxSourceSize =
-    static_cast<size_t>(std::numeric_limits<SourceOffset>::max()) - SourcePaddingSize;
+inline constexpr us MaxSourceSize = static_cast<us>(std::numeric_limits<SourceOffset>::max()) - SourcePaddingSize;
 
 // A non-owning source buffer with safe lookahead. Data points to Size source
 // bytes followed by SourcePaddingSize zero bytes.
 struct PaddedSourceView
 {
     const char* Data;
-    uint32_t Size;
+    u32 Size;
 
     [[nodiscard]] constexpr std::string_view View() const
     {
         return {Data, Size};
     }
 
-    [[nodiscard]] constexpr std::string_view substr(size_t pos = 0, size_t count = std::string_view::npos) const
+    [[nodiscard]] constexpr std::string_view substr(us pos = 0, us count = std::string_view::npos) const
     {
         return View().substr(pos, count);
     }
 };
 
-template <size_t Size>
+template <us Size>
 [[nodiscard]] constexpr auto PadSource(const char (&source)[Size])
 {
     std::array<char, Size - 1 + SourcePaddingSize> result{};
 
-    for (size_t i = 0; i < Size - 1; ++i) {
+    for (us i = 0; i < Size - 1; ++i) {
         result[i] = source[i];
     }
 
@@ -74,8 +75,8 @@ struct SourceView
 
 struct Position
 {
-    uint32_t Line;
-    uint32_t Column;
+    u32 Line;
+    u32 Column;
 };
 
 } // namespace util

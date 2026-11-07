@@ -22,11 +22,12 @@ if(HIT_FMT_TEST)
 endif()
 
 add_subdirectory(util)
+add_subdirectory(fs)
 add_subdirectory(unicode)
 add_subdirectory(tokenizer)
 add_subdirectory(parser)
 add_subdirectory(formatter)
-add_subdirectory(hit-fmt)
+add_subdirectory(cli)
 
 if(HIT_FMT_TEST)
     add_subdirectory(tests)

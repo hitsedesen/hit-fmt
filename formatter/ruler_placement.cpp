@@ -1,5 +1,7 @@
 #include "text_policies.hpp"
 
+#include <util/types.hpp>
+
 #include <algorithm>
 
 namespace formatter {
@@ -32,8 +34,8 @@ void PlanRulerEdits(
     const bool crlf = options.RulerLineEnding == LineEnding::CRLF ||
         (options.RulerLineEnding == LineEnding::Preserve && lf != std::string_view::npos && lf &&
             tree.Source()[lf - 1] == '\r');
-    const size_t length = options.RulerLength ? options.RulerLength : 80;
-    const size_t newlineSize = crlf ? 2 : 1;
+    const us length = options.RulerLength ? options.RulerLength : 80;
+    const us newlineSize = crlf ? 2 : 1;
     auto* bytes = static_cast<char*>(fileMemory.allocate(length + 2 * newlineSize, alignof(char)));
     std::fill_n(bytes, length + 2 * newlineSize, '/');
 
@@ -46,9 +48,9 @@ void PlanRulerEdits(
     auto insert = [&] (parser::SourceOffset point, parser::TokenRange owner) {
         const auto operation = static_cast<StructuralActionId>(plan.Operations.size());
         plan.Operations.push_back({StructuralAction::RulerPlacement, owner});
-        const auto piece = static_cast<uint32_t>(plan.Pieces.size());
+        const auto piece = static_cast<u32>(plan.Pieces.size());
         plan.Pieces.push_back({{}, insertion, false});
-        plan.Edits.push_back({{point, point}, piece, static_cast<uint32_t>(plan.Pieces.size()), operation});
+        plan.Edits.push_back({{point, point}, piece, static_cast<u32>(plan.Pieces.size()), operation});
     };
     auto afterTrailing = [&] (TI token, TI end) {
         while (token < end && tree.Kind(token) == TK::Comment && !safety.Gaps()[token].HasLineFeed) {

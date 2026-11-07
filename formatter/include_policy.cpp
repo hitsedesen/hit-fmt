@@ -1,5 +1,8 @@
 #include "include_policy.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <limits>
 #include <numeric>
@@ -91,7 +94,7 @@ bool IsStandardInclude(std::string_view path, bool angled) noexcept
     return angled && path.find('/') == std::string_view::npos && path.find(".h") == std::string_view::npos;
 }
 
-void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std::string_view path, bool absolute)
+void AppendIncludePathComponents(Vector<std::string_view>& parts, std::string_view path, bool absolute)
 {
     while (!path.empty()) {
         const auto slash = path.find('/');
@@ -279,7 +282,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
         return;
     }
 
-    std::size_t count = 0;
+    us count = 0;
 
     for (const auto& group : groups) {
         count += group.Prefixes.size();
@@ -288,14 +291,14 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     Groups_.reserve(groups.size());
     Prefixes_.reserve(count);
 
-    for (std::size_t group = 0; group < groups.size(); ++group) {
+    for (us group = 0; group < groups.size(); ++group) {
         if (groups[group].StandardHeaders) {
             StandardGroup_ = group;
         }
 
         Groups_.push_back({
             groups[group].StandardHeaders ? count : Prefixes_.size(),
-            groups[group].StandardHeaders ? std::int8_t{0} : groups[group].Depth,
+            groups[group].StandardHeaders ? i8{0} : groups[group].Depth,
             groups[group].Priority,
         });
 
@@ -304,14 +307,14 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
             Prefixes_.push_back({
                 prefix,
                 slash == std::string::npos ? 0 : slash + 1,
-                static_cast<std::size_t>(
+                static_cast<us>(
                     std::count(prefix.begin(), prefix.end(), '/')),
                 group,
             });
         }
     }
 
-    std::vector<std::size_t> order(Prefixes_.size());
+    std::vector<us> order(Prefixes_.size());
     std::iota(order.begin(), order.end(), 0);
     std::sort(
         order.begin(),
@@ -319,17 +322,17 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
         [&] (auto left, auto right) {
             return Prefixes_[left].Text < Prefixes_[right].Text;
         });
-    std::size_t bytes = 0;
-    std::size_t longest = 0;
+    us bytes = 0;
+    us longest = 0;
     std::string_view previous;
     for (const auto prefixIndex : order) {
         const std::string_view prefix = Prefixes_[prefixIndex].Text;
-        std::size_t common = 0;
+        us common = 0;
 
         while (common < std::min(previous.size(), prefix.size()) && previous[common] == prefix[common]) {
             ++common;
         }
-        if (prefix.size() - common >= std::numeric_limits<std::size_t>::max() - bytes) {
+        if (prefix.size() - common >= std::numeric_limits<us>::max() - bytes) {
             throw std::length_error("IncludeGroups index is too large");
         }
         bytes += prefix.size() - common;
@@ -340,13 +343,13 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     Nodes_.push_back({0, 0, Prefixes_.size()});
     struct PendingEdge
     {
-        std::size_t Parent;
+        us Parent;
         Edge Value;
     };
 
     std::vector<PendingEdge> pending;
     pending.reserve(bytes);
-    std::vector<std::size_t> ancestors;
+    std::vector<us> ancestors;
     ancestors.reserve(longest + 1);
     ancestors.push_back(0);
     previous = {};
@@ -354,7 +357,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     // Sorted prefixes share trie storage without per-node heap allocations.
     for (const auto prefixIndex : order) {
         const std::string_view prefix = Prefixes_[prefixIndex].Text;
-        std::size_t common = 0;
+        us common = 0;
 
         while (common < std::min(previous.size(), prefix.size()) && previous[common] == prefix[common]) {
             ++common;
@@ -362,7 +365,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
 
         ancestors.resize(common + 1);
 
-        for (std::size_t index = common; index < prefix.size(); ++index) {
+        for (us index = common; index < prefix.size(); ++index) {
             const auto parent = ancestors.back();
             const auto child = Nodes_.size();
             Nodes_.push_back({0, 0, Prefixes_.size()});
@@ -375,7 +378,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
         previous = prefix;
     }
 
-    std::size_t first = 0;
+    us first = 0;
 
     for (auto& node : Nodes_) {
         node.FirstEdge = first;
@@ -383,7 +386,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
     }
 
     Edges_.resize(pending.size());
-    std::vector<std::size_t> inserted(Nodes_.size(), 0);
+    std::vector<us> inserted(Nodes_.size(), 0);
 
     for (const auto& edge : pending) {
         Edges_[Nodes_[edge.Parent].FirstEdge + inserted[edge.Parent]++] = edge.Value;
@@ -395,7 +398,7 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
     const auto standard = StandardGroup_ < GroupCount() && IsStandardInclude(path, angled)
         ? StandardGroup_
         : GroupCount();
-    auto result = [&] (std::size_t prefix) -> Match {
+    auto result = [&] (us prefix) -> Match {
         const auto group = prefix < Prefixes_.size() ? Prefixes_[prefix].Group : GroupCount();
         const auto selected = std::min(standard, group);
         return {
@@ -417,7 +420,7 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
     }
 
     if (NormalizedRelativePath(path)) {
-        std::size_t node = 0;
+        us node = 0;
 
         for (const unsigned char byte : path) {
             const auto& current = Nodes_[node];
@@ -449,27 +452,27 @@ PreparedIncludeGroups::Match PreparedIncludeGroups::Classify(std::string_view pa
     return result(match);
 }
 
-std::int8_t PreparedIncludeGroups::Depth(std::size_t group) const noexcept
+i8 PreparedIncludeGroups::Depth(us group) const noexcept
 {
     return group < GroupCount() ? Groups_[group].Depth : IncludeGroupRule::MaxDepth;
 }
 
-std::int8_t PreparedIncludeGroups::Priority(std::size_t group) const noexcept
+i8 PreparedIncludeGroups::Priority(us group) const noexcept
 {
     return group < Groups_.size() ? Groups_[group].Priority : 0;
 }
 
-std::size_t PreparedIncludeGroups::PrefixDepth(std::size_t prefix) const noexcept
+us PreparedIncludeGroups::PrefixDepth(us prefix) const noexcept
 {
     return prefix < Prefixes_.size() ? Prefixes_[prefix].Depth : 0;
 }
 
-std::string_view PreparedIncludeGroups::Prefix(std::size_t prefix) const noexcept
+std::string_view PreparedIncludeGroups::Prefix(us prefix) const noexcept
 {
     return prefix < Prefixes_.size() ? std::string_view(Prefixes_[prefix].Text) : std::string_view{};
 }
 
-std::string_view PreparedIncludeGroups::CanonicalPrefix(std::size_t group) const noexcept
+std::string_view PreparedIncludeGroups::CanonicalPrefix(us group) const noexcept
 {
     const auto prefix = group < GroupCount() ? Groups_[group].FirstPrefix : Prefixes_.size();
     return prefix < Prefixes_.size()

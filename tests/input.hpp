@@ -1,6 +1,7 @@
 #pragma once
 
 #include <util/input.hpp>
+#include <util/types.hpp>
 
 #include <string>
 #include <string_view>
@@ -10,7 +11,7 @@ namespace test {
 struct Input
 {
     std::string Storage;
-    size_t Size;
+    us Size;
 
     explicit Input(std::string_view text)
         : Storage(text)
@@ -21,7 +22,7 @@ struct Input
 
     util::PaddedSourceView View() const
     {
-        return {Storage.data(), static_cast<uint32_t>(Size)};
+        return {Storage.data(), static_cast<u32>(Size)};
     }
 };
 

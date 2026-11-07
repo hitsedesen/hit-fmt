@@ -29,5 +29,5 @@ jobs:
           build/tests/tests
           build/tests/allocation_tests
           echo 'All tests passed'
-          build/hit-fmt/hit-fmt --check .
+          build/cli/hit-fmt --check .
           echo 'No formatting issues found'

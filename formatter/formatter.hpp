@@ -9,6 +9,7 @@
 #include "structural_edits.hpp"
 
 #include <util/input.hpp>
+#include <util/types.hpp>
 
 #include <parser/parser.hpp>
 
@@ -41,7 +42,7 @@ struct LayoutDiagnostic
     LayoutDiagnosticKind Kind;
     // Collected with SourceMap or DiagnosticLocations.
     parser::SourceOffset Offset = 0;
-    uint32_t CodePointColumn = 1;
+    u32 CodePointColumn = 1;
     std::optional<util::Position> Original;
 };
 
@@ -65,9 +66,10 @@ public:
     const std::vector<std::string> ClassMacroNames;
     const std::vector<std::string> EnumMacroNames;
 
-    [[nodiscard]] parser::ParseOptions ParsingOptions() const
+    [[nodiscard]] parser::ParseOptions ParsingOptions(std::pmr::memory_resource* memory = nullptr) const
     {
         return {
+            .Memory = memory,
             .FunctionBodyMacroNames = FunctionBodyMacroNames,
             .ClassMacroNames = ClassMacroNames,
             .EnumMacroNames = EnumMacroNames,

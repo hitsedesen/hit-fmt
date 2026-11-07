@@ -4,10 +4,10 @@
 #include "formatter.hpp"
 #include "policy.hpp"
 
-#include <filesystem>
+#include <fs/fs.hpp>
+
 #include <functional>
 #include <optional>
-#include <regex>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -47,13 +47,13 @@ struct Configuration
 // Loads an optional include, then overrides it with this file's settings.
 // Relative paths start at this file; @/ starts at a .git/.arc root.
 // Unknown keys and malformed values are rejected with a descriptive error.
-[[nodiscard]] Configuration LoadConfigFile(const std::filesystem::path& path);
+[[nodiscard]] Configuration LoadConfigFile(const fs::Path& path);
 
 // Finds the nearest fileName in startDirectory or one of its parents.
 // Reports filesystem errors through onError; missing candidates are ignored.
-[[nodiscard]] std::optional<std::filesystem::path> FindStyleFile(
-    std::filesystem::path startDirectory,
+[[nodiscard]] std::optional<fs::Path> FindStyleFile(
+    fs::Path startDirectory,
     std::string_view fileName = DefaultConfigFileName,
-    const std::function<void(const std::filesystem::path&, const std::error_code&)>& onError = {});
+    const std::function<void(const fs::Path&, const std::error_code&)>& onError = {});
 
 } // namespace formatter

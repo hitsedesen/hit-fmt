@@ -1,3 +1,6 @@
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <formatter/structural_edits.hpp>
 #include <formatter/structural_edits_internal.hpp>
 
@@ -25,8 +28,8 @@ struct File
 {
     Input Source;
     parser::SyntaxTree Tree;
-    std::pmr::monotonic_buffer_resource Memory;
-    std::pmr::monotonic_buffer_resource Scratch;
+    Arena Memory;
+    Arena Scratch;
     SourceAnalysis Safety;
 
     explicit File(std::string_view source, SourceAnalysisOptions options = {})
@@ -46,13 +49,13 @@ struct File
     StructuralMaterialization Apply(const StructuralPlan& plan)
     {
         auto full = MaterializeStructuralEdits(Tree, plan, Memory, Scratch);
-        std::pmr::vector<detail::CopiedTokenRun> copied(&Memory);
+        Vector<detail::CopiedTokenRun> copied(&Memory);
         auto compact = detail::MaterializeStructuralEditsCompact(Tree, plan, Memory, Scratch, copied);
         EXPECT_EQ(compact.Text, full.Text);
         EXPECT_TRUE(compact.OriginalTokens.empty());
         EXPECT_EQ(compact.Provenance.size(), full.Provenance.size());
 
-        for (size_t i = 0; i < std::min(compact.Provenance.size(), full.Provenance.size()); ++i) {
+        for (us i = 0; i < std::min(compact.Provenance.size(), full.Provenance.size()); ++i) {
             const auto& actual = compact.Provenance[i];
             const auto& expected = full.Provenance[i];
             EXPECT_EQ(actual.Output.Begin, expected.Output.Begin);
@@ -65,7 +68,7 @@ struct File
 
         EXPECT_EQ(compact.GeneratedAdjacencies.size(), full.GeneratedAdjacencies.size());
 
-        for (size_t i = 0; i < std::min(compact.GeneratedAdjacencies.size(), full.GeneratedAdjacencies.size()); ++i) {
+        for (us i = 0; i < std::min(compact.GeneratedAdjacencies.size(), full.GeneratedAdjacencies.size()); ++i) {
             EXPECT_EQ(compact.GeneratedAdjacencies[i].Output.Begin, full.GeneratedAdjacencies[i].Output.Begin);
             EXPECT_EQ(compact.GeneratedAdjacencies[i].Output.End, full.GeneratedAdjacencies[i].Output.End);
             EXPECT_EQ(compact.GeneratedAdjacencies[i].Operation, full.GeneratedAdjacencies[i].Operation);
@@ -74,7 +77,7 @@ struct File
         detail::MaterializeOriginalTokenOffsets(Tree, compact, copied);
         EXPECT_EQ(compact.OriginalTokens.size(), full.OriginalTokens.size());
 
-        for (size_t i = 0; i < std::min(compact.OriginalTokens.size(), full.OriginalTokens.size()); ++i) {
+        for (us i = 0; i < std::min(compact.OriginalTokens.size(), full.OriginalTokens.size()); ++i) {
             EXPECT_EQ(compact.OriginalTokens[i].Present, full.OriginalTokens[i].Present);
             EXPECT_EQ(compact.OriginalTokens[i].Output.Begin, full.OriginalTokens[i].Output.Begin);
             EXPECT_EQ(compact.OriginalTokens[i].Output.End, full.OriginalTokens[i].Output.End);
@@ -90,7 +93,7 @@ std::string Dump(const StructuralPlan& plan)
 {
     std::string result;
 
-    for (size_t i = 0; i < plan.Operations.size(); ++i) {
+    for (us i = 0; i < plan.Operations.size(); ++i) {
         auto op = plan.Operations[i];
         result += std::format(
             "action {} kind={} tokens=[{},{})\n",
@@ -161,7 +164,7 @@ NamespaceCommentPlan CheckedNamespaceComments(
     auto certified = detail::PlanNamespaceCommentsCertified(tree, safety, options, memory, scratch);
     EXPECT_EQ(certified.Namespaces.size(), plan.Namespaces.size());
 
-    for (size_t i = 0; i < std::min(certified.Namespaces.size(), plan.Namespaces.size()); ++i) {
+    for (us i = 0; i < std::min(certified.Namespaces.size(), plan.Namespaces.size()); ++i) {
         const auto& actual = certified.Namespaces[i];
         const auto& expected = plan.Namespaces[i];
         EXPECT_EQ(actual.Owner.Begin, expected.Owner.Begin);
@@ -177,7 +180,7 @@ NamespaceCommentPlan CheckedNamespaceComments(
 
     EXPECT_EQ(certified.Skipped.size(), plan.Skipped.size());
 
-    for (size_t i = 0; i < std::min(certified.Skipped.size(), plan.Skipped.size()); ++i) {
+    for (us i = 0; i < std::min(certified.Skipped.size(), plan.Skipped.size()); ++i) {
         EXPECT_EQ(certified.Skipped[i].Action, plan.Skipped[i].Action);
         EXPECT_EQ(certified.Skipped[i].Tokens.Begin, plan.Skipped[i].Tokens.Begin);
         EXPECT_EQ(certified.Skipped[i].Tokens.End, plan.Skipped[i].Tokens.End);
@@ -345,7 +348,7 @@ TEST(StructuralEdits, ExactIncludeLineAtomsAndConditionalCommentBarriers)
     ASSERT_EQ(plan.Skipped.size(), 1u);
     EXPECT_EQ(plan.Skipped.front().Reason, StructuralSkip::CommentAttached);
 
-    for (size_t i = 0; i < groups.size(); ++i) {
+    for (us i = 0; i < groups.size(); ++i) {
         EXPECT_EQ(groups[i].Tokens.Begin, plan.Operations[i].Owner.Begin);
         EXPECT_EQ(groups[i].Tokens.End, plan.Operations[i].Owner.End);
         EXPECT_EQ(groups[i].Source.Begin, plan.Edits[i].Source.Begin);
@@ -479,7 +482,7 @@ TEST(StructuralEdits, IncludeDiscoveryRespectsCompleteGroupBoundaries)
                 file.Safety.Protection().end(),
                 [&] (const auto& range) {
                     return range.Source.Begin < end && begin < range.Source.End &&
-                        (uint16_t(range.Reasons) & uint16_t(ProtectionReason::LineSplice));
+                        (u16(range.Reasons) & u16(ProtectionReason::LineSplice));
                 }));
         }
 
@@ -632,7 +635,7 @@ TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
 {
     File file("void f(){if(a) work();}");
     const auto compactRejects = [] (File& input, const StructuralPlan& rejected) {
-        std::pmr::vector<detail::CopiedTokenRun> copied(&input.Memory);
+        Vector<detail::CopiedTokenRun> copied(&input.Memory);
         EXPECT_THROW(
             (void)detail::MaterializeStructuralEditsCompact(input.Tree, rejected, input.Memory, input.Scratch, copied),
             std::invalid_argument);
@@ -659,9 +662,9 @@ TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
     compactRejects(declarations, deletion);
     File includes("#include <b.h>\n#include <a.h>\n");
     auto repeated = includes.Plan({.SortIncludes = true});
-    std::vector<size_t> sources;
+    std::vector<us> sources;
 
-    for (size_t i = 0; i < repeated.Pieces.size(); ++i) {
+    for (us i = 0; i < repeated.Pieces.size(); ++i) {
         if (repeated.Pieces[i].FromSource) {
             sources.push_back(i);
         }
@@ -677,7 +680,7 @@ TEST(StructuralEdits, DeepNestingUsesOnePlanAndDeterministicCloseOrdering)
 {
     std::string source = "void f(){";
 
-    for (size_t i = 0; i < 128; ++i) {
+    for (us i = 0; i < 128; ++i) {
         source += "if(a) ";
     }
 

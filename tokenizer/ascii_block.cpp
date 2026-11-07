@@ -2,6 +2,8 @@
 
 #if defined(__SSE2__) || defined(_M_X64) || \
     (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#include <util/types.hpp>
+
 #include <emmintrin.h>
 #endif
 
@@ -58,27 +60,27 @@ AsciiBlockClassifier GetAsciiBlockClassifier() noexcept
 void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcept
 {
     result = {};
-    uint64_t colon = 0;
-    uint64_t dot = 0;
-    uint64_t minus = 0;
-    uint64_t bang = 0;
-    uint64_t plus = 0;
-    uint64_t percent = 0;
-    uint64_t caret = 0;
-    uint64_t ampersand = 0;
-    uint64_t pipe = 0;
-    uint64_t equals = 0;
-    uint64_t less = 0;
-    uint64_t greater = 0;
+    u64 colon = 0;
+    u64 dot = 0;
+    u64 minus = 0;
+    u64 bang = 0;
+    u64 plus = 0;
+    u64 percent = 0;
+    u64 caret = 0;
+    u64 ampersand = 0;
+    u64 pipe = 0;
+    u64 equals = 0;
+    u64 less = 0;
+    u64 greater = 0;
 #if defined(__SSE2__) || defined(_M_X64) || \
     (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
-    for (uint32_t offset = 0; offset < AsciiBlock::Size; offset += 16) {
+    for (u32 offset = 0; offset < AsciiBlock::Size; offset += 16) {
         const auto bytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(source + offset));
         const auto equal = [=] (char value) {
             return _mm_cmpeq_epi8(bytes, _mm_set1_epi8(value));
         };
         const auto mask = [] (__m128i value) {
-            return static_cast<uint32_t>(_mm_movemask_epi8(value));
+            return static_cast<u32>(_mm_movemask_epi8(value));
         };
         const auto letters = _mm_or_si128(bytes, _mm_set1_epi8(0x20));
         const auto alpha = _mm_and_si128(
@@ -120,38 +122,38 @@ void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcep
         punctuation = _mm_or_si128(punctuation, _mm_or_si128(equal('('), equal(';')));
         punctuation = _mm_or_si128(punctuation, _mm_or_si128(equal('?'), equal('~')));
         punctuation = _mm_or_si128(punctuation, equal(','));
-        result.Digits |= static_cast<uint64_t>(digits) << offset;
-        result.Newlines |= static_cast<uint64_t>(newline) << offset;
-        result.NonAscii |= static_cast<uint64_t>(nonAscii) << offset;
-        result.Nulls |= static_cast<uint64_t>(nulls) << offset;
-        result.Quotes |= static_cast<uint64_t>(quote) << offset;
-        result.Apostrophes |= static_cast<uint64_t>(apostrophe) << offset;
-        result.Backslashes |= static_cast<uint64_t>(backslash) << offset;
-        result.Slashes |= static_cast<uint64_t>(slash) << offset;
-        result.Stars |= static_cast<uint64_t>(star) << offset;
-        result.Punctuation |= static_cast<uint64_t>(mask(punctuation) | close) << offset;
-        result.Singles |= static_cast<uint64_t>(mask(punctuation) | close) << offset;
-        colon |= static_cast<uint64_t>(colons) << offset;
-        dot |= static_cast<uint64_t>(dots) << offset;
-        minus |= static_cast<uint64_t>(minuses) << offset;
-        bang |= static_cast<uint64_t>(bangs) << offset;
-        plus |= static_cast<uint64_t>(pluses) << offset;
-        percent |= static_cast<uint64_t>(percents) << offset;
-        caret |= static_cast<uint64_t>(carets) << offset;
-        ampersand |= static_cast<uint64_t>(ampersands) << offset;
-        pipe |= static_cast<uint64_t>(pipes) << offset;
-        equals |= static_cast<uint64_t>(equalSigns) << offset;
-        less |= static_cast<uint64_t>(lesses) << offset;
-        greater |= static_cast<uint64_t>(greaters) << offset;
-        result.Whitespace |= static_cast<uint64_t>(spaces) << offset;
-        result.Identifiers |= static_cast<uint64_t>(identifier) << offset;
-        result.ClosingParentheses |= static_cast<uint64_t>(close) << offset;
-        result.RawPrefixes |= static_cast<uint64_t>(raw) << offset;
+        result.Digits |= static_cast<u64>(digits) << offset;
+        result.Newlines |= static_cast<u64>(newline) << offset;
+        result.NonAscii |= static_cast<u64>(nonAscii) << offset;
+        result.Nulls |= static_cast<u64>(nulls) << offset;
+        result.Quotes |= static_cast<u64>(quote) << offset;
+        result.Apostrophes |= static_cast<u64>(apostrophe) << offset;
+        result.Backslashes |= static_cast<u64>(backslash) << offset;
+        result.Slashes |= static_cast<u64>(slash) << offset;
+        result.Stars |= static_cast<u64>(star) << offset;
+        result.Punctuation |= static_cast<u64>(mask(punctuation) | close) << offset;
+        result.Singles |= static_cast<u64>(mask(punctuation) | close) << offset;
+        colon |= static_cast<u64>(colons) << offset;
+        dot |= static_cast<u64>(dots) << offset;
+        minus |= static_cast<u64>(minuses) << offset;
+        bang |= static_cast<u64>(bangs) << offset;
+        plus |= static_cast<u64>(pluses) << offset;
+        percent |= static_cast<u64>(percents) << offset;
+        caret |= static_cast<u64>(carets) << offset;
+        ampersand |= static_cast<u64>(ampersands) << offset;
+        pipe |= static_cast<u64>(pipes) << offset;
+        equals |= static_cast<u64>(equalSigns) << offset;
+        less |= static_cast<u64>(lesses) << offset;
+        greater |= static_cast<u64>(greaters) << offset;
+        result.Whitespace |= static_cast<u64>(spaces) << offset;
+        result.Identifiers |= static_cast<u64>(identifier) << offset;
+        result.ClosingParentheses |= static_cast<u64>(close) << offset;
+        result.RawPrefixes |= static_cast<u64>(raw) << offset;
     }
 #else
-    for (uint32_t offset = 0; offset < AsciiBlock::Size; ++offset) {
+    for (u32 offset = 0; offset < AsciiBlock::Size; ++offset) {
         const auto byte = source[offset];
-        const auto bit = uint64_t{1} << offset;
+        const auto bit = u64{1} << offset;
         const bool space = byte == ' ' || byte == '\t' || byte == '\r' || byte == '\f' || byte == '\v';
         const bool digit = byte >= '0' && byte <= '9';
         const bool identifier = (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') || digit || byte == '_';

@@ -2,6 +2,8 @@
 
 #include "structural_edits.hpp"
 
+#include <util/memory.hpp>
+
 #include <algorithm>
 
 namespace formatter::detail {
@@ -65,7 +67,7 @@ struct CopiedTokenRun
     const StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::pmr::vector<CopiedTokenRun>& copied);
+    Vector<CopiedTokenRun>& copied);
 
 void MaterializeOriginalTokenOffsets(
     const parser::SyntaxTree& original,

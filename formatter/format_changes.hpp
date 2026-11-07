@@ -1,5 +1,7 @@
 #pragma once
 
+#include <util/types.hpp>
+
 #include <parser/syntax_tree.hpp>
 
 #include <optional>
@@ -9,7 +11,7 @@
 
 namespace formatter {
 
-enum class StructuralAction : uint8_t;
+enum class StructuralAction : u8;
 
 // Physical LF-delimited lines, with an exclusive EOF boundary. A final LF
 // adds no phantom line; empty input has no physical lines. No text is retained.
@@ -22,11 +24,11 @@ public:
     // Reuse sorted [0, ..., EOF] boundaries from the same source buffer.
     SourceLines(std::span<const parser::SourceOffset> boundaries, bool containsBareCR);
 
-    [[nodiscard]] size_t Count() const;
-    [[nodiscard]] size_t LineAt(parser::SourceOffset offset) const;
-    [[nodiscard]] parser::SourceRange Range(size_t line) const;
+    [[nodiscard]] us Count() const;
+    [[nodiscard]] us LineAt(parser::SourceOffset offset) const;
+    [[nodiscard]] parser::SourceRange Range(us line) const;
     [[nodiscard]] parser::SourceRange Cover(parser::SourceRange range) const;
-    [[nodiscard]] std::string_view Text(std::string_view text, size_t line) const;
+    [[nodiscard]] std::string_view Text(std::string_view text, us line) const;
     [[nodiscard]] util::Position Position(std::string_view text, parser::SourceOffset offset) const;
     [[nodiscard]] std::span<const parser::SourceOffset> Boundaries() const;
     [[nodiscard]] bool ContainsBareCR() const;
@@ -36,7 +38,7 @@ private:
     bool BareCR_ = false;
 };
 
-enum class FormatChangeKind : uint8_t
+enum class FormatChangeKind : u8
 {
     Whitespace,
     Content,

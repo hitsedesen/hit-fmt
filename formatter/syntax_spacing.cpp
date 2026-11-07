@@ -2,6 +2,9 @@
 
 #include "flat_span_internal.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
@@ -239,7 +242,7 @@ public:
         return opening > node.Tokens.Begin && Tree_.Kind(opening - 1) == TK::Keyword_decltype;
     }
 
-    void Mark(TI gap, F field, const SourceRegion& owner, C category, uint8_t priority = 2, bool fallback = false)
+    void Mark(TI gap, F field, const SourceRegion& owner, C category, u8 priority = 2, bool fallback = false)
     {
         if (gap == 0 || gap >= Tree_.TokenCount() || priority < Gaps_[gap].Priority) {
             return;
@@ -249,7 +252,7 @@ public:
             Id(owner),
             field,
             category,
-            Policies_[size_t(field)],
+            Policies_[us(field)],
             fallback,
             priority,
             SpacingConstraint::None,
@@ -273,14 +276,7 @@ public:
         }
     }
 
-    void Pair(
-        TI token,
-        F before,
-        F after,
-        const SourceRegion& owner,
-        C category,
-        uint8_t priority = 2,
-        bool fallback = true)
+    void Pair(TI token, F before, F after, const SourceRegion& owner, C category, u8 priority = 2, bool fallback = true)
     {
         Mark(token, before, owner, category, priority, fallback);
         Mark(token + 1, after, owner, category, priority, fallback);
@@ -314,7 +310,7 @@ public:
         F empty,
         const SourceRegion& owner,
         C category,
-        uint8_t priority = 2,
+        u8 priority = 2,
         bool fallback = false)
     {
         if (!Delimited(open, end)) {
@@ -910,7 +906,7 @@ public:
                 if (complete) {
                     // Extension boundaries defer to declaration punctuation
                     // and suffix rules, which have priority 3.
-                    const uint8_t priority = standard ? 3 : 2;
+                    const u8 priority = standard ? 3 : 2;
 
                     // An attribute at a confirmed parenthesis edge does not
                     // own that gap; retain the enclosing interior policy.
@@ -1736,9 +1732,7 @@ public:
             // label/access/attribute edge needs the safe sequence fallback.
             auto& gap = Gaps_[current.Tokens.Begin];
 
-            if ((static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) ==
-                0)
-            {
+            if ((static_cast<u8>(gap.Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax)) == 0) {
                 gap.FallbackSpace = true;
             }
         }
@@ -1812,8 +1806,7 @@ public:
         const auto open = Child(node)->Tokens.End;
 
         if (open < Tree_.TokenCount() &&
-            (static_cast<uint8_t>(Gaps_[open].Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) !=
-                0)
+            (static_cast<u8>(Gaps_[open].Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax)) != 0)
         {
             // Propagate an uncertain base through subscript edges in O(1),
             // rather than rescanning the base subtree at each chain suffix.
@@ -2173,7 +2166,7 @@ private:
     }
 
     const parser::SyntaxTree& Tree_;
-    std::array<GapPolicy, size_t(F::Count)> Policies_;
+    std::array<GapPolicy, us(F::Count)> Policies_;
     PointerReferenceDeclaratorLocation Binding_;
     std::span<SyntaxGapPreference> Gaps_;
     std::span<const SourceRegion> Regions_;
@@ -2191,7 +2184,7 @@ std::string_view SpacingFieldName(SpacingField field)
 #undef SYNTAX_SPACING_NAME
         "PointerBinding",
     };
-    const auto index = static_cast<size_t>(field);
+    const auto index = static_cast<us>(field);
     return index < std::size(Names) ? Names[index] : std::string_view{};
 }
 
@@ -2270,7 +2263,7 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
 
     const auto& source = safety.Gaps()[gap];
 
-    if ((static_cast<uint8_t>(Gaps_[gap].Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0) {
+    if ((static_cast<u8>(Gaps_[gap].Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax)) != 0) {
         return std::nullopt;
     }
 
@@ -2299,7 +2292,7 @@ std::optional<bool> SyntaxSpacing::SpacePreference(
     return preference;
 }
 
-std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const
+std::optional<u16> SyntaxSpacing::TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const
 {
     if (!TrailingCommentSpaces_ || !TrailingCommentSpaces_->Count || gap >= Gaps_.size() ||
         gap >= safety.Gaps().size())
@@ -2311,7 +2304,7 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(GapId gap, cons
     const auto& source = safety.Gaps()[gap];
 
     if (preference.Field != F::TrailingCommentSpacing || preference.NamespaceClosingComment ||
-        (static_cast<uint8_t>(preference.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0 ||
+        (static_cast<u8>(preference.Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax)) != 0 ||
         source.Preserve || source.ContextSensitive || source.LineBoundary == GapLineBoundary::Required ||
         source.MustStartWithLineFeed || !source.Horizontal)
     {
@@ -2320,9 +2313,9 @@ std::optional<std::uint16_t> SyntaxSpacing::TrailingCommentCount(GapId gap, cons
 
     auto count = *TrailingCommentSpaces_->Count;
     if (source.Separation == GapSeparation::Required && !safety.Original(source).empty()) {
-        count = std::max<std::size_t>(count, 1);
+        count = std::max<us>(count, 1);
     }
-    return static_cast<std::uint16_t>(count);
+    return static_cast<u16>(count);
 }
 
 template <bool CollectFlat>
@@ -2340,7 +2333,7 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
         throw std::invalid_argument("TrailingCommentSpaces must be between 0 and 10000");
     }
 
-    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
+    if (safety.Gaps().size() != static_cast<us>(tree.TokenCount()) + 1 ||
         safety.Source().data() != tree.Source().data() || safety.Source().size() != tree.Source().size())
     {
         throw std::invalid_argument("syntax spacing requires matching source analysis");
@@ -2362,7 +2355,7 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
     }
 
     Classifier classifier(tree, spacing, pointerBinding, result.Gaps_, regions, flat);
-    std::pmr::vector<Frame<CollectFlat>> stack(&scratchMemory);
+    Vector<Frame<CollectFlat>> stack(&scratchMemory);
     stack.push_back({0, NoRegion, regions[0].FirstChild, {}, regions[0].Tokens.Begin});
 
     while (!stack.empty()) {
@@ -2504,7 +2497,7 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
         flatGap = flat->BeforeGaps();
     }
 
-    for (size_t i = 0; i < result.Gaps_.size(); ++i) {
+    for (us i = 0; i < result.Gaps_.size(); ++i) {
         auto& gap = result.Gaps_[i];
         const auto& source = safety.Gaps()[i];
         gap.FallbackSpace |= source.Separation == GapSeparation::Required;
@@ -2531,8 +2524,8 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
             source.MustStartWithLineFeed)
         {
             gap.Policy = GapPolicy::Preserve;
-            gap.Constraint = static_cast<SpacingConstraint>(static_cast<uint8_t>(gap.Constraint) |
-                static_cast<uint8_t>(SpacingConstraint::SourceSafety));
+            gap.Constraint = static_cast<SpacingConstraint>(static_cast<u8>(gap.Constraint) |
+                static_cast<u8>(SpacingConstraint::SourceSafety));
         }
 
         if constexpr (CollectFlat) {
@@ -2574,7 +2567,7 @@ SyntaxSpacing detail::BuildFlatSyntaxSpacing(
     const SourceAnalysis& safety,
     const CompiledPolicies& policies,
     const LibraryAnnotations& annotations,
-    uint8_t tabWidth,
+    u8 tabWidth,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {

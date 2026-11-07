@@ -4,6 +4,9 @@
 #include "format_changes_internal.hpp"
 #include "hunk_scope.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <unicode/utf8.hpp>
 
 namespace formatter::detail {
@@ -43,7 +46,7 @@ inline FormatResult ProjectHunkFormat(
         bool Allowed;
     };
 
-    std::pmr::vector<Dependency> dependencies(&memory);
+    Vector<Dependency> dependencies(&memory);
     struct OperationKey
     {
         StructuralAction Kind;
@@ -57,7 +60,7 @@ inline FormatResult ProjectHunkFormat(
 
         return a.Owner.Begin != b.Owner.Begin ? a.Owner.Begin < b.Owner.Begin : a.Owner.End < b.Owner.End;
     };
-    std::pmr::vector<OperationKey> eligibleOperations(&memory);
+    Vector<OperationKey> eligibleOperations(&memory);
 
     for (const auto& operation : eligible.Operations) {
         eligibleOperations.push_back({operation.Kind, operation.Owner});
@@ -81,8 +84,8 @@ inline FormatResult ProjectHunkFormat(
     };
     // Canonical output proves punctuation is required. Original parsed list
     // identities and scoped safety alone decide whether we may apply it.
-    std::pmr::vector<CommaKey> eligibleCommas(&memory);
-    std::pmr::vector<bool> removableCommas(tree.TokenCount(), false, &memory);
+    Vector<CommaKey> eligibleCommas(&memory);
+    Vector<bool> removableCommas(tree.TokenCount(), false, &memory);
     const auto gapMutable = [&] (parser::TokenIndex index) {
         const auto& gap = safety.Gaps()[index];
         return !gap.Preserve && !gap.ContextSensitive &&
@@ -158,7 +161,7 @@ inline FormatResult ProjectHunkFormat(
     }
 
     std::sort(eligibleCommas.begin(), eligibleCommas.end(), commaLess);
-    std::pmr::vector<bool> allowedActions(&memory);
+    Vector<bool> allowedActions(&memory);
     allowedActions.reserve(canonical.StructuralOperations.size());
 
     for (const auto& operation : canonical.StructuralOperations) {
@@ -240,7 +243,7 @@ inline FormatResult ProjectHunkFormat(
         [] (const auto& a, const auto& b) {
             return a.Source.Begin != b.Source.Begin ? a.Source.Begin < b.Source.Begin : a.Source.End < b.Source.End;
         });
-    size_t count = 0;
+    us count = 0;
 
     for (const auto dependency : dependencies) {
         if (count && dependency.Source.Begin <= dependencies[count - 1].Source.End) {
@@ -260,7 +263,7 @@ inline FormatResult ProjectHunkFormat(
     };
     // Copied, monotonically ordered bytes are stable diff anchors. No anchor
     // may split a structural owner or a rewritten comment atom.
-    std::pmr::vector<HunkPatch> anchors(&memory);
+    Vector<HunkPatch> anchors(&memory);
 
     for (const auto& map : canonical.Map) {
         if (!map.Exact || !map.HasOriginal || map.Output.Empty() ||
@@ -299,7 +302,7 @@ inline FormatResult ProjectHunkFormat(
                 ? a.Canonical.Begin < b.Canonical.Begin
                 : a.Original.Begin < b.Original.Begin;
         });
-    std::pmr::vector<HunkPatch> patches(&memory);
+    Vector<HunkPatch> patches(&memory);
     const auto consider = [&] (Range before, Range after) {
         bool atomic = false;
         bool allowed = true;
@@ -422,7 +425,7 @@ inline FormatResult ProjectHunkFormat(
         bool Canonical;
     };
 
-    std::pmr::vector<Piece> pieces(&memory);
+    Vector<Piece> pieces(&memory);
     FormatResult result;
 
     if (request.InputProtection) {
@@ -448,7 +451,7 @@ inline FormatResult ProjectHunkFormat(
     }
 
     append({originalCursor, originalSize}, false);
-    std::pmr::vector<StructuralActionId> actions(canonical.StructuralOperations.size(), NoStructuralAction, &memory);
+    Vector<StructuralActionId> actions(canonical.StructuralOperations.size(), NoStructuralAction, &memory);
     const auto action = [&] (StructuralActionId id) {
         if (id == NoStructuralAction) {
             return id;
@@ -462,7 +465,7 @@ inline FormatResult ProjectHunkFormat(
         return actions[id];
     };
     result.OriginalTokens.resize(tree.TokenCount());
-    std::pmr::vector<Offset> mapEnds(&memory);
+    Vector<Offset> mapEnds(&memory);
     Offset maximumEnd = 0;
 
     for (const auto& map : canonical.Map) {
@@ -585,7 +588,7 @@ inline FormatResult ProjectHunkFormat(
         }
     }
 
-    std::pmr::vector<Piece> originalPieces(&memory), canonicalPieces(&memory);
+    Vector<Piece> originalPieces(&memory), canonicalPieces(&memory);
 
     for (const auto& piece : pieces) {
         (piece.Canonical ? canonicalPieces : originalPieces).push_back(piece);
@@ -623,7 +626,7 @@ inline FormatResult ProjectHunkFormat(
     // Transport canonical violations, never recheck widths of hybrid lines.
     // The overflow's exact surviving token is sufficient provenance even when
     // a rejected join or brace operation changes the surrounding indentation.
-    std::pmr::vector<HunkPatch> diagnosticTokens(&memory);
+    Vector<HunkPatch> diagnosticTokens(&memory);
 
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         const auto& before = canonical.OriginalTokens[i];
@@ -643,13 +646,13 @@ inline FormatResult ProjectHunkFormat(
     struct DiagnosticPoint
     {
         Offset Output;
-        size_t Diagnostic;
+        us Diagnostic;
     };
 
-    std::pmr::vector<DiagnosticPoint> diagnosticPoints(&memory);
+    Vector<DiagnosticPoint> diagnosticPoints(&memory);
     // Public formatting uses the default eight-cell tab stops. Match its
     // code-point accounting, including standalone CR and CRLF.
-    uint32_t codePointColumn = 1;
+    u32 codePointColumn = 1;
     const auto advance = [&] (std::string_view text, Offset& offset, util::Position& position) {
         const auto c = static_cast<unsigned char>(text[offset]);
 
@@ -670,7 +673,7 @@ inline FormatResult ProjectHunkFormat(
         }
     };
 
-    for (size_t i = 0; i < canonical.Diagnostics.size(); ++i) {
+    for (us i = 0; i < canonical.Diagnostics.size(); ++i) {
         const auto offset = canonical.Diagnostics[i].Offset;
 
         if (offset >= canonicalSize) {

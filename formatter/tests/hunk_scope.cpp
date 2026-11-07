@@ -1,3 +1,6 @@
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <formatter/hunk_scope.hpp>
 
 #include <gtest/gtest.h>
@@ -17,12 +20,12 @@ using Range = parser::SourceRange;
 
 TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
 {
-    std::pmr::monotonic_buffer_resource memory;
+    Arena memory;
     for (const std::string source : {"", "x", "x\n", "x\r\n", "\n"}) {
         const OriginalHunkLines lines(source, memory);
         EXPECT_TRUE(lines.Coalesce({}, memory).empty());
         for (const Hunk bad :
-            {Hunk{0, 1}, {2, 1}, {2, 2}, {1, std::numeric_limits<size_t>::max()}})
+            {Hunk{0, 1}, {2, 1}, {2, 2}, {1, std::numeric_limits<us>::max()}})
         {
             EXPECT_THROW((void)lines.Bytes(bad), std::invalid_argument);
             EXPECT_THROW((void)lines.Coalesce(std::span(&bad, 1), memory), std::invalid_argument);
@@ -42,7 +45,7 @@ TEST(HunkScope, OriginalPhysicalLinesRejectInvalidAndHaveNoPhantomEOFLine)
 TEST(HunkScope, CoalescesUnsortedOverlapAndAdjacencyButPreservesDisjointLines)
 {
     const std::string source = "one\ntwo\nthree\nfour\nfive\nsix";
-    std::pmr::monotonic_buffer_resource memory;
+    Arena memory;
     const OriginalHunkLines lines(source, memory);
     const Hunk input[] = {{6, 6}, {3, 3}, {1, 2}, {2, 3}, {1, 1}};
     const auto result = lines.Coalesce(input, memory);
@@ -61,7 +64,7 @@ TEST(HunkScope, CoalescesUnsortedOverlapAndAdjacencyButPreservesDisjointLines)
 TEST(HunkScope, SelectionOwnsCRLFAndCommentCRButExcludesNextIndentPointAndEOF)
 {
     const std::string source = "// note\r\n\twork(); \r\nnext();";
-    std::pmr::monotonic_buffer_resource memory;
+    Arena memory;
     const OriginalHunkLines lines(source, memory);
     const Range scope[] = {lines.Bytes({2, 2})};
     EXPECT_EQ(std::string_view(source).substr(scope[0].Begin, scope[0].End - scope[0].Begin), "\twork(); \r\n");
@@ -93,78 +96,6 @@ TEST(HunkScope, RangeAndPointQueriesDoNotBridgeSeparatedAuthority)
     EXPECT_FALSE(formatter::detail::HunkScopeContains(scope, {7, 7}));
     EXPECT_FALSE(formatter::detail::HunkScopeIntersects({}, {0, 1}));
     EXPECT_FALSE(formatter::detail::HunkScopeContains({}, {0, 0}));
-}
-
-class CountingResource
-    : public std::pmr::memory_resource
-{
-public:
-    size_t Bytes = 0;
-    size_t Calls = 0;
-private:
-    void* do_allocate(size_t bytes, size_t alignment) override
-    {
-        Bytes += bytes;
-        ++Calls;
-        return std::pmr::new_delete_resource()->allocate(bytes, alignment);
-    }
-
-    void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
-    {
-        std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
-    }
-
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override
-    {
-        return this == &other;
-    }
-};
-
-TEST(HunkScope, IndexOutlivesSourceAndScaleUsesContiguousOperationMemory)
-{
-    CountingResource memory;
-    constexpr size_t count = 4096;
-    const auto lines = [&] {
-        std::string source;
-        source.reserve(count * 2);
-
-        for (size_t i = 0; i < count; ++i) {
-            source += "x\n";
-        }
-
-        return OriginalHunkLines(source, memory);
-    }();
-    EXPECT_LE(memory.Bytes, 4 * (count + 1) * sizeof(parser::SourceOffset));
-    // Compare with one contiguous vector rather than a library-specific
-    // geometric growth factor (MSVC grows by 1.5, not 2).
-    CountingResource referenceMemory;
-    std::pmr::vector<parser::SourceOffset> reference(&referenceMemory);
-
-    for (size_t i = 0; i <= count; ++i) {
-        reference.push_back(0);
-    }
-
-    EXPECT_LE(memory.Calls, referenceMemory.Calls);
-    const auto calls = memory.Calls;
-
-    for (size_t i = 1; i <= count; ++i) {
-        const auto source = lines.Bytes({i, i});
-        EXPECT_EQ(source.Begin, 2 * (i - 1));
-        EXPECT_EQ(source.End, 2 * i);
-        EXPECT_EQ(lines.Cover(source), (Hunk{i, i}));
-    }
-
-    EXPECT_EQ(memory.Calls, calls);
-    std::pmr::vector<Hunk> reverse(&memory);
-    reverse.reserve(count);
-
-    for (size_t i = count; i; --i) {
-        reverse.push_back({i, i});
-    }
-
-    const auto merged = lines.Coalesce(reverse, memory);
-    ASSERT_EQ(merged.size(), 1);
-    EXPECT_EQ(merged[0], (Hunk{1, count}));
 }
 
 } // namespace

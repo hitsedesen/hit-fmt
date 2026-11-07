@@ -1,5 +1,7 @@
 #pragma once
 
+#include <util/types.hpp>
+
 #include <formatter/formatter.hpp>
 
 #include <gtest/gtest.h>
@@ -12,8 +14,8 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
     ASSERT_TRUE(result.Summary);
     const auto& changes = *result.Changes;
     std::string reconstructed;
-    size_t original = 0, output = 0;
-    size_t includes = 0;
+    us original = 0, output = 0;
+    us includes = 0;
     bool other = false;
 
     for (const auto& edit : changes.Edits) {
@@ -53,9 +55,9 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
     EXPECT_EQ(other, result.Summary->OtherChanges);
 
     const auto checkLines = [] (const formatter::SourceLines& lines, std::string_view text) {
-        size_t cursor = 0;
+        us cursor = 0;
 
-        for (size_t line = 1; line <= lines.Count(); ++line) {
+        for (us line = 1; line <= lines.Count(); ++line) {
             const auto range = lines.Range(line);
             ASSERT_EQ(range.Begin, cursor);
             ASSERT_LT(range.Begin, range.End);
@@ -83,7 +85,7 @@ inline void ExpectChangeSummary(const formatter::FormatResult& summary, const fo
     const auto& expected = detailed.Summary->IncludeOrderChanges;
     ASSERT_EQ(blocks.size(), expected.size());
 
-    for (size_t i = 0; i < blocks.size(); ++i) {
+    for (us i = 0; i < blocks.size(); ++i) {
         EXPECT_EQ(blocks[i].Original.Begin, expected[i].Original.Begin);
         EXPECT_EQ(blocks[i].Original.End, expected[i].Original.End);
         EXPECT_EQ(blocks[i].Output.Begin, expected[i].Output.Begin);

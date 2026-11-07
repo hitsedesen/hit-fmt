@@ -4,6 +4,9 @@
 #include "layout_measure.hpp"
 #include "syntax_spacing.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <array>
 #include <limits>
@@ -108,23 +111,23 @@ struct FlatSpanRules
         }
     }
 
-    static uint32_t SourceColumn(const parser::SyntaxTree& tree, Index token, uint8_t tabWidth)
+    static u32 SourceColumn(const parser::SyntaxTree& tree, Index token, u8 tabWidth)
     {
         const auto prefix = tree.Source().substr(0, tree.Token(token).Text.Begin);
         const auto line = prefix.rfind('\n');
         return layout::detail::SourceColumn(prefix.substr(line == std::string_view::npos ? 0 : line + 1), tabWidth);
     }
 
-    static std::optional<uint32_t> Indentation(
+    static std::optional<u32> Indentation(
         const parser::SyntaxTree& tree,
         RegionId root,
         std::span<const SourceRegion> regions,
         const CompiledPolicies& policies,
-        uint8_t tabWidth,
-        std::span<const uint32_t> maximumIndent)
+        u8 tabWidth,
+        std::span<const u32> maximumIndent)
     {
-        uint64_t indent = 0;
-        uint64_t fixed = 0;
+        u64 indent = 0;
+        u64 fixed = 0;
         auto child = root;
 
         for (auto parent = regions[child].Parent; parent != NoRegion; parent = regions[parent].Parent) {
@@ -151,7 +154,7 @@ struct FlatSpanRules
                     break;
                 case NK::NamespaceDeclaration:
                 case NK::RecordDeclaration: {
-                    fixed = std::max(fixed, uint64_t(maximumIndent[parent]) + indent);
+                    fixed = std::max(fixed, u64(maximumIndent[parent]) + indent);
                     const auto& control = region.Kind == NK::NamespaceDeclaration
                         ? policies.Indentation.Namespaces
                         : policies.Indentation.Members;
@@ -167,7 +170,7 @@ struct FlatSpanRules
                     break;
                 }
                 case NK::CompoundStatement: {
-                    fixed = std::max(fixed, uint64_t(maximumIndent[parent]) + indent);
+                    fixed = std::max(fixed, u64(maximumIndent[parent]) + indent);
                     const auto outer = region.Parent == NoRegion ? NK::TranslationUnit : regions[region.Parent].Kind;
                     const auto& body = outer == NK::FunctionDefinition || outer == NK::MacroFunctionDefinition
                         ? policies.FunctionBodies
@@ -208,11 +211,11 @@ struct FlatSpanRules
 
         indent = std::max(indent, fixed);
 
-        if (indent > uint32_t(INT32_MAX)) {
+        if (indent > u32(INT32_MAX)) {
             return std::nullopt;
         }
 
-        return static_cast<uint32_t>(indent);
+        return static_cast<u32>(indent);
     }
 
 };
@@ -226,7 +229,7 @@ public:
         const SourceAnalysis& safety,
         const CompiledPolicies& policies,
         const LibraryAnnotations& annotations,
-        uint8_t tabWidth,
+        u8 tabWidth,
         std::pmr::memory_resource& scratch)
         : Tree_(tree)
         , Safety_(safety)
@@ -237,12 +240,12 @@ public:
         , MaximumIndent_(&scratch)
         , Forbidden_(&scratch)
     {
-        constexpr uint64_t maximumItems = 65536;
-        constexpr uint64_t maximumBytes = 16 * 1024 * 1024;
-        constexpr uint64_t maximumGroups = 64 * maximumItems;
+        constexpr u64 maximumItems = 65536;
+        constexpr u64 maximumBytes = 16 * 1024 * 1024;
+        constexpr u64 maximumGroups = 64 * maximumItems;
         static_assert(maximumGroups < 0x04000000);
         static_assert(32 * (maximumBytes + maximumGroups) < INT32_MAX);
-        Enabled_ = StylesAllow(policies) && uint64_t(tree.TokenCount()) + safety.Regions().size() <= maximumItems &&
+        Enabled_ = StylesAllow(policies) && u64(tree.TokenCount()) + safety.Regions().size() <= maximumItems &&
             tree.Source().size() <= maximumBytes;
 
         if (!Enabled_) {
@@ -531,7 +534,7 @@ public:
 
     Index BeforeGaps()
     {
-        size_t retained = 0;
+        us retained = 0;
 
         for (const auto& candidate : Candidates_) {
             if (candidate.Valid) {
@@ -543,7 +546,7 @@ public:
 
         // Candidate kinds are disjoint statement/declaration ranges or a
         // function's pre-body header. Invalid enclosing syntax was discarded.
-        for (size_t i = 1; i < Candidates_.size(); ++i) {
+        for (us i = 1; i < Candidates_.size(); ++i) {
             if (Candidates_[i - 1].Span.Tokens.End > Candidates_[i].Span.Tokens.Begin) {
                 Candidates_.clear();
                 return None;
@@ -558,7 +561,7 @@ public:
         auto& candidate = Candidates_[GapCandidate_];
         const bool safe = source.Horizontal && !source.Preserve && !source.ContextSensitive &&
             !source.MustStartWithLineFeed && source.LineBoundary != GapLineBoundary::Required &&
-            !(uint8_t(rule.Constraint) & uint8_t(SpacingConstraint::UncertainSyntax));
+            !(u8(rule.Constraint) & u8(SpacingConstraint::UncertainSyntax));
         candidate.Valid = safe && Matches(source, rule);
 
         if (candidate.Valid && id + 1 < candidate.Span.Tokens.End) {
@@ -569,7 +572,7 @@ public:
         return GapCandidate_ == Candidates_.size() ? None : Candidates_[GapCandidate_].Span.Tokens.Begin + 1;
     }
 
-    void Finish(const SyntaxSpacing& spacing, std::pmr::vector<FlatSpan>& spans)
+    void Finish(const SyntaxSpacing& spacing, Vector<FlatSpan>& spans)
     {
         if (Visual_) {
             return;
@@ -580,7 +583,7 @@ public:
             const auto& rule = spacing.Gaps()[id];
 
             if (source.Preserve || source.ContextSensitive || source.HasBareCR || source.MustStartWithLineFeed ||
-                (uint8_t(rule.Constraint) & uint8_t(SpacingConstraint::UncertainSyntax)))
+                (u8(rule.Constraint) & u8(SpacingConstraint::UncertainSyntax)))
             {
                 return false;
             }
@@ -600,7 +603,7 @@ public:
             const auto prefix = text.substr(0, first);
             return prefix.empty() || (first != std::string_view::npos && prefix == "\r");
         };
-        size_t protection = 0, permission = 0;
+        us protection = 0, permission = 0;
         const auto protectedRanges = Safety_.Protection();
         const auto permissions = Safety_.PartialGapPermissions();
 
@@ -645,8 +648,8 @@ public:
 
             const auto authored = SourceColumn(Tree_, range.Begin, TabWidth_);
             const auto headerBase = header ? MaximumIndent_[candidate.Body] : 0;
-            const uint64_t width =
-                std::max({*indent, authored, headerBase}) + uint64_t(sourceEnd - sourceBegin) + (header ? 0 : 2);
+            const u64 width =
+                std::max({*indent, authored, headerBase}) + u64(sourceEnd - sourceBegin) + (header ? 0 : 2);
 
             if (Policies_.ColumnLimit && width > Policies_.ColumnLimit) {
                 continue;
@@ -661,13 +664,13 @@ private:
     {
         // A negative answer is exact; collisions only perform the existing
         // annotation lookup. Configuration size does not affect lookup cost.
-        std::array<uint64_t, 16> Bits{};
-        size_t Maximum = 0;
+        std::array<u64, 16> Bits{};
+        us Maximum = 0;
 
-        static size_t Key(std::string_view name)
+        static us Key(std::string_view name)
         {
-            return (name.size() * 131 + uint8_t(name.front()) * 17 + uint8_t(name.back()) * 7 +
-                (name.size() > 1 ? uint8_t(name[1]) * 31 : 0)) & 1023;
+            return (name.size() * 131 + u8(name.front()) * 17 + u8(name.back()) * 7 +
+                (name.size() > 1 ? u8(name[1]) * 31 : 0)) & 1023;
         }
 
         void Add(std::string_view name)
@@ -678,7 +681,7 @@ private:
 
             Maximum = std::max(Maximum, name.size());
             const auto key = Key(name);
-            Bits[key >> 6] |= uint64_t{1} << (key & 63);
+            Bits[key >> 6] |= u64{1} << (key & 63);
         }
 
         bool MayContain(std::string_view name) const
@@ -688,7 +691,7 @@ private:
             }
 
             const auto key = Key(name);
-            return (Bits[key >> 6] & (uint64_t{1} << (key & 63))) != 0;
+            return (Bits[key >> 6] & (u64{1} << (key & 63))) != 0;
         }
     };
 
@@ -729,13 +732,13 @@ private:
     const SourceAnalysis& Safety_;
     const CompiledPolicies& Policies_;
     const LibraryAnnotations& Annotations_;
-    uint8_t TabWidth_;
+    u8 TabWidth_;
     bool Enabled_ = false, Visual_ = false, HasVisualScopes_ = false;
     NameFilter ForbiddenNames_, VisualNames_;
-    std::pmr::vector<Candidate> Candidates_;
-    std::pmr::vector<uint32_t> MaximumIndent_;
-    std::pmr::vector<std::string_view> Forbidden_;
-    size_t GapCandidate_ = 0;
+    Vector<Candidate> Candidates_;
+    Vector<u32> MaximumIndent_;
+    Vector<std::string_view> Forbidden_;
+    us GapCandidate_ = 0;
 };
 
 struct FlatSpanAccess
@@ -762,7 +765,7 @@ SyntaxSpacing BuildFlatSyntaxSpacing(
     const SourceAnalysis& safety,
     const CompiledPolicies& policies,
     const LibraryAnnotations& annotations,
-    uint8_t tabWidth,
+    u8 tabWidth,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
 

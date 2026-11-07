@@ -3,6 +3,7 @@
 #include "code_point.hpp"
 
 #include <util/input.hpp>
+#include <util/types.hpp>
 
 #include <cstddef>
 #include <optional>
@@ -35,10 +36,10 @@ struct CodePointWithSize
 // be readable, including any zero padding after the logical input.
 [[nodiscard]] constexpr std::optional<CodePointWithSize> GetFirstCodePointFromPaddedInput(const char* str)
 {
-    auto byte = [&] (size_t offset) {
+    auto byte = [&] (us offset) {
         return static_cast<unsigned char>(str[offset]);
     };
-    auto isContinuation = [&] (size_t offset) {
+    auto isContinuation = [&] (us offset) {
         return (byte(offset) & 0xc0) == 0x80;
     };
 
@@ -67,7 +68,7 @@ struct CodePointWithSize
 // Encodes one code point as UTF-8.
 [[nodiscard]] constexpr std::string FromCodePoint(CodePoint cp)
 {
-    auto value = static_cast<uint32_t>(cp);
+    auto value = static_cast<u32>(cp);
     std::string bytes;
 
     if (value <= U'\x7f') {
@@ -97,10 +98,10 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
         return 0;
     }
 
-    auto byte = [&] (size_t offset) {
+    auto byte = [&] (us offset) {
         return static_cast<unsigned char>(str[offset]);
     };
-    auto isContinuation = [&] (size_t offset) {
+    auto isContinuation = [&] (us offset) {
         return offset < str.size() && (byte(offset) & 0xc0) == 0x80;
     };
 
@@ -143,7 +144,7 @@ constexpr std::optional<short> GetFirstCodePointSize(std::string_view str)
 
 constexpr char32_t ValueFromUtf8(std::string_view cp)
 {
-    auto byte = [&] (size_t offset) {
+    auto byte = [&] (us offset) {
         return static_cast<unsigned char>(cp[offset]);
     };
     switch (cp.size()) {

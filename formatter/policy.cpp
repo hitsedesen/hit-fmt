@@ -3,6 +3,8 @@
 #include "formatter.hpp"
 #include "include_policy.hpp"
 
+#include <util/types.hpp>
+
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -25,13 +27,13 @@ LayoutMode ResolveLayout(CategoryLayout category, LayoutMode parent)
     throw std::invalid_argument("invalid category layout");
 }
 
-std::uint8_t ResolveOffset(std::size_t offset, std::size_t indentWidth)
+u8 ResolveOffset(us offset, us indentWidth)
 {
     // CompilePolicies validates the raw size_t values before resolution.
-    return static_cast<std::uint8_t>(offset == 0 ? indentWidth : offset);
+    return static_cast<u8>(offset == 0 ? indentWidth : offset);
 }
 
-void CheckOffset(std::size_t offset, std::string_view key)
+void CheckOffset(us offset, std::string_view key)
 {
     if (offset > 32) {
         throw PolicyStyleError(std::string(key) + ": indentation offset must not exceed 32", {key});
@@ -71,7 +73,7 @@ BlankLineSetting ResolveMemberDeclarationBlankLines(const Style& style)
 
 void CheckBlankCap(
     BlankLineSetting setting,
-    std::optional<std::size_t> cap,
+    std::optional<us> cap,
     std::string_view key,
     std::string_view inheritedKey = {})
 {
@@ -93,7 +95,7 @@ VerticalGapPolicy CompileBlankLines(BlankLineSetting setting)
     return setting.Mode == BlankLineMode::Exact || setting.Mode == BlankLineMode::Minimum
         ? VerticalGapPolicy{
             setting.Mode == BlankLineMode::Minimum ? VerticalGapMode::Minimum : VerticalGapMode::Exact,
-            static_cast<std::uint16_t>(setting.EmptyLines),
+            static_cast<u16>(setting.EmptyLines),
         }
         : VerticalGapPolicy{};
 }
@@ -126,30 +128,30 @@ void ValidatePolicyStyle(const Style& style)
     }
 
     CheckBlankSetting(style.RulerBlankLinesBefore, "RulerBlankLinesBefore");
-    if (static_cast<std::size_t>(style.RulerPlacement) >= ConfigEnumNames<RulerPlacement>::Values.size()) {
+    if (static_cast<us>(style.RulerPlacement) >= ConfigEnumNames<RulerPlacement>::Values.size()) {
         throw PolicyStyleError("RulerPlacement has invalid value", {"RulerPlacement"});
     }
     CheckBlankSetting(style.RulerBlankLinesAfter, "RulerBlankLinesAfter");
     CheckBlankCap(style.RulerBlankLinesBefore, style.MaxEmptyLines, "RulerBlankLinesBefore");
     CheckBlankCap(style.RulerBlankLinesAfter, style.MaxEmptyLines, "RulerBlankLinesAfter");
-    if (static_cast<std::size_t>(style.AssignmentRhsPlacement) >=
+    if (static_cast<us>(style.AssignmentRhsPlacement) >=
         ConfigEnumNames<FirstItemPlacement>::Values.size())
     {
         throw PolicyStyleError("AssignmentRhsPlacement has invalid value", {"AssignmentRhsPlacement"});
     }
     if (style.AssignmentsPacking &&
-        static_cast<std::size_t>(*style.AssignmentsPacking) >=
+        static_cast<us>(*style.AssignmentsPacking) >=
             ConfigEnumNames<ListPacking>::Values.size())
     {
         throw PolicyStyleError("AssignmentsPacking has invalid value", {"AssignmentsPacking"});
     }
     if (style.DestructorBracePlacement &&
-        static_cast<std::size_t>(*style.DestructorBracePlacement) >=
+        static_cast<us>(*style.DestructorBracePlacement) >=
             ConfigEnumNames<BracePlacement>::Values.size())
     {
         throw PolicyStyleError("DestructorBracePlacement has invalid value", {"DestructorBracePlacement"});
     }
-    if (static_cast<std::size_t>(style.RequiresClausePosition) >=
+    if (static_cast<us>(style.RequiresClausePosition) >=
         ConfigEnumNames<RequiresClausePosition>::Values.size())
     {
         throw PolicyStyleError("RequiresClausePosition has invalid value", {"RequiresClausePosition"});
@@ -281,12 +283,12 @@ void ValidatePolicyStyle(const Style& style)
     } catch (const std::invalid_argument& error) {
         throw PolicyStyleError(error.what(), {"IncludeGroups"});
     }
-    if (static_cast<std::size_t>(style.IndentPreprocessingDirectives) >=
+    if (static_cast<us>(style.IndentPreprocessingDirectives) >=
         ConfigEnumNames<BodyIndentation>::Values.size())
     {
         throw PolicyStyleError("IndentPreprocessingDirectives has invalid value", {"IndentPreprocessingDirectives"});
     }
-    if (static_cast<std::size_t>(style.IfConditionsPacking) >=
+    if (static_cast<us>(style.IfConditionsPacking) >=
         ConfigEnumNames<ListPacking>::Values.size())
     {
         throw PolicyStyleError("IfConditionsPacking has invalid value", {"IfConditionsPacking"});
@@ -303,15 +305,15 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw PolicyStyleError("TernaryOperatorIndentation has invalid value", {"TernaryOperatorIndentation"});
     }
-    if (static_cast<std::size_t>(style.IncludeCategoryOrder) >=
+    if (static_cast<us>(style.IncludeCategoryOrder) >=
         ConfigEnumNames<IncludeCategoryOrder>::Values.size())
     {
         throw PolicyStyleError("IncludeCategoryOrder has invalid value", {"IncludeCategoryOrder"});
     }
-    if (static_cast<std::size_t>(style.IncludeDelimiters) >= ConfigEnumNames<IncludeDelimiters>::Values.size()) {
+    if (static_cast<us>(style.IncludeDelimiters) >= ConfigEnumNames<IncludeDelimiters>::Values.size()) {
         throw PolicyStyleError("IncludeDelimiters has invalid value", {"IncludeDelimiters"});
     }
-    if (static_cast<std::size_t>(style.IncludeSortPriority) >= ConfigEnumNames<IncludeSortPriority>::Values.size()) {
+    if (static_cast<us>(style.IncludeSortPriority) >= ConfigEnumNames<IncludeSortPriority>::Values.size()) {
         throw PolicyStyleError("IncludeSortPriority has invalid value", {"IncludeSortPriority"});
     }
     if (style.IncludeMatchingHeader != IncludeMatchingHeader::Off &&
@@ -319,43 +321,43 @@ void ValidatePolicyStyle(const Style& style)
     {
         throw PolicyStyleError("IncludeMatchingHeader has invalid value", {"IncludeMatchingHeader"});
     }
-    if (static_cast<std::size_t>(style.IncludeGrouping) >=
+    if (static_cast<us>(style.IncludeGrouping) >=
         ConfigEnumNames<IncludeGrouping>::Values.size())
     {
         throw PolicyStyleError("IncludeGrouping has invalid value", {"IncludeGrouping"});
     }
-    if (static_cast<std::size_t>(style.IncludeGroupOrder) >=
+    if (static_cast<us>(style.IncludeGroupOrder) >=
         ConfigEnumNames<IncludeGroupOrder>::Values.size())
     {
         throw PolicyStyleError("IncludeGroupOrder has invalid value", {"IncludeGroupOrder"});
     }
-    if (static_cast<std::size_t>(style.IncludeDirectoryOrder) >=
+    if (static_cast<us>(style.IncludeDirectoryOrder) >=
         ConfigEnumNames<IncludeDirectoryOrder>::Values.size())
     {
         throw PolicyStyleError("IncludeDirectoryOrder has invalid value", {"IncludeDirectoryOrder"});
     }
-    if (static_cast<std::size_t>(style.IncludeInGroupOrder) >=
+    if (static_cast<us>(style.IncludeInGroupOrder) >=
         ConfigEnumNames<IncludeInGroupOrder>::Values.size())
     {
         throw PolicyStyleError("IncludeInGroupOrder has invalid value", {"IncludeInGroupOrder"});
     }
-    if (static_cast<std::size_t>(style.IncludePathBase) >=
+    if (static_cast<us>(style.IncludePathBase) >=
         ConfigEnumNames<IncludePathBase>::Values.size())
     {
         throw PolicyStyleError("IncludePathBase has invalid value", {"IncludePathBase"});
     }
-    if (static_cast<std::size_t>(style.IncludeStandardHeaders) >=
+    if (static_cast<us>(style.IncludeStandardHeaders) >=
         ConfigEnumNames<IncludeStandardHeaders>::Values.size())
     {
         throw PolicyStyleError("IncludeStandardHeaders has invalid value", {"IncludeStandardHeaders"});
     }
     if (style.ConstructorBracePlacement &&
-        static_cast<std::size_t>(*style.ConstructorBracePlacement) >= ConfigEnumNames<BracePlacement>::Values.size())
+        static_cast<us>(*style.ConstructorBracePlacement) >= ConfigEnumNames<BracePlacement>::Values.size())
     {
         throw PolicyStyleError("ConstructorBracePlacement has invalid value", {"ConstructorBracePlacement"});
     }
     if (style.FunctionCvRefQualifierSpacing &&
-        static_cast<std::size_t>(*style.FunctionCvRefQualifierSpacing) >=
+        static_cast<us>(*style.FunctionCvRefQualifierSpacing) >=
             ConfigEnumNames<GapPolicy>::Values.size())
     {
         throw PolicyStyleError("FunctionCvRefQualifierSpacing has invalid value", {"FunctionCvRefQualifierSpacing"});
@@ -410,8 +412,8 @@ CompiledPolicies CompilePolicies(const Style& style)
 #undef COPY_GAP
     return {
         .Layout = style.Layout,
-        .IndentWidth = static_cast<std::uint8_t>(style.IndentWidth),
-        .ColumnLimit = static_cast<std::uint16_t>(style.ColumnLimit),
+        .IndentWidth = static_cast<u8>(style.IndentWidth),
+        .ColumnLimit = static_cast<u16>(style.ColumnLimit),
         .WidthDiagnostics = style.WidthDiagnostics,
         .IndentationKind = style.IndentationKind,
         .LineEnding = style.LineEnding,
@@ -419,21 +421,21 @@ CompiledPolicies CompilePolicies(const Style& style)
         .PointerReferenceDeclaratorLocation =
             style.PointerReferenceDeclaratorLocation,
         .Indentation = {
-            {style.IndentAccessModifiers, static_cast<std::uint8_t>(
+            {style.IndentAccessModifiers, static_cast<u8>(
                 ResolveOffset(style.AccessModifierIndentWidth,
                     style.IndentWidth))},
-            {style.IndentMembers, static_cast<std::uint8_t>(
+            {style.IndentMembers, static_cast<u8>(
                 ResolveOffset(style.MemberIndentWidth, style.IndentWidth))},
-            {style.IndentCaseLabels, static_cast<std::uint8_t>(
+            {style.IndentCaseLabels, static_cast<u8>(
                 ResolveOffset(style.CaseLabelIndentWidth, style.IndentWidth))},
             {style.StandaloneBlockBraceIndentation,
-                static_cast<std::uint8_t>(style.IndentWidth)},
-            {style.StatementAttributeIndent, static_cast<std::uint8_t>(
+                static_cast<u8>(style.IndentWidth)},
+            {style.StatementAttributeIndent, static_cast<u8>(
                 ResolveOffset(style.StatementAttributeIndentWidth,
                     style.IndentWidth))},
-            {style.IndentNamespaces, static_cast<std::uint8_t>(
+            {style.IndentNamespaces, static_cast<u8>(
                 ResolveOffset(style.NamespaceIndentWidth, style.IndentWidth))},
-            {style.IndentLinkageBlocks, static_cast<std::uint8_t>(
+            {style.IndentLinkageBlocks, static_cast<u8>(
                 ResolveOffset(style.LinkageIndentWidth, style.IndentWidth))}},
         .Calls = Calls,
         .StringLiteralFragmentsAsArguments = style.StringLiteralFragmentsAsArguments,
@@ -511,7 +513,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(style.DefinitionBlankLines),
             CompileBlankLines(ResolveMemberBlankLines(style)),
             CompileBlankLines(style.CaseBlankLines),
-            {style.MaxEmptyLines.has_value(), static_cast<std::uint16_t>(
+            {style.MaxEmptyLines.has_value(), static_cast<u16>(
                 style.MaxEmptyLines.value_or(0))},
             CompileBlankLines(style.StandaloneCommentBlankLinesBefore),
             CompileBlankLines(style.StandaloneCommentBlankLinesAfter),
@@ -520,7 +522,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             style.KeepControlStatementWithInitialization,
             CompileBlankLines(style.MacroBlankLinesAround),
             {style.MemberGroupMaxEmptyLines.has_value(),
-                static_cast<std::uint16_t>(style.MemberGroupMaxEmptyLines.value_or(0))}},
+                static_cast<u16>(style.MemberGroupMaxEmptyLines.value_or(0))}},
         .BreakAfterTemplateHeader = style.BreakAfterTemplateHeader,
         .RequiresClausePosition = style.RequiresClausePosition,
         .IndentRequiresClause = style.IndentRequiresClause,

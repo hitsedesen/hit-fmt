@@ -3,6 +3,8 @@
 #include "config.hpp"
 #include "diagnostics.hpp"
 
+#include <util/types.hpp>
+
 #include <parser/syntax_tree.hpp>
 
 #include <cstddef>
@@ -18,10 +20,10 @@ struct ParameterNameDiagnostic
 {
     util::Position Position;
     parser::SourceRange Signature;
-    uint32_t SignatureBeginLine;
-    uint32_t SignatureEndLine;
+    u32 SignatureBeginLine;
+    u32 SignatureEndLine;
     std::string Function;
-    size_t ParameterNumber;
+    us ParameterNumber;
     bool AllowCommentedName = false;
     TokenAnchor Anchor;
 };

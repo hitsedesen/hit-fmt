@@ -3,6 +3,8 @@
 #include "config_enum.hpp"
 #include "config_options.hpp"
 
+#include <util/types.hpp>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -20,7 +22,7 @@ struct Style;
 // token provenance. A canonical combinator rebuilds its own gaps, including
 // existing adjacencies; unrelated nested edits do not rebuild preserved owners.
 // Inserted gaps are always Rebuilt. Never infer context from before/after text.
-enum class GapContext : std::uint8_t
+enum class GapContext : u8
 {
     Preserved,
     Rebuilt
@@ -53,8 +55,8 @@ struct IndentationPolicy
     // Block: base + ContinuationOffset. Delimiter: column after the opener
     // (chain root for chains), floored at base + ContinuationOffset. If an atom
     // and suffix cannot fit, use base + FallbackOffset. Offsets are 1..32.
-    std::uint8_t ContinuationOffset;
-    std::uint8_t FallbackOffset;
+    u8 ContinuationOffset;
+    u8 FallbackOffset;
 };
 
 static_assert(sizeof(IndentationPolicy) == 3);
@@ -106,7 +108,7 @@ struct BodyPolicy
 {
     LayoutMode Layout;
     BodyShape Shape;
-    std::uint8_t IndentWidth;
+    u8 IndentWidth;
     // Separate from nonempty Shape; excludes enums/lists/requirement bodies.
     BodyShape EmptyShape = BodyShape::Expanded;
 };
@@ -118,19 +120,19 @@ static_assert(sizeof(BodyPolicy) == 4);
 struct BodyIndentControl
 {
     BodyIndentation Mode;
-    std::uint8_t Offset;
+    u8 Offset;
 };
 
 struct StandaloneBraceIndentControl
 {
     StandaloneBlockBraceIndentation Mode;
-    std::uint8_t Offset;
+    u8 Offset;
 };
 
 struct AttributeIndentControl
 {
     StatementAttributeIndent Mode;
-    std::uint8_t Offset;
+    u8 Offset;
 };
 
 struct IndentationControls
@@ -183,7 +185,7 @@ struct IncludePolicy
 // An engaged outer option with no Count means explicit Preserve, not omission.
 struct TrailingCommentSpaceSetting
 {
-    std::optional<std::size_t> Count;
+    std::optional<us> Count;
     friend bool operator==(const TrailingCommentSpaceSetting& lhs, const TrailingCommentSpaceSetting& rhs) = default;
 };
 
@@ -211,8 +213,8 @@ struct GapPolicies
 struct CompiledPolicies
 {
     const LayoutMode Layout;
-    const std::uint8_t IndentWidth;
-    const std::uint16_t ColumnLimit;
+    const u8 IndentWidth;
+    const u16 ColumnLimit;
     const WidthDiagnosticPolicy WidthDiagnostics;
     const formatter::IndentationKind IndentationKind;
     const formatter::LineEnding LineEnding;

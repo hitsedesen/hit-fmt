@@ -1,1 +1,1 @@
-include = "../../../../hit-fmt/examples/ytsaurus.hit-fmt"
+include = "../../../../cli/examples/ytsaurus.hit-fmt"

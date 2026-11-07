@@ -2,6 +2,9 @@
 
 #include "config_enum.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -16,14 +19,14 @@ namespace formatter {
 
 struct IncludeGroupRule
 {
-    static constexpr std::int8_t MaxDepth = 127;
+    static constexpr i8 MaxDepth = 127;
 
     std::vector<std::string> Prefixes;
     // Zero keeps the rule together; MaxDepth uses the full directory suffix.
     // Intermediate values cap the suffix's directory components.
-    std::int8_t Depth = MaxDepth;
+    i8 Depth = MaxDepth;
     // Lower priorities sort first; matching precedence is unchanged.
-    std::int8_t Priority = 0;
+    i8 Priority = 0;
     bool StandardHeaders = false;
     friend bool operator==(const IncludeGroupRule& lhs, const IncludeGroupRule& rhs) = default;
 };
@@ -34,7 +37,7 @@ void ValidateIncludeGroups(std::span<const IncludeGroupRule> groups);
 bool IsStandardInclude(std::string_view path, bool angled) noexcept;
 
 // Lexical normalization, retaining unresolved leading parents for relative paths.
-void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std::string_view path, bool absolute);
+void AppendIncludePathComponents(Vector<std::string_view>& parts, std::string_view path, bool absolute);
 
 // Caches classifications for one structural plan in scratch memory.
 // The source directory view borrows the input filename.
@@ -93,8 +96,8 @@ class PreparedIncludeGroups
 public:
     struct Match
     {
-        std::size_t Group;
-        std::size_t Prefix;
+        us Group;
+        us Prefix;
         bool StandardHeaders = false;
     };
 
@@ -106,52 +109,52 @@ public:
     // from IsStandardInclude. First matching rule/selector wins.
     [[nodiscard]] Match Classify(std::string_view path, bool angled = false) const noexcept;
 
-    [[nodiscard]] std::size_t GroupCount() const noexcept
+    [[nodiscard]] us GroupCount() const noexcept
     {
         return Groups_.size();
     }
 
-    [[nodiscard]] std::int8_t Depth(std::size_t group) const noexcept;
-    [[nodiscard]] std::int8_t Priority(std::size_t group) const noexcept;
-    [[nodiscard]] std::size_t PrefixDepth(std::size_t prefix) const noexcept;
-    [[nodiscard]] std::string_view Prefix(std::size_t prefix) const noexcept;
+    [[nodiscard]] i8 Depth(us group) const noexcept;
+    [[nodiscard]] i8 Priority(us group) const noexcept;
+    [[nodiscard]] us PrefixDepth(us prefix) const noexcept;
+    [[nodiscard]] std::string_view Prefix(us prefix) const noexcept;
     // Ordering directory only; exact header selectors omit their filename.
-    [[nodiscard]] std::string_view CanonicalPrefix(std::size_t group) const noexcept;
+    [[nodiscard]] std::string_view CanonicalPrefix(us group) const noexcept;
 
 private:
     struct Group
     {
-        std::size_t FirstPrefix;
-        std::int8_t Depth;
-        std::int8_t Priority;
+        us FirstPrefix;
+        i8 Depth;
+        i8 Priority;
     };
 
     struct PrefixEntry
     {
         std::string Text;
-        std::size_t DirectoryLength;
-        std::size_t Depth;
-        std::size_t Group;
+        us DirectoryLength;
+        us Depth;
+        us Group;
     };
 
     struct Node
     {
-        std::size_t FirstEdge = 0;
-        std::size_t EdgeCount = 0;
-        std::size_t Prefix;
+        us FirstEdge = 0;
+        us EdgeCount = 0;
+        us Prefix;
     };
 
     struct Edge
     {
         unsigned char Byte;
-        std::size_t Child;
+        us Child;
     };
 
     std::vector<Group> Groups_;
     std::vector<PrefixEntry> Prefixes_;
     std::vector<Node> Nodes_;
     std::vector<Edge> Edges_;
-    std::size_t StandardGroup_;
+    us StandardGroup_;
 };
 
 } // namespace formatter

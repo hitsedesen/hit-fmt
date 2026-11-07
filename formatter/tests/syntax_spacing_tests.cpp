@@ -1,3 +1,6 @@
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <formatter/syntax_spacing.hpp>
 
 #include <gtest/gtest.h>
@@ -29,7 +32,7 @@ struct Analysis
 {
     Input Source;
     parser::SyntaxTree Tree;
-    std::pmr::monotonic_buffer_resource Memory;
+    Arena Memory;
     SourceAnalysis Safety;
     SyntaxSpacing Spacing;
 
@@ -46,17 +49,17 @@ struct Analysis
 
     SourceAnalysis Analyze(SourceAnalysisOptions options)
     {
-        std::pmr::monotonic_buffer_resource scratch;
+        Arena scratch;
         return BuildSourceAnalysis(Tree, options, Memory, scratch);
     }
 
     SyntaxSpacing Classify(const GapPolicies& policies, PointerReferenceDeclaratorLocation binding)
     {
-        std::pmr::monotonic_buffer_resource scratch;
+        Arena scratch;
         return BuildSyntaxSpacing(Tree, Safety, policies, binding, Memory, scratch);
     }
 
-    GapId Before(std::string_view token, size_t occurrence = 0) const
+    GapId Before(std::string_view token, us occurrence = 0) const
     {
         for (GapId i = 0; i < Tree.TokenCount(); ++i) {
             if (Tree.TokenText(i) == token && occurrence-- == 0) {
@@ -194,7 +197,7 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
 #undef SET_POLICY
         policies.AmbiguousTemplateDeclarationSpacing = GapPolicy::Preserve;
         Analysis analysis(source, policies);
-        std::array<bool, static_cast<size_t>(F::Count)> editable{};
+        std::array<bool, static_cast<us>(F::Count)> editable{};
 
         for (GapId i = 0; i < analysis.Tree.TokenCount(); ++i) {
             const auto& gap = analysis.Spacing.Gaps()[i];
@@ -206,7 +209,7 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
                 continue;
             }
 
-            editable[static_cast<size_t>(gap.Field)] = true;
+            editable[static_cast<us>(gap.Field)] = true;
             EXPECT_EQ(gap.Policy, policy) << SpacingFieldName(gap.Field);
 
             for (auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
@@ -224,7 +227,7 @@ TEST(SyntaxSpacing, EveryControlProjectsPoliciesOnlyToItsClassifiedSites)
         }
 
         // Editable sites also prove coverage of every advertised syntax field.
-        for (size_t i = 1; i < static_cast<size_t>(F::PointerBinding); ++i) {
+        for (us i = 1; i < static_cast<us>(F::PointerBinding); ++i) {
             if (SupportsSpacingField(static_cast<F>(i))) {
                 EXPECT_TRUE(editable[i]) << SpacingFieldName(static_cast<F>(i));
             }
@@ -266,7 +269,7 @@ TEST(SyntaxSpacing, ControlKeywordBoundaryDoesNotOwnSkippedMacroIdentifier)
             EXPECT_EQ(gap.Field, F::None) << header;
             EXPECT_EQ(gap.Category, C::None) << header;
             EXPECT_TRUE(analysis.Safety.Gaps()[id].Preserve ||
-                (static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax)) != 0);
+                (static_cast<u8>(gap.Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax)) != 0);
             EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), std::nullopt);
         }
 
@@ -301,7 +304,7 @@ TEST(SyntaxSpacing, EnumeratorAssignmentsOwnBothGaps)
             "Third=choose(3, 4) }; int count=0; void f(int x=1){count+=x;}",
             policies);
 
-        for (size_t occurrence = 0; occurrence != 5; ++occurrence) {
+        for (us occurrence = 0; occurrence != 5; ++occurrence) {
             const auto token = analysis.Before("=", occurrence);
             SCOPED_TRACE(static_cast<int>(analysis.Tree.Role(token)));
 
@@ -363,7 +366,7 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         "void f(){do {step()  ;} while(flag)  ; " "do step()  ; while(flag)  ; for(int i=0; i<2; ++i){} }",
         policies);
 
-    for (size_t occurrence : {1u, 3u}) {
+    for (us occurrence : {1u, 3u}) {
         const auto id = analysis.Before(";", occurrence);
         const auto& gap = analysis.Spacing.Gaps()[id];
         EXPECT_EQ(gap.Field, F::StatementSemicolonSpacing);
@@ -374,7 +377,7 @@ TEST(SyntaxSpacing, DoWhileOwnTerminatorIsNotAHeaderSeparator)
         EXPECT_TRUE(analysis.Safety.CanReplaceGap(id, ""));
     }
 
-    for (size_t occurrence : {0u, 2u}) {
+    for (us occurrence : {0u, 2u}) {
         const auto& gap = analysis.Spacing.Gaps()[analysis.Before(";", occurrence)];
         EXPECT_EQ(gap.Field, F::StatementSemicolonSpacing);
         ASSERT_NE(gap.Owner, NoRegion);
@@ -395,7 +398,7 @@ TEST(SyntaxSpacing, BracedAssignmentKeepsItsOperatorGap)
         policies.BraceInitializerSpacing = GapPolicy::NoSpace;
         Analysis analysis("void f(){ value = {}; value = {one, two}; int named = {}; }", policies);
 
-        for (size_t occurrence = 1; occurrence <= 3; ++occurrence) {
+        for (us occurrence = 1; occurrence <= 3; ++occurrence) {
             const auto open = analysis.Before("{", occurrence);
             EXPECT_EQ(analysis.Spacing.Gaps()[open].Field, F::AssignmentOperatorSpacing);
             EXPECT_EQ(
@@ -432,9 +435,8 @@ TEST(SyntaxSpacing, CaptureAssignmentDoesNotOwnInitializerInternals)
             EXPECT_EQ(gap.Field, F::AssignmentOperatorSpacing) << capture;
             EXPECT_EQ(gap.Category, C::Expressions) << capture;
             EXPECT_NE(gap.Owner, own.Owner) << capture;
-            EXPECT_EQ(
-                static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
-                0) << capture;
+            EXPECT_EQ(static_cast<u8>(gap.Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax), 0)
+                << capture;
             EXPECT_EQ(analysis.Spacing.SpacePreference(id, GapContext::Rebuilt, analysis.Safety), false) << capture;
         }
     }
@@ -658,7 +660,7 @@ TEST(SyntaxSpacing, PointerBindingAndNestedMemberOverrides)
         EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("function")].Field, F::NestedDeclaratorPointerSpacing);
         EXPECT_EQ(analysis.Spacing.Gaps()[analysis.Before("member")].Field, F::MemberPointerDeclaratorSpacing);
 
-        for (size_t pack = 1; pack <= 2; ++pack) {
+        for (us pack = 1; pack <= 2; ++pack) {
             EXPECT_EQ(
                 analysis.Spacing.SpacePreference(analysis.Before("...", pack), GapContext::Rebuilt, analysis.Safety),
                 false);
@@ -707,7 +709,7 @@ TEST(SyntaxSpacing, PointerRunsAndSeparatedDeclaratorsKeepTheirOwnBinding)
             analysis.Spacing.SpacePreference(analysis.Before("qualified"), GapContext::Preserved, analysis.Safety),
             std::nullopt);
 
-        for (size_t pack = 1; pack <= 3; ++pack) {
+        for (us pack = 1; pack <= 3; ++pack) {
             EXPECT_EQ(
                 analysis.Spacing.SpacePreference(analysis.Before("...", pack), GapContext::Rebuilt, analysis.Safety),
                 false);
@@ -1002,17 +1004,17 @@ class CountingResource
     : public std::pmr::memory_resource
 {
 public:
-    size_t Calls = 0;
-    size_t Bytes = 0;
+    us Calls = 0;
+    us Bytes = 0;
 private:
-    void* do_allocate(size_t bytes, size_t alignment) override
+    void* do_allocate(us bytes, us alignment) override
     {
         ++Calls;
         Bytes += bytes;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
 
-    void do_deallocate(void* ptr, size_t bytes, size_t alignment) override
+    void do_deallocate(void* ptr, us bytes, us alignment) override
     {
         std::pmr::new_delete_resource()->deallocate(ptr, bytes, alignment);
     }
@@ -1131,9 +1133,7 @@ TEST(SyntaxSpacing, RecoveredSizeofPackOperandDoesNotOwnGroupingInteriors)
                 EXPECT_EQ(gap.Category, C::None);
                 ASSERT_NE(gap.Owner, NoRegion);
                 EXPECT_EQ(analysis.Safety.Regions()[gap.Owner].Kind, parser::NodeKind::ParenthesizedExpression);
-                EXPECT_NE(
-                    static_cast<uint8_t>(gap.Constraint) & static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
-                    0);
+                EXPECT_NE(static_cast<u8>(gap.Constraint) & static_cast<u8>(SpacingConstraint::UncertainSyntax), 0);
 
                 for (auto context : {GapContext::Preserved, GapContext::Rebuilt}) {
                     EXPECT_EQ(analysis.Spacing.SpacePreference(id, context, analysis.Safety), std::nullopt);
@@ -1189,8 +1189,8 @@ TEST(SyntaxSpacing, NewArrayRulesDoNotLeakIntoSizesOrUnconfirmedTypes)
     for (auto index : {analysis.Before("[", 2), analysis.Before("[", 3), analysis.Before("[", 4)}) {
         EXPECT_NE(analysis.Spacing.Gaps()[index].Field, F::NewArraySpaceBeforeBrackets);
         EXPECT_NE(
-            static_cast<uint8_t>(analysis.Spacing.Gaps()[index].Constraint) &
-            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
+            static_cast<u8>(analysis.Spacing.Gaps()[index].Constraint) &
+            static_cast<u8>(SpacingConstraint::UncertainSyntax),
             0);
         EXPECT_FALSE(analysis.Spacing.SpacePreference(index, GapContext::Rebuilt, analysis.Safety));
     }
@@ -1229,8 +1229,8 @@ TEST(SyntaxSpacing, UncertainParenthesizedCalleeDoesNotBorrowCallPolicies)
     for (auto index : {open, first, second}) {
         EXPECT_EQ(analysis.Spacing.Gaps()[index].Category, C::None);
         EXPECT_NE(
-            static_cast<uint8_t>(analysis.Spacing.Gaps()[index].Constraint) &
-            static_cast<uint8_t>(SpacingConstraint::UncertainSyntax),
+            static_cast<u8>(analysis.Spacing.Gaps()[index].Constraint) &
+            static_cast<u8>(SpacingConstraint::UncertainSyntax),
             0);
         EXPECT_FALSE(analysis.Spacing.SpacePreference(index, GapContext::Rebuilt, analysis.Safety));
     }
@@ -1244,7 +1244,7 @@ TEST(SyntaxSpacing, CompleteDirectSequenceBoundariesHaveOwnSpacingPolicy)
     {
         std::string_view Source;
         std::string_view Right;
-        size_t Occurrence;
+        us Occurrence;
         parser::NodeKind Owner;
         C Category;
     };
@@ -1344,10 +1344,10 @@ TEST(SyntaxSpacing, SequenceAttachmentsRetainSpecificAndSafetyRules)
 
 TEST(SyntaxSpacing, ArenaStorageScalesWithGapsNotOptionsOrNodeWidth)
 {
-    for (size_t count : {128, 2048, 8192}) {
+    for (us count : {128, 2048, 8192}) {
         std::string source = "void f(){ invoke(";
 
-        for (size_t i = 0; i < count; ++i) {
+        for (us i = 0; i < count; ++i) {
             if (i) {
                 source += ',';
             }
@@ -1411,9 +1411,9 @@ TEST(SyntaxSpacing,
         "int quotient=8 / \t// divisor\n2;\n";
     Analysis legacy(source);
     GapPolicies policies;
-    std::pmr::monotonic_buffer_resource file;
+    Arena file;
     SyntaxSpacing spacing = [&] {
-        std::pmr::monotonic_buffer_resource scratch;
+        Arena scratch;
         return BuildSyntaxSpacing(
             legacy.Tree,
             legacy.Safety,
@@ -1441,7 +1441,7 @@ TEST(SyntaxSpacing,
     EXPECT_EQ(spacing.TrailingCommentCount(slash, legacy.Safety), 1);
     ASSERT_EQ(spacing.Gaps().size(), legacy.Spacing.Gaps().size());
 
-    for (size_t i = 0; i < spacing.Gaps().size(); ++i) {
+    for (us i = 0; i < spacing.Gaps().size(); ++i) {
         EXPECT_EQ(spacing.Gaps()[i].Owner, legacy.Spacing.Gaps()[i].Owner);
         EXPECT_EQ(spacing.Gaps()[i].Category, legacy.Spacing.Gaps()[i].Category);
         EXPECT_EQ(spacing.Gaps()[i].Field, legacy.Spacing.Gaps()[i].Field);

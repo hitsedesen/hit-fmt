@@ -1,6 +1,9 @@
 #pragma once
 #include "hunks.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <iterator>
 #include <memory_resource>
@@ -31,20 +34,20 @@ public:
             Boundaries_.push_back(size);
         }
     }
-    std::pmr::vector<Hunk> Coalesce(std::span<const Hunk> hunks, std::pmr::memory_resource& memory) const
+    Vector<Hunk> Coalesce(std::span<const Hunk> hunks, std::pmr::memory_resource& memory) const
     {
         for (const auto hunk : hunks) {
             Validate(hunk);
         }
 
-        std::pmr::vector<Hunk> result(hunks.begin(), hunks.end(), &memory);
+        Vector<Hunk> result(hunks.begin(), hunks.end(), &memory);
         std::sort(
             result.begin(),
             result.end(),
             [] (Hunk a, Hunk b) {
                 return a.Begin != b.Begin ? a.Begin < b.Begin : a.End < b.End;
             });
-        size_t count = 0;
+        us count = 0;
 
         for (const auto hunk : result) {
             if (count && hunk.Begin <= result[count - 1].End + 1) {
@@ -82,7 +85,7 @@ public:
         }
 
         const auto line = [&] (parser::SourceOffset offset) {
-            return size_t(std::upper_bound(Boundaries_.begin(), Boundaries_.end(), offset) - Boundaries_.begin());
+            return us(std::upper_bound(Boundaries_.begin(), Boundaries_.end(), offset) - Boundaries_.begin());
         };
         return {line(source.Begin), line(source.End - 1)};
     }
@@ -94,7 +97,7 @@ private:
         }
     }
 
-    std::pmr::vector<parser::SourceOffset> Boundaries_;
+    Vector<parser::SourceOffset> Boundaries_;
     bool BareCR_ = false;
 };
 // Queries require sorted/coalesced nonempty ranges. A zero-width insertion

@@ -4,6 +4,9 @@
 #include "formatter/policy.hpp"
 #include "formatter/source_analysis.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <memory_resource>
 #include <optional>
 #include <span>
@@ -15,7 +18,7 @@ namespace formatter {
 // An option identity, not a second configuration schema. PointerBinding is the
 // separately compiled scalar. None has no configurable preference; it may
 // identify an unclassified or uncertain boundary with a safe layout fallback.
-enum class SpacingField : uint8_t
+enum class SpacingField : u8
 {
     None,
 #define SYNTAX_SPACING_FIELD(type, name, initial) name,
@@ -32,7 +35,7 @@ enum class SpacingField : uint8_t
 // syntax sites. BuildSyntaxSpacing rejects a non-Preserve unsupported setting.
 [[nodiscard]] bool SupportsSpacingField(SpacingField field);
 
-enum class SpacingOwner : uint8_t
+enum class SpacingOwner : u8
 {
     None,
     Calls,
@@ -51,7 +54,7 @@ enum class SpacingOwner : uint8_t
     TemplateParameters,
 };
 
-enum class SpacingConstraint : uint8_t
+enum class SpacingConstraint : u8
 {
     None = 0,
     UncertainSyntax = 1,
@@ -71,7 +74,7 @@ struct SyntaxGapPreference
     SpacingOwner Category : 4 = SpacingOwner::None;
     GapPolicy Policy : 3 = GapPolicy::Preserve;
     bool FallbackSpace : 1 = false;
-    uint8_t Priority = 0;
+    u8 Priority = 0;
     // Bit flags. Uncertain syntax has no generated flat fallback; SourceSafety
     // requires retaining the separate SourceAnalysis constraints. Priority 255
     // is reserved for an uncertain-role Preserve boundary.
@@ -84,7 +87,7 @@ static_assert(sizeof(SyntaxGapPreference) <= 8);
 
 [[nodiscard]] GapContext SpacingOwnerContext(SpacingOwner owner, const CompiledPolicies& policies);
 
-enum class GapAdjacency : uint8_t
+enum class GapAdjacency : u8
 {
     Source,
     AfterComma,
@@ -119,11 +122,11 @@ public:
 
     // Scalar demand only for ordinary trailing horizontal // gaps. Safety
     // resolves count zero to one where changing adjacency needs separation.
-    [[nodiscard]] std::optional<std::uint16_t> TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const;
+    [[nodiscard]] std::optional<u16> TrailingCommentCount(GapId gap, const SourceAnalysis& safety) const;
 
 private:
-    std::pmr::vector<SyntaxGapPreference> Gaps_;
-    std::pmr::vector<detail::FlatSpan> FlatSpans_;
+    Vector<SyntaxGapPreference> Gaps_;
+    Vector<detail::FlatSpan> FlatSpans_;
     friend struct detail::FlatSpanAccess;
     GapPolicy CommaSpaceAfter_ = GapPolicy::Preserve;
     std::optional<TrailingCommentSpaceSetting> TrailingCommentSpaces_;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <util/input.hpp>
+#include <util/types.hpp>
 
 #include <cstdint>
 #include <format>
@@ -156,7 +157,7 @@ namespace tokenizer {
     TOKEN_KIND(Keyword_wchar_t, "wchar_t")                                     \
     TOKEN_KIND(Keyword_while, "while")
 
-enum class TokenKind : uint8_t
+enum class TokenKind : u8
 {
 #define TOKEN_KIND(value, name) value,
     TOKEN_KINDS

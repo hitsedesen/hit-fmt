@@ -1,5 +1,7 @@
 #include "ascii_block.hpp"
 
+#include <util/types.hpp>
+
 #include <immintrin.h>
 
 #include <array>
@@ -8,13 +10,13 @@ namespace tokenizer::detail {
 
 namespace {
 
-template <std::size_t Size>
+template <us Size>
 constexpr std::array<unsigned char, 16> MakeMembershipTable(const char (&members)[Size]) noexcept
 {
     std::array<unsigned char, 16> table{};
 
     // Printable ASCII uses six high-nibble bits, all below the sign bit.
-    for (std::size_t index = 0; index + 1 < Size; ++index) {
+    for (us index = 0; index + 1 < Size; ++index) {
         const auto value = static_cast<unsigned char>(members[index]);
         table[value & 0x0f] |= static_cast<unsigned char>(
             1u << ((value >> 4) - 2));
@@ -31,7 +33,7 @@ constexpr auto SinglesTable = MakeMembershipTable("{}[]();?~,");
 
 constexpr auto PunctuationTable = MakeMembershipTable("{}[]();?~,+-&|<>!=*/%^:.");
 
-template <uint32_t Offset>
+template <u32 Offset>
 #if defined(_MSC_VER)
 __forceinline
 #else
@@ -39,18 +41,18 @@ __attribute__((always_inline)) inline
 #endif
 void ClassifyHalf(__m256i bytes, __m256i following, AsciiBlock& result) noexcept
 {
-    auto store = [] (uint64_t& target, uint32_t value) {
+    auto store = [] (u64& target, u32 value) {
         if constexpr (Offset == 0) {
             target = value;
         } else {
-            target |= static_cast<uint64_t>(value) << Offset;
+            target |= static_cast<u64>(value) << Offset;
         }
     };
     const auto equal = [=] (char value) {
         return _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(value));
     };
     const auto mask = [] (__m256i value) {
-        return static_cast<uint32_t>(_mm256_movemask_epi8(value));
+        return static_cast<u32>(_mm256_movemask_epi8(value));
     };
     const auto letters = _mm256_or_si256(bytes, _mm256_set1_epi8(0x20));
     const auto alpha = _mm256_and_si256(

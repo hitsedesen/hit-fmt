@@ -22,7 +22,7 @@ target_include_directories(lib-formatter
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(lib-formatter
-    lib-parser)
+    lib-parser lib-fs)
 
 if(HIT_FMT_BENCHMARK)
     add_subdirectory(benchmarks)

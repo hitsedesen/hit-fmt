@@ -1,9 +1,11 @@
 #include "config.hpp"
 
+#include <util/parse.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <charconv>
 #include <fstream>
 #include <iterator>
 #include <span>
@@ -17,6 +19,15 @@
 namespace formatter {
 
 namespace {
+
+fs::Path CheckedPath(fs::Result<fs::Path> result)
+{
+    if (result.Error.Code) {
+        throw std::runtime_error(std::string(result.Error.Operation) + ": " + result.Error.Code.message());
+    }
+
+    return std::move(result.Value);
+}
 
 std::string_view Trim(std::string_view text)
 {
@@ -36,7 +47,7 @@ std::string_view StripComment(std::string_view line)
     bool quoted = false;
     bool escaped = false;
 
-    for (size_t index = 0; index < line.size(); ++index) {
+    for (us index = 0; index < line.size(); ++index) {
         char character = line[index];
 
         if (escaped) {
@@ -53,14 +64,14 @@ std::string_view StripComment(std::string_view line)
     return line;
 }
 
-[[noreturn]] void ThrowConfigError(const std::filesystem::path& path, size_t line, std::string_view message)
+[[noreturn]] void ThrowConfigError(const fs::Path& path, us line, std::string_view message)
 {
     throw std::runtime_error(path.string() + ":" + std::to_string(line) + ": " + std::string(message));
 }
 
 // Nested prefix arrays and quoted brackets do not terminate an outer array.
 // Quoted items themselves cannot span physical lines.
-size_t ArrayDepth(std::string_view text, size_t depth, const std::filesystem::path& path, size_t line)
+us ArrayDepth(std::string_view text, us depth, const fs::Path& path, us line)
 {
     bool quoted = false;
     bool escaped = false;
@@ -90,12 +101,11 @@ size_t ArrayDepth(std::string_view text, size_t depth, const std::filesystem::pa
     return depth;
 }
 
-size_t ParseNonnegativeInteger(std::string_view value, const std::filesystem::path& path, size_t line)
+us ParseNonnegativeInteger(std::string_view value, const fs::Path& path, us line)
 {
-    size_t result = 0;
-    auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), result);
+    auto [result, success] = TryParseInteger<us>(value);
 
-    if (error != std::errc{} || end != value.data() + value.size()) {
+    if (!success) {
         ThrowConfigError(path, line, "expected a nonnegative integer");
     }
 
@@ -103,7 +113,7 @@ size_t ParseNonnegativeInteger(std::string_view value, const std::filesystem::pa
 }
 
 template <typename T>
-T ParseEnum(std::string_view value, const std::filesystem::path& path, size_t line)
+T ParseEnum(std::string_view value, const fs::Path& path, us line)
 {
     if (auto result = DeserializeConfigEnum<T>(value)) {
         return *result;
@@ -112,7 +122,7 @@ T ParseEnum(std::string_view value, const std::filesystem::path& path, size_t li
     std::string error = "expected ";
     const auto& names = ConfigEnumNames<T>::Values;
 
-    for (size_t index = 0; index < names.size(); ++index) {
+    for (us index = 0; index < names.size(); ++index) {
         if (index != 0) {
             error += index + 1 == names.size() ? " or " : ", ";
         }
@@ -123,7 +133,7 @@ T ParseEnum(std::string_view value, const std::filesystem::path& path, size_t li
     ThrowConfigError(path, line, error);
 }
 
-std::string ParseString(std::string_view value, const std::filesystem::path& path, size_t line)
+std::string ParseString(std::string_view value, const fs::Path& path, us line)
 {
     value = Trim(value);
 
@@ -134,7 +144,7 @@ std::string ParseString(std::string_view value, const std::filesystem::path& pat
     std::string result;
     result.reserve(value.size() - 2);
 
-    for (size_t index = 1; index + 1 < value.size(); ++index) {
+    for (us index = 1; index + 1 < value.size(); ++index) {
         char character = value[index];
 
         if (character == '"') {
@@ -169,7 +179,7 @@ std::string ParseString(std::string_view value, const std::filesystem::path& pat
     return result;
 }
 
-std::vector<std::string> ParseStringList(std::string_view value, const std::filesystem::path& path, size_t line)
+std::vector<std::string> ParseStringList(std::string_view value, const fs::Path& path, us line)
 {
     value = Trim(value);
 
@@ -194,7 +204,7 @@ std::vector<std::string> ParseStringList(std::string_view value, const std::file
         }
 
         bool escaped = false;
-        size_t end = 1;
+        us end = 1;
 
         for (; end < value.size(); ++end) {
             if (escaped) {
@@ -226,7 +236,7 @@ std::vector<std::string> ParseStringList(std::string_view value, const std::file
     }
 }
 
-std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const std::filesystem::path& path, size_t line)
+std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const fs::Path& path, us line)
 {
     auto expect = [&] (char character) {
         value = Trim(value);
@@ -240,8 +250,8 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
     auto fieldValue = [&] {
         bool quoted = false;
         bool escaped = false;
-        size_t depth = 0;
-        size_t end = 0;
+        us depth = 0;
+        us end = 0;
 
         for (; end < value.size(); ++end) {
             const char character = value[end];
@@ -335,22 +345,26 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
                 }
 
                 depth = true;
-                auto [end, error] = std::from_chars(field.data(), field.data() + field.size(), group.Depth);
+                auto [parsed, success] = TryParseInteger<decltype(group.Depth)>(field);
 
-                if (error != std::errc{} || end != field.data() + field.size() || group.Depth < 0) {
+                if (!success || parsed < 0) {
                     ThrowConfigError(path, line, "IncludeGroups Depth must be an integer " "from 0 to 127");
                 }
+
+                group.Depth = parsed;
             } else if (name == "Priority") {
                 if (priority) {
                     ThrowConfigError(path, line, "IncludeGroups has duplicate Priority field");
                 }
 
                 priority = true;
-                auto [end, error] = std::from_chars(field.data(), field.data() + field.size(), group.Priority);
+                auto [parsed, success] = TryParseInteger<decltype(group.Priority)>(field);
 
-                if (error != std::errc{} || end != field.data() + field.size()) {
+                if (!success) {
                     ThrowConfigError(path, line, "IncludeGroups Priority must be an integer " "from -128 to 127");
                 }
+
+                group.Priority = parsed;
             } else {
                 ThrowConfigError(path, line, "unknown IncludeGroups field '" + std::string(name) + "'");
             }
@@ -379,7 +393,7 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
     }
 }
 
-bool ParseBoolean(std::string_view value, const std::filesystem::path& path, size_t line)
+bool ParseBoolean(std::string_view value, const fs::Path& path, us line)
 {
     if (value == "true") {
         return true;
@@ -392,15 +406,12 @@ bool ParseBoolean(std::string_view value, const std::filesystem::path& path, siz
     ThrowConfigError(path, line, "expected true or false");
 }
 
-std::vector<std::string> ParseNamespaceExemptions(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+std::vector<std::string> ParseNamespaceExemptions(std::string_view value, const fs::Path& path, us line)
 {
     auto names = ParseStringList(value, path, line);
 
     for (const auto& name : names) {
-        size_t start = 0;
+        us start = 0;
 
         while (start < name.size()) {
             auto end = name.find("::", start);
@@ -429,7 +440,7 @@ std::vector<std::string> ParseNamespaceExemptions(
     return names;
 }
 
-std::vector<std::string> ParseCallNames(std::string_view value, const std::filesystem::path& path, size_t line)
+std::vector<std::string> ParseCallNames(std::string_view value, const fs::Path& path, us line)
 {
     auto names = ParseStringList(value, path, line);
 
@@ -445,10 +456,7 @@ std::vector<std::string> ParseCallNames(std::string_view value, const std::files
     return names;
 }
 
-std::optional<std::vector<std::string>> ParseNameAffixes(
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+std::optional<std::vector<std::string>> ParseNameAffixes(std::string_view value, const fs::Path& path, us line)
 {
     auto prefixes = ParseStringList(value, path, line);
 
@@ -468,13 +476,13 @@ std::optional<std::vector<std::string>> ParseNameAffixes(
 }
 
 template <typename T>
-void ParseField(T& field, std::string_view value, const std::filesystem::path& path, size_t line)
+void ParseField(T& field, std::string_view value, const fs::Path& path, us line)
 {
     if constexpr (std::is_enum_v<T>) {
         field = ParseEnum<T>(value, path, line);
     } else if constexpr (std::is_same_v<T, bool>) {
         field = ParseBoolean(value, path, line);
-    } else if constexpr (std::is_same_v<T, size_t>) {
+    } else if constexpr (std::is_same_v<T, us>) {
         field = ParseNonnegativeInteger(value, path, line);
     } else if constexpr (std::is_same_v<T, std::string>) {
         field = ParseString(value, path, line);
@@ -484,7 +492,7 @@ void ParseField(T& field, std::string_view value, const std::filesystem::path& p
 }
 
 template <typename T>
-void ParseField(std::optional<T>& field, std::string_view value, const std::filesystem::path& path, size_t line)
+void ParseField(std::optional<T>& field, std::string_view value, const fs::Path& path, us line)
 {
     if (value == "Inherit") {
         field.reset();
@@ -496,48 +504,23 @@ void ParseField(std::optional<T>& field, std::string_view value, const std::file
     field = parsed;
 }
 
-void ParseField(
-    std::optional<std::vector<std::string>>& field,
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+void ParseField(std::optional<std::vector<std::string>>& field, std::string_view value, const fs::Path& path, us line)
 {
     field = ParseNameAffixes(value, path, line);
 }
 
-void ParseField(std::vector<std::string>& field, std::string_view value, const std::filesystem::path& path, size_t line)
+void ParseField(std::vector<std::string>& field, std::string_view value, const fs::Path& path, us line)
 {
     field = ParseNamespaceExemptions(value, path, line);
 }
 
-void ParseField(std::vector<std::regex>& field, std::string_view value, const std::filesystem::path& path, size_t line)
-{
-    field.clear();
-
-    for (const auto& pattern : ParseStringList(value, path, line)) {
-        if (pattern.empty()) {
-            ThrowConfigError(path, line, "Exclude regex must not be empty");
-        }
-
-        try {
-            field.emplace_back(pattern);
-        } catch (const std::regex_error& error) {
-            ThrowConfigError(path, line, "invalid Exclude regex '" + pattern + "': " + error.what());
-        }
-    }
-}
-
-void ParseField(
-    std::vector<IncludeGroupRule>& field,
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+void ParseField(std::vector<IncludeGroupRule>& field, std::string_view value, const fs::Path& path, us line)
 {
     field = ParseIncludeGroups(value, path, line);
 }
 
 template <auto Member>
-void AssignStyle(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
+void AssignStyle(Configuration& config, std::string_view value, const fs::Path& path, us line)
 {
     if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>,
@@ -568,9 +551,7 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
     {
         config.FormattingStyle.*Member =
             TrailingCommentSpaceSetting{
-                value == "Preserve"
-                    ? std::nullopt
-                    : std::optional<std::size_t>{ParseNonnegativeInteger(value, path, line)},
+                value == "Preserve" ? std::nullopt : std::optional<us>{ParseNonnegativeInteger(value, path, line)},
             };
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, BlankLineSetting>)
@@ -594,14 +575,11 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
                 };
         }
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
-            decltype(config.FormattingStyle.*Member)>, std::optional<std::
-                size_t>>)
+            decltype(config.FormattingStyle.*Member)>, std::optional<us>>)
     {
         if constexpr (Member == &Style::MaxEmptyLines || Member == &Style::MemberGroupMaxEmptyLines) {
             config.FormattingStyle.*Member =
-                value == "Preserve"
-                ? std::nullopt
-                : std::optional<std::size_t>{ParseNonnegativeInteger(value, path, line)};
+                value == "Preserve" ? std::nullopt : std::optional<us>{ParseNonnegativeInteger(value, path, line)};
         } else {
             ParseField(config.FormattingStyle.*Member, value, path, line);
         }
@@ -611,8 +589,22 @@ void AssignStyle(Configuration& config, std::string_view value, const std::files
 }
 
 template <auto Member>
-void AssignConfig(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
+void AssignConfig(Configuration& config, std::string_view value, const fs::Path& path, us line)
 {
+    if constexpr (std::is_same_v<decltype(Member), decltype(&Configuration::Exclude)>) {
+        if constexpr (Member == &Configuration::Exclude) {
+            auto patterns = ParseStringList(value, path, line);
+
+            for (const auto& pattern : patterns) {
+                if (pattern.empty()) {
+                    ThrowConfigError(path, line, "Exclude regex must not be empty");
+                }
+            }
+
+            config.Exclude = std::move(patterns);
+            return;
+        }
+    }
     if constexpr (std::is_same_v<decltype(Member), decltype(&Configuration::NamingExemptions)>) {
         if constexpr (Member == &Configuration::NamingExemptions) {
             config.*Member = ParseCallNames(value, path, line);
@@ -635,34 +627,30 @@ void AssignConfig(Configuration& config, std::string_view value, const std::file
 }
 
 template <auto Member>
-void AssignNamingCase(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
+void AssignNamingCase(Configuration& config, std::string_view value, const fs::Path& path, us line)
 {
     ParseField((config.Naming.*Member).Case, value, path, line);
 }
 
 template <auto Member>
-void AssignNamingPrefixes(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
+void AssignNamingPrefixes(Configuration& config, std::string_view value, const fs::Path& path, us line)
 {
     ParseField((config.Naming.*Member).Prefixes, value, path, line);
 }
 
 template <auto Member>
-void AssignNamingSuffixes(Configuration& config, std::string_view value, const std::filesystem::path& path, size_t line)
+void AssignNamingSuffixes(Configuration& config, std::string_view value, const fs::Path& path, us line)
 {
     (config.Naming.*Member).Suffixes = ParseNameAffixes(value, path, line);
 }
 
 template <auto Member>
-void AssignNamingExemptions(
-    Configuration& config,
-    std::string_view value,
-    const std::filesystem::path& path,
-    size_t line)
+void AssignNamingExemptions(Configuration& config, std::string_view value, const fs::Path& path, us line)
 {
     (config.Naming.*Member).Exemptions = ParseCallNames(value, path, line);
 }
 
-using OptionHandler = void (*)(Configuration&, std::string_view, const std::filesystem::path&, size_t);
+using OptionHandler = void (*)(Configuration&, std::string_view, const fs::Path&, us);
 
 struct OptionBinding
 {
@@ -690,14 +678,14 @@ constexpr auto Options = std::to_array<OptionBinding>({
 
 struct SettingLocation
 {
-    std::filesystem::path Path;
-    size_t Line = 0;
+    fs::Path Path;
+    us Line = 0;
 };
 
 void ValidateStyleLimits(
     const Style& style,
-    const std::filesystem::path& path,
-    size_t line,
+    const fs::Path& path,
+    us line,
     std::span<const SettingLocation> settingLines)
 {
     try {
@@ -705,7 +693,7 @@ void ValidateStyleLimits(
     } catch (const PolicyStyleError& error) {
         std::string message(error.what());
 
-        for (std::size_t index = 0; index < Options.size(); ++index) {
+        for (us index = 0; index < Options.size(); ++index) {
             if (settingLines[index].Line == 0) {
                 continue;
             }
@@ -726,11 +714,11 @@ void ApplySetting(
     Configuration& config,
     std::string_view key,
     std::string_view value,
-    const std::filesystem::path& path,
-    size_t line,
+    const fs::Path& path,
+    us line,
     std::span<SettingLocation> settingLines)
 {
-    for (std::size_t index = 0; index < Options.size(); ++index) {
+    for (us index = 0; index < Options.size(); ++index) {
         const auto& option = Options[index];
 
         if (option.Name == key) {
@@ -950,7 +938,7 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     for (const auto& name : style.BlankLineMacroNames) {
         if (name.ends_with('*')) {
             result.BlankLineMacroPrefixes_.push_back(name.substr(0, name.size() - 1));
-            result.BlankLinePrefixInitials_ |= std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63);
+            result.BlankLinePrefixInitials_ |= u64{1} << (static_cast<unsigned char>(name.front()) & 63);
         } else {
             result.BlankLineMacros_.push_back(name);
             result.BlankLineMacroFilter_.Add(name);
@@ -960,9 +948,9 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
     std::sort(result.BlankLineMacros_.begin(), result.BlankLineMacros_.end());
     auto& prefixes = result.BlankLineMacroPrefixes_;
     std::sort(prefixes.begin(), prefixes.end());
-    std::size_t retained = 0;
+    us retained = 0;
 
-    for (std::size_t index = 0; index < prefixes.size(); ++index) {
+    for (us index = 0; index < prefixes.size(); ++index) {
         if (retained == 0 || !prefixes[index].starts_with(prefixes[retained - 1])) {
             if (retained != index) {
                 prefixes[retained] = std::move(prefixes[index]);
@@ -1063,7 +1051,7 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
         });
     result.ScopeEndOrder_.reserve(result.VisualScopes_.size());
 
-    for (std::size_t index = 0; index < result.VisualScopes_.size(); ++index) {
+    for (us index = 0; index < result.VisualScopes_.size(); ++index) {
         result.ScopeEndOrder_.push_back(index);
     }
 
@@ -1157,9 +1145,7 @@ bool LibraryAnnotations::IsBlankLineMacro(std::string_view name) const noexcept
     }
 
     // Prefix matches do not require the query's exact length.
-    if (name.empty() ||
-        !(BlankLinePrefixInitials_ & (std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63))))
-    {
+    if (name.empty() || !(BlankLinePrefixInitials_ & (u64{1} << (static_cast<unsigned char>(name.front()) & 63)))) {
         return false;
     }
 
@@ -1209,28 +1195,30 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(std::string_view n
 
 namespace {
 
-std::filesystem::path ResolveConfigInclude(std::string_view name, const std::filesystem::path& path, size_t line)
+fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line)
 {
     if (name.empty() || name.find('\0') != std::string_view::npos) {
         ThrowConfigError(path, line, "include expects a nonempty file path");
     }
 
     if (name.starts_with("@/")) {
-        const std::filesystem::path relative(name.substr(2));
+        const fs::Path relative(name.substr(2));
 
         if (relative.empty() || relative.has_root_path()) {
             ThrowConfigError(path, line, "expected a repository-relative include path");
         }
 
-        auto directory = std::filesystem::canonical(std::filesystem::absolute(path).parent_path());
+        auto directory = CheckedPath(fs::Canonical(CheckedPath(fs::Absolute(path)).parent_path()));
 
         while (true) {
             std::error_code error;
 
             for (const auto name : {".git", ".arc"}) {
-                const auto marker = std::filesystem::status(directory / name, error);
+                const auto candidate = directory / fs::Path(name);
+                const auto marker = fs::Status(candidate);
+                error = marker.Error.Code;
 
-                if (!error && (std::filesystem::is_directory(marker) || std::filesystem::is_regular_file(marker))) {
+                if (!error && (marker.Value.Directory || marker.Value.Regular)) {
                     return directory / relative;
                 }
 
@@ -1247,17 +1235,17 @@ std::filesystem::path ResolveConfigInclude(std::string_view name, const std::fil
         }
     }
 
-    const std::filesystem::path included(name);
+    const fs::Path included(name);
     return included.is_absolute() ? included : path.parent_path() / included;
 }
 
-size_t LoadConfigSettings(
-    const std::filesystem::path& path,
+us LoadConfigSettings(
+    const fs::Path& path,
     Configuration& config,
     std::span<SettingLocation> settingLines,
-    std::vector<std::filesystem::path>& active)
+    std::vector<fs::Path>& active)
 {
-    const auto canonical = std::filesystem::weakly_canonical(path);
+    const auto canonical = CheckedPath(fs::Canonical(path, true));
 
     if (std::find(active.begin(), active.end(), canonical) != active.end()) {
         throw std::runtime_error("configuration include cycle: " + path.string());
@@ -1267,7 +1255,7 @@ size_t LoadConfigSettings(
         throw std::runtime_error("configuration include depth exceeds 64: " + path.string());
     }
 
-    std::ifstream input(path);
+    std::ifstream input(path.c_str());
 
     if (!input.is_open()) {
         throw std::runtime_error("cannot open configuration file: " + path.string());
@@ -1278,13 +1266,13 @@ size_t LoadConfigSettings(
     {
         std::string Key;
         std::string Value;
-        size_t Line;
+        us Line;
     };
 
     std::vector<Setting> settings;
     std::optional<Setting> include;
     std::string lineText;
-    size_t lineNumber = 0;
+    us lineNumber = 0;
 
     while (std::getline(input, lineText)) {
         ++lineNumber;
@@ -1307,7 +1295,7 @@ size_t LoadConfigSettings(
             ThrowConfigError(path, lineNumber, "expected Key = Value");
         }
 
-        const size_t settingLine = lineNumber;
+        const us settingLine = lineNumber;
         std::string arrayValue;
         std::string arrayKey;
         auto arrayDepth = value.front() == '[' ? ArrayDepth(value, 0, path, lineNumber) : 0;
@@ -1377,11 +1365,11 @@ size_t LoadConfigSettings(
 
 } // namespace
 
-Configuration LoadConfigFile(const std::filesystem::path& path)
+Configuration LoadConfigFile(const fs::Path& path)
 {
     Configuration config;
     std::array<SettingLocation, Options.size()> settingLines{};
-    std::vector<std::filesystem::path> active;
+    std::vector<fs::Path> active;
     const auto lineNumber = LoadConfigSettings(path, config, settingLines, active);
     ValidateStyleLimits(config.FormattingStyle, path, lineNumber, settingLines);
     try {
@@ -1393,19 +1381,18 @@ Configuration LoadConfigFile(const std::filesystem::path& path)
     return config;
 }
 
-std::optional<std::filesystem::path> FindStyleFile(
-    std::filesystem::path startDirectory,
+std::optional<fs::Path> FindStyleFile(
+    fs::Path startDirectory,
     std::string_view fileName,
-    const std::function<void(const std::filesystem::path&, const std::error_code&)>& onError)
+    const std::function<void(const fs::Path&, const std::error_code&)>& onError)
 {
-    std::error_code error;
-    auto directory = startDirectory.empty()
-        ? std::filesystem::current_path(error)
-        : std::filesystem::absolute(startDirectory, error);
+    auto resolved = startDirectory.empty() ? fs::CurrentPath() : fs::Absolute(startDirectory);
+    auto error = resolved.Error.Code;
+    auto directory = std::move(resolved.Value);
 
     if (error) {
         if (onError) {
-            onError(startDirectory.empty() ? std::filesystem::path(".") : startDirectory, error);
+            onError(startDirectory.empty() ? fs::Path(".") : startDirectory, error);
         }
 
         return std::nullopt;
@@ -1416,7 +1403,10 @@ std::optional<std::filesystem::path> FindStyleFile(
     while (!startDirectory.empty()) {
         auto candidate = startDirectory / fileName;
 
-        if (std::filesystem::is_regular_file(candidate, error) && !error) {
+        const auto status = fs::Status(candidate);
+        error = status.Error.Code;
+
+        if (!error && status.Value.Regular) {
             return candidate;
         }
 
