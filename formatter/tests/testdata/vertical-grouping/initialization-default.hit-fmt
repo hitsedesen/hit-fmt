@@ -1,0 +1,4 @@
+Layout = Canonical
+IndentWidth = 4
+BodyShape = Expanded
+ControlStatementBlankLinesBefore = 1

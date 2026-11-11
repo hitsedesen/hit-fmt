@@ -564,6 +564,7 @@
     OPT(std::optional<std::size_t>, MemberGroupMaxEmptyLines, std::nullopt)   \
     OPT(formatter::BlankLineSetting, BlockBlankLinesAfter, {})              \
     OPT(formatter::BlankLineSetting, ControlStatementBlankLinesBefore, {})   \
+    OPT(bool, KeepControlStatementWithInitialization, false)                \
     OPT(formatter::BlankLineSetting, MacroBlankLinesAround, {})             \
     OPT(std::vector<std::string>, BlankLineMacroNames, {})                  \
     OPT(std::vector<std::string>, CallLineFirstArgumentNames, {})             \

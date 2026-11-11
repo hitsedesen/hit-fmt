@@ -465,6 +465,11 @@ std::vector<FormatCase> FormatCases()
     AddCases(
         cases,
         data / "vertical-grouping",
+        {"initialization", "initialization-default", "initialization-minimum"},
+        "initialization.input.cpp");
+    AddCases(
+        cases,
+        data / "vertical-grouping",
         {"member-groups", "member-groups-exact", "member-groups-minimum-zero"},
         "member-groups.input.cpp");
     ShareExpected(

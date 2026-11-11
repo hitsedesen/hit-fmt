@@ -69,6 +69,7 @@ struct VerticalGapPolicies
     VerticalGapPolicy StandaloneCommentBlankLinesAfter;
     VerticalGapPolicy BlockBlankLinesAfter;
     VerticalGapPolicy ControlStatementBlankLinesBefore;
+    bool KeepControlStatementWithInitialization;
     VerticalGapPolicy MacroBlankLinesAround;
     EmptyLineCap MemberGroupMaxEmptyLines;
 };

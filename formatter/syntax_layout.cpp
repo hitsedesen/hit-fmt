@@ -5807,6 +5807,41 @@ private:
         }
     }
 
+    bool HasVariableInitialization(Index id) const
+    {
+        const auto regions = Safety_.Regions();
+        const auto& statement = regions[UnwrapStatement(id)];
+
+        if (statement.Kind != NodeKind::DeclarationStatement && statement.Kind != NodeKind::Declaration) {
+            return false;
+        }
+
+        // Inspect only the declaration spine, never initializers nested inside
+        // expressions or parameter defaults. Regions also cover flat interiors.
+        for (auto list = statement.FirstChild; list != None; list = regions[list].NextSibling) {
+            if (regions[list].Kind != NodeKind::InitDeclaratorList) {
+                continue;
+            }
+
+            for (auto declarator = regions[list].FirstChild;
+                declarator != None;
+                declarator = regions[declarator].NextSibling)
+            {
+                if (regions[declarator].Kind != NodeKind::InitDeclarator) {
+                    continue;
+                }
+
+                for (auto part = regions[declarator].FirstChild; part != None; part = regions[part].NextSibling) {
+                    if (regions[part].Kind == NodeKind::Initializer) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     void PlanStatementGaps(Index id)
     {
         const auto& sequence = Syntax_[id];
@@ -5869,8 +5904,9 @@ private:
 
                 const auto statementKind = Region(Syntax_[UnwrapStatement(child)]).Kind;
 
-                if (statementKind == NodeKind::IfStatement || statementKind == NodeKind::ForStatement ||
-                    statementKind == NodeKind::WhileStatement)
+                if ((statementKind == NodeKind::IfStatement || statementKind == NodeKind::ForStatement ||
+                    statementKind == NodeKind::WhileStatement) &&
+                    !(policy.KeepControlStatementWithInitialization && HasVariableInitialization(previous)))
                 {
                     ApplyVerticalGap(gap, policy.ControlStatementBlankLinesBefore);
                 }
