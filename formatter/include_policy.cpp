@@ -5,6 +5,13 @@
 #include <numeric>
 #include <stdexcept>
 
+#ifndef _WIN32
+#include <fcntl.h>
+#include <unistd.h>
+
+#include <sys/stat.h>
+#endif
+
 namespace formatter {
 
 namespace {
@@ -115,43 +122,152 @@ IncludeDelimiterResolver::IncludeDelimiterResolver(
     std::pmr::memory_resource& scratch)
     : Policy_(policy)
     , Base_(base)
-    , InputAbsolute_(inputFilePath.starts_with('/'))
-    , Current_(&scratch)
-    , Parts_(&scratch)
+    , Buffer_(&scratch)
+    , Headers_(&scratch)
+    , SourceDirectories_(&scratch)
+    , RootDirectories_(&scratch)
 {
-    if (policy != IncludeDelimiters::Preserve) {
+    if (!inputFilePath.empty()) {
         const auto slash = inputFilePath.rfind('/');
-
-        if (slash != std::string_view::npos) {
-            AppendIncludePathComponents(Current_, inputFilePath.substr(0, slash + 1), InputAbsolute_);
-        }
+        InputDirectory_ = slash == std::string_view::npos ? "." : inputFilePath.substr(0, slash + 1);
     }
+}
+
+IncludeDelimiterResolver::~IncludeDelimiterResolver()
+{
+#ifndef _WIN32
+    if (DirectoryFd_ >= 0) {
+        ::close(DirectoryFd_);
+    }
+#endif
+}
+
+bool IncludeDelimiterResolver::InitializeDirectory()
+{
+    if (!Initialized_) {
+        Initialized_ = true;
+
+        if (InputDirectory_.empty()) {
+            return false;
+        }
+
+#ifdef _WIN32
+        std::error_code error;
+        CurrentDirectory_ = std::filesystem::canonical(InputDirectory_, error);
+
+        if (error) {
+            CurrentDirectory_.clear();
+        }
+#else
+        Buffer_.assign(InputDirectory_);
+#ifdef O_PATH
+        constexpr int access = O_PATH;
+#elif defined(O_SEARCH)
+        constexpr int access = O_SEARCH;
+#else
+        constexpr int access = O_RDONLY;
+#endif
+        DirectoryFd_ = ::open(Buffer_.c_str(), access | O_DIRECTORY | O_CLOEXEC);
+        struct stat directory{};
+
+        if (DirectoryFd_ >= 0 && ::fstat(DirectoryFd_, &directory) == 0) {
+            Device_ = directory.st_dev;
+            Inode_ = directory.st_ino;
+        } else if (DirectoryFd_ >= 0) {
+            ::close(DirectoryFd_);
+            DirectoryFd_ = -1;
+        }
+#endif
+    }
+
+#ifdef _WIN32
+    return !CurrentDirectory_.empty();
+#else
+    return DirectoryFd_ >= 0;
+#endif
+}
+
+#ifndef _WIN32
+bool IncludeDelimiterResolver::SameDirectory(std::string_view path, bool sourceRelative)
+{
+    auto& directories = sourceRelative ? SourceDirectories_ : RootDirectories_;
+
+    if (const auto found = directories.find(path); found != directories.end()) {
+        return found->second;
+    }
+
+    Buffer_.assign(path);
+    struct stat directory{};
+    const bool same = ::fstatat(sourceRelative ? DirectoryFd_ : AT_FDCWD, Buffer_.c_str(), &directory, 0) == 0 &&
+        directory.st_dev == Device_ && directory.st_ino == Inode_;
+    directories.emplace(std::pmr::string(path, Buffer_.get_allocator().resource()), same);
+    return same;
+}
+#endif
+
+bool IncludeDelimiterResolver::Resolve(std::string_view path)
+{
+    const bool sourceRelative = path.find('/') == std::string_view::npos || path.starts_with("./") ||
+        path.starts_with("../") || Base_ == IncludePathBase::SourceDirectory;
+#ifndef _WIN32
+    Buffer_.assign(path);
+    struct stat header{};
+
+    if (::fstatat(sourceRelative ? DirectoryFd_ : AT_FDCWD, Buffer_.c_str(), &header, AT_SYMLINK_NOFOLLOW) != 0) {
+        return true;
+    }
+
+    if (S_ISREG(header.st_mode)) {
+        const auto slash = path.rfind('/');
+        return slash != std::string_view::npos && !SameDirectory(path.substr(0, slash + 1), sourceRelative);
+    }
+
+    if (!S_ISLNK(header.st_mode)) {
+        return true;
+    }
+#endif
+    // Only header symlinks require resolving a complete path on POSIX.
+    const auto candidate = sourceRelative ? std::filesystem::path(InputDirectory_) / path : std::filesystem::path(path);
+    std::error_code error;
+
+    if (!std::filesystem::is_regular_file(candidate, error)) {
+        return true;
+    }
+
+    const auto resolved = std::filesystem::canonical(candidate, error);
+
+    if (error) {
+        return true;
+    }
+
+#ifdef _WIN32
+    return resolved.parent_path() != CurrentDirectory_;
+#else
+    struct stat directory{};
+    return ::stat(resolved.parent_path().c_str(), &directory) != 0 || directory.st_dev != Device_ ||
+        directory.st_ino != Inode_;
+#endif
 }
 
 bool IncludeDelimiterResolver::Angled(std::string_view path, bool original)
 {
-    // Bare names carry no evidence about the header's location or search root.
-    if (Policy_ == IncludeDelimiters::Preserve || path.find('/') == std::string_view::npos ||
-        path.find_first_of("\"<>\\\r\n") != std::string_view::npos)
+    if (Policy_ == IncludeDelimiters::Preserve || path.find_first_of("\"<>\\\r\n") != std::string_view::npos ||
+        path.find('\0') != std::string_view::npos)
     {
         return original;
     }
 
-    // Explicit source-relative paths must use the source directory's search root.
-    if (path.starts_with("./") || path.starts_with("../")) {
-        return false;
+    if (path.empty() || !InitializeDirectory()) {
+        return true;
     }
 
-    const bool relative = !path.starts_with('/') && Base_ == IncludePathBase::SourceDirectory;
-    const bool absolute = relative ? InputAbsolute_ : path.starts_with('/');
-    Parts_.clear();
-
-    if (relative) {
-        Parts_.assign(Current_.begin(), Current_.end());
+    if (const auto found = Headers_.find(path); found != Headers_.end()) {
+        return found->second;
     }
 
-    AppendIncludePathComponents(Parts_, path.substr(0, path.rfind('/') + 1), absolute);
-    return absolute != InputAbsolute_ || Parts_ != Current_;
+    const bool angled = Resolve(path);
+    Headers_.emplace(std::pmr::string(path, Buffer_.get_allocator().resource()), angled);
+    return angled;
 }
 
 PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> groups)

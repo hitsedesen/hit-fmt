@@ -8,11 +8,12 @@
 # Exact or minimum counts above an explicit MaxEmptyLines cap are invalid.
 # Minimum:N requires at least N empty lines; caps still limit retained gaps.
 # IncludeDelimiters = Preserve (default) keeps existing quotes/angles.
-# QuotedLocal quotes explicit ./ and ../ paths and lexically same-directory
-# paths; it angles other paths using IncludePathBase and the input filename.
-# It never changes paths.
-# Bare names keep their delimiters: local and system names are ambiguous.
-# For example, <../sibling/header.h> becomes "../sibling/header.h".
+# QuotedLocal quotes only existing headers in the input file's exact directory.
+# Other headers, including bare system names, use angles. Symlinks are resolved.
+# Missing headers or an unavailable input directory use angles.
+# Bare names and explicit ./ or ../ paths resolve from the input directory;
+# other relative paths use IncludePathBase (ProjectRoot = working directory).
+# Paths never change: "../sibling/header.h" becomes <../sibling/header.h>.
 # Works independently of IncludeOrder, also on single/commented includes.
 # Macro includes, splices and protected directives stay exact.
 # IncludeOrder = Sort enables the following sorting policies.

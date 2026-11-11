@@ -240,7 +240,7 @@ void PlanTextPolicyEdits(
     StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::string_view inputFilePath)
+    IncludeDelimiterResolver& delimiters)
 {
     const bool indentDirectives = options.IndentPreprocessingDirectives == BodyIndentation::Indent;
     const bool rewriteDirectives = options.IndentPreprocessingDirectives != BodyIndentation::Preserve;
@@ -258,7 +258,6 @@ void PlanTextPolicyEdits(
         return;
     }
 
-    IncludeDelimiterResolver delimiters(options.Delimiters, options.PathBase, inputFilePath, scratchMemory);
     struct MovedAtom
     {
         parser::SourceRange Source;

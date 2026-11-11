@@ -91,9 +91,10 @@ struct FormatRequest
     // Original input file, not normalized text or a temporary filename.
     // Slash-separated lexical path; borrowed for this synchronous Format or
     // FormatChanged call only. Never retained by prepared metadata or results.
-    // Empty disables matching-header selection. Directory distances then use
-    // an empty source directory; ProjectRoot input paths are relative to the
-    // working directory; absolute filenames beneath it are rebased to it.
+    // Empty disables matching-header selection and QuotedLocal uses angles.
+    // Directory distances then use an empty source directory. ProjectRoot input
+    // paths are relative to the working directory; absolute filenames beneath
+    // it are rebased to it for grouping.
     std::string_view InputFilePath = {};
     // Retain final original-token offsets for diagnostic consumers without
     // composing full source associations. SourceMap includes these offsets.

@@ -1,6 +1,6 @@
 #include "job.hpp"
 
-#include "../document.hpp"
+#include <../document.hpp>
 
 #include <algorithm>
 #include <functional>

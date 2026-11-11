@@ -1,6 +1,6 @@
 #include "config_help.hpp"
 
-#include "config_help_data.hpp"
+#include <config_help_data.hpp>
 
 #include <array>
 #include <ostream>

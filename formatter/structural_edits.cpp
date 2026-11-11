@@ -547,7 +547,8 @@ void Includes(
     StructuralPlan& plan,
     std::pmr::memory_resource& scratch,
     StructuralOptions options,
-    IncludeSortContext context)
+    IncludeSortContext context,
+    IncludeDelimiterResolver& delimiters)
 {
     if (options.Grouping == IncludeGrouping::Preserve) {
         context.Groups = nullptr;
@@ -577,7 +578,6 @@ void Includes(
         AppendIncludePathComponents(current, inputDirectory, inputAbsolute);
     }
 
-    IncludeDelimiterResolver delimiters(options.Delimiters, options.PathBase, context.InputFilePath, scratch);
     const auto sourceName = Filename(context.InputFilePath);
     const auto sourceStem = Stem(sourceName);
     auto pairedStem = sourceStem;
@@ -1348,6 +1348,7 @@ StructuralPlan PlanStructuralEditsImpl(
             },
             trailingLabels);
     }
+    const auto inputFilePath = includes.InputFilePath;
     std::string relativeInput;
 
     if ((options.SortIncludes || options.Delimiters != IncludeDelimiters::Preserve) &&
@@ -1373,11 +1374,13 @@ StructuralPlan PlanStructuralEditsImpl(
         }
     }
 
+    IncludeDelimiterResolver delimiters(options.Delimiters, options.PathBase, inputFilePath, scratchMemory);
+
     if (options.SortIncludes) {
-        Includes(tree, safety, plan, scratchMemory, options, includes);
+        Includes(tree, safety, plan, scratchMemory, options, includes, delimiters);
     }
 
-    PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory, includes.InputFilePath);
+    PlanTextPolicyEdits(tree, safety, options, plan, fileMemory, scratchMemory, delimiters);
     PlanRulerEdits(tree, safety, options, plan, fileMemory, scratchMemory);
     Sort(plan);
     (void)Validate(tree.Source(), plan);

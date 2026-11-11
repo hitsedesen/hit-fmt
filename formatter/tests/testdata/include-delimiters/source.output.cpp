@@ -1,25 +1,25 @@
 #include <zeta/header.h>
 #include <project/engine/widget.h>
 #include <project/engine/alpha.h>
-#include "./local.h"
-#include "bare.h"
+#include <./local.h>
+#include <bare.h>
 #include <stdio.h>
 #include <vector>
 #include <sys/types.h>
-#include "../engine/normalized.h"
-#include "../sibling/header.h"
-#include "./detail/header.h"
-#include "../../shared/header.h"
+#include <../engine/normalized.h>
+#include <../sibling/header.h>
+#include <./detail/header.h>
+#include <../../shared/header.h>
 
 // An attached comment prevents sorting, but permits delimiter changes.
 #include <external/commented.h> // Keep this comment.
 #include <external/block.h> /* Keep > and " here. */
-#include "../sibling/commented.h" // Keep this relative path.
+#include <../sibling/commented.h> // Keep this relative path.
 
 #if FEATURE
 #  include <external/conditional.h>
-%:include "./digraph.h"
-#include "../sibling/conditional.h"
+%:include <./digraph.h>
+#include <../sibling/conditional.h>
 #endif
 
 // clang-format off
