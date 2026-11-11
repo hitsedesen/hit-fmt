@@ -10,12 +10,18 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+
+#if defined(__SSE2__) || defined(_M_X64) || \
+    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#include <emmintrin.h>
+#endif
 
 #if defined(_MSC_VER) && defined(_M_X64)
 #include <intrin.h>
@@ -211,6 +217,17 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
         return TokenKind::Identifier;
     }
 
+#if defined(__SSE2__) || defined(_M_X64) || \
+    (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+    static_assert(util::SourcePaddingSize >= 16);
+    static_assert(offsetof(KeywordLookup::Text, Second) == sizeof(u64));
+    // Source padding permits a full load; only the identifier's bytes count.
+    const auto bytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(identifier.data()));
+    const auto expected = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&candidate.First));
+    const auto equal = static_cast<u32>(_mm_movemask_epi8(_mm_cmpeq_epi8(bytes, expected)));
+    const auto mask = (u32{1} << identifier.size()) - 1;
+    return (equal & mask) == mask ? kind : TokenKind::Identifier;
+#else
     u64 first;
     // Identifier views borrow the padded source, including short final words.
     std::memcpy(&first, identifier.data(), sizeof(first));
@@ -238,6 +255,7 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
     }
 
     return second == candidate.Second ? kind : TokenKind::Identifier;
+#endif
 }
 
 [[nodiscard]] constexpr bool IsSpace(unsigned char byte) noexcept

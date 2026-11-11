@@ -6821,8 +6821,19 @@ private:
         bool sourceHorizontal = true,
         GapAdjacency adjacency = GapAdjacency::Source) const
     {
-        spec.Kind = kind;
         spec.Spaces = u16(std::min<Index>(FlatWidth(i, adjacency), UINT16_MAX));
+
+        if (sourceHorizontal && PreserveFlatSource(i, adjacency)) {
+            spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;
+            spec.FlatSourceEnd = Safety_.Gaps()[i].Source.End;
+        }
+
+        FillGapLinePolicy(i, spec, kind);
+    }
+
+    void FillGapLinePolicy(Index i, layout::GapSpec& spec, layout::GapKind kind) const
+    {
+        spec.Kind = kind;
 
         if (kind != layout::GapKind::Flat) {
             spec.RequiredWidth = Facts_[i].RequiredWidth;
@@ -6848,11 +6859,6 @@ private:
             if (Safety_.Gaps()[i].MustStartWithLineFeed) {
                 spec.LineEnding = layout::GapNewline::LF;
             }
-        }
-
-        if (sourceHorizontal && PreserveFlatSource(i, adjacency)) {
-            spec.FlatSourceBegin = Safety_.Gaps()[i].Source.Begin;
-            spec.FlatSourceEnd = Safety_.Gaps()[i].Source.End;
         }
 
     }
@@ -7308,7 +7314,6 @@ private:
             return;
         }
 
-        const auto anchor = IndentAnchor(gap);
         const bool flatOK = Allows(i, layout::GapKind::Flat);
 
         if (flatOK && gap.Shape == Boundary::Flat) {
@@ -7326,8 +7331,9 @@ private:
         // Safety converts required/forbidden boundaries before shape selection.
         // This is not byte-diff activation and never weakens topology barriers.
         if (!flatOK) {
-            PlanGap(i, layout::GapKind::Hard, anchor, GapOrigin(i));
+            PlanGap(i, layout::GapKind::Hard, IndentAnchor(gap), GapOrigin(i));
         } else if (gap.Shape == Boundary::Conditional && (lineOK || gap.Broken == layout::GapKind::Flat)) {
+            const auto anchor = IndentAnchor(gap);
             auto& output = Layout_.AddGap(Whitespace::Decide, GapOrigin(i));
             output.Conditional = true;
             auto& policy = Layout_.AddPolicy(output);
@@ -7335,15 +7341,23 @@ private:
             policy.MinLineIndentOffset = gap.BraceIndentOffset;
             FillGapPolicy(i, policy.Flat, layout::GapKind::Flat);
             policy.Broken = Index(Layout_.BrokenGaps_.size());
-            Layout_.BrokenGaps_.emplace_back();
-            FillGapPolicy(i, Layout_.BrokenGaps_.back(), gap.Broken, true, gap.BrokenAdjacency);
+
+            if (gap.BrokenAdjacency == GapAdjacency::Source) {
+                // Both alternatives share spacing unless punctuation changes
+                // their adjacency. Only the broken line policy differs.
+                auto& broken = Layout_.BrokenGaps_.emplace_back(policy.Flat);
+                FillGapLinePolicy(i, broken, gap.Broken);
+            } else {
+                auto& broken = Layout_.BrokenGaps_.emplace_back();
+                FillGapPolicy(i, broken, gap.Broken, true, gap.BrokenAdjacency);
+            }
         } else if (!lineOK || gap.Shape == Boundary::Flat) {
             PlanFlatGap(i);
         } else {
             PlanGap(
                 i,
                 gap.Shape == Boundary::Hard ? layout::GapKind::Hard : layout::GapKind::Soft,
-                anchor,
+                IndentAnchor(gap),
                 GapOrigin(i));
         }
     }

@@ -12,3 +12,7 @@ typename union unsigned using virtual void volatile wchar_t while
 an and_ andX AnD bitor_ not_equiv constan constexprX reinterpret_casx
 statzc_assert thrxad_local namespacz co_returx abcdefghijklmnopq
 foo int2 _int uint32_t whileβ bool_alias
+
+if(x) char16_t* co_return; reinterpret_cast<void*>(p)
+constexprx constexxr statix_assert reinterprxt_cast
+reinterpret_cast
