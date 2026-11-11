@@ -700,7 +700,10 @@ private:
     {
         const auto kind = Region(Syntax_[root]).Kind;
 
-        if (kind != NodeKind::Declaration && kind != NodeKind::FunctionDeclaration) {
+        if (kind != NodeKind::Declaration && kind != NodeKind::FunctionDeclaration &&
+            !(kind == NodeKind::DeclarationStatement &&
+                Policies_.VerticalGaps.KeepControlStatementWithInitialization))
+        {
             return;
         }
 
@@ -1000,7 +1003,8 @@ private:
             }
 
             if (Policies_.VerticalGaps.DeclarationCategoryBlankLines.Mode != VerticalGapMode::Preserve ||
-                Policies_.VerticalGaps.MemberGroupMaxEmptyLines.Enabled)
+                Policies_.VerticalGaps.MemberGroupMaxEmptyLines.Enabled ||
+                Policies_.VerticalGaps.KeepControlStatementWithInitialization)
             {
                 entry.Category = ClassifyDeclaration(i);
             }
@@ -5494,6 +5498,7 @@ private:
             case NodeKind::FunctionTryBlock:
                 return DeclarationCategory::Function;
             case NodeKind::Declaration:
+            case NodeKind::DeclarationStatement:
             case NodeKind::FunctionDeclaration:
             case NodeKind::UsingDeclaration:
                 for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
@@ -5807,41 +5812,6 @@ private:
         }
     }
 
-    bool HasVariableInitialization(Index id) const
-    {
-        const auto regions = Safety_.Regions();
-        const auto& statement = regions[UnwrapStatement(id)];
-
-        if (statement.Kind != NodeKind::DeclarationStatement && statement.Kind != NodeKind::Declaration) {
-            return false;
-        }
-
-        // Inspect only the declaration spine, never initializers nested inside
-        // expressions or parameter defaults. Regions also cover flat interiors.
-        for (auto list = statement.FirstChild; list != None; list = regions[list].NextSibling) {
-            if (regions[list].Kind != NodeKind::InitDeclaratorList) {
-                continue;
-            }
-
-            for (auto declarator = regions[list].FirstChild;
-                declarator != None;
-                declarator = regions[declarator].NextSibling)
-            {
-                if (regions[declarator].Kind != NodeKind::InitDeclarator) {
-                    continue;
-                }
-
-                for (auto part = regions[declarator].FirstChild; part != None; part = regions[part].NextSibling) {
-                    if (regions[part].Kind == NodeKind::Initializer) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
     void PlanStatementGaps(Index id)
     {
         const auto& sequence = Syntax_[id];
@@ -5906,7 +5876,8 @@ private:
 
                 if ((statementKind == NodeKind::IfStatement || statementKind == NodeKind::ForStatement ||
                     statementKind == NodeKind::WhileStatement) &&
-                    !(policy.KeepControlStatementWithInitialization && HasVariableInitialization(previous)))
+                    !(policy.KeepControlStatementWithInitialization &&
+                        Syntax_[UnwrapStatement(previous)].Category == DeclarationCategory::Variable))
                 {
                     ApplyVerticalGap(gap, policy.ControlStatementBlankLinesBefore);
                 }

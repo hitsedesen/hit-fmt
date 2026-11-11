@@ -343,10 +343,10 @@ InitializersTrailingComma = WhenMultiline
   from preceding code, including declarations. It skips body starts and
   labels.
 - KeepControlStatementWithInitialization (default false) skips that rule
-  after an initialized variable declaration, preserving the authored gap.
-  Applies to =, brace and unambiguous parenthesized initializers, including
-  structured bindings; variable usage is not inferred. Other blank-line
-  rules and caps still apply.
+  after a variable declaration, preserving the authored gap. Includes
+  default initialization (Timer timer;), explicit initializers and structured
+  bindings. Function declarations are excluded; types and variable usage are
+  not resolved. Other blank-line rules and caps still apply.
 - MacroBlankLinesAround separates complete standalone calls selected by
   BlankLineMacroNames (unqualified identifiers or prefixes ending in *).
   Consecutive calls of the same name form a group with zero blank lines.

@@ -92,6 +92,7 @@ struct FlatSpanRules
     {
         switch (parent) {
             case NK::Declaration:
+            case NK::DeclarationStatement:
             case NK::FunctionDeclaration:
                 return child == NK::InitDeclaratorList;
             case NK::InitDeclaratorList:
