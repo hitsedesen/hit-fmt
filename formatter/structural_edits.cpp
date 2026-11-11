@@ -197,7 +197,7 @@ void Walk(
             status,
             trailingLabel,
             previousTrailingLabel);
-        const auto* child = node->Child();
+        const auto* child = node->FirstChild;
 
         if (!child) {
             return;
@@ -248,7 +248,7 @@ void Walk(
 template <class F>
 void Children(const parser::Node& node, std::span<const SourceRegion> /*regions*/, F visit)
 {
-    for (const auto* child = node.Child(); child; child = child->NextSibling) {
+    for (const auto* child = node.FirstChild; child; child = child->NextSibling) {
         visit(*child);
     }
 }

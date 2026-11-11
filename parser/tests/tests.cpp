@@ -364,7 +364,7 @@ TEST_P(FileTest, IncludeReuseMatchesFreshParse)
             const auto [copy, reference] = pending.back();
             pending.pop_back();
             ASSERT_EQ(copy->Kind, reference->Kind);
-            EXPECT_EQ(copy->GetFunctionKind(), reference->GetFunctionKind());
+            EXPECT_EQ(copy->Function, reference->Function);
             EXPECT_EQ(copy->Tokens.Begin, reference->Tokens.Begin);
             EXPECT_EQ(copy->Tokens.End, reference->Tokens.End);
             const auto* copyTrivia = reused->AssociatedTrivia(*copy);
@@ -604,7 +604,7 @@ TEST(Parser, ConditionalFragmentsKeepRolesAndBodies)
     us constructorCount = 0;
 
     for (const auto* function : constructors) {
-        if (function->GetFunctionKind() == parser::FunctionKind::Constructor) {
+        if (function->Function == parser::FunctionKind::Constructor) {
             ++constructorCount;
             const auto bodies = LambdaOwnershipNodes(*function, parser::NodeKind::CompoundStatement);
             ASSERT_EQ(bodies.size(), 1u);
@@ -631,7 +631,7 @@ TEST(Parser, ConditionalSharedScopesKeepEnclosingDelimiters)
     us destructorCount = 0;
 
     for (const auto* function : functions) {
-        destructorCount += function->GetFunctionKind() == parser::FunctionKind::Destructor;
+        destructorCount += function->Function == parser::FunctionKind::Destructor;
 
         for (auto* child = function->FirstChild; child; child = child->NextSibling) {
             if (child->Kind == parser::NodeKind::CompoundStatement) {
@@ -4043,7 +4043,7 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
             }
         }
 
-        for (auto* child = node->Child(); child; child = child->NextSibling) {
+        for (auto* child = node->FirstChild; child; child = child->NextSibling) {
             pending.push_back(child);
         }
     }
@@ -4115,7 +4115,7 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 if (child->Kind == parser::NodeKind::FunctionTryBlock) {
                     ++tryBlocks;
-                    EXPECT_EQ(child->GetFunctionKind(), parser::FunctionKind::Unknown);
+                    EXPECT_EQ(child->Function, parser::FunctionKind::Unknown);
                     EXPECT_NE(expected, parser::FunctionKind::Unknown);
                 }
             }
@@ -4125,7 +4125,7 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
             nonexport = true;
         }
 
-        EXPECT_EQ(node->GetFunctionKind(), expected);
+        EXPECT_EQ(node->Function, expected);
         ++counts[static_cast<us>(expected)];
 
         for (auto* child = node->FirstChild; child; child = child->NextSibling) {
@@ -4187,7 +4187,7 @@ TEST(Parser, FunctionKindsLeaveUncertainHeadsAndNonfunctionsUnknown)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Unknown);
+            EXPECT_EQ(node->Function, parser::FunctionKind::Unknown);
 
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 pending.push_back(child);
@@ -4277,7 +4277,7 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
 
         ASSERT_TRUE(function->Kind == parser::NodeKind::FunctionDeclaration ||
             function->Kind == parser::NodeKind::FunctionDefinition);
-        EXPECT_EQ(function->GetFunctionKind(), item.Kind);
+        EXPECT_EQ(function->Function, item.Kind);
         const auto* list = function->FirstChild;
 
         while (list && list->Kind != parser::NodeKind::InitDeclaratorList) {
@@ -4708,12 +4708,12 @@ TEST(Parser, TerminalConstructorTemplateIdsHaveLocalNamesAndSeparateParameters)
             }
 
             if (node->Kind != parser::NodeKind::FunctionDefinition) {
-                EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Unknown);
+                EXPECT_EQ(node->Function, parser::FunctionKind::Unknown);
                 continue;
             }
 
             ++constructors;
-            EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Constructor);
+            EXPECT_EQ(node->Function, parser::FunctionKind::Constructor);
             const Node* list = node->FirstChild;
 
             if (list && list->Kind == parser::NodeKind::DeclarationSpecifiers) {
@@ -4784,7 +4784,7 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            EXPECT_NE(node->GetFunctionKind(), parser::FunctionKind::Constructor);
+            EXPECT_NE(node->Function, parser::FunctionKind::Constructor);
 
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 pending.push_back(child);
@@ -4800,7 +4800,7 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
     while (!pending.empty()) {
         const auto* node = pending.back();
         pending.pop_back();
-        constructors += node->GetFunctionKind() == parser::FunctionKind::Constructor;
+        constructors += node->Function == parser::FunctionKind::Constructor;
 
         for (auto* child = node->FirstChild; child; child = child->NextSibling) {
             pending.push_back(child);
@@ -4854,7 +4854,7 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)
                 continue;
             }
 
-            EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Unknown);
+            EXPECT_EQ(node->Function, parser::FunctionKind::Unknown);
             std::vector<const Node*> declared{node};
 
             while (!declared.empty()) {
@@ -4909,7 +4909,7 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveGroupedSelfTypeDeclarators)
             pending.push_back(child);
         }
 
-        constructors += node->GetFunctionKind() == parser::FunctionKind::Constructor;
+        constructors += node->Function == parser::FunctionKind::Constructor;
 
         if (node->Kind == parser::NodeKind::DeclaratorName) {
             const auto name = tree.SourceText(node->Tokens);
@@ -5003,13 +5003,13 @@ TEST(Parser, TerminalConstructorBoundariesRejectGroupedAndUnownedContinuations)
                 pending.push_back(child);
             }
 
-            EXPECT_NE(node->GetFunctionKind(), parser::FunctionKind::Constructor);
+            EXPECT_NE(node->Function, parser::FunctionKind::Constructor);
 
             if (node->Kind == parser::NodeKind::FunctionDeclaration ||
                 node->Kind == parser::NodeKind::FunctionDefinition)
             {
                 ++functionOwners;
-                EXPECT_EQ(node->GetFunctionKind(), parser::FunctionKind::Unknown);
+                EXPECT_EQ(node->Function, parser::FunctionKind::Unknown);
             }
 
             if (node->Kind == parser::NodeKind::DeclaratorName) {
@@ -5031,7 +5031,7 @@ TEST(Parser, TerminalConstructorBoundariesRejectGroupedAndUnownedContinuations)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            EXPECT_NE(node->GetFunctionKind(), parser::FunctionKind::Constructor);
+            EXPECT_NE(node->Function, parser::FunctionKind::Constructor);
 
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 pending.push_back(child);
@@ -5069,7 +5069,7 @@ TEST(Parser,
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            constructors += node->GetFunctionKind() == parser::FunctionKind::Constructor;
+            constructors += node->Function == parser::FunctionKind::Constructor;
 
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 pending.push_back(child);
@@ -5103,7 +5103,7 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            constructors += node->GetFunctionKind() == parser::FunctionKind::Constructor;
+            constructors += node->Function == parser::FunctionKind::Constructor;
 
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 pending.push_back(child);
@@ -5135,7 +5135,7 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
         while (!pending.empty()) {
             const auto* node = pending.back();
             pending.pop_back();
-            EXPECT_NE(node->GetFunctionKind(), parser::FunctionKind::Constructor);
+            EXPECT_NE(node->Function, parser::FunctionKind::Constructor);
 
             for (auto* child = node->FirstChild; child; child = child->NextSibling) {
                 pending.push_back(child);

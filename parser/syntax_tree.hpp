@@ -15,6 +15,7 @@
 #include <memory>
 #include <memory_resource>
 #include <new>
+#include <span>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -25,8 +26,6 @@ using TokenIndex = u32;
 
 using SourceOffset = util::SourceOffset;
 
-// A half-open token range. The tree is lossless: every source token belongs
-// to the translation unit, so clients never need to reconstruct spelling.
 struct TokenRange
 {
     TokenIndex Begin = 0;
@@ -306,8 +305,8 @@ struct TriviaAttachments
 
 static_assert(sizeof(TriviaAttachments) == 24);
 
-// Nodes and sibling links are allocated in the syntax tree arena and remain
-// stable for the lifetime of SyntaxTree. They must not be deleted individually.
+inline constexpr u32 NoTrivia = std::numeric_limits<u32>::max();
+
 struct Node
 {
     Node* FirstChild = nullptr;
@@ -316,28 +315,11 @@ struct Node
     TokenRange Tokens;
     NodeKind Kind = NodeKind::Error;
 
-    // Returns the first child; follow NextSibling to visit the rest.
-    [[nodiscard]] const Node* Child() const
-    {
-        return FirstChild;
-    }
+    // Set for recognized function declarations and definitions; Unknown otherwise.
+    FunctionKind Function = FunctionKind::Unknown;
 
-    // Only positive function heads carry a kind. A FunctionDefinition owns
-    // its FunctionTryBlock child; the wrapper and catches remain Unknown.
-    [[nodiscard]] FunctionKind GetFunctionKind() const noexcept
-    {
-        return FunctionKind_;
-    }
-
-private:
-    FunctionKind FunctionKind_ = FunctionKind::Unknown;
-
-    // Sparse trivia metadata is resolved through SyntaxTree so nodes do not
-    // each carry another pointer.
-    u32 TriviaIndex_ = std::numeric_limits<u32>::max();
-
-    friend class SyntaxTree;
-    friend class ParseContext;
+    // Index into SyntaxTree's comments and whitespace table.
+    u32 TriviaIndex = NoTrivia;
 };
 
 static_assert(sizeof(Node) == 40);
@@ -610,6 +592,22 @@ public:
         chunk->MatchingDelimiters[slot.Offset] = std::numeric_limits<TokenIndex>::max();
     }
 
+    [[nodiscard]] std::span<const tokenizer::TokenKind> KindBlock(TokenIndex begin) const
+    {
+        assert(begin < Storage_.Size());
+        auto* chunk = Storage_.ResolveChunk(begin / TokensPerChunk);
+        const auto offset = begin % TokensPerChunk;
+        return {chunk->Kinds.data() + offset, chunk->Size - offset};
+    }
+
+    [[nodiscard]] std::span<TokenIndex> MatchingBlock(TokenIndex begin)
+    {
+        assert(begin < Storage_.Size());
+        auto* chunk = Storage_.ResolveChunk(begin / TokensPerChunk);
+        const auto offset = begin % TokensPerChunk;
+        return {chunk->MatchingDelimiters.data() + offset, chunk->Size - offset};
+    }
+
     void Seal()
     {
         Storage_.Seal();
@@ -757,8 +755,9 @@ public:
 
     [[nodiscard]] const TriviaAttachments* AssociatedTrivia(const Node& node) const
     {
-        return node.TriviaIndex_ == std::numeric_limits<u32>::max() ? nullptr : &Trivia_[node.TriviaIndex_];
+        return node.TriviaIndex == NoTrivia ? nullptr : &Trivia_[node.TriviaIndex];
     }
+
     [[nodiscard]] std::string_view SourceText(TokenRange range) const;
     [[nodiscard]] std::string_view SourceText(SourceRange range) const;
 

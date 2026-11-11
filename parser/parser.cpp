@@ -1,5 +1,6 @@
 #include "parser.hpp"
 
+#include "delimiters.hpp"
 #include "normalized_syntax.hpp"
 #include "operator_info.hpp"
 
@@ -73,24 +74,8 @@ namespace {
 
 using TK = tokenizer::TokenKind;
 
-bool IsOpenDelimiter(TK kind)
-{
-    return kind == TK::Operator_OpenParenthesis || kind == TK::Operator_OpenBracket || kind == TK::Operator_OpenBrace;
-}
-
-TK ClosingDelimiter(TK kind)
-{
-    switch (kind) {
-        case TK::Operator_OpenParenthesis:
-            return TK::Operator_CloseParenthesis;
-        case TK::Operator_OpenBracket:
-            return TK::Operator_CloseBracket;
-        case TK::Operator_OpenBrace:
-            return TK::Operator_CloseBrace;
-        default:
-            return TK::Invalid;
-    }
-}
+using detail::ClosingDelimiter;
+using detail::IsOpenDelimiter;
 
 bool IsWordToken(TK kind)
 {
@@ -415,7 +400,7 @@ public:
         const auto clone = [&] (const Node& node) {
             auto* copy = MakeNode(node.Kind, node.Tokens.Begin);
             copy->Tokens.End = node.Tokens.End;
-            copy->FunctionKind_ = node.FunctionKind_;
+            copy->Function = node.Function;
             return copy;
         };
         Tree_.Root_ = clone(original.Root());
@@ -813,11 +798,12 @@ public:
                 // its index. Only nodes with old trivia need resetting before
                 // attachments are rebuilt in normalized source coordinates.
                 for (u32 id = 0; id < original.Trivia_.Size(); ++id) {
-                    original.Trivia_.Owner(id).TriviaIndex_ = std::numeric_limits<u32>::max();
+                    original.Trivia_.Owner(id).TriviaIndex = NoTrivia;
                 }
             } else {
                 Vector<Node*> siblings(&ScratchMemory_);
                 auto* node = Tree_.Root_;
+
                 while (node) {
                     const auto before = node->Tokens;
                     node->Tokens = node == Tree_.Root_
@@ -825,7 +811,7 @@ public:
                         : before.Empty()
                             ? TokenRange{mapping[before.Begin], mapping[before.Begin]}
                             : TokenRange{mapping[before.Begin], mapping[before.End - 1] + 1};
-                    node->TriviaIndex_ = std::numeric_limits<u32>::max();
+                    node->TriviaIndex = NoTrivia;
 
                     if (node->FirstChild) {
                         if (node->NextSibling) {
@@ -870,7 +856,7 @@ public:
 
                 auto* copy = MakeNode(node.Kind, tokens.Begin);
                 copy->Tokens = tokens;
-                copy->FunctionKind_ = node.FunctionKind_;
+                copy->Function = node.Function;
                 claimChanges(node, *copy);
                 return copy;
             };
@@ -1411,35 +1397,14 @@ private:
                 });
             });
 
-        struct Delimiter
-        {
-            TokenIndex Index;
-            TK Closing;
-        };
-
-        Vector<Delimiter> openings(&ScratchMemory_);
-        openings.reserve(256);
         for (const auto& token : tokenizer) {
             Tree_.Tokens_.Add(token);
-            auto index = Tree_.Tokens_.Size() - 1;
-            if (index >= std::numeric_limits<u32>::max()) {
-                HasDelimiterMap_ = false;
-            } else if (IsOpenDelimiter(token.Kind)) {
-                openings.push_back({.Index = index, .Closing = ClosingDelimiter(token.Kind)});
-            } else if (token.Kind == TK::Operator_CloseParenthesis || token.Kind == TK::Operator_CloseBracket ||
-                token.Kind == TK::Operator_CloseBrace)
-            {
-                if (openings.empty() || openings.back().Closing != token.Kind) {
-                    HasDelimiterMap_ = false;
-                } else {
-                    auto opening = openings.back();
-                    openings.pop_back();
-                    Tree_.Tokens_.SetMatchingDelimiter(opening.Index, index);
-                    Tree_.Tokens_.SetMatchingDelimiter(index, opening.Index);
-                }
-            }
         }
-        HasDelimiterMap_ &= openings.empty();
+
+        {
+            HIT_FMT_PROFILE_PHASE("parser.delimiters");
+            HasDelimiterMap_ = detail::MatchDelimiters(Tree_.Tokens_, ScratchMemory_);
+        }
     }
 
     [[nodiscard]] Node* MakeNode(NodeKind kind, TokenIndex begin)
@@ -6971,7 +6936,7 @@ private:
                     (declaration.Kind == NodeKind::FunctionDeclaration ||
                         declaration.Kind == NodeKind::FunctionDefinition))
                 {
-                    declaration.FunctionKind_ = kind;
+                    declaration.Function = kind;
                 }
             }
             if (i != end) {
@@ -7029,7 +6994,7 @@ private:
         auto kind = AddDeclaratorSyntax(*init, specifiersEnd, end, parameters, false, true, functionKind);
 
         if (declaration.Kind == NodeKind::FunctionDefinition) {
-            declaration.FunctionKind_ = kind;
+            declaration.Function = kind;
         }
     }
 
@@ -11230,10 +11195,11 @@ private:
 
     TriviaAttachments& EnsureTriviaAttachments(Node& node)
     {
-        if (node.TriviaIndex_ == std::numeric_limits<u32>::max()) {
-            node.TriviaIndex_ = Tree_.Trivia_.Add(node);
+        if (node.TriviaIndex == NoTrivia) {
+            node.TriviaIndex = Tree_.Trivia_.Add(node);
         }
-        return Tree_.Trivia_[node.TriviaIndex_];
+
+        return Tree_.Trivia_[node.TriviaIndex];
     }
 
     enum class TriviaPlacement
@@ -11696,7 +11662,7 @@ private:
             case NodeKind::SubscriptExpression: {
                 // A nested subscript's first '[' belongs to its base, not
                 // this expression. Mark the bracket after that base instead.
-                const auto* base = node.Child();
+                const auto* base = node.FirstChild;
                 auto open = base ? base->Tokens.End : node.Tokens.End;
 
                 if (open < node.Tokens.End && Kind(open) == TK::Operator_OpenBracket &&
