@@ -1,5 +1,8 @@
 #include "diagnostic_locations.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
@@ -74,7 +77,7 @@ void MapWidthLocations(const parser::SyntaxTree& tree, FormatResult& result, std
         return;
     }
 
-    std::pmr::vector<parser::TokenIndex> tokens(&scratch);
+    Vector<parser::TokenIndex> tokens(&scratch);
     tokens.reserve(tree.TokenCount());
     const auto& mapped = result.OriginalTokens;
 
@@ -93,13 +96,13 @@ void MapWidthLocations(const parser::SyntaxTree& tree, FormatResult& result, std
     struct Point
     {
         TokenAnchor Anchor;
-        size_t Diagnostic;
+        us Diagnostic;
     };
 
-    std::pmr::vector<Point> points(&scratch);
+    Vector<Point> points(&scratch);
     points.reserve(result.Diagnostics.size());
 
-    for (size_t i = 0; i < result.Diagnostics.size(); ++i) {
+    for (us i = 0; i < result.Diagnostics.size(); ++i) {
         const auto offset = result.Diagnostics[i].Offset;
         auto token = std::upper_bound(
             tokens.begin(),

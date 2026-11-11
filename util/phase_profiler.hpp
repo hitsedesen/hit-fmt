@@ -5,6 +5,8 @@
 // to print inclusive and exclusive phase times at process exit.
 #ifdef HIT_FMT_PROFILE_PHASES
 
+#include "types.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -34,7 +36,7 @@ namespace util::profile {
 class Clock
 {
 public:
-    static uint64_t Now()
+    static u64 Now()
     {
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
         // Requires RDTSCP and a synchronized, invariant TSC.
@@ -46,7 +48,7 @@ public:
 #endif
     }
 
-    static double Seconds(uint64_t ticks)
+    static double Seconds(u64 ticks)
     {
         return static_cast<double>(ticks) / Frequency();
     }
@@ -58,8 +60,8 @@ private:
         // Calibrate only when elapsed seconds are requested, outside profiled work.
         static const double frequency = [] {
             auto sample = [] {
-                std::pair<std::chrono::steady_clock::time_point, uint64_t> best;
-                auto bestSpan = std::numeric_limits<uint64_t>::max();
+                std::pair<std::chrono::steady_clock::time_point, u64> best;
+                auto bestSpan = std::numeric_limits<u64>::max();
 
                 // Use the tightest bracket to limit error from preemption.
                 for (int attempt = 0; attempt < 5; ++attempt) {
@@ -96,13 +98,13 @@ inline bool Enabled()
 
 struct Summary
 {
-    uint64_t Calls = 0;
-    uint64_t InclusiveTicks = 0;
-    uint64_t ExclusiveTicks = 0;
+    u64 Calls = 0;
+    u64 InclusiveTicks = 0;
+    u64 ExclusiveTicks = 0;
 };
 
-using Key = std::pair<std::string_view, uint32_t>;
-using PhaseId = size_t;
+using Key = std::pair<std::string_view, u32>;
+using PhaseId = us;
 
 inline constexpr PhaseId InvalidPhaseId = std::numeric_limits<PhaseId>::max();
 
@@ -160,7 +162,7 @@ public:
         }
     }
 
-    PhaseId Register(std::string_view name, uint32_t line)
+    PhaseId Register(std::string_view name, u32 line)
     {
         std::lock_guard lock(Mutex_);
         auto found = PhaseIds_.find(Key{name, line});
@@ -172,7 +174,7 @@ public:
         // Reserve before inserting the owning key so publishing the ID cannot
         // leave a registry entry without a corresponding summary on allocation failure.
         if (Phases_.size() == Phases_.capacity()) {
-            Phases_.reserve(std::max<size_t>(8, Phases_.size() * 2));
+            Phases_.reserve(std::max<us>(8, Phases_.size() * 2));
         }
 
         auto phase = Phases_.size();
@@ -185,7 +187,7 @@ public:
     {
         std::lock_guard lock(Mutex_);
 
-        for (size_t phase = 0; phase < phases.size(); ++phase) {
+        for (us phase = 0; phase < phases.size(); ++phase) {
             const auto& source = phases[phase];
             auto& target = Phases_[phase];
             target.Calls += source.Calls;
@@ -197,7 +199,7 @@ public:
 private:
     std::mutex Mutex_;
     // Names are owned here and only consulted during registration and reporting.
-    std::map<std::pair<std::string, uint32_t>, PhaseId, PhaseKeyLess> PhaseIds_;
+    std::map<std::pair<std::string, u32>, PhaseId, PhaseKeyLess> PhaseIds_;
     std::vector<Summary> Phases_;
 };
 
@@ -207,7 +209,7 @@ inline Results& GetResults()
     return results;
 }
 
-inline PhaseId RegisterPhase(std::string_view name, uint32_t line = 0)
+inline PhaseId RegisterPhase(std::string_view name, u32 line = 0)
 {
     return Enabled() ? GetResults().Register(name, line) : InvalidPhaseId;
 }
@@ -216,7 +218,7 @@ struct PassSite
 {
     PhaseId Pass = InvalidPhaseId;
     PhaseId Changed = InvalidPhaseId;
-    uint32_t Line = 0;
+    u32 Line = 0;
 };
 
 inline PassSite RegisterPassSite(std::source_location location = std::source_location::current())
@@ -252,7 +254,7 @@ public:
         }
     }
 
-    void Record(PhaseId phase, uint64_t inclusive, uint64_t exclusive)
+    void Record(PhaseId phase, u64 inclusive, u64 exclusive)
     {
         if (phase == InvalidPhaseId) {
             return;
@@ -277,7 +279,7 @@ private:
     void Grow(PhaseId phase)
     {
         if (phase >= Phases_.capacity()) {
-            Phases_.reserve(std::max({size_t{8}, phase + 1, Phases_.capacity() * 2}));
+            Phases_.reserve(std::max({us{8}, phase + 1, Phases_.capacity() * 2}));
         }
 
         Phases_.resize(phase + 1);
@@ -330,8 +332,8 @@ private:
     inline static thread_local Scope* Current_ = nullptr;
     PhaseId Phase_;
     Scope* Parent_ = nullptr;
-    uint64_t Start_ = 0;
-    uint64_t Children_ = 0;
+    u64 Start_ = 0;
+    u64 Children_ = 0;
 };
 
 } // namespace util::profile

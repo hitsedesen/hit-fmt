@@ -1,5 +1,8 @@
 #pragma once
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
@@ -10,13 +13,13 @@
 
 namespace formatter::layout {
 
-using GroupId = std::uint32_t;
+using GroupId = u32;
 
-using AnchorId = std::uint32_t;
+using AnchorId = u32;
 
-inline constexpr std::uint32_t InvalidId = UINT32_MAX;
+inline constexpr u32 InvalidId = UINT32_MAX;
 
-using Identity = std::uint32_t;
+using Identity = u32;
 
 inline constexpr Identity NoIdentity = UINT32_MAX;
 
@@ -25,44 +28,44 @@ inline constexpr Identity NoIdentity = UINT32_MAX;
 // rendering.
 struct Provenance
 {
-    std::uint32_t Begin = InvalidId;
-    std::uint32_t End = InvalidId;
+    u32 Begin = InvalidId;
+    u32 End = InvalidId;
     layout::Identity Identity = NoIdentity;
 };
 
-enum class GroupMode : std::uint8_t
+enum class GroupMode : u8
 {
     Consistent,
     Fill
 };
 
-enum class GapKind : std::uint8_t
+enum class GapKind : u8
 {
     Flat,
     Soft,
     Hard
 };
 
-enum class AnchorKind : std::uint8_t
+enum class AnchorKind : u8
 {
     BlockRelative,
     DelimiterColumn
 };
 
-enum class Newline : std::uint8_t
+enum class Newline : u8
 {
     LF,
     CRLF
 };
 
-enum class GapNewline : std::uint8_t
+enum class GapNewline : u8
 {
     Inherit,
     LF,
     CRLF
 };
 
-enum class IndentationKind : std::uint8_t
+enum class IndentationKind : u8
 {
     Spaces,
     Tabs
@@ -71,10 +74,10 @@ enum class IndentationKind : std::uint8_t
 struct GapSpec
 {
     GapKind Kind = GapKind::Soft;
-    std::uint16_t Spaces = 1;
+    u16 Spaces = 1;
     // Next indivisible segment plus its same-line suffix, supplied by lowering.
     // Used on a newline with a delimiter-column anchor; 0 adds no demand.
-    std::uint32_t RequiredWidth = 0;
+    u32 RequiredWidth = 0;
     // Override generated newline bytes only; flat gaps emit no newline.
     GapNewline LineEnding = GapNewline::Inherit;
     // Fill may keep independently breakable children on this line. Fit the
@@ -89,25 +92,25 @@ struct GapSpec
     // Retain source indentation spelling while its width matches the anchor.
     bool PreserveIndentSpelling : 1 = false;
     // First newline honors LineEnding; remaining newlines inherit Policy.
-    std::uint16_t NewlineCount = 1;
+    u16 NewlineCount = 1;
     // Optional exact horizontal source slice used instead of Spaces when flat.
-    std::uint32_t FlatSourceBegin = InvalidId;
-    std::uint32_t FlatSourceEnd = InvalidId;
+    u32 FlatSourceBegin = InvalidId;
+    u32 FlatSourceEnd = InvalidId;
     // Optional exact indentation after the final newline, instead of
     // generation.
-    std::uint32_t IndentSourceBegin = InvalidId;
-    std::uint32_t IndentSourceEnd = InvalidId;
+    u32 IndentSourceBegin = InvalidId;
+    u32 IndentSourceEnd = InvalidId;
 };
 
 struct AnchorSpec
 {
     AnchorKind Kind = AnchorKind::BlockRelative;
-    std::int32_t Offset = 0;
+    i32 Offset = 0;
     // Relative to the block indentation captured when the anchor is marked.
-    std::int32_t Fallback = 0;
+    i32 Fallback = 0;
     // Delimiter alignment floor relative to that block; ignored by
     // BlockRelative.
-    std::uint32_t Minimum = 0;
+    u32 Minimum = 0;
     // Capture the enclosing base without unrealized expression continuation.
     // DelimiterColumn still captures the unchanged physical output column.
     bool StructuralBase = false;
@@ -125,13 +128,13 @@ struct AnchorSpec
     bool ResumedLineBase = false;
     // Immutable layout can constrain the structural base to a known column.
     // Requires StructuralBase; excludes LineBase and continuation sharing.
-    std::uint32_t FixedBase = InvalidId;
+    u32 FixedBase = InvalidId;
 };
 
 struct GroupSpec
 {
     GroupMode Mode = GroupMode::Consistent;
-    std::int32_t Indent = 0;
+    i32 Indent = 0;
     // Require an editable owned break, not merely a multiline child.
     bool ForceBreak : 1 = false;
     // Retain an authored multiline shape without changing its flat fit cost.
@@ -162,24 +165,24 @@ struct GroupSpec
     bool ChildBreaks = true;
     // Extra cost per owned newline in bounded layout selection (0..3).
     // Higher-cost groups may defer to a cheaper following group's break.
-    std::uint8_t BreakPenalty = 0;
+    u8 BreakPenalty = 0;
     // Use this physical line's indentation as an independent structural base.
     // Requires StructuralBase and excludes sharing an enclosing continuation.
     // Continuation starters retain logical compact-body indentation as a floor.
     bool LineBase = false;
     // Extra cost for staying flat inside a multiline direct parent (0..3).
     // A soft shape preference, without forcing breaks in fitting layouts.
-    std::uint8_t FlatInBrokenParentPenalty = 0;
+    u8 FlatInBrokenParentPenalty = 0;
     // Same fixed structural-base contract as AnchorSpec. Indent remains a
     // relative offset from this base, not an absolute contents column.
-    std::uint32_t FixedBase = InvalidId;
+    u32 FixedBase = InvalidId;
     // Fit a standalone prefix against this many required suffix columns,
     // rather than letting the following expression force a prefix break.
     // InvalidId retains ordinary following-layout fitting.
-    std::uint32_t FitSuffixWidth = InvalidId;
+    u32 FitSuffixWidth = InvalidId;
 };
 
-enum class Error : std::uint8_t
+enum class Error : u8
 {
     None,
     Unsealed,
@@ -193,7 +196,7 @@ enum class Error : std::uint8_t
 struct Status
 {
     Error Code = Error::None;
-    std::uint32_t Position = InvalidId;
+    u32 Position = InvalidId;
 
     explicit operator bool() const
     {
@@ -204,8 +207,8 @@ struct Status
 struct Policy
 {
     // Unicode code points; invalid UTF-8 bytes each occupy one column.
-    std::uint32_t Width = 80;
-    std::uint8_t TabWidth = 8; // 1..32; tabs advance to output tab stops.
+    u32 Width = 80;
+    u8 TabWidth = 8; // 1..32; tabs advance to output tab stops.
     Newline LineEnding = Newline::LF;
     bool SourceMap = true;
     IndentationKind Indentation = IndentationKind::Spaces;
@@ -217,14 +220,14 @@ struct Policy
     // Store identity-indexed output positions directly, without intermediate
     // Mapping records. Full maps and tracked exact copies remain independent.
     bool IndexedTokenMap = false;
-    std::uint32_t TokenCount = 0;
+    u32 TokenCount = 0;
 };
 
 namespace detail {
 
 // Output positions use the same bounded 32-bit domain as source positions.
 // Check in size_t before narrowing, without overflowing the addition.
-[[nodiscard]] constexpr bool FitsOutput(std::size_t size, std::size_t added)
+[[nodiscard]] constexpr bool FitsOutput(us size, us added)
 {
     return size < InvalidId && added < InvalidId - size;
 }
@@ -233,8 +236,8 @@ namespace detail {
 
 struct Mapping
 {
-    std::uint32_t OutputBegin = 0;
-    std::uint32_t OutputEnd = 0;
+    u32 OutputBegin = 0;
+    u32 OutputEnd = 0;
     Provenance Source;
     // Exact means borrowed source bytes, including protected source spans.
     bool Exact = false;
@@ -243,8 +246,8 @@ struct Mapping
 
 struct TokenPosition
 {
-    std::uint32_t Begin = 0;
-    std::uint32_t End = 0;
+    u32 Begin = 0;
+    u32 End = 0;
     bool Present = false;
 };
 
@@ -258,10 +261,10 @@ struct Result
 
     Status State;
     std::string Text;
-    std::pmr::vector<Mapping> Map;
-    std::pmr::vector<TokenPosition> Tokens;
+    Vector<Mapping> Map;
+    Vector<TokenPosition> Tokens;
     // A broken decision denotes output shape, never input whitespace history.
-    std::pmr::vector<std::uint8_t> Broken;
+    Vector<u8> Broken;
 };
 
 } // namespace formatter::layout

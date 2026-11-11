@@ -17,7 +17,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-The executable is written to `build/hit-fmt/hit-fmt` by default. Install it
+The executable is written to `build/cli/hit-fmt` by default. Install it
 and its license notices under a chosen prefix with:
 
 ```sh

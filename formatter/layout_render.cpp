@@ -1,6 +1,9 @@
 #include "layout_measure.hpp"
 #include "layout_plan.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <array>
 
 namespace formatter::detail {
@@ -47,7 +50,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         return result;
     }
 
-    std::uint32_t previousEnd = 0;
+    u32 previousEnd = 0;
 
     for (const auto& range : policy.TrackSource) {
         if (range.Begin > range.End || range.End > Source_.size() || range.Begin < previousEnd) {
@@ -67,8 +70,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         result.Tokens.resize(policy.TokenCount);
     }
 
-    size_t trackedRange = 0;
-    std::uint32_t trackedBegin = 0;
+    us trackedRange = 0;
+    u32 trackedBegin = 0;
     const auto wantsMapping = [&] (Provenance origin, bool exact) {
         if (policy.SourceMap || (policy.TokenMap && origin.Identity != NoIdentity)) {
             return true;
@@ -83,7 +86,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 policy.TrackSource.begin(),
                 policy.TrackSource.end(),
                 origin.Begin,
-                [] (const Provenance& range, std::uint32_t begin) {
+                [] (const Provenance& range, u32 begin) {
                     return range.End <= begin;
                 }) - policy.TrackSource.begin();
         } else {
@@ -127,7 +130,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         Order LastBreak = NoOrder;
         Order OwnedLastBreak = NoOrder;
         // First reachable break cheaper than each nonzero penalty (1..3).
-        std::array<std::uint32_t, 3> TailBreakPrefixes{Infinity, Infinity, Infinity};
+        std::array<u32, 3> TailBreakPrefixes{Infinity, Infinity, Infinity};
         bool GuaranteedLine : 1 = false;
         bool ChildLayoutAllowed : 1 = false;
         bool ShapeSensitive : 1 = false;
@@ -137,29 +140,29 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         // Physical preservation is separate from flat geometry and fit tails.
         bool KeptChild : 1 = false;
         // Eligible layout depths 0..3, with all deeper levels in bit 4.
-        uint8_t ProbeLayouts = 0;
-        uint8_t LastBreakPenalty = 0;
+        u8 ProbeLayouts = 0;
+        u8 LastBreakPenalty = 0;
     };
 
     struct GapCache
     {
         Measure FitTail;
-        std::uint32_t ExpandedWidth;
+        u32 ExpandedWidth;
     };
 
     static_assert(sizeof(GroupCache) <= 64);
     static_assert(sizeof(GapCache) <= 12);
-    std::pmr::vector<GroupCache> groupCache(Groups_.size(), resource);
-    std::pmr::vector<GapCache> gapCache(GapPolicies_.size(), resource);
+    Vector<GroupCache> groupCache(Groups_.size(), resource);
+    Vector<GapCache> gapCache(GapPolicies_.size(), resource);
     // Fixed source slices need only geometry flags during output. Fitting
     // tails belong to the much smaller table of actual layout choices.
-    constexpr uint8_t TextLine = 1, TextPlain = 2;
-    std::pmr::vector<uint8_t> textFlags(Gaps_.size() + ExtraGaps_.size(), resource);
+    constexpr u8 TextLine = 1, TextPlain = 2;
+    Vector<u8> textFlags(Gaps_.size() + ExtraGaps_.size(), resource);
     struct SummaryFrame
     {
         Measure Flat;
         Measure Broken;
-        std::array<std::uint32_t, 3> BreakPrefixes{Infinity, Infinity, Infinity};
+        std::array<u32, 3> BreakPrefixes{Infinity, Infinity, Infinity};
         Order LastBreak = NoOrder;
         Order OwnedLastBreak = NoOrder;
         bool GuaranteedLine = false;
@@ -169,30 +172,30 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         bool HasChild = false;
         bool HasConsistentAlternative = false;
         bool KeptLine = false;
-        uint8_t ProbeLayouts = 0;
-        uint8_t LastBreakPenalty = 0;
+        u8 ProbeLayouts = 0;
+        u8 LastBreakPenalty = 0;
     };
 
-    std::pmr::vector<SummaryFrame> summaries(resource);
+    Vector<SummaryFrame> summaries(resource);
     summaries.reserve(Depth_);
     SummaryFrame summary;
     Index summaryOwner = InvalidId;
-    std::size_t mappingCount = 0;
+    us mappingCount = 0;
     const auto accumulate = [&] (
         const Measure& flat,
         const Measure& broken,
         const Measure& flexible,
-        std::uint8_t firstBreakPenalty,
-        const std::array<uint32_t, 3>& childBreakPrefixes,
+        u8 firstBreakPenalty,
+        const std::array<u32, 3>& childBreakPrefixes,
         Order lastBreak,
-        uint8_t lastBreakPenalty,
+        u8 lastBreakPenalty,
         Order ownedBreak,
         bool guaranteedLine) {
         // Retain the earliest affordable opportunity for each penalty, not
         // merely the first break or the globally cheapest one. An expensive
         // intervening list must not hide a cheaper suffix; a nearer medium-
         // cost break may still be needed when that suffix is too far away.
-        for (std::size_t penalty = 1; penalty <= summary.BreakPrefixes.size(); ++penalty) {
+        for (us penalty = 1; penalty <= summary.BreakPrefixes.size(); ++penalty) {
             auto& prefix = summary.BreakPrefixes[penalty - 1];
             prefix = flat.Line
                 ? flat.Prefix
@@ -244,11 +247,11 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         Measure flat;
         Measure broken;
         Measure flexible;
-        std::uint8_t firstBreakPenalty = 0;
-        std::array<std::uint32_t, 3> childBreakPrefixes{Infinity, Infinity, Infinity};
+        u8 firstBreakPenalty = 0;
+        std::array<u32, 3> childBreakPrefixes{Infinity, Infinity, Infinity};
         Order lastBreak = NoOrder;
         Order ownedBreak = NoOrder;
-        std::uint32_t expandedGapWidth = 0;
+        u32 expandedGapWidth = 0;
         bool guaranteedLine = false;
 
         auto& groupEntry = groupCache[id];
@@ -300,7 +303,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         entry.HasChild = summary.HasChild;
         entry.HasConsistentAlternative = summary.HasConsistentAlternative || group.ProbeConsistent;
         const auto levels = unsigned(summary.ProbeLayouts) << 1;
-        entry.ProbeLayouts = uint8_t((levels & 31) | (levels & 32 ? 16 : 0) | entry.ChildLayoutAllowed);
+        entry.ProbeLayouts = u8((levels & 31) | (levels & 32 ? 16 : 0) | entry.ChildLayoutAllowed);
         summary = summaries.back();
         summaries.pop_back();
         summary.ProbeEligible &= entry.ProbeEligible;
@@ -364,18 +367,18 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         Measure flat;
         Measure broken;
         Measure flexible;
-        std::uint8_t firstBreakPenalty = 0;
-        std::array<std::uint32_t, 3> childBreakPrefixes{Infinity, Infinity, Infinity};
+        u8 firstBreakPenalty = 0;
+        std::array<u32, 3> childBreakPrefixes{Infinity, Infinity, Infinity};
         Order lastBreak = NoOrder;
         Order ownedBreak = NoOrder;
-        std::uint32_t expandedGapWidth = 0;
+        u32 expandedGapWidth = 0;
         bool guaranteedLine = false;
 
         if (countMappings) {
             mappingCount += 2;
 
             if (gap.Mode == Whitespace::SpellNewlines) {
-                mappingCount += size_t(gap.ChangedNewlines) * 2;
+                mappingCount += us(gap.ChangedNewlines) * 2;
             }
         }
 
@@ -484,50 +487,50 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
     struct CapturedAnchor
     {
-        std::uint32_t Column = 0;
-        std::uint32_t Block = 0;
-        std::uint32_t Capture = InvalidId;
-        std::uint32_t SharedOffset = InvalidId;
+        u32 Column = 0;
+        u32 Block = 0;
+        u32 Capture = InvalidId;
+        u32 SharedOffset = InvalidId;
     };
 
-    std::pmr::vector<CapturedAnchor> anchors(Anchors_.size(), resource);
+    Vector<CapturedAnchor> anchors(Anchors_.size(), resource);
     struct Frame
     {
-        std::uint32_t Indent = 0;
-        std::uint32_t Tail = 0;
+        u32 Indent = 0;
+        u32 Tail = 0;
         Order Mandatory = NoOrder;
-        std::uint64_t StartLine = 0;
+        u64 StartLine = 0;
         bool Flat = false;
         // Own gaps can stay flat without forcing descendants flat.
         bool OwnedFlat = false;
         bool ForceOwned = false;
         bool OwnedLine = false;
         bool ConsistentChain = false;
-        std::uint32_t PendingExpressionIndent = 0;
+        u32 PendingExpressionIndent = 0;
         bool ExpressionContinuation = false;
         bool StructuralBase = false;
         bool RealizedExpressionLine = false;
         bool ReversibleIndent = true;
-        std::uint32_t ContinuationBase = 0;
-        std::uint32_t OpeningLineIndent = 0;
+        u32 ContinuationBase = 0;
+        u32 OpeningLineIndent = 0;
         bool HasContinuation = false;
         bool RealizedContinuationLine = false;
-        std::uint32_t RealizedContinuationIndent = 0;
-        std::uint64_t ContinuationStartLine = 0;
-        std::size_t FlatChildPenalty = 0;
+        u32 RealizedContinuationIndent = 0;
+        u64 ContinuationStartLine = 0;
+        us FlatChildPenalty = 0;
     };
 
-    std::pmr::vector<Frame> frames(resource);
-    frames.reserve(size_t(Depth_) + 1);
+    Vector<Frame> frames(resource);
+    frames.reserve(us(Depth_) + 1);
     frames.emplace_back();
     Frame* current = &frames.back();
     Index activeGroup = InvalidId;
     Order currentOrder = 0;
-    std::uint32_t column = 0;
-    std::uint64_t lines = 0;
-    std::uint32_t lineIndent = 0;
+    u32 column = 0;
+    u64 lines = 0;
+    u32 lineIndent = 0;
     bool linePrefix = true;
-    std::uint32_t resumedLineIndent = InvalidId;
+    u32 resumedLineIndent = InvalidId;
     const auto continuationLineIndent = [&] {
         return resumedLineIndent == InvalidId ? lineIndent : resumedLineIndent;
     };
@@ -581,24 +584,24 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     auto advance = [&] (std::string_view text, bool plain = false) {
         if (plain) {
             if (linePrefix) {
-                size_t indent = 0;
+                us indent = 0;
 
                 while (indent < text.size() && text[indent] == ' ') {
                     ++indent;
                 }
 
                 if (indent) {
-                    lineIndent = AddWidth(column, uint32_t(indent));
+                    lineIndent = AddWidth(column, u32(indent));
                 }
 
                 linePrefix = indent == text.size();
             }
 
-            column = AddWidth(column, static_cast<std::uint32_t>(text.size()));
+            column = AddWidth(column, static_cast<u32>(text.size()));
             return;
         }
 
-        for (std::size_t i = 0; i < text.size(); ++i) {
+        for (us i = 0; i < text.size(); ++i) {
             const auto c = static_cast<unsigned char>(text[i]);
 
             if (c >= 0x80) {
@@ -630,7 +633,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             }
         }
     };
-    auto fits = [&] (std::uint32_t width) {
+    auto fits = [&] (u32 width) {
         return width != Infinity && column <= policy.Width && width <= policy.Width - column;
     };
     auto tailWidth = [&] (Measure tail) {
@@ -648,7 +651,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         // validate that the complete candidate fits.
         return penalty != 0 ? std::min(width, entry.TailBreakPrefixes[penalty - 1]) : width;
     };
-    auto resolveIndent = [&] (AnchorId id, std::uint32_t requiredWidth) {
+    auto resolveIndent = [&] (AnchorId id, u32 requiredWidth) {
         id = ResolveAnchor(id, currentOrder);
         auto indent = current->Indent;
 
@@ -668,8 +671,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 if (indent >= policy.Width || requiredWidth > policy.Width - indent) {
                     indent = Offset(
                         anchor.Block,
-                        anchor.SharedOffset != InvalidId && spec.Fallback == int32_t(spec.Minimum)
-                        ? int32_t(anchor.SharedOffset)
+                        anchor.SharedOffset != InvalidId && spec.Fallback == i32(spec.Minimum)
+                        ? i32(anchor.SharedOffset)
                         : spec.Fallback);
                 }
             }
@@ -680,12 +683,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     bool probing = false;
     bool layoutSelected = false;
     bool consistentLayout = false;
-    std::size_t probeBrokenGroups = 0;
-    std::size_t probeBreakPenalty = 0;
-    std::uint32_t probeMaxIndent = 0;
-    std::size_t childLayoutEnd = 0;
-    std::size_t childLayoutBase = 0;
-    std::size_t childLayoutDepth = 0;
+    us probeBrokenGroups = 0;
+    us probeBreakPenalty = 0;
+    u32 probeMaxIndent = 0;
+    us childLayoutEnd = 0;
+    us childLayoutBase = 0;
+    us childLayoutDepth = 0;
     std::string_view pendingSource;
     const auto outputSize = [&] {
         return result.Text.size() + pendingSource.size();
@@ -696,7 +699,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             pendingSource = {};
         }
     };
-    const auto outputRoom = [&] (std::size_t count) {
+    const auto outputRoom = [&] (us count) {
         if (!result.State) {
             return false;
         }
@@ -726,7 +729,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             pendingSource = text;
         }
     };
-    auto emitIndent = [&] (std::uint32_t indent) {
+    auto emitIndent = [&] (u32 indent) {
         lineIndent = indent;
         linePrefix = true;
         resumedLineIndent = InvalidId;
@@ -755,12 +758,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         column = indent;
     };
-    auto indentationError = [&] (std::size_t i) {
+    auto indentationError = [&] (us i) {
         if (probing) {
             return;
         }
 
-        result.State = {Error::IndentationOverflow, static_cast<std::uint32_t>(i >> 32)};
+        result.State = {Error::IndentationOverflow, static_cast<u32>(i >> 32)};
         pendingSource = {};
         result.Text.clear();
         result.Map.clear();
@@ -834,18 +837,18 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto continuationIndent = realized ? current->RealizedContinuationIndent : current->Indent;
             base = realized ? std::min(current->ContinuationBase, continuationIndent) : current->ContinuationBase;
 
-            if (continuationIndent < base || continuationIndent - base > uint32_t(INT32_MAX)) {
+            if (continuationIndent < base || continuationIndent - base > u32(INT32_MAX)) {
                 indentationError(i);
                 return false;
             }
 
-            indent = int32_t(continuationIndent - base);
+            indent = i32(continuationIndent - base);
         }
 
-        const auto logical = std::int64_t(base) + indent;
+        const auto logical = i64(base) + indent;
 
         if (spec.ExpressionContinuation) {
-            const auto bias = std::uint64_t(pending) + static_cast<std::uint32_t>(spec.Indent);
+            const auto bias = u64(pending) + static_cast<u32>(spec.Indent);
 
             if (!reversible || logical >= Infinity || bias >= Infinity) {
                 indentationError(i);
@@ -854,9 +857,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
             if (spec.Continuation) {
                 const auto expressionBase = newLineBase ? base : current->Indent - current->PendingExpressionIndent;
-                pending = logical > expressionBase ? static_cast<std::uint32_t>(logical - expressionBase) : 0;
+                pending = logical > expressionBase ? static_cast<u32>(logical - expressionBase) : 0;
             } else {
-                pending = static_cast<std::uint32_t>(bias);
+                pending = static_cast<u32>(bias);
             }
         }
 
@@ -992,7 +995,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto continuationIndent = realized ? current->RealizedContinuationIndent : current->Indent;
             base = realized ? std::min(current->ContinuationBase, continuationIndent) : current->ContinuationBase;
 
-            if (continuationIndent < base || continuationIndent - base > uint32_t(INT32_MAX)) {
+            if (continuationIndent < base || continuationIndent - base > u32(INT32_MAX)) {
                 indentationError(i);
                 return false;
             }
@@ -1000,7 +1003,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             sharedOffset = continuationIndent - base;
 
             if (offset != 0) {
-                offset = int32_t(sharedOffset);
+                offset = i32(sharedOffset);
             }
         }
 
@@ -1016,7 +1019,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     const auto renderToken = [&] (Index id) {
         const auto& token = Tokens_[id];
         const auto origin = TokenOrigin(id);
-        const auto outputBegin = uint32_t(outputSize());
+        const auto outputBegin = u32(outputSize());
         bool exact = true;
         if (token.Reindent) {
             const auto preceding = origin.Begin
@@ -1026,7 +1029,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto text = Text(origin);
             const auto originalColumn =
                 SourceColumn(Source_.substr(lineBegin, origin.Begin - lineBegin), policy.TabWidth);
-            const auto shift = std::int64_t(column) - originalColumn;
+            const auto shift = i64(column) - originalColumn;
             if (shift == 0) {
                 appendSource(text);
                 advance(text);
@@ -1034,8 +1037,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 // Scan once, emitting borrowed runs between indentation edits.
                 // Newline atoms and blank lines remain untouched, including
                 // CRLF and bare CR. No temporary string is needed per line.
-                std::size_t run = 0;
-                for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
+                us run = 0;
+                for (us cursor = 0; cursor < text.size(); ++cursor) {
                     if (text[cursor] != '\r' && text[cursor] != '\n') {
                         continue;
                     }
@@ -1057,13 +1060,13 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     }
 
                     const auto indent = SourceColumn(text.substr(begin, end - begin), policy.TabWidth);
-                    const auto shifted = std::clamp<std::int64_t>(std::int64_t(indent) + shift, 0, Infinity - 1);
+                    const auto shifted = std::clamp<i64>(i64(indent) + shift, 0, Infinity - 1);
 
                     if (shifted != indent) {
                         const auto copied = text.substr(run, begin - run);
                         appendSource(copied);
                         advance(copied);
-                        emitIndent(static_cast<std::uint32_t>(shifted));
+                        emitIndent(static_cast<u32>(shifted));
                         exact = false;
                         run = end;
                     }
@@ -1092,14 +1095,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     });
                 }
             } else {
-                recordMapping({outputBegin, uint32_t(outputSize()), origin, exact, token.Protected});
+                recordMapping({outputBegin, u32(outputSize()), origin, exact, token.Protected});
             }
         }
 
         return bool(result.State) && (!probing || column <= policy.Width);
     };
     const auto renderFlat =
-        [&] (const GapLayout& gapPlan, uint16_t spaces, Provenance source, Provenance& emittedOrigin, bool& exact) {
+        [&] (const GapLayout& gapPlan, u16 spaces, Provenance source, Provenance& emittedOrigin, bool& exact) {
             if (source.Begin != InvalidId) {
                 auto text = Text(source);
                 appendSource(text);
@@ -1137,7 +1140,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             return bool(result.State) && (!probing || column <= policy.Width);
         }
 
-        auto outputBegin = uint32_t(outputSize());
+        auto outputBegin = u32(outputSize());
         auto emittedOrigin = gapPlan.Provenance();
         bool exact = gapPlan.Mode == Whitespace::Preserve;
         const bool ownerBroken = activeGroup != InvalidId && result.Broken[activeGroup];
@@ -1162,35 +1165,35 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             if (text.size() > result.Text.max_size() ||
                 (targetCRLF && gapPlan.ChangedNewlines > result.Text.max_size() - text.size()))
             {
-                result.State = {Error::TooLarge, static_cast<std::uint32_t>(i >> 32)};
+                result.State = {Error::TooLarge, static_cast<u32>(i >> 32)};
                 return false;
             }
 
             const auto size = targetCRLF
-                ? text.size() + std::size_t(gapPlan.ChangedNewlines)
+                ? text.size() + us(gapPlan.ChangedNewlines)
                 : text.size(); // Incoming boundaries may suppress contractions.
 
             if (!outputRoom(size)) {
-                result.State = {Error::TooLarge, static_cast<std::uint32_t>(i >> 32)};
+                result.State = {Error::TooLarge, static_cast<u32>(i >> 32)};
                 return false;
             }
 
-            std::size_t run = 0;
-            const auto copy = [&] (std::size_t end) {
+            us run = 0;
+            const auto copy = [&] (us end) {
                 if (run == end) {
                     return;
                 }
 
-                const auto begin = static_cast<std::uint32_t>(outputSize());
+                const auto begin = static_cast<u32>(outputSize());
                 appendSource(text.substr(run, end - run));
 
                 if (mappingRequested) {
                     recordMapping({
                         begin,
-                        static_cast<std::uint32_t>(outputSize()),
+                        static_cast<u32>(outputSize()),
                         {
-                            gapPlan.Origin.Begin + static_cast<std::uint32_t>(run),
-                            gapPlan.Origin.Begin + static_cast<std::uint32_t>(end),
+                            gapPlan.Origin.Begin + static_cast<u32>(run),
+                            gapPlan.Origin.Begin + static_cast<u32>(end),
                             NoIdentity,
                         },
                         true,
@@ -1199,7 +1202,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 }
             };
 
-            for (std::size_t cursor = 0; cursor < text.size(); ++cursor) {
+            for (us cursor = 0; cursor < text.size(); ++cursor) {
                 if (text[cursor] != '\n') {
                     continue;
                 }
@@ -1215,7 +1218,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 if (!crlf && !targetCRLF && incomingCR) {
                     // The producer omitted a necessary original separator.
                     // This slice has no authority to invent or recover it.
-                    result.State = {Error::InvalidSourceRange, static_cast<std::uint32_t>(i >> 32)};
+                    result.State = {Error::InvalidSourceRange, static_cast<u32>(i >> 32)};
                     return false;
                 }
 
@@ -1224,16 +1227,16 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 }
 
                 copy(atom);
-                const auto begin = static_cast<std::uint32_t>(outputSize());
+                const auto begin = static_cast<u32>(outputSize());
                 append(targetCRLF ? "\r\n" : "\n");
 
                 if (mappingRequested) {
                     recordMapping({
                         begin,
-                        static_cast<std::uint32_t>(outputSize()),
+                        static_cast<u32>(outputSize()),
                         {
-                            gapPlan.Origin.Begin + static_cast<std::uint32_t>(atom),
-                            gapPlan.Origin.Begin + static_cast<std::uint32_t>(cursor + 1),
+                            gapPlan.Origin.Begin + static_cast<u32>(atom),
+                            gapPlan.Origin.Begin + static_cast<u32>(cursor + 1),
                             NoIdentity,
                         },
                         false,
@@ -1261,16 +1264,10 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             advance(Text(gapPlan.Origin));
 
             if (mappingRequested && !probing) {
-                recordMapping({
-                    outputBegin,
-                    static_cast<std::uint32_t>(outputSize()),
-                    gapPlan.Provenance(),
-                    true,
-                    true,
-                });
+                recordMapping({outputBegin, static_cast<u32>(outputSize()), gapPlan.Provenance(), true, true});
             }
 
-            outputBegin = static_cast<std::uint32_t>(outputSize());
+            outputBegin = static_cast<u32>(outputSize());
             emittedOrigin = {gaps.Flat.IndentSourceBegin, gaps.Flat.IndentSourceEnd, NoIdentity};
             const auto indent = resolveIndent(gaps.Anchor, gaps.Flat.RequiredWidth);
             const auto original =
@@ -1332,14 +1329,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
             if (line) {
                 if (probing && activeGroup != InvalidId) {
-                    probeBreakPenalty += std::size_t(gap.NewlineCount) * GroupSpecs_[activeGroup].BreakPenalty;
+                    probeBreakPenalty += us(gap.NewlineCount) * GroupSpecs_[activeGroup].BreakPenalty;
                 }
 
                 const bool lf = gap.LineEnding == GapNewline::LF ||
                     (gap.LineEnding == GapNewline::Inherit && policy.LineEnding == Newline::LF);
                 append(lf ? "\n" : "\r\n");
 
-                for (std::uint32_t n = 1; n < gap.NewlineCount; ++n) {
+                for (u32 n = 1; n < gap.NewlineCount; ++n) {
                     append(policy.LineEnding == Newline::LF ? "\n" : "\r\n");
                 }
 
@@ -1360,14 +1357,14 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     if (mappingRequested && !probing) {
                         recordMapping({
                             outputBegin,
-                            static_cast<std::uint32_t>(outputSize()),
+                            static_cast<u32>(outputSize()),
                             gapPlan.Provenance(),
                             false,
                             false,
                         });
                     }
 
-                    outputBegin = static_cast<std::uint32_t>(outputSize());
+                    outputBegin = static_cast<u32>(outputSize());
                     auto text = Source_.substr(gap.IndentSourceBegin, gap.IndentSourceEnd - gap.IndentSourceBegin);
                     emittedOrigin.Begin = gap.IndentSourceBegin;
                     emittedOrigin.End = gap.IndentSourceEnd;
@@ -1434,13 +1431,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         }
 
         if (mappingRequested && !probing && gapPlan.Mode != Whitespace::SpellNewlines) {
-            recordMapping({
-                outputBegin,
-                uint32_t(outputSize()),
-                emittedOrigin,
-                exact,
-                gapPlan.Mode == Whitespace::Preserve,
-            });
+            recordMapping({outputBegin, u32(outputSize()), emittedOrigin, exact, gapPlan.Mode == Whitespace::Preserve});
         }
 
         return bool(result.State) && (!probing || column <= policy.Width);
@@ -1461,12 +1452,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             !current->Flat && !entry.Flat.Line && entry.Flat.CanBreak &&
             !fits(AddWidth(entry.Flat.Width(), groupTail(spec, groupEntry))))
         {
-            constexpr size_t MaxProbePositions = 256;
-            constexpr size_t MaxProbeDepth = 4;
+            constexpr us MaxProbePositions = 256;
+            constexpr us MaxProbeDepth = 4;
             const bool eligible = Groups_[id].ProbeWork < MaxProbePositions && groupEntry.ProbeEligible;
             const auto levels = groupEntry.ProbeLayouts;
-            const uint32_t childLayoutLevels = levels & 14;
-            const size_t candidateDepth = (levels & 24) ? MaxProbeDepth : (levels & 4) ? 3 : (levels & 2) ? 2 : 1;
+            const u32 childLayoutLevels = levels & 14;
+            const us candidateDepth = (levels & 24) ? MaxProbeDepth : (levels & 4) ? 3 : (levels & 2) ? 2 : 1;
             auto checkpoint = cursor;
             --checkpoint.Begin;
 
@@ -1482,10 +1473,10 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 const auto tail = groupTail(spec, groupEntry);
                 childLayoutBase = savedDepth;
                 childLayoutEnd = Groups_[id].EndOrder;
-                std::array<std::uint64_t, 4> bestCost{};
-                std::size_t bestDepth = 0;
+                std::array<u64, 4> bestCost{};
+                us bestDepth = 0;
                 bool bestConsistent = false;
-                const auto cost = [&] () -> std::array<std::uint64_t, 4> {
+                const auto cost = [&] () -> std::array<u64, 4> {
                     const auto count = lines - savedLines;
 
                     // Compare complete chain layouts by line count and depth
@@ -1506,7 +1497,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 const auto consistentTrial = candidateDepth + 1;
                 const auto trials = candidateDepth + groupEntry.HasConsistentAlternative;
 
-                for (std::size_t trial = 0; trial <= trials; ++trial) {
+                for (us trial = 0; trial <= trials; ++trial) {
                     consistentLayout = trial == consistentTrial;
                     const auto depth = trial == 0 || consistentLayout ? 0 : candidateDepth - trial + 1;
 

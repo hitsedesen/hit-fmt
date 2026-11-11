@@ -1,12 +1,14 @@
 #pragma once
 
+#include <util/types.hpp>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
 
 namespace tokenizer::detail {
 
-enum class AsciiRun : uint8_t
+enum class AsciiRun : u8
 {
     Whitespace,
     Identifier,
@@ -22,27 +24,27 @@ enum class AsciiRun : uint8_t
 
 struct AsciiBlock
 {
-    static constexpr uint32_t Size = 64;
+    static constexpr u32 Size = 64;
 
-    uint64_t Whitespace;
-    uint64_t Identifiers;
-    uint64_t ClosingParentheses;
-    uint64_t RawPrefixes;
-    uint64_t Digits;
-    uint64_t Newlines;
-    uint64_t NonAscii;
-    uint64_t Nulls;
-    uint64_t Quotes;
-    uint64_t Apostrophes;
-    uint64_t Backslashes;
-    uint64_t Slashes;
-    uint64_t Stars;
-    uint64_t Punctuation;
-    uint64_t Singles;
-    uint64_t Pairs;
-    uint64_t Triples;
+    u64 Whitespace;
+    u64 Identifiers;
+    u64 ClosingParentheses;
+    u64 RawPrefixes;
+    u64 Digits;
+    u64 Newlines;
+    u64 NonAscii;
+    u64 Nulls;
+    u64 Quotes;
+    u64 Apostrophes;
+    u64 Backslashes;
+    u64 Slashes;
+    u64 Stars;
+    u64 Punctuation;
+    u64 Singles;
+    u64 Pairs;
+    u64 Triples;
 
-    [[nodiscard]] uint64_t operator[](AsciiRun kind) const noexcept
+    [[nodiscard]] u64 operator[](AsciiRun kind) const noexcept
     {
         const auto ordinary = ~(NonAscii | Nulls | Newlines);
         switch (kind) {

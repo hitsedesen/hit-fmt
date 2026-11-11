@@ -2,6 +2,8 @@
 
 #include "config_vertical.hpp"
 
+#include <util/types.hpp>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +20,7 @@ struct ConfigEnumNames;
 #define CONFIG_ENUM_ITEM(value) value,
 #define CONFIG_ENUM_NAME(value) #value,
 #define DEFINE_CONFIG_ENUM(type, values)                                      \
-    enum class type : std::uint8_t { values(CONFIG_ENUM_ITEM) };               \
+    enum class type : u8 { values(CONFIG_ENUM_ITEM) };                         \
     template <> struct ConfigEnumNames<type> {                                 \
         static constexpr auto Values = std::to_array<std::string_view>({       \
             values(CONFIG_ENUM_NAME)                                          \
@@ -158,7 +160,7 @@ DEFINE_CONFIG_ENUM(FunctionDefinitionParameterNames, DEFINITION_PARAMETER_NAMES_
 #undef DEFINITION_PARAMETER_NAMES_VALUES
 
 // NameCase is the only enum whose spellings differ from its C++ members.
-enum class NameCase : std::uint8_t
+enum class NameCase : u8
 {
     Unchecked,
     CamelCase,
@@ -180,7 +182,7 @@ struct ConfigEnumNames<NameCase>
 template <typename T>
 [[nodiscard]] constexpr std::optional<T> DeserializeConfigEnum(std::string_view spelling)
 {
-    for (std::size_t index = 0; index < ConfigEnumNames<T>::Values.size(); ++index) {
+    for (us index = 0; index < ConfigEnumNames<T>::Values.size(); ++index) {
         if (ConfigEnumNames<T>::Values[index] == spelling) {
             return static_cast<T>(index);
         }

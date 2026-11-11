@@ -2,6 +2,9 @@
 
 #include "source_analysis_internal.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -38,7 +41,7 @@ bool WholeGapCovered(std::span<const parser::SourceRange> ranges, const SourceGa
         (!original.ends_with('\n') || Covered(ranges, {gap.Source.End, gap.Source.End}));
 }
 
-void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
+void MergeProtection(Vector<ProtectedSourceRange>& protection)
 {
     std::sort(
         protection.begin(),
@@ -46,7 +49,7 @@ void MergeProtection(std::pmr::vector<ProtectedSourceRange>& protection)
         [] (const auto& a, const auto& b) {
             return a.Source.Begin < b.Source.Begin;
         });
-    size_t merged = 0;
+    us merged = 0;
 
     for (const auto range : protection) {
         if (merged &&
@@ -202,7 +205,7 @@ void ClassifyGap(
     gap = {.Source = {begin, end}};
 
     // Classify bare CR in the existing whitespace validation walk.
-    for (size_t offset = begin; offset < end; ++offset) {
+    for (us offset = begin; offset < end; ++offset) {
         const auto c = source[offset];
 
         if (c == ' ' || c == '\t') {
@@ -347,7 +350,7 @@ bool SimpleStatementBoundary(const parser::SyntaxTree& tree, const parser::Node&
 
 RegionStatus Combine(RegionStatus a, RegionStatus b)
 {
-    return static_cast<RegionStatus>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    return static_cast<RegionStatus>(static_cast<u8>(a) | static_cast<u8>(b));
 }
 
 } // namespace
@@ -357,7 +360,7 @@ bool TokenGapNeedsSeparation(const parser::SyntaxTree& tree, parser::TokenIndex 
     return NeedsSeparation(tree.Kind(right - 1), tree.TokenText(right - 1), tree.Kind(right), tree.TokenText(right));
 }
 
-parser::SourceOffset CheckedSourceAnalysisSize(size_t size)
+parser::SourceOffset CheckedSourceAnalysisSize(us size)
 {
     if (size > util::MaxSourceSize) {
         throw std::length_error("source analysis input exceeds maximum size");
@@ -434,10 +437,10 @@ bool SourceAnalysis::CanSpellGapNewlines(GapId id) const
     return !gap.Source.Empty() && !gap.IntrinsicPreserve && !gap.IntrinsicContextSensitive &&
         !IntersectsImmutable(gap.Source);
 }
-std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissions(
+Vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissions(
     std::optional<std::span<const parser::SourceRange>> scope) const
 {
-    std::pmr::vector<PartialGapPermission> permissions(Gaps_.get_allocator().resource());
+    Vector<PartialGapPermission> permissions(Gaps_.get_allocator().resource());
 
     // A directive owns its terminating LF, not the next line's indentation.
     // Keep the same slice authority for unrestricted and scoped formatting.
@@ -451,7 +454,7 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
             // Lone CR is not a supported horizontal slice or LF-ended prefix.
             bool supported = true;
 
-            for (size_t i = 0; i < Original(gap).size(); ++i) {
+            for (us i = 0; i < Original(gap).size(); ++i) {
                 if (Original(gap)[i] == '\r' && (i + 1 == Original(gap).size() || Original(gap)[i + 1] != '\n')) {
                     supported = false;
                     break;
@@ -489,9 +492,9 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
             };
 
             if (supported) {
-                size_t lineBegin = 0;
+                us lineBegin = 0;
 
-                for (size_t i = 0; i < Original(gap).size(); ++i) {
+                for (us i = 0; i < Original(gap).size(); ++i) {
                     if (Original(gap)[i] != '\n') {
                         continue;
                     }
@@ -541,7 +544,7 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
     }
 
     const auto allocator = Gaps_.get_allocator().resource();
-    std::pmr::vector<parser::SourceRange> scope(allocator);
+    Vector<parser::SourceRange> scope(allocator);
     scope.reserve(ranges.size());
 
     for (const auto range : ranges) {
@@ -555,7 +558,7 @@ void SourceAnalysis::RestrictEditScope(std::span<const parser::SourceRange> rang
     // All potentially throwing work precedes commit. Protection still contains
     // semantic/explicit reasons only; the complement must not hide safe slices.
     auto permissions = CollectPartialGapPermissions(scope);
-    std::pmr::vector<ProtectedSourceRange> protection(allocator);
+    Vector<ProtectedSourceRange> protection(allocator);
     protection.reserve(Protection_.size() + scope.size() + 1);
     protection.insert(protection.end(), Protection_.begin(), Protection_.end());
     Offset begin = 0;
@@ -600,8 +603,8 @@ SourceAnalysis BuildSourceAnalysis(
     SourceAnalysis result(fileMemory);
     result.Source_ = source;
     const auto count = tree.TokenCount();
-    result.Gaps_.reserve(static_cast<size_t>(count) + 1);
-    result.Regions_.reserve(size_t(count) + count / 2 + 1);
+    result.Gaps_.reserve(static_cast<us>(count) + 1);
+    result.Regions_.reserve(us(count) + count / 2 + 1);
     auto protect = [&] (Offset begin, Offset end, ProtectionReason reason) {
         if (begin > end || end > size) {
             throw std::invalid_argument("invalid immutable source range");
@@ -615,7 +618,7 @@ SourceAnalysis BuildSourceAnalysis(
         return c == ' ' || (c >= '\t' && c <= '\r');
     };
 
-    for (size_t search = 0; search < size;) {
+    for (us search = 0; search < size;) {
         const auto slash = source.find('\\', search);
 
         if (slash == std::string_view::npos) {
@@ -680,12 +683,12 @@ SourceAnalysis BuildSourceAnalysis(
         return cachedLine;
     };
     Offset checkedMarkerEnd = 0;
-    std::pmr::vector<std::string_view> names(
+    Vector<std::string_view> names(
         options.WhitespaceSensitiveMacros.begin(),
         options.WhitespaceSensitiveMacros.end(),
         &scratchMemory);
     std::sort(names.begin(), names.end());
-    std::pmr::vector<std::string_view> enumNames(&scratchMemory);
+    Vector<std::string_view> enumNames(&scratchMemory);
     enumNames.reserve(options.EnumMacroNames.size());
 
     for (const auto& name : options.EnumMacroNames) {
@@ -693,12 +696,12 @@ SourceAnalysis BuildSourceAnalysis(
     }
 
     std::sort(enumNames.begin(), enumNames.end());
-    std::pmr::vector<ProtectedSourceRange> enumInvocations(&scratchMemory);
-    std::pmr::vector<Offset> parsedEnumBegins(&scratchMemory);
+    Vector<ProtectedSourceRange> enumInvocations(&scratchMemory);
+    Vector<Offset> parsedEnumBegins(&scratchMemory);
     struct TokenMarkers
     {
-        std::pmr::vector<parser::TokenIndex> Positions;
-        size_t Next = 0;
+        Vector<parser::TokenIndex> Positions;
+        us Next = 0;
         parser::TokenIndex Begin = 0;
 
         bool Intersects(parser::TokenRange range)
@@ -718,10 +721,10 @@ SourceAnalysis BuildSourceAnalysis(
         }
     };
 
-    TokenMarkers recoveryTokens{std::pmr::vector<parser::TokenIndex>(&scratchMemory)};
-    TokenMarkers ambiguousTokens{std::pmr::vector<parser::TokenIndex>(&scratchMemory)};
+    TokenMarkers recoveryTokens{Vector<parser::TokenIndex>(&scratchMemory)};
+    TokenMarkers ambiguousTokens{Vector<parser::TokenIndex>(&scratchMemory)};
     Offset disabledBegin = 0;
-    size_t disabledDepth = 0;
+    us disabledDepth = 0;
     // An outer configured invocation already protects all inner invocations.
     parser::TokenIndex macroEnd = 0;
     parser::TokenIndex pendingMacro = NoToken;
@@ -871,7 +874,7 @@ SourceAnalysis BuildSourceAnalysis(
 
         protect(range.Source.Begin, range.Source.End, range.Reasons);
 
-        if ((uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::Directive)) != 0) {
+        if ((u16(range.Reasons) & ~u16(ProtectionReason::Directive)) != 0) {
             result.DirectiveFences_.push_back(range);
         }
     }
@@ -887,7 +890,7 @@ SourceAnalysis BuildSourceAnalysis(
         RegionId LastChild = NoRegion;
     };
 
-    std::pmr::vector<Frame> stack(&scratchMemory);
+    Vector<Frame> stack(&scratchMemory);
     const bool hasRecoveryTokens = !recoveryTokens.Positions.empty();
     const bool hasAmbiguousTokens = !ambiguousTokens.Positions.empty();
     auto visit = [&] (const parser::Node& node, RegionId parent) {
@@ -1206,7 +1209,7 @@ SourceAnalysis BuildSourceAnalysis(
 
     // Both lists follow source order. Defer these protections until the
     // existing tree walk proves which invocations own the enum grammar.
-    size_t parsedEnum = 0;
+    us parsedEnum = 0;
 
     for (const auto& range : enumInvocations) {
         while (parsedEnum < parsedEnumBegins.size() && parsedEnumBegins[parsedEnum] < range.Source.Begin) {
@@ -1219,7 +1222,7 @@ SourceAnalysis BuildSourceAnalysis(
     }
 
     for (const auto& range : result.Protection_) {
-        if ((uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::Directive | ProtectionReason::LineSplice)) != 0) {
+        if ((u16(range.Reasons) & ~u16(ProtectionReason::Directive | ProtectionReason::LineSplice)) != 0) {
             result.DirectiveFences_.push_back(range);
         }
     }
@@ -1259,7 +1262,7 @@ SourceAnalysis BuildSourceAnalysis(
                 gap.Preserve = true;
                 gap.Reasons = gap.Reasons | range.Reasons;
 
-                if ((static_cast<uint16_t>(range.Reasons) & static_cast<uint16_t>(ProtectionReason::HeaderName)) != 0) {
+                if ((static_cast<u16>(range.Reasons) & static_cast<u16>(ProtectionReason::HeaderName)) != 0) {
                     gap.ContextSensitive = true;
                 }
             }
@@ -1333,7 +1336,7 @@ bool CanReuseNormalizedSourceAnalysis(
         }
     }
 
-    std::pmr::vector<parser::SourceRange> copied(&scratch);
+    Vector<parser::SourceRange> copied(&scratch);
     copied.reserve(pieces.size());
 
     for (const auto& piece : pieces) {
@@ -1348,7 +1351,7 @@ bool CanReuseNormalizedSourceAnalysis(
         [] (const auto a, const auto b) {
             return a.Begin < b.Begin;
         });
-    size_t next = 0;
+    us next = 0;
 
     for (const auto& range : safety.Protection()) {
         if (range.Reasons == ProtectionReason::Directive) {
@@ -1394,7 +1397,7 @@ struct detail::NormalizationAnalysisReuse
             RegionId Parent = NoRegion;
         };
 
-        std::pmr::vector<Insertion> added(&scratch);
+        Vector<Insertion> added(&scratch);
         added.reserve(insertions.size());
 
         for (const auto& proof : insertions) {
@@ -1438,7 +1441,7 @@ struct detail::NormalizationAnalysisReuse
                 ? parser::TokenRange{mapping[old.Begin], mapping[old.Begin]}
                 : parser::TokenRange{mapping[old.Begin], mapping[old.End - 1] + 1};
         };
-        size_t next = 0;
+        us next = 0;
 
         for (RegionId id = 0; id <= cached.size(); ++id) {
             while (next < added.size() && added[next].Proof.BeforeRegion == id) {
@@ -1475,7 +1478,7 @@ struct detail::NormalizationAnalysisReuse
             return false;
         }
 
-        std::pmr::vector<RegionId> insertedIds(&scratch);
+        Vector<RegionId> insertedIds(&scratch);
         insertedIds.reserve(added.size());
 
         for (auto& item : added) {
@@ -1491,8 +1494,8 @@ struct detail::NormalizationAnalysisReuse
                     : a.Proof.Token < b.Proof.Token;
             });
 
-        for (size_t first = 0; first < added.size();) {
-            size_t end = first + 1;
+        for (us first = 0; first < added.size();) {
+            us end = first + 1;
 
             while (end < added.size() && added[end].Proof.ParentRegion == added[first].Proof.ParentRegion) {
                 ++end;
@@ -1502,7 +1505,7 @@ struct detail::NormalizationAnalysisReuse
             auto child = parent.FirstChild;
             auto previous = NoRegion;
 
-            for (size_t i = first; i < end; ++i) {
+            for (us i = first; i < end; ++i) {
                 const auto id = added[i].Region;
 
                 while (child != NoRegion && result.Regions_[child].Tokens.Begin < added[i].Proof.Token) {
@@ -1555,7 +1558,7 @@ struct detail::NormalizationAnalysisReuse
         SourceAnalysis* owned = nullptr,
         std::span<const parser::detail::NormalizedCommentInsertion> insertions = {})
     {
-        if (!safety.Built_ || safety.HasEditScope_ || mapping.size() != size_t(original.TokenCount()) + 1) {
+        if (!safety.Built_ || safety.HasEditScope_ || mapping.size() != us(original.TokenCount()) + 1) {
             return std::nullopt;
         }
 
@@ -1569,16 +1572,16 @@ struct detail::NormalizationAnalysisReuse
             }
 
             if constexpr (TokenOnly) {
-                if (size_t(count) != size_t(original.TokenCount()) + insertions.size()) {
+                if (us(count) != us(original.TokenCount()) + insertions.size()) {
                     return std::nullopt;
                 }
             }
         }
 
-        std::pmr::vector<parser::TokenIndex> prior(&scratch);
+        Vector<parser::TokenIndex> prior(&scratch);
 
         if constexpr (!Consume) {
-            prior.resize(size_t(count) + 1, NoToken);
+            prior.resize(us(count) + 1, NoToken);
 
             for (parser::TokenIndex old = 0; old <= original.TokenCount(); ++old) {
                 if (mapping[old] != NoToken) {
@@ -1595,8 +1598,8 @@ struct detail::NormalizationAnalysisReuse
             }
         }();
         const SourceAnalysis& saved = Consume ? result : safety;
-        std::pmr::vector<SourceGap> oldGaps(&file);
-        std::pmr::vector<SourceRegion> oldRegions(&file);
+        Vector<SourceGap> oldGaps(&file);
+        Vector<SourceRegion> oldRegions(&file);
         const bool inPlace = Consume && (!TokenOnly || insertions.empty());
 
         if constexpr (TokenOnly) {
@@ -1610,7 +1613,7 @@ struct detail::NormalizationAnalysisReuse
         const std::span<const SourceRegion> cachedRegions = TokenOnly && !inPlace ? oldRegions : saved.Regions_;
 
         if (!inPlace) {
-            result.Gaps_.reserve(size_t(count) + 1);
+            result.Gaps_.reserve(us(count) + 1);
             result.Regions_.reserve(cachedRegions.size() + insertions.size() +
                 (!TokenOnly && count > original.TokenCount() ? count - original.TokenCount() : 0));
         }
@@ -1619,18 +1622,18 @@ struct detail::NormalizationAnalysisReuse
         result.Protection_.assign(inherited.begin(), inherited.end());
 
         for (const auto range : inherited) {
-            if ((uint16_t(range.Reasons) & ~uint16_t(ProtectionReason::Directive)) != 0) {
+            if ((u16(range.Reasons) & ~u16(ProtectionReason::Directive)) != 0) {
                 result.DirectiveFences_.push_back(range);
             }
         }
 
-        size_t piece = 0;
+        us piece = 0;
         TK previousKind = TK::Invalid;
         std::string_view previousText;
         auto previousRole = parser::PunctuationRole::None;
         Offset previousEnd = 0;
         parser::TokenIndex oldCursor = 0, previousOld = NoToken;
-        size_t insertedCursor = 0;
+        us insertedCursor = 0;
 
         for (parser::TokenIndex i = 0; i <= count; ++i) {
             const auto token = i < count ? tree.Token(i) : tokenizer::Token{};
@@ -1690,8 +1693,7 @@ struct detail::NormalizationAnalysisReuse
             // Consuming identity reuse can alias the cached gap. Finish its
             // source comparison and refusal checks before updating that row.
             if (reuse && cachedGaps[old].IntrinsicPreserve && cachedGaps[old].Source.Empty() &&
-                (uint16_t(cachedGaps[old].Reasons) &
-                    uint16_t(ProtectionReason::Recovery | ProtectionReason::Ambiguous)))
+                (u16(cachedGaps[old].Reasons) & u16(ProtectionReason::Recovery | ProtectionReason::Ambiguous)))
             {
                 return std::nullopt;
             }
@@ -1779,7 +1781,7 @@ struct detail::NormalizationAnalysisReuse
                 RegionId Last = NoRegion;
             };
 
-            std::pmr::vector<Frame> stack(&scratch);
+            Vector<Frame> stack(&scratch);
             stack.push_back({&tree.Root(), NoRegion});
             RegionId oldRegion = 0;
             const auto skipDeleted = [&] {
@@ -1939,7 +1941,7 @@ struct detail::NormalizationAnalysisReuse
                     gap.Preserve = true;
                     gap.Reasons = gap.Reasons | range.Reasons;
 
-                    if ((uint16_t(range.Reasons) & uint16_t(ProtectionReason::HeaderName)) != 0) {
+                    if ((u16(range.Reasons) & u16(ProtectionReason::HeaderName)) != 0) {
                         gap.ContextSensitive = true;
                     }
                 }

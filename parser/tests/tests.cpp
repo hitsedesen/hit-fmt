@@ -1,3 +1,6 @@
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <parser/normalized_syntax.hpp>
 #include <parser/operator_info.hpp>
 #include <parser/parser.hpp>
@@ -21,7 +24,7 @@ namespace {
 
 using parser::Node;
 
-void AppendIndent(std::string& output, size_t depth)
+void AppendIndent(std::string& output, us depth)
 {
     output.append(depth * 2, ' ');
 }
@@ -59,7 +62,7 @@ void AppendQuoted(std::string& output, std::string_view text)
     output.push_back('"');
 }
 
-void AppendTokens(std::string& output, const parser::SyntaxTree& tree, size_t begin, size_t end, size_t depth)
+void AppendTokens(std::string& output, const parser::SyntaxTree& tree, us begin, us end, us depth)
 {
     if (begin >= end) {
         return;
@@ -83,7 +86,7 @@ void AppendTriviaList(
     const parser::SyntaxTree& tree,
     const parser::TriviaList& trivia,
     std::string_view name,
-    size_t depth)
+    us depth)
 {
     if (!trivia.First) {
         return;
@@ -105,7 +108,7 @@ void AppendTriviaList(
     output += ")\n";
 }
 
-void AppendSExpression(std::string& output, const parser::SyntaxTree& tree, const Node& node, size_t depth)
+void AppendSExpression(std::string& output, const parser::SyntaxTree& tree, const Node& node, us depth)
 {
     AppendIndent(output, depth);
     output.push_back('(');
@@ -223,7 +226,7 @@ std::string SerializePunctuationRoles(const parser::SyntaxTree& tree)
 {
     std::string output;
 
-    for (size_t index = 0; index < tree.TokenCount(); ++index) {
+    for (us index = 0; index < tree.TokenCount(); ++index) {
         auto role = tree.Role(index);
 
         if (role == parser::PunctuationRole::None) {
@@ -331,8 +334,8 @@ TEST_P(FileTest, IncludeReuseMatchesFreshParse)
                     {{0, after}, {0, before}, true},
                     {{after, rewritten.View().Size}, {before, input.View().Size}, false},
                 };
-                std::pmr::monotonic_buffer_resource memory;
-                std::pmr::vector<parser::TokenIndex> mapping(&memory);
+                Arena memory;
+                Vector<parser::TokenIndex> mapping(&memory);
                 reused = parser::detail::TryConsumeNormalizedSyntax(original, rewritten.View(), pieces, mapping);
             } else {
                 reused = rulers
@@ -506,8 +509,8 @@ TEST(Parser, RulerReuseRejectsNonSequenceComments)
             {{prefix, newEnd}, {prefix, oldEnd}, true},
             {{newEnd, rewritten.View().Size}, {oldEnd, input.View().Size}, false},
         };
-        std::pmr::monotonic_buffer_resource memory;
-        std::pmr::vector<parser::TokenIndex> mapping(&memory);
+        Arena memory;
+        Vector<parser::TokenIndex> mapping(&memory);
         EXPECT_FALSE(parser::detail::TryConsumeNormalizedSyntax(original, rewritten.View(), pieces, mapping));
         EXPECT_EQ(Serialize(original), grammar);
         EXPECT_EQ(SerializePunctuationRoles(original), roles);
@@ -518,11 +521,11 @@ TEST(Parser, ClassMacroNestingHasABoundedRecoveryDepth)
 {
     std::string source;
 
-    for (size_t i = 0; i < 1024; ++i) {
+    for (us i = 0; i < 1024; ++i) {
         source += "OPEN_CLASS(Name)\n";
     }
 
-    for (size_t i = 0; i < 1024; ++i) {
+    for (us i = 0; i < 1024; ++i) {
         source += "CLOSE_CLASS()\n";
     }
 
@@ -566,13 +569,13 @@ TEST(Parser, NestedCaptureInitializersHaveBoundedRecovery)
 {
     std::string source = "auto callback = ";
 
-    for (size_t i = 0; i < 128; ++i) {
+    for (us i = 0; i < 128; ++i) {
         source += "[nested = ";
     }
 
     source += "[] {}";
 
-    for (size_t i = 0; i < 128; ++i) {
+    for (us i = 0; i < 128; ++i) {
         source += "] { nested(); }";
     }
 
@@ -598,7 +601,7 @@ TEST(Parser, ConditionalFragmentsKeepRolesAndBodies)
     }
 
     const auto constructors = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::FunctionDefinition);
-    size_t constructorCount = 0;
+    us constructorCount = 0;
 
     for (const auto* function : constructors) {
         if (function->GetFunctionKind() == parser::FunctionKind::Constructor) {
@@ -625,7 +628,7 @@ TEST(Parser, ConditionalSharedScopesKeepEnclosingDelimiters)
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
     const auto functions = LambdaOwnershipNodes(tree.Root(), parser::NodeKind::FunctionDefinition);
     ASSERT_EQ(functions.size(), 8u);
-    size_t destructorCount = 0;
+    us destructorCount = 0;
 
     for (const auto* function : functions) {
         destructorCount += function->GetFunctionKind() == parser::FunctionKind::Destructor;
@@ -683,23 +686,23 @@ TEST(Parser, ConditionalFragmentProofIsBounded)
 {
     for (const bool nesting : {false, true}) {
         std::string source = "void f(){consume(\n";
-        const size_t levels = nesting ? 40 : 1;
+        const us levels = nesting ? 40 : 1;
 
-        for (size_t i = 0; i < levels; ++i) {
+        for (us i = 0; i < levels; ++i) {
             source += "#if FLAG\n";
         }
 
         source += "value";
 
         if (!nesting) {
-            for (size_t i = 0; i < 2200; ++i) {
+            for (us i = 0; i < 2200; ++i) {
                 source += "+value";
             }
         }
 
         source += ",\n";
 
-        for (size_t i = 0; i < levels; ++i) {
+        for (us i = 0; i < levels; ++i) {
             source += "#endif\n";
         }
 
@@ -926,7 +929,7 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input(std::string(candidate) + "\nint following;\n");
-        size_t errors = 0;
+        us errors = 0;
         auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -944,7 +947,7 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
 
         if (!lambdas.empty()) {
             const auto source = std::string_view(candidate);
-            size_t expectedBegin = std::string_view::npos;
+            us expectedBegin = std::string_view::npos;
 
             for (const auto spelling :
                 {"[seed = 2]", "[]<class T", "[](int v)", "[](const auto& v)", "[] -> int", "[] { return"})
@@ -989,7 +992,7 @@ TEST(Parser, DirectLambdaArgumentsHaveOneExpressionOwner)
     {
         SCOPED_TRACE(operand);
         PaddedInput input("void use() { consume(" + std::string(operand) + ", [] { return 2; }); }\nint following;");
-        size_t errors = 0;
+        us errors = 0;
         auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -1204,7 +1207,7 @@ TEST(Parser, UncertainLambdaSuffixCannotDiscoverDownstreamBody)
     {
         SCOPED_TRACE(candidate);
         PaddedInput input(std::string(candidate) + "\nint following;\n");
-        size_t errors = 0;
+        us errors = 0;
         auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -1364,7 +1367,7 @@ TEST(Parser, LambdaArgumentFactsStayWithinConditionalAndMalformedLimits)
     {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        size_t errors = 0;
+        us errors = 0;
         auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -1395,7 +1398,7 @@ TEST(Parser, RecoveredLambdaParametersNeverBindOutsideTheLambda)
 {
     using enum parser::NodeKind;
     PaddedInput input("using Type = int; APPLY([](int Type) marker { Type * hidden; }); " "Type following;");
-    size_t errors = 0;
+    us errors = 0;
     auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
@@ -1464,7 +1467,7 @@ TEST(Parser, TemplateLambdaTypesHaveLocalScope)
             const auto suffix = recovered ? "marker" : "";
             PaddedInput input("void inspect() { int Type; auto fn = []<" + std::string(parameters) + ">(auto value) " +
                 suffix + " { return [] { return ready<" + argument + ">; }(); }; Type * after; }");
-            size_t errors = 0;
+            us errors = 0;
             auto tree = parser::Parse(
                 input.View(),
                 [&] (parser::ParseError) {
@@ -1500,7 +1503,7 @@ TEST(Parser, TemplateDefaultsDoNotBindNestedNames)
                 : "int Hidden; template<class Type = ";
             const auto suffix = lambda ? ">(int x) { Hidden * x; }; }" : "> void fn(int x) { Hidden * x; }";
             PaddedInput input(std::string(prefix) + defaultType + suffix);
-            size_t errors = 0;
+            us errors = 0;
             auto tree = parser::Parse(
                 input.View(),
                 [&] (parser::ParseError) {
@@ -1744,7 +1747,7 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
             "\n// independent\nint following(int value){return value+1;}\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        size_t errors = 0;
+        us errors = 0;
         const auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -1790,7 +1793,7 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
     EXPECT_EQ(separatedTree.SourceText(separatedTree.Root().LastChild->Tokens), "int following;");
 
     PaddedInput malformed("HEADER_BLOCK(Tag) { int value;\n");
-    size_t errors = 0;
+    us errors = 0;
     const auto tree = parser::Parse(
         malformed.View(),
         [&] (parser::ParseError) {
@@ -1810,15 +1813,15 @@ TEST(Parser, GenuineNamedBodiesRetainDeclaratorsAndScopes)
         "Type* function(Type* value)" "{while(value){return value;}return nullptr;}\n"
         "void defaults(int value=[]{return 1;}()){}\n";
     PaddedInput input(source);
-    size_t errors = 0;
+    us errors = 0;
     const auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
             ++errors;
         });
     EXPECT_EQ(errors, 0u);
-    size_t functions = 0;
-    size_t lambdas = 0;
+    us functions = 0;
+    us lambdas = 0;
     std::vector<const Node*> pending{&tree.Root()};
 
     while (!pending.empty()) {
@@ -1967,7 +1970,7 @@ TEST(Parser, RecoveredConstructorInitializersKeepWholeCandidateOpaque)
                     "using Type = int;\nstruct C {\n" + candidate + "\nint member;\n};\nint tail(){return 1;}\n";
                 SCOPED_TRACE(source);
                 PaddedInput input(source);
-                size_t errors = 0;
+                us errors = 0;
                 auto tree = parser::Parse(
                     input.View(),
                     [&] (auto) {
@@ -2043,7 +2046,7 @@ TEST(Parser, AnnotationRecoveryKeepsTruthfulCatchDiagnostics)
     auto tree = parser::Parse(input.View());
     const auto* function = tree.Root().FirstChild;
     ASSERT_EQ(function->Kind, parser::NodeKind::FunctionDefinition);
-    size_t catches = 0;
+    us catches = 0;
     std::vector<const Node*> pending{function};
 
     while (!pending.empty()) {
@@ -2279,7 +2282,7 @@ TEST(Parser, StringLiteralSequencesHaveCompleteRanges)
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
     const auto source = fixture.InputNamed(".in");
     PaddedInput input(source);
-    size_t errors = 0;
+    us errors = 0;
     auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
@@ -2288,14 +2291,14 @@ TEST(Parser, StringLiteralSequencesHaveCompleteRanges)
     EXPECT_EQ(errors, 0);
 
     using enum tokenizer::TokenKind;
-    size_t stringTokens = 0;
+    us stringTokens = 0;
 
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
         stringTokens += tree.Kind(i) == Literal_String;
     }
 
-    size_t coveredStrings = 0;
-    size_t sequences = 0;
+    us coveredStrings = 0;
+    us sequences = 0;
     bool foundCommentRange = false;
     std::vector<const Node*> pending{&tree.Root()};
 
@@ -2313,7 +2316,7 @@ TEST(Parser, StringLiteralSequencesHaveCompleteRanges)
         if (node->Kind == parser::NodeKind::LiteralExpression && tree.Kind(node->Tokens.Begin) == Literal_String) {
             ASSERT_GT(node->Tokens.End, node->Tokens.Begin);
             EXPECT_EQ(tree.Kind(node->Tokens.End - 1), Literal_String);
-            size_t strings = 0;
+            us strings = 0;
 
             for (auto i = node->Tokens.Begin; i < node->Tokens.End; ++i) {
                 auto kind = tree.Kind(i);
@@ -2352,7 +2355,7 @@ TEST(Parser, BracedInitializerRangesStopAtMatchingCloser)
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
     PaddedInput input(fixture.InputNamed(".in"));
     auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-    size_t initializers = 0;
+    us initializers = 0;
     std::vector<const Node*> pending{&tree.Root()};
 
     while (!pending.empty()) {
@@ -2379,7 +2382,7 @@ TEST(Parser, BinaryOperatorMetadataMatchesGrouping)
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "expressions"};
     const auto source = fixture.InputNamed(".in");
     PaddedInput input(source);
-    size_t errors = 0;
+    us errors = 0;
     auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
@@ -2502,7 +2505,7 @@ TEST(Parser, DecltypeOperandsStayInDeclarationSpecifiers)
         ASSERT_NE(specifiers, nullptr);
         ASSERT_EQ(specifiers->Kind, parser::NodeKind::DeclarationSpecifiers);
         EXPECT_EQ(specifiers->Tokens.Begin, 0);
-        size_t parameterLists = 0;
+        us parameterLists = 0;
         std::vector<const Node*> pending{declaration};
 
         while (!pending.empty()) {
@@ -2632,12 +2635,12 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(Parser, HandlesDeepCompoundNesting)
 {
     std::string source = "void deeply_nested() {";
-    constexpr size_t Depth = 300;
+    constexpr us Depth = 300;
     source.append(Depth, '{');
     source += "int value;";
     source.append(Depth + 1, '}');
 
-    size_t errors = 0;
+    us errors = 0;
     PaddedInput paddedSource(source);
     auto tree = parser::Parse(
         paddedSource.View(),
@@ -2665,9 +2668,9 @@ TEST(Parser, HandlesDeepCompoundNesting)
 TEST(Parser, HandlesDeepExpressionNesting)
 {
     std::string source = "void deeply_nested() { auto value = ";
-    constexpr size_t Depth = 1500;
+    constexpr us Depth = 1500;
 
-    for (size_t index = 0; index < Depth; ++index) {
+    for (us index = 0; index < Depth; ++index) {
         source += "Call(";
     }
 
@@ -2675,7 +2678,7 @@ TEST(Parser, HandlesDeepExpressionNesting)
     source.append(Depth, ')');
     source += "; }";
 
-    size_t errors = 0;
+    us errors = 0;
     PaddedInput paddedSource(source);
     auto tree = parser::Parse(
         paddedSource.View(),
@@ -2779,7 +2782,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
         const auto firstBegin = source.find(value.First, value.Prefix.size());
         const auto outerComma = firstBegin + value.First.size();
         const auto secondBegin = outerComma + 1;
-        const auto tokenAt = [&] (size_t offset) {
+        const auto tokenAt = [&] (us offset) {
             for (parser::TokenIndex i = 0; i < parsed.TokenCount(); ++i) {
                 if (parsed.Token(i).Text.Begin == offset) {
                     return i;
@@ -2830,10 +2833,10 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
     EXPECT_EQ(errors, 0u);
     const Node* specialization = nullptr;
     const Node* constructor = nullptr;
-    size_t outsideExpressions = 0;
-    size_t outsideAmbiguities = 0;
-    size_t unknownPairNames = 0;
-    size_t selfTypes = 0;
+    us outsideExpressions = 0;
+    us outsideAmbiguities = 0;
+    us unknownPairNames = 0;
+    us selfTypes = 0;
     std::vector<const Node *> pending{&composed.Root()};
 
     while (!pending.empty()) {
@@ -2934,7 +2937,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
     EXPECT_EQ(composed.SourceText(other->Tokens), "int second=(3>2)");
     EXPECT_EQ(other->Tokens.End, parameters->Tokens.End - 1);
     EXPECT_EQ(other->NextSibling, nullptr);
-    size_t defaultTails = 0;
+    us defaultTails = 0;
 
     for (const auto* value : {parameter, other}) {
         pending = {value};
@@ -2966,7 +2969,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
     PaddedInput registeredType("struct Pair {}; void known_type() { Pair*marker; }\n");
     const auto control = parser::Parse(registeredType.View(), [] (parser::ParseError) { });
     pending = {&control.Root()};
-    size_t declarations = 0;
+    us declarations = 0;
 
     while (!pending.empty()) {
         const auto* node = pending.back();
@@ -3005,10 +3008,10 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
                 ++errors;
             });
         EXPECT_EQ(errors, 0u);
-        size_t typedParameters = 0;
-        size_t outsideExpressions = 0;
-        size_t outsideAmbiguities = 0;
-        size_t constructors = 0;
+        us typedParameters = 0;
+        us outsideExpressions = 0;
+        us outsideAmbiguities = 0;
+        us constructors = 0;
         pending = {&linked.Root()};
 
         while (!pending.empty()) {
@@ -3050,7 +3053,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
 
 TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 {
-    const std::pair<std::string_view, size_t> cases[] = {
+    const std::pair<std::string_view, us> cases[] = {
         {"struct Plain {};", 0},
         {"struct Outer::Inner {};", 0},
         {"template<> struct Outer<int>::Inner<long,char> {};", 2},
@@ -3074,8 +3077,8 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-        size_t lists = 0;
-        size_t calls = 0;
+        us lists = 0;
+        us calls = 0;
         std::vector<const Node *> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -3138,7 +3141,7 @@ TEST(Parser, RecordHeadChildrenAreBoundedWithoutGuessingOperands)
 
     for (const auto& [kind, firstText] : expected) {
         SCOPED_TRACE(parser::GetNodeKindName(kind));
-        size_t found = 0;
+        us found = 0;
         std::vector<const Node *> nodes{&ordinaryTree.Root()};
 
         while (!nodes.empty()) {
@@ -3223,8 +3226,8 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             EXPECT_EQ(tree.SourceText(following->Tokens), declaration);
             EXPECT_EQ(following->Tokens.Begin, clause->Tokens.End);
             EXPECT_EQ(following->NextSibling, nullptr);
-            size_t bodies = 0;
-            size_t parameters = 0;
+            us bodies = 0;
+            us parameters = 0;
             std::vector<const Node *> pending{clause};
 
             while (!pending.empty()) {
@@ -3312,13 +3315,13 @@ TEST(Parser, NestedRequirementSyntaxHasBoundedRecovery)
 {
     std::string source = "template<class T> concept C = requires { ";
 
-    for (size_t i = 0; i < 128; ++i) {
+    for (us i = 0; i < 128; ++i) {
         source += "requires requires { ";
     }
 
     source += "true; ";
 
-    for (size_t i = 0; i < 128; ++i) {
+    for (us i = 0; i < 128; ++i) {
         source += "}; ";
     }
 
@@ -3374,7 +3377,7 @@ TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)
                 "\nint outside;\n";
             SCOPED_TRACE(source);
             PaddedInput input(source);
-            size_t errors = 0;
+            us errors = 0;
             const auto tree = parser::Parse(
                 input.View(),
                 [&] (parser::ParseError) {
@@ -3471,7 +3474,7 @@ TEST(Parser, RequiresClauseOwnsOrdinaryTemplateAndQualifiedReturnPrefix)
                 "template<class T> requires " + std::string(constraint) + "\n" + declarationText + "\nint outside;\n";
             SCOPED_TRACE(source);
             PaddedInput input(source);
-            size_t errors = 0;
+            us errors = 0;
             const auto tree = parser::Parse(
                 input.View(),
                 [&] (parser::ParseError) {
@@ -3527,7 +3530,7 @@ TEST(Parser, RequiresClauseDoesNotSplitQualifiedConstraintOperands)
             "template<class T> requires " + std::string(constraint) + "\nint inspect(T value) { return 1; }\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        size_t errors = 0;
+        us errors = 0;
         const auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -3622,7 +3625,7 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         ASSERT_NE(clause, nullptr);
         ASSERT_NE(clause->FirstChild, nullptr);
         EXPECT_EQ(tree.SourceText(clause->FirstChild->Tokens), constraint.Text);
-        size_t invalidTokens = 0;
+        us invalidTokens = 0;
 
         for (auto token = clause->Tokens.Begin; token < clause->Tokens.End; ++token) {
             if (tree.Kind(token) == tokenizer::TokenKind::Invalid) {
@@ -3741,7 +3744,7 @@ TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
             }
 
             EXPECT_EQ(unparsed, constraint.Unparsed);
-            size_t invalidTokens = 0;
+            us invalidTokens = 0;
 
             for (auto token = clause->Tokens.Begin; token < clause->Tokens.End; ++token) {
                 if (tree.Kind(token) == tokenizer::TokenKind::Invalid) {
@@ -3843,7 +3846,7 @@ TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
 {
     PaddedInput input("template<class T> requires requires(T value) {\n" "#define REQUIREMENT_VALUE 1\n"
         "value.touch();\n}\nstruct Container {};\n");
-    size_t errors = 0;
+    us errors = 0;
     const auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
@@ -3852,8 +3855,8 @@ TEST(Parser, RequiresClauseRetainsDirectiveInsideRequirementBody)
     EXPECT_EQ(errors, 0u);
     const auto* owner = tree.Root().FirstChild;
     ASSERT_NE(owner, nullptr);
-    size_t bodies = 0;
-    size_t directives = 0;
+    us bodies = 0;
+    us directives = 0;
     std::vector<const Node *> pending{owner};
 
     while (!pending.empty()) {
@@ -3946,7 +3949,7 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         EXPECT_EQ(second->Tokens.Begin, comma->Tokens.End);
         EXPECT_EQ(second->Tokens.End, parameters->Tokens.End - 1);
         EXPECT_EQ(second->NextSibling, nullptr);
-        size_t defaults = 0;
+        us defaults = 0;
 
         for (const auto* parameter : {first, second}) {
             pending = {parameter};
@@ -3982,7 +3985,7 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "function-kind"};
     const auto source = fixture.InputNamed(".cpp");
     PaddedInput input(source);
-    size_t errors = 0;
+    us errors = 0;
     const auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
@@ -4011,7 +4014,7 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
         const auto text = tree.SourceText(node->Tokens);
 
         if (node->Kind == parser::NodeKind::FunctionDefinition || node->Kind == parser::NodeKind::FunctionDeclaration) {
-            for (size_t i = 0; i < cases.size(); ++i) {
+            for (us i = 0; i < cases.size(); ++i) {
                 if (!text.starts_with(cases[i].first)) {
                     continue;
                 }
@@ -4045,7 +4048,7 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
         }
     }
 
-    for (size_t i = 0; i < cases.size(); ++i) {
+    for (us i = 0; i < cases.size(); ++i) {
         SCOPED_TRACE(cases[i].first);
         EXPECT_TRUE(found[i]);
     }
@@ -4056,15 +4059,15 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
     const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, "function-kind"};
     const auto source = fixture.InputNamed(".cpp");
     PaddedInput input(source);
-    size_t errors = 0;
+    us errors = 0;
     auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
             ++errors;
         });
     EXPECT_EQ(errors, 0);
-    std::array<size_t, 4> counts{};
-    size_t tryBlocks = 0;
+    std::array<us, 4> counts{};
+    us tryBlocks = 0;
     bool factory = false;
     bool nonexport = false;
     std::vector<const Node*> pending{&tree.Root()};
@@ -4123,16 +4126,16 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
         }
 
         EXPECT_EQ(node->GetFunctionKind(), expected);
-        ++counts[static_cast<size_t>(expected)];
+        ++counts[static_cast<us>(expected)];
 
         for (auto* child = node->FirstChild; child; child = child->NextSibling) {
             pending.push_back(child);
         }
     }
 
-    EXPECT_GT(counts[static_cast<size_t>(parser::FunctionKind::Constructor)], 10u);
-    EXPECT_GT(counts[static_cast<size_t>(parser::FunctionKind::Destructor)], 5u);
-    EXPECT_GT(counts[static_cast<size_t>(parser::FunctionKind::Ordinary)], 5u);
+    EXPECT_GT(counts[static_cast<us>(parser::FunctionKind::Constructor)], 10u);
+    EXPECT_GT(counts[static_cast<us>(parser::FunctionKind::Destructor)], 5u);
+    EXPECT_GT(counts[static_cast<us>(parser::FunctionKind::Ordinary)], 5u);
     EXPECT_EQ(tryBlocks, 2u);
     EXPECT_TRUE(factory);
     EXPECT_TRUE(nonexport);
@@ -4200,7 +4203,7 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
         std::string_view Source;
         parser::FunctionKind Kind;
         std::string_view Name;
-        size_t OuterPointers;
+        us OuterPointers;
     };
 
     const std::array<Case, 28> cases{
@@ -4291,8 +4294,8 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
         const auto* declarator = init->FirstChild;
         ASSERT_NE(declarator, nullptr);
         EXPECT_EQ(declarator->Kind, parser::NodeKind::Declarator);
-        size_t pointers = 0;
-        size_t names = 0;
+        us pointers = 0;
+        us names = 0;
         auto parameterBegin = declarator->Tokens.End;
 
         for (auto* child = declarator->FirstChild; child; child = child->NextSibling) {
@@ -4374,10 +4377,10 @@ TEST(Parser, OpaqueRecordHeadsHaveOnlyLocalConstructorOwners)
             SCOPED_TRACE(source);
             PaddedInput input(source);
             const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-            size_t headsRecovered = 0;
-            size_t constructors = 0;
-            size_t names = 0;
-            size_t outsideDeclarations = 0;
+            us headsRecovered = 0;
+            us constructors = 0;
+            us names = 0;
+            us outsideDeclarations = 0;
             std::vector<const Node*> pending{&tree.Root()};
             std::vector<parser::TokenRange> lists;
             std::vector<parser::TokenRange> nested;
@@ -4441,7 +4444,7 @@ TEST(Parser, OpaqueRecordHeadsHaveOnlyLocalConstructorOwners)
         PaddedInput input("template<class T> struct " + std::string(head) +
             " { Parcel(Item *p) {} }; void outside() { Parcel<int>*marker; }");
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-        size_t declarations = 0;
+        us declarations = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -4471,7 +4474,7 @@ TEST(Parser, MalformedRecordOwnersRecoverOnlyConstructorInitializerHeaders)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-        size_t recovered = 0, bodies = 0, fakeLists = 0;
+        us recovered = 0, bodies = 0, fakeLists = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -4561,7 +4564,7 @@ TEST(Parser, ConstructorInitializerCapturesAreNotOuterArrayDeclarators)
     for (const auto source : sources) {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        size_t errors = 0;
+        us errors = 0;
         const auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -4622,7 +4625,7 @@ TEST(Parser, ConstructorInitializerCapturesAreNotOuterArrayDeclarators)
             }
         }
 
-        size_t lambdas = 0, members = 0;
+        us lambdas = 0, members = 0;
         pending = {initializers};
 
         while (!pending.empty()) {
@@ -4686,14 +4689,14 @@ TEST(Parser, TerminalConstructorTemplateIdsHaveLocalNamesAndSeparateParameters)
     for (const auto& item : cases) {
         SCOPED_TRACE(item.Source);
         PaddedInput input(item.Source);
-        size_t errors = 0;
+        us errors = 0;
         const auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
                 ++errors;
             });
         EXPECT_EQ(errors, 0u);
-        size_t constructors = 0;
+        us constructors = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -4791,7 +4794,7 @@ TEST(Parser, TerminalConstructorTemplateIdsDoNotBorrowOuterOrMalformedOwners)
 
     PaddedInput nested("template<class T> struct Outer { struct Inner { Inner<T>(T* p) {} }; " "Outer<T>(T* p) {} };");
     const auto tree = parser::Parse(nested.View(), [] (parser::ParseError) { });
-    size_t constructors = 0;
+    us constructors = 0;
     std::vector<const Node*> pending{&tree.Root()};
 
     while (!pending.empty()) {
@@ -4822,15 +4825,15 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveSelfTypedStatementBindings)
             "void consume(Owner<T> input) {} void inspect(T seed) { " + std::string(body) + " } };";
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        size_t errors = 0;
+        us errors = 0;
         const auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
                 ++errors;
             });
         EXPECT_EQ(errors, 0u);
-        size_t pointers = 0;
-        size_t parenthesizedNames = 0;
+        us pointers = 0;
+        us parenthesizedNames = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -4886,14 +4889,14 @@ TEST(Parser, TerminalConstructorTemplateIdsPreserveGroupedSelfTypeDeclarators)
 {
     PaddedInput input("template<class T> struct Owner { " "Owner<T> (*callback)(int); Owner<T> (*factory())(int); "
         "Owner<T>* plain; Owner<T>(T* value) {} };");
-    size_t errors = 0;
+    us errors = 0;
     const auto tree = parser::Parse(
         input.View(),
         [&] (parser::ParseError) {
             ++errors;
         });
     EXPECT_EQ(errors, 0u);
-    size_t callbacks = 0, factories = 0, pointers = 0, constructors = 0,
+    us callbacks = 0, factories = 0, pointers = 0, constructors = 0,
         selfTypes = 0;
     std::vector<parser::TokenRange> parameters, groups;
     std::vector<const Node*> pending{&tree.Root()};
@@ -4989,7 +4992,7 @@ TEST(Parser, TerminalConstructorBoundariesRejectGroupedAndUnownedContinuations)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-        size_t functionOwners = 0;
+        us functionOwners = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -5060,7 +5063,7 @@ TEST(Parser,
         SCOPED_TRACE(source);
         PaddedInput input(source);
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-        size_t constructors = 0;
+        us constructors = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -5094,7 +5097,7 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
         SCOPED_TRACE(source);
         PaddedInput input(source);
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-        size_t constructors = 0;
+        us constructors = 0;
         std::vector<const Node*> pending{&tree.Root()};
 
         while (!pending.empty()) {
@@ -5120,7 +5123,7 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
     {
         SCOPED_TRACE(source);
         PaddedInput input(source);
-        size_t errors = 0;
+        us errors = 0;
         const auto tree = parser::Parse(
             input.View(),
             [&] (parser::ParseError) {
@@ -5141,4 +5144,50 @@ TEST(Parser, TerminalConstructorBoundariesResetAndRequireValidCachedEvidence)
     }
 
     EXPECT_EQ(sizeof(parser::Node), 40u);
+}
+
+TEST(ParserMemory, UsesSuppliedResourceForTreesAndReparses)
+{
+    class CountingResource
+        : public std::pmr::memory_resource
+    {
+    public:
+        us Outstanding = 0;
+        us Allocations = 0;
+    private:
+        void* do_allocate(us bytes, us alignment) override
+        {
+            void* result = std::pmr::new_delete_resource()->allocate(bytes, alignment);
+            Outstanding += bytes;
+            ++Allocations;
+            return result;
+        }
+
+        void do_deallocate(void* ptr, us bytes, us alignment) override
+        {
+            Outstanding -= bytes;
+            std::pmr::new_delete_resource()->deallocate(ptr, bytes, alignment);
+        }
+
+        bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override
+        {
+            return this == &other;
+        }
+    } memory;
+
+    const test::Input original("#include \"old.h\"\nint value;\n");
+    const test::Input updated("#include \"new.h\"\nint value;\n");
+    {
+        parser::ParseOptions options;
+        options.Memory = &memory;
+        const auto tree = parser::Parse(original.View(), {}, options);
+        EXPECT_GT(memory.Outstanding, 0u);
+        const auto allocations = memory.Allocations;
+        auto reparsed = parser::TryReparseIncludes(tree, updated.View());
+        ASSERT_TRUE(reparsed);
+        EXPECT_GT(memory.Allocations, allocations);
+        EXPECT_EQ(reparsed->Source(), updated.View().View());
+    }
+
+    EXPECT_EQ(memory.Outstanding, 0u);
 }

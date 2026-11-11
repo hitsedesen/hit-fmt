@@ -4,10 +4,14 @@
 #include "structural_edits_internal.hpp"
 #include "text_policies.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
+#include <fs/fs.hpp>
+
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
-#include <filesystem>
 #include <limits>
 #include <stdexcept>
 
@@ -98,16 +102,16 @@ void Literal(
     SR source,
     std::string_view text,
     StructuralActionId id,
-    uint32_t depth = 0,
+    u32 depth = 0,
     StructuralEdit::Edge edge = StructuralEdit::Edge::Replace)
 {
-    auto begin = static_cast<uint32_t>(plan.Pieces.size());
+    auto begin = static_cast<u32>(plan.Pieces.size());
 
     if (!text.empty()) {
         plan.Pieces.push_back({{}, text, false});
     }
 
-    plan.Edits.push_back({source, begin, static_cast<uint32_t>(plan.Pieces.size()), id, depth, edge});
+    plan.Edits.push_back({source, begin, static_cast<u32>(plan.Pieces.size()), id, depth, edge});
 }
 
 void Sort(StructuralPlan& plan)
@@ -130,7 +134,7 @@ void Sort(StructuralPlan& plan)
 
 void CheckAnalysisSource(const parser::SyntaxTree& tree, const SourceAnalysis& safety)
 {
-    if (safety.Gaps().size() != static_cast<size_t>(tree.TokenCount()) + 1 ||
+    if (safety.Gaps().size() != static_cast<us>(tree.TokenCount()) + 1 ||
         safety.Source().data() != tree.Source().data())
     {
         throw std::invalid_argument("analysis is not from original source");
@@ -145,7 +149,7 @@ void Walk(
     const SourceAnalysis* safety,
     std::pmr::memory_resource& scratch,
     F visit,
-    std::span<const uint8_t> trailingLabels = {})
+    std::span<const u8> trailingLabels = {})
 {
     struct Frame
     {
@@ -160,8 +164,8 @@ void Walk(
         CheckAnalysisSource(tree, *safety);
     }
 
-    std::pmr::vector<Frame> stack(&scratch);
-    size_t region = 0;
+    Vector<Frame> stack(&scratch);
+    us region = 0;
     auto enter = [&] (const parser::Node* node, NK parent, NK previous, bool previousTrailingLabel) {
         RegionStatus status = RegionStatus::Complete;
         bool trailingLabel = false;
@@ -189,7 +193,7 @@ void Walk(
             previous,
             grandparent,
             parentSequence,
-            static_cast<uint32_t>(stack.size()),
+            static_cast<u32>(stack.size()),
             status,
             trailingLabel,
             previousTrailingLabel);
@@ -263,25 +267,25 @@ bool NullSyntax(const parser::SyntaxTree& tree, const SourceRegion& region)
         region.Tokens.Size() == 1 && tree.Kind(region.Tokens.Begin) == TK::Operator_Semicolon;
 }
 
-constexpr uint8_t KnownSyntax = 1;
+constexpr u8 KnownSyntax = 1;
 
-constexpr uint8_t KnownBefore = 2;
+constexpr u8 KnownBefore = 2;
 
-constexpr uint8_t KnownAfter = 4;
+constexpr u8 KnownAfter = 4;
 
-constexpr uint8_t UnknownScope = 8;
+constexpr u8 UnknownScope = 8;
 
-std::pmr::vector<uint8_t> NullRemovalContexts(
+Vector<u8> NullRemovalContexts(
     const parser::SyntaxTree& tree,
     std::span<const SourceRegion> regions,
     std::pmr::memory_resource& scratch)
 {
-    std::pmr::vector<uint8_t> contexts(regions.size(), KnownSyntax, &scratch);
+    Vector<u8> contexts(regions.size(), KnownSyntax, &scratch);
 
     // Complete only rules out recovery and ambiguity. A function-shaped macro
     // can still have an unknown function kind and require its trailing ';'.
     // Its apparent body is not a proven statement sequence either.
-    for (size_t id = 0; id < regions.size(); ++id) {
+    for (us id = 0; id < regions.size(); ++id) {
         const auto& region = regions[id];
 
         if ((region.Kind == NK::FunctionDefinition && region.Function == parser::FunctionKind::Unknown) ||
@@ -297,7 +301,7 @@ std::pmr::vector<uint8_t> NullRemovalContexts(
         }
     }
 
-    for (size_t i = regions.size(); i > 0; --i) {
+    for (us i = regions.size(); i > 0; --i) {
         const auto id = i - 1;
         const auto& region = regions[id];
 
@@ -359,14 +363,14 @@ struct Include
 
 struct IncludeKey
 {
-    std::size_t DirectoryOffset = 0;
-    std::size_t DirectoryLength = 0;
-    std::size_t Distance = 0;
-    std::size_t HeaderDistance = 0;
-    std::size_t Rule = 0;
-    std::size_t Prefix = 0;
-    std::int8_t Priority = 0;
-    std::int8_t Depth = IncludeGroupRule::MaxDepth;
+    us DirectoryOffset = 0;
+    us DirectoryLength = 0;
+    us Distance = 0;
+    us HeaderDistance = 0;
+    us Rule = 0;
+    us Prefix = 0;
+    i8 Priority = 0;
+    i8 Depth = IncludeGroupRule::MaxDepth;
     bool Matching = false;
     bool Standard = false;
     bool RuleStandard = false;
@@ -451,7 +455,7 @@ bool DirectiveOnly(const SourceAnalysis& safety, SR range)
 
 bool IncludeGap(std::string_view gap, bool crlf)
 {
-    for (std::size_t i = 0; i < gap.size(); ++i) {
+    for (us i = 0; i < gap.size(); ++i) {
         if (gap[i] == ' ' || gap[i] == '\t') {
             continue;
         }
@@ -475,7 +479,7 @@ void ScanIncludeGroups(
     Accept accept,
     Reject reject)
 {
-    std::pmr::vector<Include> group(&scratch);
+    Vector<Include> group(&scratch);
 
     for (TI i = 0; i < tree.TokenCount();) {
         Include first;
@@ -555,8 +559,8 @@ void Includes(
         context.Groups = nullptr;
     }
 
-    std::pmr::vector<std::string_view> current(&scratch), parts(&scratch);
-    std::pmr::vector<std::string_view> grouped(&scratch);
+    Vector<std::string_view> current(&scratch), parts(&scratch);
+    Vector<std::string_view> grouped(&scratch);
     const auto inputDirectory = Directory(context.InputFilePath);
     const bool inputAbsolute = inputDirectory.starts_with('/');
     const bool nearestHeaders = options.InGroupOrder == IncludeInGroupOrder::NearestFirst;
@@ -566,9 +570,9 @@ void Includes(
         options.MatchingHeader == IncludeMatchingHeader::First || nearestHeaders;
     auto distance = [&] (std::span<const std::string_view> path, bool absolute) {
         if (absolute != inputAbsolute) {
-            return std::numeric_limits<std::size_t>::max();
+            return std::numeric_limits<us>::max();
         }
-        std::size_t common = 0;
+        us common = 0;
 
         while (common < std::min(current.size(), path.size()) && current[common] == path[common]) {
             ++common;
@@ -592,8 +596,8 @@ void Includes(
     }
 
     std::pmr::string directories(&scratch);
-    std::pmr::vector<StructuralPiece> pieces(&scratch);
-    std::pmr::vector<IncludeKey> keys(&scratch);
+    Vector<StructuralPiece> pieces(&scratch);
+    Vector<IncludeKey> keys(&scratch);
     ScanIncludeGroups(
         tree,
         safety,
@@ -616,7 +620,7 @@ void Includes(
                 }
             }
 
-            for (std::size_t i = 0; i < group.size() && !keys.empty(); ++i) {
+            for (us i = 0; i < group.size() && !keys.empty(); ++i) {
                 const auto& atom = group[i];
                 auto& key = keys[i];
 
@@ -678,14 +682,14 @@ void Includes(
                     const auto suffix = base + context.Groups->PrefixDepth(key.Prefix);
                     const auto count = key.Depth == IncludeGroupRule::MaxDepth
                         ? parts.size() - suffix
-                        : std::min(static_cast<std::size_t>(key.Depth), parts.size() - suffix);
+                        : std::min(static_cast<us>(key.Depth), parts.size() - suffix);
                     grouped.insert(grouped.end(), parts.begin(), parts.begin() + base);
                     AppendIncludePathComponents(grouped, canonical, groupAbsolute);
                     grouped.insert(grouped.end(), parts.begin() + suffix, parts.begin() + suffix + count);
                 } else {
                     const auto count = key.Depth == IncludeGroupRule::MaxDepth
                         ? parts.size()
-                        : std::min(static_cast<std::size_t>(key.Depth), parts.size());
+                        : std::min(static_cast<us>(key.Depth), parts.size());
                     grouped.assign(parts.begin(), parts.begin() + count);
                 }
 
@@ -696,7 +700,7 @@ void Includes(
                     directories.push_back('/');
                 }
 
-                for (std::size_t index = 0; index < grouped.size(); ++index) {
+                for (us index = 0; index < grouped.size(); ++index) {
                     if (index) {
                         directories.push_back('/');
                     }
@@ -832,7 +836,7 @@ void Includes(
                 ? std::string_view("\r\n")
                 : std::string_view("\n");
 
-            for (std::size_t i = 0; i < group.size(); ++i) {
+            for (us i = 0; i < group.size(); ++i) {
                 if (i && options.Grouping != IncludeGrouping::Preserve && !sameGroup(group[i - 1], group[i])) {
                     pieces.push_back({{}, ending, false});
                 }
@@ -864,20 +868,20 @@ void Includes(
             }
 
             auto id = Operation(plan, StructuralAction::IncludeOrder, descriptor.Tokens);
-            auto start = static_cast<uint32_t>(plan.Pieces.size());
+            auto start = static_cast<u32>(plan.Pieces.size());
             plan.Pieces.insert(plan.Pieces.end(), pieces.begin(), pieces.end());
-            plan.Edits.push_back({descriptor.Source, start, static_cast<uint32_t>(plan.Pieces.size()), id});
+            plan.Edits.push_back({descriptor.Source, start, static_cast<u32>(plan.Pieces.size()), id});
         },
         [&] (parser::TokenRange tokens, StructuralSkip reason) {
             Skip(plan, StructuralAction::IncludeOrder, tokens, reason);
         });
 }
 
-size_t Validate(std::string_view source, const StructuralPlan& plan)
+us Validate(std::string_view source, const StructuralPlan& plan)
 {
-    size_t size = CheckedSourceAnalysisSize(source.size());
-    size_t cursor = 0;
-    std::pmr::vector<uint8_t> ownership(plan.Operations.size(), 0, plan.Edits.get_allocator().resource());
+    us size = CheckedSourceAnalysisSize(source.size());
+    us cursor = 0;
+    Vector<u8> ownership(plan.Operations.size(), 0, plan.Edits.get_allocator().resource());
     const StructuralEdit* previous = nullptr;
 
     for (const auto& edit : plan.Edits) {
@@ -910,7 +914,7 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
             throw std::invalid_argument("non-atomic structural operation");
         }
 
-        ownership[edit.Operation] |= static_cast<uint8_t>(bit);
+        ownership[edit.Operation] |= static_cast<u8>(bit);
         size -= edit.Source.End - edit.Source.Begin;
 
         for (auto p = edit.PieceBegin; p < edit.PieceEnd; ++p) {
@@ -933,7 +937,7 @@ size_t Validate(std::string_view source, const StructuralPlan& plan)
         previous = &edit;
     }
 
-    for (size_t i = 0; i < ownership.size(); ++i) {
+    for (us i = 0; i < ownership.size(); ++i) {
         auto required = plan.Operations[i].Kind == StructuralAction::AddMissingControlBraces ? 3u : 4u;
 
         if (ownership[i] != required) {
@@ -993,7 +997,7 @@ NamespaceCommentPlan::NamespaceCommentPlan(std::pmr::memory_resource& memory)
     , Skipped(&memory)
 { }
 
-std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
+Vector<IncludeGroup> DiscoverIncludeGroups(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     std::pmr::memory_resource& fileMemory,
@@ -1001,7 +1005,7 @@ std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
     IncludeGrouping grouping)
 {
     CheckAnalysisSource(tree, safety);
-    std::pmr::vector<IncludeGroup> result(&fileMemory);
+    Vector<IncludeGroup> result(&fileMemory);
     ScanIncludeGroups(
         tree,
         safety,
@@ -1027,12 +1031,12 @@ StructuralPlan PlanStructuralEditsImpl(
 {
     StructuralPlan plan(fileMemory);
     const bool controlEdits = options.AddMissingControlBraces || options.EmptyControlBody;
-    std::pmr::vector<uint32_t> barriers(&scratchMemory);
+    Vector<u32> barriers(&scratchMemory);
     const auto hasBarrier = [&] (parser::TokenRange tokens) {
         // Braced and ineligible bodies need no token summary. Build it only
         // when an otherwise admissible edit must check comment/directive edges.
         if (barriers.empty()) {
-            barriers.resize(size_t(tree.TokenCount()) + 1);
+            barriers.resize(us(tree.TokenCount()) + 1);
 
             for (TI i = 0; i < tree.TokenCount(); ++i) {
                 barriers[i + 1] =
@@ -1048,7 +1052,7 @@ StructuralPlan PlanStructuralEditsImpl(
     // a sibling of the whole control. Mark only labels and their control
     // ancestors; each marked control stops later walks of that shared path.
     auto regions = safety.Regions();
-    std::pmr::vector<uint8_t> trailingLabels(&scratchMemory);
+    Vector<u8> trailingLabels(&scratchMemory);
 
     if (controlEdits || options.RemoveNullStatements) {
         for (RegionId id = 0; id < regions.size(); ++id) {
@@ -1076,8 +1080,8 @@ StructuralPlan PlanStructuralEditsImpl(
     }
 
     TI namespaceSuffixEnd = tree.TokenCount();
-    std::pmr::vector<uint8_t> nullContexts(&scratchMemory);
-    const auto hasNullContext = [&] (size_t region, uint8_t required) {
+    Vector<u8> nullContexts(&scratchMemory);
+    const auto hasNullContext = [&] (us region, u8 required) {
         // Most files have no removable null syntax. Build the neighboring
         // syntax summaries only when a complete candidate needs them.
         if (nullContexts.empty()) {
@@ -1096,7 +1100,7 @@ StructuralPlan PlanStructuralEditsImpl(
         RegionStatus status,
         bool trailingLabel,
         bool previousTrailingLabel,
-        size_t region) {
+        us region) {
 
         if (controlEdits && Control(node.Kind)) {
             bool attributes = false, labels = false, directives = false;
@@ -1246,7 +1250,7 @@ StructuralPlan PlanStructuralEditsImpl(
     };
     if constexpr (Certified) {
         CheckAnalysisSource(tree, safety);
-        std::pmr::vector<uint32_t> depths(&scratchMemory);
+        Vector<u32> depths(&scratchMemory);
 
         for (RegionId id = 0; id < regions.size(); ++id) {
             const auto& node = regions[id];
@@ -1322,7 +1326,7 @@ StructuralPlan PlanStructuralEditsImpl(
                 id);
         }
     } else {
-        size_t regionIndex = 0;
+        us regionIndex = 0;
         Walk(
             tree,
             &safety,
@@ -1333,7 +1337,7 @@ StructuralPlan PlanStructuralEditsImpl(
                 NK previous,
                 NK grandparent,
                 bool sequence,
-                uint32_t depth,
+                u32 depth,
                 RegionStatus status,
                 bool trailingLabel,
                 bool previousTrailingLabel) {
@@ -1359,19 +1363,20 @@ StructuralPlan PlanStructuralEditsImpl(
     if ((options.SortIncludes || options.Delimiters != IncludeDelimiters::Preserve) &&
         options.PathBase == IncludePathBase::ProjectRoot && !includes.InputFilePath.empty())
     {
-        const std::filesystem::path input(includes.InputFilePath);
+        const fs::Path input(includes.InputFilePath);
 
         if (input.is_absolute()) {
-            std::error_code error;
-            const auto root = std::filesystem::current_path(error);
+            const auto root = fs::CurrentPath();
 
-            if (!error) {
-                const auto relative = input.lexically_normal().lexically_relative(root);
+            if (!root.Error.Code) {
+                const auto relative = input.lexically_normal().lexically_relative(root.Value);
 
                 // Project-root includes and filenames passed relative to the
                 // working directory must use the same coordinate system.
                 // External absolute roots retain their lexical coordinates.
-                if (!relative.empty() && *relative.begin() != "..") {
+                if (!relative.empty() && relative.native() != fs::Path("..").native() &&
+                    !relative.generic_string().starts_with("../"))
+                {
                     relativeInput = relative.generic_string();
                     includes.InputFilePath = relativeInput;
                 }
@@ -1423,7 +1428,7 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
     const StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::pmr::vector<detail::CopiedTokenRun>* copied)
+    Vector<detail::CopiedTokenRun>* copied)
 {
     auto size = Validate(tree.Source(), plan);
     auto boundary = [&] (parser::SourceOffset offset) {
@@ -1528,13 +1533,13 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
                 return a.Original.Begin < b.Original.Begin;
             });
 
-        for (size_t i = 1; i < copied->size(); ++i) {
+        for (us i = 1; i < copied->size(); ++i) {
             if ((*copied)[i - 1].Original.End > (*copied)[i].Original.Begin) {
                 throw std::invalid_argument("split/duplicated original token");
             }
         }
 
-        for (size_t i = 0; i < plan.Edits.size(); ++i) {
+        for (us i = 0; i < plan.Edits.size(); ++i) {
             const auto& edit = plan.Edits[i];
             const auto leftIndex = FirstBeginningAt(tree, edit.Source.Begin);
             const auto rightIndex = FirstBeginningAt(tree, edit.Source.End);
@@ -1572,8 +1577,8 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
         }
     } else {
         // Linear nearest-survivor tables bound chains of neighboring deletions.
-        std::pmr::vector<TI> before(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
-        std::pmr::vector<TI> after(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
+        Vector<TI> before(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
+        Vector<TI> after(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
 
         for (TI i = 0; i < tree.TokenCount(); ++i) {
             before[i + 1] = result.OriginalTokens[i].Present ? i : before[i];
@@ -1583,7 +1588,7 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
             after[i - 1] = result.OriginalTokens[i - 1].Present ? i - 1 : after[i];
         }
 
-        for (size_t i = 0; i < plan.Edits.size(); ++i) {
+        for (us i = 0; i < plan.Edits.size(); ++i) {
             const auto& edit = plan.Edits[i];
             auto leftIndex = FirstBeginningAt(tree, edit.Source.Begin);
             auto rightIndex = FirstBeginningAt(tree, edit.Source.End);
@@ -1624,7 +1629,7 @@ StructuralMaterialization detail::MaterializeStructuralEditsCompact(
     const StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::pmr::vector<CopiedTokenRun>& copied)
+    Vector<CopiedTokenRun>& copied)
 {
     return MaterializeStructuralEditsImpl(tree, plan, fileMemory, scratchMemory, &copied);
 }
@@ -1757,7 +1762,7 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
         return plan;
     }
 
-    std::pmr::vector<TI> namespaceKeywords(&scratchMemory);
+    Vector<TI> namespaceKeywords(&scratchMemory);
 
     for (TI i = 0; i < original.TokenCount(); ++i) {
         if (original.Kind(i) == TK::Keyword_namespace) {
@@ -1886,7 +1891,7 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
             original,
             &safety,
             scratchMemory,
-            [&] (const parser::Node& node, NK, NK, NK, bool, uint32_t, RegionStatus, bool, bool) {
+            [&] (const parser::Node& node, NK, NK, NK, bool, u32, RegionStatus, bool, bool) {
                 visit(node);
             });
     }
@@ -1955,7 +1960,7 @@ StructuralPlan ResolveNamespaceCommentsImpl(
         return resolved;
     }
 
-    std::pmr::vector<parser::SourceOffset> lines(&scratchMemory);
+    Vector<parser::SourceOffset> lines(&scratchMemory);
     auto line = [&] (parser::SourceOffset offset) {
         if (lines.empty()) {
             lines.push_back(0);
@@ -1965,7 +1970,7 @@ StructuralPlan ResolveNamespaceCommentsImpl(
             }
         }
 
-        return static_cast<size_t>(std::upper_bound(lines.begin(), lines.end(), offset) - lines.begin() - 1);
+        return static_cast<us>(std::upper_bound(lines.begin(), lines.end(), offset) - lines.begin() - 1);
     };
     const auto count = original.TokenCount();
     auto valid = [&] (TI token) {
@@ -2003,9 +2008,9 @@ StructuralPlan ResolveNamespaceCommentsImpl(
         }
     };
 
-    std::pmr::vector<Interior> interiors(plan.Namespaces.size(), &scratchMemory);
-    std::pmr::vector<size_t> active(&scratchMemory);
-    size_t nextNamespace = 0;
+    Vector<Interior> interiors(plan.Namespaces.size(), &scratchMemory);
+    Vector<us> active(&scratchMemory);
+    us nextNamespace = 0;
 
     // Namespace intervals are nested/disjoint in original-token preorder.
     // Visit each token once, merging a completed child's envelope into its
@@ -2045,7 +2050,7 @@ StructuralPlan ResolveNamespaceCommentsImpl(
         }
     }
 
-    for (size_t namespaceIndex = 0; namespaceIndex < plan.Namespaces.size(); ++namespaceIndex) {
+    for (us namespaceIndex = 0; namespaceIndex < plan.Namespaces.size(); ++namespaceIndex) {
         const auto& ns = plan.Namespaces[namespaceIndex];
         auto skip = [&] (StructuralSkip reason) {
             Skip(resolved, StructuralAction::NamespaceComments, ns.Owner, reason);
@@ -2223,7 +2228,7 @@ StructuralPlan ResolveNamespaceCommentsImpl(
         }
 
         auto id = Operation(resolved, StructuralAction::NamespaceComments, ns.Owner);
-        auto pieceBegin = static_cast<uint32_t>(resolved.Pieces.size());
+        auto pieceBegin = static_cast<u32>(resolved.Pieces.size());
 
         if (plan.Options.Policy != NamespaceCommentPolicy::Remove) {
             // A single shared static space view avoids per-comment strings.
@@ -2259,7 +2264,7 @@ StructuralPlan ResolveNamespaceCommentsImpl(
         auto cursor = begin;
         bool identical = true;
 
-        for (size_t p = pieceBegin; p < resolved.Pieces.size(); ++p) {
+        for (us p = pieceBegin; p < resolved.Pieces.size(); ++p) {
             auto literal = resolved.Pieces[p].Literal;
 
             if (literal.size() > end - cursor || output.substr(cursor, literal.size()) != literal) {
@@ -2274,7 +2279,7 @@ StructuralPlan ResolveNamespaceCommentsImpl(
             resolved.Pieces.resize(pieceBegin);
             resolved.Operations.pop_back();
         } else {
-            resolved.Edits.push_back({{begin, end}, pieceBegin, static_cast<uint32_t>(resolved.Pieces.size()), id});
+            resolved.Edits.push_back({{begin, end}, pieceBegin, static_cast<u32>(resolved.Pieces.size()), id});
         }
     }
 
@@ -2285,10 +2290,10 @@ StructuralPlan ResolveNamespaceCommentsImpl(
 
 struct SparseNamespaceMapping
 {
-    size_t Count;
+    us Count;
     std::span<const detail::NamespaceTokenPosition> Positions;
 
-    size_t size() const
+    us size() const
     {
         return Count;
     }

@@ -5,6 +5,7 @@
 #include <util/input.hpp>
 
 #include <functional>
+#include <memory_resource>
 #include <optional>
 #include <span>
 #include <string>
@@ -24,6 +25,8 @@ using ErrorHandler = std::function<void(ParseError)>;
 
 struct ParseOptions
 {
+    // If set, the resource must outlive the returned tree and its reparses.
+    std::pmr::memory_resource* Memory = nullptr;
     // Exact, unqualified macro names. A balanced invocation and any additional
     // balanced parenthesized groups followed by a balanced brace body introduce
     // function-body grammar. The complete header stays opaque, not a signature.

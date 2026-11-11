@@ -1,5 +1,7 @@
 #include "naming.hpp"
 
+#include <util/types.hpp>
+
 #include <tokenizer/token.hpp>
 
 #include <algorithm>
@@ -101,7 +103,7 @@ std::string ExpectedName(const NameRule& rule, bool prefixOK, bool suffixOK, boo
         expected += label;
         expected += " ";
 
-        for (size_t i = 0; i < affixes.size(); ++i) {
+        for (us i = 0; i < affixes.size(); ++i) {
             if (i) {
                 expected += i + 1 == affixes.size() ? " or " : ", ";
             }
@@ -222,7 +224,7 @@ public:
             const parser::Node* Node;
             Context NamingContext;
             const parser::Node* NextChild = nullptr;
-            size_t ScopeLength = 0;
+            us ScopeLength = 0;
             bool Entered = false;
             std::optional<TK> BranchAccess;
             bool HasElse = false;
@@ -505,7 +507,7 @@ private:
             return true;
         }
 
-        size_t begin = 0;
+        us begin = 0;
 
         while (begin < name.size()) {
             if (!Upper(name[begin]) && !Lower(name[begin])) {
@@ -547,7 +549,7 @@ private:
 
                 const bool initialLowercase = begin == 0 && casing == NameCase::CamelCase;
 
-                for (size_t i = 0; i < word.size(); ++i) {
+                for (us i = 0; i < word.size(); ++i) {
                     const bool wantUpper = !initialLowercase && (word.size() == 2 || i == 0);
 
                     if (!(wantUpper ? Upper(word[i]) : Lower(word[i]))) {

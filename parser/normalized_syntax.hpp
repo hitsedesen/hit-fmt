@@ -2,6 +2,9 @@
 
 #include "syntax_tree.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <optional>
 #include <span>
 #include <vector>
@@ -22,17 +25,17 @@ struct NormalizedPiece
 struct NormalizedRegionTopology
 {
     const void* Records;
-    uint32_t Count;
-    uint32_t (*FirstChild)(const void*, uint32_t);
-    uint32_t (*NextSibling)(const void*, uint32_t);
+    u32 Count;
+    u32 (*FirstChild)(const void*, u32);
+    u32 (*NextSibling)(const void*, u32);
 };
 
 struct NormalizedCommentInsertion
 {
     TokenIndex Token;
-    uint32_t ParentRegion;
+    u32 ParentRegion;
     // Original preorder position, including Count for an append at the end.
-    uint32_t BeforeRegion;
+    u32 BeforeRegion;
 };
 
 // Private token-only result: Root() and AssociatedTrivia() are unavailable.
@@ -43,8 +46,8 @@ struct NormalizedCommentInsertion
     util::PaddedSourceView input,
     std::span<const NormalizedPiece> pieces,
     NormalizedRegionTopology topology,
-    std::pmr::vector<TokenIndex>& originalToNormalized,
-    std::pmr::vector<NormalizedCommentInsertion>& insertions);
+    Vector<TokenIndex>& originalToNormalized,
+    Vector<NormalizedCommentInsertion>& insertions);
 
 // Internal consuming path: on success, result owns original's node arena and
 // original retains only its source/token view, valid until result is destroyed.
@@ -54,6 +57,6 @@ struct NormalizedCommentInsertion
     SyntaxTree& original,
     util::PaddedSourceView input,
     std::span<const NormalizedPiece> pieces,
-    std::pmr::vector<TokenIndex>& originalToNormalized);
+    Vector<TokenIndex>& originalToNormalized);
 
 } // namespace parser::detail

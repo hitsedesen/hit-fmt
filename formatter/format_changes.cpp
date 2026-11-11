@@ -1,5 +1,8 @@
 #include "format_changes_internal.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <unicode/utf8.hpp>
 
 #include <algorithm>
@@ -11,7 +14,7 @@ namespace formatter {
 SourceLines::SourceLines(std::string_view text, bool splitBareCR)
 {
     const auto size = CheckedSourceAnalysisSize(text.size());
-    Boundaries_.reserve(std::min<size_t>(size / 40 + 2, 1024));
+    Boundaries_.reserve(std::min<us>(size / 40 + 2, 1024));
     Boundaries_.push_back(0);
 
     for (parser::SourceOffset i = 0; i < size; ++i) {
@@ -33,25 +36,23 @@ SourceLines::SourceLines(std::span<const parser::SourceOffset> boundaries, bool 
     , BareCR_(containsBareCR)
 { }
 
-size_t SourceLines::Count() const
+us SourceLines::Count() const
 {
     return Boundaries_.empty() ? 0 : Boundaries_.size() - 1;
 }
 
-size_t SourceLines::LineAt(parser::SourceOffset offset) const
+us SourceLines::LineAt(parser::SourceOffset offset) const
 {
     if (Boundaries_.empty() || offset > Boundaries_.back()) {
         throw std::out_of_range("invalid source line offset");
     }
 
-    return std::max<size_t>(
+    return std::max<us>(
         1,
-        std::min<size_t>(
-            Count(),
-            std::upper_bound(Boundaries_.begin(), Boundaries_.end(), offset) - Boundaries_.begin()));
+        std::min<us>(Count(), std::upper_bound(Boundaries_.begin(), Boundaries_.end(), offset) - Boundaries_.begin()));
 }
 
-parser::SourceRange SourceLines::Range(size_t line) const
+parser::SourceRange SourceLines::Range(us line) const
 {
     if (line == 1 && Count() == 0) {
         return {};
@@ -71,7 +72,7 @@ parser::SourceRange SourceLines::Cover(parser::SourceRange range) const
     return {Range(first).Begin, Range(last).End};
 }
 
-std::string_view SourceLines::Text(std::string_view text, size_t line) const
+std::string_view SourceLines::Text(std::string_view text, us line) const
 {
     const auto range = Range(line);
     auto result = text.substr(range.Begin, range.End - range.Begin);
@@ -87,14 +88,14 @@ util::Position SourceLines::Position(std::string_view text, parser::SourceOffset
 {
     const auto line = LineAt(offset);
     const auto range = Range(line);
-    const auto end = std::min<size_t>(offset, range.Begin + Text(text, line).size());
-    uint32_t column = 1;
+    const auto end = std::min<us>(offset, range.Begin + Text(text, line).size());
+    u32 column = 1;
 
-    for (size_t i = range.Begin; i < end; ++column) {
+    for (us i = range.Begin; i < end; ++column) {
         i += unicode::utf8::GetFirstCodePointSize(text.substr(i, end - i)).value_or(1);
     }
 
-    return {static_cast<uint32_t>(line), column};
+    return {static_cast<u32>(line), column};
 }
 
 std::span<const parser::SourceOffset> SourceLines::Boundaries() const
@@ -193,13 +194,13 @@ private:
     {
         const auto original = View(Source_, before);
         const auto formatted = View(Output_, after);
-        size_t prefix = 0;
+        us prefix = 0;
 
         while (prefix < original.size() && prefix < formatted.size() && original[prefix] == formatted[prefix]) {
             ++prefix;
         }
 
-        const auto continuation = [] (std::string_view text, size_t offset) {
+        const auto continuation = [] (std::string_view text, us offset) {
             return offset < text.size() && (static_cast<unsigned char>(text[offset]) & 0xc0) == 0x80;
         };
 
@@ -207,7 +208,7 @@ private:
             --prefix;
         }
 
-        size_t suffix = 0;
+        us suffix = 0;
 
         while (suffix < original.size() - prefix && suffix < formatted.size() - prefix &&
             original[original.size() - suffix - 1] == formatted[formatted.size() - suffix - 1])
@@ -233,23 +234,23 @@ private:
     bool& OtherChanges_;
 };
 
-std::pmr::vector<FormatChange> IncludeBlocks(
+Vector<FormatChange> IncludeBlocks(
     const parser::SyntaxTree& tree,
     const FormatResult& result,
     const SourceLines& originalLines,
     const SourceLines& outputLines,
     std::pmr::memory_resource& scratch)
 {
-    std::pmr::vector<FormatChange> blocks(&scratch);
+    Vector<FormatChange> blocks(&scratch);
 
     if (result.StructuralOperations.empty()) {
         return blocks;
     }
 
-    constexpr auto missing = std::numeric_limits<uint32_t>::max();
-    std::pmr::vector<uint32_t> indices(result.StructuralOperations.size(), missing, &scratch);
+    constexpr auto missing = std::numeric_limits<u32>::max();
+    Vector<u32> indices(result.StructuralOperations.size(), missing, &scratch);
 
-    for (size_t i = 0; i < indices.size(); ++i) {
+    for (us i = 0; i < indices.size(); ++i) {
         const auto& operation = result.StructuralOperations[i];
 
         if (operation.Kind == StructuralAction::IncludeOrder && !operation.Owner.Empty()) {
@@ -298,7 +299,7 @@ std::pmr::vector<FormatChange> IncludeBlocks(
             return a.Original.Begin < b.Original.Begin;
         });
 
-    for (size_t i = 1; i < blocks.size(); ++i) {
+    for (us i = 1; i < blocks.size(); ++i) {
         if (blocks[i].Original.Begin < blocks[i - 1].Original.End ||
             blocks[i].Output.Begin < blocks[i - 1].Output.End)
         {
@@ -468,7 +469,7 @@ void detail::BuildChangeMetadata(
         outputLines = SourceLines(output);
     }
 
-    std::pmr::vector<FormatChange> blocks(&scratch);
+    Vector<FormatChange> blocks(&scratch);
 
     if (includes) {
         const auto& original = changes ? changes->OriginalLines : sourceLines;
@@ -480,7 +481,7 @@ void detail::BuildChangeMetadata(
                 summary.IncludeOrderChanges.push_back({
                     block.Original,
                     block.Output,
-                    {static_cast<uint32_t>(original.LineAt(block.Original.Begin)), 1},
+                    {static_cast<u32>(original.LineAt(block.Original.Begin)), 1},
                 });
             }
         }

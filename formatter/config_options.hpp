@@ -1,5 +1,7 @@
 #pragma once
 
+#include <util/types.hpp>
+
 // Lexical separation, comments and opaque spans override gap preferences.
 // These syntax boundaries preserve horizontal spelling independently of layout.
 #define FORMATTER_SYNTAX_BOUNDARY_GAP_OPTIONS(OPT) \
@@ -383,9 +385,9 @@
         std::nullopt) \
     OPT(std::optional<formatter::ContinuationAlignment>, category##Alignment, \
         std::nullopt) \
-    OPT(std::optional<std::size_t>, category##ContinuationOffset, \
+    OPT(std::optional<us>, category##ContinuationOffset,          \
         std::nullopt) \
-    OPT(std::optional<std::size_t>, category##AlignmentFallbackOffset, \
+    OPT(std::optional<us>, category##AlignmentFallbackOffset,          \
         std::nullopt)
 
 #define FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, category)              \
@@ -396,8 +398,8 @@
 // Each entry defines a field, its default, and its config-file binding.
 #define FORMATTER_STYLE_OPTIONS(OPT)                                         \
     OPT(formatter::LayoutMode, Layout, formatter::LayoutMode::Preserve)        \
-    OPT(std::size_t, IndentWidth, 4)                                          \
-    OPT(std::size_t, ColumnLimit, 120)                                        \
+    OPT(us, IndentWidth, 4)                                                   \
+    OPT(us, ColumnLimit, 120)                                                 \
     OPT(formatter::WidthDiagnosticPolicy, WidthDiagnostics, \
         formatter::WidthDiagnosticPolicy::Off) \
     OPT(bool, HonorClangFormatDirectives, true)                               \
@@ -416,8 +418,8 @@
     OPT(formatter::ContinuationAlignment, ListAlignment, \
         formatter::ContinuationAlignment::Block) \
     /* Zero resolves to IndentWidth, including category overrides. */         \
-    OPT(std::size_t, ContinuationOffset, 0)                                   \
-    OPT(std::size_t, AlignmentFallbackOffset, 0)                              \
+    OPT(us, ContinuationOffset, 0)                                            \
+    OPT(us, AlignmentFallbackOffset, 0)                                       \
     OPT(bool, KeepMultiline, false)                                         \
     OPT(bool, StringLiteralFragmentsAsArguments, false)                     \
     FORMATTER_DELIMITED_LIST_CATEGORY_OPTIONS(OPT, Calls)                     \
@@ -522,27 +524,27 @@
         formatter::PointerReferenceDeclaratorLocation::Preserve) \
     OPT(formatter::BodyIndentation, IndentAccessModifiers, \
         formatter::BodyIndentation::Preserve) \
-    OPT(std::size_t, AccessModifierIndentWidth, \
+    OPT(us, AccessModifierIndentWidth,          \
         0) \
     OPT(formatter::BodyIndentation, IndentMembers, \
         formatter::BodyIndentation::Preserve) \
-    OPT(std::size_t, MemberIndentWidth, 0)                                    \
+    OPT(us, MemberIndentWidth, 0)                                             \
     OPT(formatter::BodyIndentation, IndentCaseLabels, \
         formatter::BodyIndentation::Preserve) \
-    OPT(std::size_t, CaseLabelIndentWidth, 0)                                 \
-    OPT(std::size_t, BlockBodyIndentWidth, 0)                                 \
+    OPT(us, CaseLabelIndentWidth, 0)                                          \
+    OPT(us, BlockBodyIndentWidth, 0)                                          \
     OPT(formatter::BodyIndentation, IndentNamespaces,                         \
         formatter::BodyIndentation::Preserve)                                \
-    OPT(std::size_t, NamespaceIndentWidth, 0)                                \
+    OPT(us, NamespaceIndentWidth, 0)                                         \
     OPT(formatter::BodyIndentation, IndentLinkageBlocks,                      \
         formatter::BodyIndentation::Preserve)                                \
-    OPT(std::size_t, LinkageIndentWidth, 0)                                   \
+    OPT(us, LinkageIndentWidth, 0)                                            \
     OPT(formatter::StandaloneBlockBraceIndentation, \
         StandaloneBlockBraceIndentation, \
         formatter::StandaloneBlockBraceIndentation::Preserve) \
     OPT(formatter::StatementAttributeIndent, StatementAttributeIndent, \
         formatter::StatementAttributeIndent::Preserve) \
-    OPT(std::size_t, StatementAttributeIndentWidth, 0)                        \
+    OPT(us, StatementAttributeIndentWidth, 0)                                 \
     OPT(formatter::BlankLineSetting, NamespaceBlankLinesAfterOpen, {})        \
     OPT(formatter::BlankLineSetting, NamespaceBlankLinesBeforeClose, {})       \
     OPT(formatter::BlankLineSetting, LinkageBlankLinesAfterOpen, {})           \
@@ -560,8 +562,8 @@
     OPT(formatter::BlankLineSetting, CaseBlankLines, {})                      \
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesBefore, {}) \
     OPT(formatter::BlankLineSetting, StandaloneCommentBlankLinesAfter, {}) \
-    OPT(std::optional<std::size_t>, MaxEmptyLines, std::nullopt)              \
-    OPT(std::optional<std::size_t>, MemberGroupMaxEmptyLines, std::nullopt)   \
+    OPT(std::optional<us>, MaxEmptyLines, std::nullopt)                       \
+    OPT(std::optional<us>, MemberGroupMaxEmptyLines, std::nullopt)            \
     OPT(formatter::BlankLineSetting, BlockBlankLinesAfter, {})              \
     OPT(formatter::BlankLineSetting, ControlStatementBlankLinesBefore, {})   \
     OPT(bool, KeepControlStatementWithInitialization, false)                \
@@ -592,7 +594,7 @@
         formatter::BodyIndentation::Preserve) \
     OPT(bool, AlignMacroBackslashes, false) \
     /* Zero preserves spelling; length counts slashes, not indentation. */ \
-    OPT(std::size_t, RulerLength, 0) \
+    OPT(us, RulerLength, 0)          \
     OPT(formatter::RulerPlacement, RulerPlacement, \
         formatter::RulerPlacement::Preserve) \
     OPT(formatter::BlankLineSetting, RulerBlankLinesBefore, {}) \
@@ -630,8 +632,8 @@
         formatter::NamespaceComments::Preserve) \
     OPT(std::optional<formatter::TrailingCommentSpaceSetting>, \
         TrailingCommentSpaces, std::nullopt) \
-    OPT(std::size_t, NamespaceCommentSpaces, 1)                              \
-    OPT(std::size_t, ShortNamespaceLines, 0)                                 \
+    OPT(us, NamespaceCommentSpaces, 1)                                       \
+    OPT(us, ShortNamespaceLines, 0)                                          \
     FORMATTER_GAP_OPTIONS(OPT)
 
 // Each category supplies case, affix and exemption options together.
@@ -653,4 +655,4 @@
     X(formatter::FunctionDefinitionParameterNames, \
         FunctionDefinitionParameterNames, \
         formatter::FunctionDefinitionParameterNames::Unchecked) \
-    X(std::vector<std::regex>, Exclude, {})
+    X(std::vector<std::string>, Exclude, {})

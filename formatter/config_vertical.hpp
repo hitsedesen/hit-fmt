@@ -1,5 +1,7 @@
 #pragma once
 
+#include <util/types.hpp>
+
 #include <cstddef>
 #include <cstdint>
 
@@ -7,7 +9,7 @@ namespace formatter {
 
 // Member declaration/definition counts can inherit their enclosing policy.
 // Keep counts wide until validating the 0..10000 range before narrowing.
-enum class BlankLineMode : std::uint8_t
+enum class BlankLineMode : u8
 {
     Preserve,
     Inherit,
@@ -18,7 +20,7 @@ enum class BlankLineMode : std::uint8_t
 struct BlankLineSetting
 {
     BlankLineMode Mode = BlankLineMode::Preserve;
-    std::size_t EmptyLines = 0;
+    us EmptyLines = 0;
 
     [[nodiscard]] static constexpr BlankLineSetting Inherited() noexcept
     {
@@ -31,7 +33,7 @@ struct BlankLineSetting
 // Concrete vertical counts measure empty lines, not newline characters.
 // Positive counts require a boundary break; zero retains inline/broken status.
 // Minimum retains larger source gaps, subject to the applicable empty-line cap.
-enum class VerticalGapMode : std::uint8_t
+enum class VerticalGapMode : u8
 {
     Preserve,
     Exact,
@@ -41,13 +43,13 @@ enum class VerticalGapMode : std::uint8_t
 struct VerticalGapPolicy
 {
     VerticalGapMode Mode = VerticalGapMode::Preserve;
-    std::uint16_t EmptyLines = 0;
+    u16 EmptyLines = 0;
 };
 
 struct EmptyLineCap
 {
     bool Enabled = false;
-    std::uint16_t EmptyLines = 0;
+    u16 EmptyLines = 0;
 };
 
 struct VerticalGapPolicies

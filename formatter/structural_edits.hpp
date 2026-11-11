@@ -4,6 +4,9 @@
 #include "formatter/include_policy.hpp"
 #include "formatter/source_analysis.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <memory_resource>
 #include <span>
 #include <string>
@@ -15,7 +18,7 @@ namespace formatter {
 // Independent of renderer fitting and configuration storage. Include sorting
 // moves exact directive atoms unless opt-in directive text policies also apply.
 // Text policies never grant authority over other protected interiors.
-enum class StructuralAction : uint8_t
+enum class StructuralAction : u8
 {
     AddMissingControlBraces,
     EmptyControlBody,
@@ -29,7 +32,7 @@ enum class StructuralAction : uint8_t
     RulerPlacement,
 };
 
-enum class StructuralSkip : uint8_t
+enum class StructuralSkip : u8
 {
     Incomplete,
     Protected,
@@ -62,8 +65,8 @@ struct StructuralOptions
     bool PreserveBareCR = false;
     BodyIndentation IndentPreprocessingDirectives = BodyIndentation::Preserve;
     bool AlignMacroBackslashes = false;
-    std::size_t RulerLength = 0;
-    std::uint8_t IndentWidth = 4;
+    us RulerLength = 0;
+    u8 IndentWidth = 4;
     IncludeCategoryOrder CategoryOrder = IncludeCategoryOrder::QuotedFirst;
     IncludeSortPriority SortPriority = IncludeSortPriority::CategoryFirst;
     IncludeDelimiters Delimiters = IncludeDelimiters::Preserve;
@@ -85,7 +88,7 @@ struct IncludeSortContext
     std::string_view MatchingHeaderSuffix = {};
 };
 
-using StructuralActionId = uint32_t;
+using StructuralActionId = u32;
 
 inline constexpr StructuralActionId NoStructuralAction = UINT32_MAX;
 
@@ -109,12 +112,12 @@ struct StructuralPiece
 struct StructuralEdit
 {
     parser::SourceRange Source;
-    uint32_t PieceBegin;
-    uint32_t PieceEnd;
+    u32 PieceBegin;
+    u32 PieceEnd;
     StructuralActionId Operation;
-    uint32_t Depth = 0;
+    u32 Depth = 0;
 
-    enum class Edge : uint8_t
+    enum class Edge : u8
     {
         Close,
         Open,
@@ -130,10 +133,10 @@ public:
     explicit StructuralPlan(std::pmr::memory_resource& memory);
     StructuralPlan(StructuralPlan&& other) = default;
     StructuralPlan(const StructuralPlan& other) = delete;
-    std::pmr::vector<StructuralOperation> Operations;
-    std::pmr::vector<StructuralEdit> Edits;
-    std::pmr::vector<StructuralPiece> Pieces;
-    std::pmr::vector<StructuralDiagnostic> Skipped;
+    Vector<StructuralOperation> Operations;
+    Vector<StructuralEdit> Edits;
+    Vector<StructuralPiece> Pieces;
+    Vector<StructuralDiagnostic> Skipped;
 };
 struct TokenOutputOffset
 {
@@ -162,9 +165,9 @@ struct StructuralMaterialization
 {
     explicit StructuralMaterialization(std::pmr::memory_resource& memory);
     std::pmr::string Text;
-    std::pmr::vector<TokenOutputOffset> OriginalTokens;
-    std::pmr::vector<StructuralProvenance> Provenance;
-    std::pmr::vector<GeneratedAdjacency> GeneratedAdjacencies;
+    Vector<TokenOutputOffset> OriginalTokens;
+    Vector<StructuralProvenance> Provenance;
+    Vector<GeneratedAdjacency> GeneratedAdjacencies;
 };
 
 struct IncludeGroup
@@ -181,7 +184,7 @@ struct IncludeGroup
 // unrestricted original analysis; scoped planning still authorizes each edit.
 // Tree/analysis must match, otherwise throws invalid_argument. Results retain
 // no input or scratch views; fileMemory must outlive them.
-[[nodiscard]] std::pmr::vector<IncludeGroup> DiscoverIncludeGroups(
+[[nodiscard]] Vector<IncludeGroup> DiscoverIncludeGroups(
     const parser::SyntaxTree& tree,
     const SourceAnalysis& safety,
     std::pmr::memory_resource& fileMemory,
@@ -209,7 +212,7 @@ struct IncludeGroup
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory);
 
-enum class NamespaceCommentPolicy : uint8_t
+enum class NamespaceCommentPolicy : u8
 {
     Preserve,
     AddMissing,
@@ -222,8 +225,8 @@ struct NamespaceCommentOptions
     NamespaceCommentPolicy Policy = NamespaceCommentPolicy::Preserve;
     // Strictly interior physical output lines: max(0, closeLine-openLine-1).
     // Zero disables exemption. Fix/Remove of existing comments ignores it.
-    size_t ShortNamespaceLines = 0;
-    size_t Spaces = 1; // 0..32, after the caller resolves trailing gap policy
+    us ShortNamespaceLines = 0;
+    us Spaces = 1; // 0..32, after the caller resolves trailing gap policy
     bool PreserveBareCR = false; // Do not capture EOF whitespace in a NEW comment.
 };
 
@@ -242,8 +245,8 @@ struct NamespaceCommentPlan
 {
     explicit NamespaceCommentPlan(std::pmr::memory_resource& memory);
     NamespaceCommentOptions Options;
-    std::pmr::vector<NamespaceIdentity> Namespaces;
-    std::pmr::vector<StructuralDiagnostic> Skipped;
+    Vector<NamespaceIdentity> Namespaces;
+    Vector<StructuralDiagnostic> Skipped;
 };
 
 [[nodiscard]] NamespaceCommentPlan PlanNamespaceComments(

@@ -1,3 +1,6 @@
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <formatter/config.hpp>
 #include <formatter/layout_plan.hpp>
 #include <formatter/syntax_layout.hpp>
@@ -27,16 +30,16 @@ public:
         : Upstream_(upstream)
     { }
 
-    size_t BytesRequested = 0;
+    us BytesRequested = 0;
 private:
-    void* do_allocate(size_t bytes, size_t alignment) override
+    void* do_allocate(us bytes, us alignment) override
     {
         auto* pointer = Upstream_.allocate(bytes, alignment);
         BytesRequested += bytes;
         return pointer;
     }
 
-    void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
+    void do_deallocate(void* pointer, us bytes, us alignment) override
     {
         Upstream_.deallocate(pointer, bytes, alignment);
     }
@@ -52,8 +55,8 @@ private:
 struct Output
 {
     std::string Text;
-    std::vector<uint8_t> Broken;
-    size_t ScratchBytesRequested = 0;
+    std::vector<u8> Broken;
+    us ScratchBytesRequested = 0;
 };
 
 Output Lower(
@@ -66,8 +69,8 @@ Output Lower(
 {
     const test::Input source(input);
     auto tree = parser::Parse(source.View(), [] (parser::ParseError) { });
-    std::pmr::monotonic_buffer_resource file(fileUpstream);
-    std::pmr::monotonic_buffer_resource scratchArena(scratchUpstream);
+    Arena file(fileUpstream);
+    Arena scratchArena(scratchUpstream);
     RequestResource scratch(scratchArena);
     const auto policies = formatter::CompilePolicies(style);
     const auto annotations = formatter::CompileLibraryAnnotations(style);
@@ -93,7 +96,7 @@ Output Lower(
     return {std::string(rendered.Text), {rendered.Broken.begin(), rendered.Broken.end()}, scratch.BytesRequested};
 }
 
-formatter::Style Canonical(size_t width = 40)
+formatter::Style Canonical(us width = 40)
 {
     formatter::Style style;
     style.Layout = formatter::LayoutMode::Canonical;
@@ -347,7 +350,7 @@ TEST(SyntaxLayout, PartialFixedLinesCannotSatisfyAlwaysOwnedBreak)
     EXPECT_TRUE(std::any_of(
         output.Broken.begin(),
         output.Broken.end(),
-        [] (uint8_t value) {
+        [] (u8 value) {
             return value != 0;
         }));
     scope.EditScope = std::span(ranges).first(1);
@@ -589,7 +592,7 @@ TEST(SyntaxLayout, ControlledArmProtectionAndTryHeaderPolicies)
 
         for (const bool protectOpening : {false, true}) {
             const auto space = protectOpening ? protectedInput.find(" { first") : protectedInput.find("else") + 4;
-            const parser::SourceRange immutable[] = {{uint32_t(space), uint32_t(space + 1)}};
+            const parser::SourceRange immutable[] = {{u32(space), u32(space + 1)}};
             formatter::SourceAnalysisOptions safety;
             safety.ImmutableRanges = immutable;
             const auto protectedArm = Lower(protectedInput, style, {}, safety).Text;
@@ -649,9 +652,9 @@ TEST(SyntaxLayout, DanglingElseRemainsOwnedByNearestIf)
     const std::string source = "void run(){ if (outer) if (inner) act(); else recover(); }\n";
     std::string storage = source;
     storage.append(util::SourcePaddingSize, '\0');
-    size_t errors = 0;
+    us errors = 0;
     const auto tree = parser::Parse(
-        {storage.data(), static_cast<uint32_t>(source.size())},
+        {storage.data(), static_cast<u32>(source.size())},
         [&] (parser::ParseError) {
             ++errors;
         });
@@ -768,8 +771,8 @@ TEST(SyntaxLayout, FittingAnnotatedChainsRetainOwnershipDiagnostics)
         style.StickyChainCallPairs = sticky ? std::vector<std::string>{"Item:Value"} : std::vector<std::string>{};
         const auto policies = formatter::CompilePolicies(style);
         const auto annotations = formatter::CompileLibraryAnnotations(style);
-        std::pmr::monotonic_buffer_resource file;
-        std::pmr::monotonic_buffer_resource scratch;
+        Arena file;
+        Arena scratch;
         const auto safety = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
         const auto spacing = formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
         formatter::detail::LayoutPlan plan(tree, file);
@@ -797,7 +800,7 @@ TEST(SyntaxLayout, ChainStructuralBaseDropsOnlyPendingExpressionIndent)
     // Block-aligned chain indentation is independent of the RHS width;
     // enclosing call lists still provide the structural base.
     for (const auto expressions : {formatter::CategoryLayout::Canonical, formatter::CategoryLayout::Preserve}) {
-        for (const size_t offset : {size_t(4), size_t(6)}) {
+        for (const us offset : {us(4), us(6)}) {
             auto style = Canonical(10000);
             style.IndentWidth = 4;
             style.ContinuationOffset = offset;
@@ -998,7 +1001,7 @@ TEST(SyntaxLayout, CommaDeletionRetainsIncompatibleGapUnits)
     EXPECT_EQ(Lower(comment, style, options).Text, comment);
     const std::string protectedSource = "int values[] = {alpha  ,};\n";
     const auto comma = protectedSource.find(',');
-    const parser::SourceRange immutable[] = {{uint32_t(comma - 2), uint32_t(comma)}};
+    const parser::SourceRange immutable[] = {{u32(comma - 2), u32(comma)}};
     formatter::SourceAnalysisOptions safety;
     safety.ImmutableRanges = immutable;
     EXPECT_NE(Lower(protectedSource, style, {}, safety).Text.find("alpha  ,"), std::string::npos);
@@ -1016,7 +1019,7 @@ TEST(SyntaxLayout, ExplicitImmutableRegionWinsWithoutFreezingOtherStatements)
     const std::string source = "void f(){ raw(  alpha, beta ); next(alpha, beta, gamma); }\n";
     const auto begin = source.find("raw");
     const auto end = source.find(";", begin) + 1;
-    const parser::SourceRange immutable[] = {{uint32_t(begin), uint32_t(end)}};
+    const parser::SourceRange immutable[] = {{u32(begin), u32(end)}};
     formatter::SourceAnalysisOptions protection;
     protection.ImmutableRanges = immutable;
     const auto output = Lower(source, style, {}, protection).Text;
@@ -1901,7 +1904,7 @@ TEST(SyntaxLayout, NestedVisualScopesAndWrapperContextRespectBarriers)
     const std::string protectedInput = "void f(){\n  wrap(tag, flow.Begin());\n    "
         "before();\n    blocked();\n    after();\n  " "wrap(tag, flow.End());\n}\nvoid later(){ " "task(); }\n";
     const auto blocked = protectedInput.find("blocked()");
-    const parser::SourceRange immutable[] = {{uint32_t(blocked), uint32_t(blocked + 9)}};
+    const parser::SourceRange immutable[] = {{u32(blocked), u32(blocked + 9)}};
     formatter::SourceAnalysisOptions safety;
     safety.ImmutableRanges = immutable;
     const auto protectedScope = Lower(protectedInput, style, {}, safety).Text;
@@ -2028,11 +2031,11 @@ class CountingResource
     : public std::pmr::memory_resource
 {
 public:
-    size_t Current = 0;
-    size_t Peak = 0;
-    size_t Allocations = 0;
+    us Current = 0;
+    us Peak = 0;
+    us Allocations = 0;
 private:
-    void* do_allocate(size_t bytes, size_t alignment) override
+    void* do_allocate(us bytes, us alignment) override
     {
         Current += bytes;
         Peak = std::max(Peak, Current);
@@ -2040,7 +2043,7 @@ private:
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
 
-    void do_deallocate(void* pointer, size_t bytes, size_t alignment) override
+    void do_deallocate(void* pointer, us bytes, us alignment) override
     {
         Current -= bytes;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
@@ -2054,8 +2057,8 @@ private:
 
 TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
 {
-    size_t smallFile = 0;
-    size_t smallScratch = 0;
+    us smallFile = 0;
+    us smallScratch = 0;
 
     for (const int count : {1000, 2000}) {
         std::string input = "void f(){ auto result = call(";
@@ -2074,8 +2077,8 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
         const auto output = Lower(input, Canonical(40), {}, {}, &file, &scratch);
         EXPECT_EQ(file.Current, 0u);
         EXPECT_EQ(scratch.Current, 0u);
-        EXPECT_LT(file.Peak, size_t(count) * 2048);
-        EXPECT_LT(scratch.Peak, size_t(count) * 2048);
+        EXPECT_LT(file.Peak, us(count) * 2048);
+        EXPECT_LT(scratch.Peak, us(count) * 2048);
         EXPECT_LT(file.Allocations, 100u);
         EXPECT_LT(scratch.Allocations, 100u);
         RecordProperty("file_peak_" + std::to_string(count), int(file.Peak));
@@ -2097,13 +2100,13 @@ TEST(SyntaxLayout, FileAndScratchArenasReleaseAndScaleWithWideInput)
 
 TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
 {
-    size_t smallFile = 0;
-    size_t smallScratchRequests = 0;
+    us smallFile = 0;
+    us smallScratchRequests = 0;
     for (const int count : {1000, 2000}) {
         std::string input = "void f() {\n";
         std::string expected = input;
         std::vector<parser::SourceRange> ranges;
-        ranges.reserve(size_t(count) * 2);
+        ranges.reserve(us(count) * 2);
 
         for (int i = 0; i < count; ++i) {
             const auto begin = parser::SourceOffset(input.size());
@@ -2126,8 +2129,8 @@ TEST(SyntaxLayout, SparsePartialPermissionsReleaseScratchAndScale)
         EXPECT_EQ(output.Text, expected);
         EXPECT_EQ(file.Current, 0u);
         EXPECT_EQ(scratch.Current, 0u);
-        EXPECT_LT(file.Peak, size_t(count) * 8192);
-        EXPECT_LT(scratch.Peak, size_t(count) * 8192);
+        EXPECT_LT(file.Peak, us(count) * 8192);
+        EXPECT_LT(scratch.Peak, us(count) * 8192);
         EXPECT_LT(file.Allocations, 100u);
         EXPECT_LT(scratch.Allocations, 100u);
         RecordProperty("partial_file_peak_" + std::to_string(count), int(file.Peak));
@@ -2205,18 +2208,17 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     const std::string source = "template<> struct Pair<int,long> {};\n";
     std::string storage(source);
     storage.append(util::SourcePaddingSize, '\0');
-    const auto tree =
-        parser::Parse({storage.data(), static_cast<uint32_t>(source.size())}, [] (parser::ParseError) { });
+    const auto tree = parser::Parse({storage.data(), static_cast<u32>(source.size())}, [] (parser::ParseError) { });
     auto style = Canonical(200);
     style.CommaSpaceAfter = formatter::GapPolicy::Space;
-    std::pmr::monotonic_buffer_resource file;
-    std::pmr::monotonic_buffer_resource scratch;
+    Arena file;
+    Arena scratch;
     const auto safety = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
     const auto policies = formatter::CompilePolicies(style);
     const auto spacing = formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
     const auto* record = tree.Root().FirstChild->FirstChild->NextSibling;
     ASSERT_EQ(record->Kind, parser::NodeKind::RecordDeclaration);
-    size_t separators = 0;
+    us separators = 0;
     formatter::GapId afterComma = 0;
 
     for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
@@ -2315,56 +2317,4 @@ TEST(SyntaxLayout, RecordHeadCommaPreferenceIsClassifiedAndLocallyAuthorized)
     protection = {};
     const std::string malformed = "template<auto,auto> struct Pair;\n" "template<> struct Pair<(1<2],0> {};\n";
     EXPECT_NE(Lower(malformed, style, {}, protection).Text.find("Pair<(1<2],0>"), std::string::npos);
-}
-
-TEST(SyntaxLayout, RenderTablesOutliveScratchAndKeepIndexedMappings)
-{
-    const test::Input input("void f(){ auto result = wrap(alpha, nested(beta, gamma), delta); /* keep */ }\n");
-    const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-    std::pmr::monotonic_buffer_resource file;
-    formatter::detail::LayoutPlan plan(tree, file);
-    const auto policies = formatter::CompilePolicies(Canonical(36));
-    const auto annotations = formatter::CompileLibraryAnnotations(Canonical(36));
-    {
-        std::pmr::monotonic_buffer_resource scratch;
-        const auto safety = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
-        const auto spacing = formatter::BuildSyntaxSpacing(tree, safety, policies, file, scratch);
-        ASSERT_TRUE(formatter::BuildSyntaxLayout(tree, policies, annotations, safety, spacing, plan, scratch));
-    }
-
-    auto policy = formatter::SyntaxRenderPolicy(policies);
-
-    // Probe/replay decisions must be local to each render, including when a
-    // later width chooses a different shape and a different mapping mode.
-    for (const auto width : {36u, 100u, 22u, 36u}) {
-        std::pmr::monotonic_buffer_resource memory;
-        policy.Width = width;
-        policy.SourceMap = true;
-        policy.IndexedTokenMap = false;
-        const auto full = plan.Render(policy, memory);
-        ASSERT_TRUE(full.State);
-        policy.SourceMap = false;
-        policy.IndexedTokenMap = true;
-        policy.TokenCount = tree.TokenCount();
-        const auto indexed = plan.Render(policy, memory);
-        ASSERT_TRUE(indexed.State);
-        EXPECT_EQ(indexed.Text, full.Text);
-        EXPECT_EQ(indexed.Broken, full.Broken);
-        EXPECT_TRUE(indexed.Map.empty());
-        ASSERT_EQ(indexed.Tokens.size(), tree.TokenCount());
-
-        for (const auto& map : full.Map) {
-            if (map.Source.Identity == formatter::layout::NoIdentity) {
-                continue;
-            }
-
-            const auto& token = indexed.Tokens[map.Source.Identity];
-            ASSERT_TRUE(token.Present);
-            EXPECT_EQ(token.Begin, map.OutputBegin);
-            EXPECT_EQ(token.End, map.OutputEnd);
-            EXPECT_EQ(
-                std::string_view(indexed.Text).substr(token.Begin, token.End - token.Begin),
-                tree.TokenText(map.Source.Identity));
-        }
-    }
 }

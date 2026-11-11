@@ -13,6 +13,8 @@
 #include "text_policies.hpp"
 
 #include <util/ascii.hpp>
+#include <util/memory.hpp>
+#include <util/types.hpp>
 
 #include <unicode/utf8.hpp>
 
@@ -210,12 +212,12 @@ NamespaceCommentOptions CommentOptions(const Style& style)
 // Normalized copied pieces can be permuted. Each lookup starts with the
 // sorted original protection index, then visits only intersections with
 // that piece.
-std::pmr::vector<ProtectedSourceRange> ProjectProtection(
+Vector<ProtectedSourceRange> ProjectProtection(
     std::span<const ProtectedSourceRange> original,
     std::span<const StructuralProvenance> provenance,
     std::pmr::memory_resource& memory)
 {
-    std::pmr::vector<ProtectedSourceRange> result(&memory);
+    Vector<ProtectedSourceRange> result(&memory);
 
     for (const auto& piece : provenance) {
         if (piece.Generated) {
@@ -248,14 +250,14 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
 // safe atomic original plan: materialization validates operation ownership and
 // gives every literal the consuming edit (or strict insertion point). Neither
 // map anchors nor GeneratedAdjacencies confer byte or endpoint authority.
-std::pmr::vector<Range> ProjectEditScope(
+Vector<Range> ProjectEditScope(
     std::span<const Range> original,
     const SourceAnalysis& safety,
     const StructuralPlan& plan,
     std::span<const StructuralProvenance> provenance,
     std::pmr::memory_resource& scratch)
 {
-    std::pmr::vector<Range> result(&scratch);
+    Vector<Range> result(&scratch);
 
     for (const auto& piece : provenance) {
         if (piece.Generated) {
@@ -317,7 +319,7 @@ std::pmr::vector<Range> ProjectEditScope(
         [] (Range a, Range b) {
             return a.Begin < b.Begin;
         });
-    size_t count = 0;
+    us count = 0;
 
     for (const auto range : result) {
         if (count && range.Begin <= result[count - 1].End) {
@@ -331,17 +333,17 @@ std::pmr::vector<Range> ProjectEditScope(
     return result;
 }
 
-std::pmr::vector<GapId> GeneratedGaps(
+Vector<GapId> GeneratedGaps(
     const SourceAnalysis& safety,
     std::span<const GeneratedAdjacency> adjacency,
     std::span<const StructuralProvenance> provenance,
-    std::pmr::vector<GapId>& reassembled,
+    Vector<GapId>& reassembled,
     std::pmr::memory_resource& scratch)
 {
     if (adjacency.empty()) {
-        return std::pmr::vector<GapId>(&scratch);
+        return Vector<GapId>(&scratch);
     }
-    std::pmr::vector<Range> ranges(&scratch);
+    Vector<Range> ranges(&scratch);
 
     for (const auto& a : adjacency) {
         ranges.push_back(a.Output);
@@ -353,7 +355,7 @@ std::pmr::vector<GapId> GeneratedGaps(
         [] (Range a, Range b) {
             return a.Begin < b.Begin;
         });
-    size_t merged = 0;
+    us merged = 0;
 
     for (const auto range : ranges) {
         if (merged && range.Begin <= ranges[merged - 1].End) {
@@ -364,9 +366,9 @@ std::pmr::vector<GapId> GeneratedGaps(
     }
 
     ranges.resize(merged);
-    std::pmr::vector<GapId> result(&scratch);
-    size_t interval = 0;
-    size_t piece = 0;
+    Vector<GapId> result(&scratch);
+    us interval = 0;
+    us piece = 0;
 
     for (GapId i = 0; i < safety.Gaps().size(); ++i) {
         const auto range = safety.Gaps()[i].Source;
@@ -399,13 +401,13 @@ std::pmr::vector<GapId> GeneratedGaps(
     return result;
 }
 
-std::pmr::vector<layout::Identity> OriginalIdentities(
+Vector<layout::Identity> OriginalIdentities(
     const parser::SyntaxTree& tree,
     const parser::SyntaxTree& original,
     const StructuralMaterialization* normalized,
     std::pmr::memory_resource& scratch)
 {
-    std::pmr::vector<layout::Identity> identities(&scratch);
+    Vector<layout::Identity> identities(&scratch);
 
     if (!normalized) {
         // Empty storage represents unchanged original token numbering.
@@ -519,7 +521,7 @@ void MergeProtection(std::vector<ProtectedSourceRange>& ranges)
         [] (const auto& a, const auto& b) {
             return a.Source.Begin < b.Source.Begin;
         });
-    size_t count = 0;
+    us count = 0;
 
     for (const auto& range : ranges) {
         if (count && range.Source.Begin <= ranges[count - 1].Source.End) {
@@ -589,10 +591,10 @@ layout::Identity RecordRenderAnchors(
                 map.Source.Identity,
                 source.Begin,
                 source.End,
-                int64_t(source.End) - source.Begin,
+                i64(source.End) - source.Begin,
                 output.Begin,
                 output.End,
-                int64_t(output.End) - output.Begin));
+                i64(output.End) - output.Begin));
         }
 
         auto it = std::lower_bound(
@@ -621,7 +623,7 @@ void PruneTextOnlyNamespaceNoOps(
     const StructuralMaterialization* normalized,
     const detail::LayoutPlan& layout,
     std::pmr::memory_resource& scratch,
-    const std::pmr::vector<detail::CopiedTokenRun>* copied = nullptr)
+    const Vector<detail::CopiedTokenRun>* copied = nullptr)
 {
     using TI = parser::TokenIndex;
     constexpr auto none = std::numeric_limits<TI>::max();
@@ -632,10 +634,10 @@ void PruneTextOnlyNamespaceNoOps(
     }
 
     // Keep malformed identity plans on the ordinary resolver's error path.
-    std::pmr::vector<size_t> active(&scratch);
+    Vector<us> active(&scratch);
     TI previousOpen = 0;
 
-    for (size_t i = 0; i < plan.Namespaces.size(); ++i) {
+    for (us i = 0; i < plan.Namespaces.size(); ++i) {
         const auto& ns = plan.Namespaces[i];
 
         if (ns.Open >= ns.Close || ns.Close >= count || ns.Header.Begin >= ns.Header.End || ns.Header.End != ns.Open ||
@@ -775,7 +777,7 @@ void PruneTextOnlyNamespaceNoOps(
         // failed ownership/validity check there skips this identical edit.
         return text.empty();
     };
-    size_t retained = 0;
+    us retained = 0;
 
     for (const auto& ns : plan.Namespaces) {
         if (!noOp(ns)) {
@@ -833,11 +835,11 @@ struct SparseNamespaceAnchors
     struct Token
     {
         parser::TokenIndex Normalized;
-        uint32_t Position;
+        u32 Position;
     };
 
-    std::pmr::vector<detail::NamespaceTokenPosition> Positions;
-    std::pmr::vector<Token> Tokens;
+    Vector<detail::NamespaceTokenPosition> Positions;
+    Vector<Token> Tokens;
 
     explicit SparseNamespaceAnchors(std::pmr::memory_resource& memory)
         : Positions(&memory)
@@ -853,7 +855,7 @@ std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
     const detail::LayoutPlan& layout,
     std::pmr::memory_resource& file,
     std::pmr::memory_resource& scratch,
-    const std::pmr::vector<detail::CopiedTokenRun>* copied = nullptr)
+    const Vector<detail::CopiedTokenRun>* copied = nullptr)
 {
     using TI = parser::TokenIndex;
     constexpr auto none = std::numeric_limits<TI>::max();
@@ -1038,9 +1040,9 @@ std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
         }
     };
 
-    std::pmr::vector<Interior> interiors(namespaces.Namespaces.size(), &scratch);
-    std::pmr::vector<size_t> active(&scratch);
-    size_t nextNamespace = 0;
+    Vector<Interior> interiors(namespaces.Namespaces.size(), &scratch);
+    Vector<us> active(&scratch);
+    us nextNamespace = 0;
 
     // Include permutations may reorder identities. Prove containment in
     // normalized coordinates once, before relying on monotonic rendering.
@@ -1081,10 +1083,10 @@ std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
         // prove containment for the whole intersecting namespace interior.
         // Bound repeated overlap work for deeply nested scopes; the dense
         // resolver remains the linear fallback for that unusual shape.
-        size_t work = 0;
+        us work = 0;
         const auto budget = 4 * (copied->size() + namespaces.Namespaces.size() + 1);
 
-        for (size_t i = 0; i < namespaces.Namespaces.size(); ++i) {
+        for (us i = 0; i < namespaces.Namespaces.size(); ++i) {
             const auto& ns = namespaces.Namespaces[i];
 
             if (ns.Open >= ns.Close || ns.Close >= count) {
@@ -1139,7 +1141,7 @@ std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
     TI previousOpen = 0;
     active.clear();
 
-    for (size_t i = 0; i < namespaces.Namespaces.size(); ++i) {
+    for (us i = 0; i < namespaces.Namespaces.size(); ++i) {
         const auto& ns = namespaces.Namespaces[i];
 
         if (ns.Open >= ns.Close || ns.Close >= count || ns.Header.Begin >= ns.Header.End || ns.Header.End != ns.Open ||
@@ -1224,7 +1226,7 @@ std::optional<SparseNamespaceAnchors> PrepareSparseNamespaceAnchors(
             }),
         result.Positions.end());
 
-    for (uint32_t i = 0; i < result.Positions.size(); ++i) {
+    for (u32 i = 0; i < result.Positions.size(); ++i) {
         result.Tokens.push_back({normalizedToken(result.Positions[i].Original), i});
     }
 
@@ -1243,7 +1245,7 @@ void ComposeSparseNamespaceAnchors(
     const SourceAnalysis& safety,
     SparseNamespaceAnchors& anchors)
 {
-    size_t next = 0;
+    us next = 0;
 
     for (const auto& map : rendered.Map) {
         const auto output = Range{CheckedSourceAnalysisSize(map.OutputBegin), CheckedSourceAnalysisSize(map.OutputEnd)};
@@ -1371,10 +1373,7 @@ void ApplyComments(
             .insert(result.StructuralOperations.end(), comments.Operations.begin(), comments.Operations.end());
     }
 
-    std::pmr::vector<NamespaceIdentity> namespaces(
-        namespacePlan.Namespaces.begin(),
-        namespacePlan.Namespaces.end(),
-        &scratch);
+    Vector<NamespaceIdentity> namespaces(namespacePlan.Namespaces.begin(), namespacePlan.Namespaces.end(), &scratch);
     std::sort(
         namespaces.begin(),
         namespaces.end(),
@@ -1387,8 +1386,8 @@ void ApplyComments(
         Range After;
     };
 
-    std::pmr::vector<Copy> copies(&scratch);
-    std::pmr::vector<FormatMapping> generated(&scratch);
+    Vector<Copy> copies(&scratch);
+    Vector<FormatMapping> generated(&scratch);
     copies.reserve(comments.Edits.size() + 1);
 
     if (sourceMap) {
@@ -1534,21 +1533,21 @@ void ApplyComments(
 }
 
 template <bool locations>
-void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, uint8_t tabWidth)
+void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, u8 tabWidth)
 {
     if (policies.ColumnLimit == 0 || policies.WidthDiagnostics != WidthDiagnosticPolicy::Report) {
         return;
     }
 
-    uint32_t line = 1;
-    size_t width = 0;
-    uint32_t codePointColumn = 1;
+    u32 line = 1;
+    us width = 0;
+    u32 codePointColumn = 1;
     std::optional<parser::SourceOffset> overflow;
-    uint32_t caretColumn = 1;
+    u32 caretColumn = 1;
     auto report = [&] {
         if (width > policies.ColumnLimit) {
             result.Diagnostics.push_back({
-                {line, uint32_t(policies.ColumnLimit + 1)},
+                {line, u32(policies.ColumnLimit + 1)},
                 std::format("emitted line width {} exceeds ColumnLimit {}", width, policies.ColumnLimit),
                 LayoutDiagnosticKind::LineWidth,
                 locations ? *overflow : 0,
@@ -1557,7 +1556,7 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
         }
     };
 
-    for (size_t i = 0; i < result.Text.size(); ++i) {
+    for (us i = 0; i < result.Text.size(); ++i) {
         const auto plain = util::PlainAsciiPrefix(std::string_view(result.Text).substr(i));
 
         if (plain) {
@@ -1565,10 +1564,10 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, ui
                 if (!overflow && width + plain > policies.ColumnLimit) {
                     const auto remaining = policies.ColumnLimit > width ? policies.ColumnLimit - width : 0;
                     overflow = CheckedSourceAnalysisSize(i + remaining);
-                    caretColumn = codePointColumn + uint32_t(remaining);
+                    caretColumn = codePointColumn + u32(remaining);
                 }
 
-                codePointColumn += uint32_t(plain);
+                codePointColumn += u32(plain);
             }
 
             width += plain;
@@ -1635,7 +1634,7 @@ PreparedFormat::PreparedFormat(const Style& style)
         style.IndentPreprocessingDirectives,
         style.AlignMacroBackslashes,
         style.RulerLength,
-        static_cast<std::uint8_t>(style.IndentWidth),
+        static_cast<u8>(style.IndentWidth),
         style.IncludeCategoryOrder,
         style.IncludeSortPriority,
         style.IncludeDelimiters,
@@ -1668,7 +1667,7 @@ FormatResult FormatAnalyzedTree(
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics,
     std::span<const Range> preserved = {});
 
@@ -1684,15 +1683,14 @@ FormatResult FormatTree(
     // Bound the initial input-local backing block. Consolidating the common
     // case avoids repeated heap growth/trim during arena teardown; larger
     // inputs still grow through the normal upstream resource.
-    const auto capacity = std::clamp<std::size_t>(std::size_t(original.TokenCount()) * 512, 4096, 1048576);
-    auto buffer = std::make_unique_for_overwrite<std::byte[]>(capacity);
-    std::pmr::monotonic_buffer_resource file(buffer.get(), capacity);
+    const auto capacity = std::clamp<us>(us(original.TokenCount()) * 512, 4096, 1048576);
+    Arena file(capacity, original.MemoryResource());
     // Keep only this bounded initial slice across scratch resets. Overflow
     // blocks are released normally, and no backing memory survives the file.
-    const auto scratchCapacity = std::clamp<std::size_t>(std::size_t(original.TokenCount()) * 128, 1024, 262144);
+    const auto scratchCapacity = std::clamp<us>(us(original.TokenCount()) * 128, 1024, 262144);
     auto* scratchBuffer = file.allocate(scratchCapacity);
-    std::pmr::monotonic_buffer_resource scratch(scratchBuffer, scratchCapacity);
-    std::pmr::vector<std::string_view> sensitive(&file);
+    Arena scratch(scratchBuffer, scratchCapacity);
+    Vector<std::string_view> sensitive(&file);
 
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
@@ -1764,10 +1762,11 @@ FormatResult FormatAnalyzedTree(
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics,
     std::span<const Range> preserved)
 {
+    auto* parseMemory = original.MemoryResource();
     const auto structuralPlanner = consuming ? detail::PlanStructuralEditsCertified : PlanStructuralEdits;
     auto plan = structuralPlanner(
         original,
@@ -1788,13 +1787,13 @@ FormatResult FormatAnalyzedTree(
 
     result.StructuralDiagnostics.assign(plan.Skipped.begin(), plan.Skipped.end());
     std::optional<StructuralMaterialization> normalized;
-    std::pmr::vector<detail::CopiedTokenRun> copied(&file);
+    Vector<detail::CopiedTokenRun> copied(&file);
     bool copiedCertified = false;
     std::optional<parser::SyntaxTree> normalizedTree;
     std::optional<SourceAnalysis> normalizedSafety;
     const auto* tree = &original;
     const auto* currentSafety = &safety;
-    std::pmr::vector<StructuralProvenance> unchanged(&file);
+    Vector<StructuralProvenance> unchanged(&file);
     std::span<const StructuralProvenance> provenance;
     if (!plan.Edits.empty()) {
         normalized.emplace(consuming
@@ -1803,7 +1802,7 @@ FormatResult FormatAnalyzedTree(
         scratch.release();
         const auto size = normalized->Text.size();
         normalized->Text.append(util::SourcePaddingSize, '\0');
-        const util::PaddedSourceView normalizedSource{normalized->Text.data(), static_cast<uint32_t>(size)};
+        const util::PaddedSourceView normalizedSource{normalized->Text.data(), static_cast<u32>(size)};
         const bool includeOnly = std::ranges::all_of(
             plan.Operations,
             [] (const auto& operation) {
@@ -1820,9 +1819,9 @@ FormatResult FormatAnalyzedTree(
                         operation.Kind == StructuralAction::RulerLength ||
                         operation.Kind == StructuralAction::RulerPlacement;
                 });
-        std::pmr::vector<parser::detail::NormalizedPiece> pieces(&scratch);
-        std::pmr::vector<parser::TokenIndex> grammarMapping(&scratch);
-        std::pmr::vector<parser::detail::NormalizedCommentInsertion> commentInsertions(&scratch);
+        Vector<parser::detail::NormalizedPiece> pieces(&scratch);
+        Vector<parser::TokenIndex> grammarMapping(&scratch);
+        Vector<parser::detail::NormalizedCommentInsertion> commentInsertions(&scratch);
         bool tokenView = false;
         const bool canConsumeAnalysis = consuming && !widthDiagnostics && !request.SourceMap && !request.TokenMap &&
             !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations && !request.EditScope &&
@@ -1835,7 +1834,7 @@ FormatResult FormatAnalyzedTree(
                     pieces.push_back({piece.Output, piece.Original, piece.Generated});
                 }
 
-                std::pmr::vector<Range> edits(&scratch);
+                Vector<Range> edits(&scratch);
                 edits.reserve(plan.Edits.size());
 
                 for (const auto& edit : plan.Edits) {
@@ -1846,11 +1845,11 @@ FormatResult FormatAnalyzedTree(
                     if (canConsumeAnalysis) {
                         const parser::detail::NormalizedRegionTopology topology{
                             safety.Regions().data(),
-                            static_cast<uint32_t>(safety.Regions().size()),
-                            [] (const void* rows, uint32_t id) {
+                            static_cast<u32>(safety.Regions().size()),
+                            [] (const void* rows, u32 id) {
                                 return static_cast<const SourceRegion*>(rows)[id].FirstChild;
                             },
-                            [] (const void* rows, uint32_t id) {
+                            [] (const void* rows, u32 id) {
                                 return static_cast<const SourceRegion*>(rows)[id].NextSibling;
                             },
                         };
@@ -1884,7 +1883,7 @@ FormatResult FormatAnalyzedTree(
 
         if (!normalizedTree) {
             normalizedTree.emplace(
-                parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+                parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions(parseMemory)));
         }
 
         if (!preserved.empty()) {
@@ -1895,7 +1894,7 @@ FormatResult FormatAnalyzedTree(
         copiedCertified = !grammarMapping.empty() && CertifyCopiedTokenRuns(*tree, original, copied);
         auto inherited = ProjectProtection(safety.Protection(), normalized->Provenance, scratch);
         std::optional<std::span<const Range>> currentScope;
-        std::pmr::vector<Range> selected(&scratch);
+        Vector<Range> selected(&scratch);
 
         if (request.EditScope) {
             selected = ProjectEditScope(*request.EditScope, safety, plan, normalized->Provenance, scratch);
@@ -1951,8 +1950,10 @@ FormatResult FormatAnalyzedTree(
                         parser::detail::TryConsumeNormalizedSyntax(original, normalizedSource, pieces, grammarMapping);
 
                     if (!normalizedTree) {
-                        normalizedTree.emplace(
-                            parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+                        normalizedTree.emplace(parser::Parse(
+                            normalizedSource,
+                            [] (parser::ParseError) { },
+                            prepared.ParsingOptions(parseMemory)));
                     }
 
                     tree = &*normalizedTree;
@@ -2010,7 +2011,7 @@ FormatResult FormatAnalyzedTree(
         }
     }
 
-    std::pmr::vector<GapId> reassembled(&scratch);
+    Vector<GapId> reassembled(&scratch);
     auto gaps = GeneratedGaps(
         *currentSafety,
         normalized
@@ -2095,7 +2096,7 @@ FormatResult FormatAnalyzedTree(
     auto renderPolicy = SyntaxRenderPolicy(prepared.Policies, options);
     renderPolicy.SourceMap = sourceMap;
     auto rendered = [&] {
-        std::pmr::vector<layout::Provenance> tracked(&scratch);
+        Vector<layout::Provenance> tracked(&scratch);
         renderPolicy.IndexedTokenMap = !sourceMap && needMaps && !sparseNamespaces;
         renderPolicy.TokenCount = tree->TokenCount();
 
@@ -2129,7 +2130,7 @@ FormatResult FormatAnalyzedTree(
                     [] (const auto& a, const auto& b) {
                         return a.Begin < b.Begin;
                     });
-                size_t count = 0;
+                us count = 0;
 
                 for (const auto range : tracked) {
                     if (count && range.Begin <= tracked[count - 1].End) {
@@ -2217,7 +2218,7 @@ FormatResult FormatAnalyzedTree(
         }
 
         scratch.release();
-        std::pmr::vector<Range> outputProtection(&scratch);
+        Vector<Range> outputProtection(&scratch);
 
         for (const auto& range : result.OutputProtection) {
             outputProtection.push_back(range.Source);
@@ -2308,12 +2309,12 @@ FormatResult PreserveInput(
 {
     FormatResult result;
     result.Text = tree.Source();
-    std::pmr::monotonic_buffer_resource file;
-    std::pmr::monotonic_buffer_resource scratch;
+    Arena file(tree.MemoryResource());
+    Arena scratch;
     const std::array recovery{
         ProtectedSourceRange{{0, CheckedSourceAnalysisSize(tree.Source().size())}, ProtectionReason::Recovery},
     };
-    std::pmr::vector<std::string_view> sensitive(&file);
+    Vector<std::string_view> sensitive(&file);
 
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
@@ -2380,15 +2381,15 @@ FormatResult RecoverFormat(
     const PreparedFormat& prepared,
     const FormatRequest& request,
     bool widthDiagnostics,
-    std::optional<Range> failure)
+    std::optional<Range> failure,
+    std::pmr::memory_resource* memory)
 {
     std::vector<Range> preserved;
     std::vector<Range> immutable(request.ImmutableRanges.begin(), request.ImmutableRanges.end());
 
     // Bound retries and arena growth even if several independent regions fail.
-    // Each retry owns its parse and processing arenas; none survives the try.
     for (unsigned attempt = 0; failure && attempt < 2; ++attempt) {
-        auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
+        auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions(memory));
         bool restored = true;
 
         for (const auto range : preserved) {
@@ -2418,7 +2419,7 @@ FormatResult RecoverFormat(
         }
     }
 
-    const auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions());
+    const auto tree = parser::Parse(source, [] (parser::ParseError) { }, prepared.ParsingOptions(memory));
     return PreserveInput(tree, prepared, request, widthDiagnostics);
 }
 
@@ -2430,10 +2431,11 @@ FormatResult FormatWithRecovery(
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics)
 {
     const util::PaddedSourceView source{original.Source().data(), CheckedSourceAnalysisSize(original.Source().size())};
+    auto* memory = original.MemoryResource();
     std::optional<Range> failure;
     try {
         return FormatAnalyzedTree<consuming>(
@@ -2452,7 +2454,7 @@ FormatResult FormatWithRecovery(
     } catch (const std::logic_error&) { }
 
     scratch.release();
-    return RecoverFormat(source, prepared, request, widthDiagnostics, failure);
+    return RecoverFormat(source, prepared, request, widthDiagnostics, failure, memory);
 }
 
 } // namespace
@@ -2464,7 +2466,7 @@ FormatResult detail::FormatWithAnalysis(
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics)
 {
     return FormatWithRecovery<false>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);
@@ -2477,7 +2479,7 @@ FormatResult detail::ConsumeFormatWithAnalysis(
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics)
 {
     return FormatWithRecovery<true>(original, prepared, safety, sensitive, request, file, scratch, widthDiagnostics);

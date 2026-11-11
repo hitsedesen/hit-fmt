@@ -1,5 +1,7 @@
 #pragma once
 
+#include <util/types.hpp>
+
 #include <parser/syntax_tree.hpp>
 
 namespace formatter::detail {
@@ -9,8 +11,8 @@ namespace formatter::detail {
 struct FlatSpan
 {
     parser::TokenRange Tokens;
-    uint32_t Root;
-    uint32_t RegionEnd;
+    u32 Root;
+    u32 RegionEnd;
 };
 
 struct FlatSpanAccess;

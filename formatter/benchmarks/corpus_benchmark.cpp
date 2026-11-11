@@ -1,5 +1,7 @@
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
+#include <util/types.hpp>
+#include <util/memory.hpp>
 #include <util/file.hpp>
 
 #include <algorithm>
@@ -8,7 +10,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <exception>
-#include <filesystem>
+#include <fs/fs.hpp>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -18,9 +20,9 @@
 
 namespace {
 
-constexpr size_t MaxSourceFileSize = 4 * 1024 * 1024;
+constexpr us MaxSourceFileSize = 4 * 1024 * 1024;
 
-bool IsCppSource(const std::filesystem::path& path)
+bool IsCppSource(const fs::Path& path)
 {
     auto extension = path.extension().string();
     return extension == ".c" || extension == ".cc" || extension == ".cpp" ||
@@ -31,9 +33,9 @@ bool IsCppSource(const std::filesystem::path& path)
 
 // Stable FNV-1a fingerprints make output changes visible without retaining
 // the corpus in memory. Hashing and file I/O are outside the timed region.
-uint64_t Fingerprint(std::string_view text)
+u64 Fingerprint(std::string_view text)
 {
-    uint64_t hash = 14695981039346656037ULL;
+    u64 hash = 14695981039346656037ULL;
     for (unsigned char byte : text) {
         hash = (hash ^ byte) * 1099511628211ULL;
     }
@@ -52,18 +54,18 @@ int main(int argc, char* argv[])
     }
     try {
         auto config = formatter::LoadConfigFile(argv[2]);
-        const auto root = std::filesystem::absolute(argv[1]);
         const formatter::PreparedFormat prepared(config.FormattingStyle);
-        std::vector<std::filesystem::path> paths;
-        for (const auto& entry :
-             std::filesystem::recursive_directory_iterator(root))
-        {
-            if (!entry.is_symlink() && entry.is_regular_file() &&
-                IsCppSource(entry.path()))
-            {
-                paths.push_back(entry.path());
-            }
-        }
+        auto absolute = fs::Absolute(fs::Path(argv[1]));
+        if (absolute.Error.Code) { throw std::runtime_error(absolute.Error.Code.message()); }
+        auto root = std::move(absolute.Value);
+        std::vector<fs::Path> paths;
+        Arena memory;
+        auto walked = fs::Walk(root, [&] (fs::PathView name, const fs::Entry& entry) {
+            fs::Path path(name);
+            if (!entry.Symlink && entry.Regular && IsCppSource(path)) { paths.push_back(std::move(path)); }
+            return fs::WalkAction::Continue;
+        }, memory);
+        if (walked.Error.Code) { throw std::runtime_error(walked.Error.Code.message()); }
         std::ranges::sort(paths);
         if (paths.empty()) {
             throw std::runtime_error("no C/C++ source files found");
@@ -71,10 +73,10 @@ int main(int argc, char* argv[])
 
         const bool perFile = std::getenv("HIT_FMT_BENCH_PER_FILE") != nullptr;
         std::chrono::steady_clock::duration elapsed{};
-        size_t files = 0;
-        size_t skipped = 0;
-        size_t inputBytes = 0;
-        size_t outputBytes = 0;
+        us files = 0;
+        us skipped = 0;
+        us inputBytes = 0;
+        us outputBytes = 0;
         for (const auto& path : paths) {
             std::string storage;
             try {
@@ -89,7 +91,7 @@ int main(int argc, char* argv[])
             }
             util::PaddedSourceView source{
                 .Data = storage.data(),
-                .Size = static_cast<uint32_t>(
+                .Size = static_cast<u32>(
                     storage.size() - util::SourcePaddingSize),
             };
             const auto inputFilePath = path.generic_string();

@@ -3,27 +3,30 @@
 #include "policy.hpp"
 #include "syntax_spacing.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <parser/syntax_tree.hpp>
 
 #include <algorithm>
 
 namespace formatter::detail {
 
-using Index = uint32_t;
-using Position = uint64_t;
+using Index = u32;
+using Position = u64;
 inline constexpr Index None = UINT32_MAX;
-inline constexpr uint64_t NoOrder = UINT64_MAX;
+inline constexpr u64 NoOrder = UINT64_MAX;
 
 // The high word is a source token/gap position. Within one position, interval
 // ends precede group captures/beginnings, which precede source content. Eight
 // slots per group keep its captures ordered before its beginning. Planning
 // bounds both token and group counts before forming these keys.
-constexpr uint64_t SourceOrder(Position position, Index sequence = 0x80000000u)
+constexpr u64 SourceOrder(Position position, Index sequence = 0x80000000u)
 {
     return (position << 32) | sequence;
 }
 
-enum class Whitespace : uint8_t
+enum class Whitespace : u8
 {
     Empty,
     Preserve,
@@ -47,7 +50,7 @@ struct WhitespacePolicy
 // token or group events. Detailed line policies are needed only for choices.
 struct GapLayout
 {
-    uint64_t Order = NoOrder;
+    u64 Order = NoOrder;
     parser::SourceRange Origin{None, None};
 
     // The mode selects one payload: a line policy, newline-spelling count,
@@ -56,7 +59,7 @@ struct GapLayout
     {
         Index Policy;
         Index ChangedNewlines = 0;
-        uint16_t Spaces;
+        u16 Spaces;
     };
 
     Index Next = None;
@@ -81,7 +84,7 @@ struct GapLayout
 
 static_assert(sizeof(GapLayout) <= 32);
 
-enum class Boundary : uint8_t
+enum class Boundary : u8
 {
     Preserve,
     Flat,
@@ -108,17 +111,17 @@ struct Gap
     bool PartialIndent : 1 = false;
     bool ParagraphBoundary : 1 = false;
     bool Reassembled : 1 = false;
-    int32_t ExtraIndent = 0;
+    i32 ExtraIndent = 0;
     bool OverrideIndent : 1 = false;
     // Only final line indentation may change in otherwise frozen syntax.
     bool RelativeIndent : 1 = false;
     bool Frozen : 1 = false;
-    uint16_t NewlineCount = 1;
+    u16 NewlineCount = 1;
     bool Vertical : 1 = false;
     bool VerticalMinimum : 1 = false;
     bool MemberGroup : 1 = false;
     bool PreserveIndent : 1 = false;
-    uint8_t VerticalPriority = 0;
+    u8 VerticalPriority = 0;
     Index MarkDelimiter = None;
     // Fit a complete syntax prefix before considering optional child breaks.
     Index FitThrough = None;
@@ -133,7 +136,7 @@ struct Gap
     bool FitFlatTail : 1 = false;
     bool KeepFlatSpacing : 1 = false;
     bool SpaceFallback : 1 = false;
-    uint16_t FixedSpaces = UINT16_MAX;
+    u16 FixedSpaces = UINT16_MAX;
 
 };
 
@@ -147,15 +150,15 @@ struct GapFacts
 
     Index RequiredWidth = 0;
     mutable Index CachedWidth = 0;
-    mutable uint16_t CachedCommentCount = UINT16_MAX;
+    mutable u16 CachedCommentCount = UINT16_MAX;
     // 0 unknown, 1 preserve, 2 no space, 3 space.
-    mutable uint16_t PreservedPreference : 2 = 0;
-    mutable uint16_t RebuiltPreference : 2 = 0;
-    mutable uint16_t WidthKnown : 1 = false;
-    mutable uint16_t FlatKnown : 1 = false;
-    mutable uint16_t LineKnown : 1 = false;
-    mutable uint16_t FlatAllowed : 1 = false;
-    mutable uint16_t LineAllowed : 1 = false;
+    mutable u16 PreservedPreference : 2 = 0;
+    mutable u16 RebuiltPreference : 2 = 0;
+    mutable u16 WidthKnown : 1 = false;
+    mutable u16 FlatKnown : 1 = false;
+    mutable u16 LineKnown : 1 = false;
+    mutable u16 FlatAllowed : 1 = false;
+    mutable u16 LineAllowed : 1 = false;
 };
 
 // Style offsets fit in a byte, but preserved source indentation can be much
@@ -163,10 +166,10 @@ struct GapFacts
 struct LayoutIndentation
 {
     ContinuationAlignment Alignment;
-    uint32_t ContinuationOffset;
-    uint32_t FallbackOffset;
+    u32 ContinuationOffset;
+    u32 FallbackOffset;
 
-    LayoutIndentation(ContinuationAlignment alignment, uint32_t continuation, uint32_t fallback)
+    LayoutIndentation(ContinuationAlignment alignment, u32 continuation, u32 fallback)
         : Alignment(alignment)
         , ContinuationOffset(continuation)
         , FallbackOffset(fallback)
@@ -180,7 +183,7 @@ struct LayoutIndentation
 struct Group
 {
     // Keep the fields consumed together by renderer traversal contiguous.
-    uint64_t BeginOrder = 0, EndOrder = 0, PrefixOrder = UINT64_MAX;
+    u64 BeginOrder = 0, EndOrder = 0, PrefixOrder = UINT64_MAX;
     Index Parent = None;
     Index ProbeWork = 0;
     layout::AnchorId Anchor = layout::InvalidId;
@@ -198,7 +201,7 @@ struct Group
     bool ShareBranchContinuation = false;
     Index PrefixGap = None;
     bool AnchorAfterGap = false;
-    uint32_t LogicalIndent = 0;
+    u32 LogicalIndent = 0;
     bool SaturatedIndent = false;
     Index PreviousContinuation = None;
     Index IndentGroup = None;
@@ -226,7 +229,7 @@ class Planner;
 class LayoutPlan
 {
     friend class Planner;
-    using Order = uint64_t;
+    using Order = u64;
     static constexpr auto Invalid = layout::InvalidId;
 
     struct TokenLayout
@@ -266,9 +269,9 @@ public:
         , FlatSpans_(flatSpans)
         , Tokens_(tree.TokenCount(), &memory)
         , Removed_(tree.TokenCount(), &memory)
-        , Gaps_(size_t(tree.TokenCount()) + 1, &memory)
-        , GapLayouts_(size_t(tree.TokenCount()) + 1, &memory)
-        , Commas_(size_t(tree.TokenCount()) + 1, &memory)
+        , Gaps_(us(tree.TokenCount()) + 1, &memory)
+        , GapLayouts_(us(tree.TokenCount()) + 1, &memory)
+        , Commas_(us(tree.TokenCount()) + 1, &memory)
         , Groups_(&memory)
         , GroupSpecs_(&memory)
         , ExtraGaps_(&memory)
@@ -298,7 +301,7 @@ public:
         return Sealed_ && id < Tokens_.size() && !Tokens_[id].Reindent;
     }
 
-    [[nodiscard]] bool GapEmitsSpaces(Index id, size_t spaces) const
+    [[nodiscard]] bool GapEmitsSpaces(Index id, us spaces) const
     {
         if (!Sealed_ || id >= GapLayouts_.size()) {
             return false;
@@ -477,7 +480,7 @@ private:
         return {range.Begin, range.End, i};
     }
 
-    void TokenMeasure(Index i, uint8_t tabWidth, layout::detail::Measure& result) const
+    void TokenMeasure(Index i, u8 tabWidth, layout::detail::Measure& result) const
     {
         if (Tokens_[i].RunFirst) {
             const auto source = TokenOrigin(i);
@@ -513,7 +516,7 @@ private:
     template <bool Reverse = false, class Begin, class End, class Anchor, class Token, class Gap>
     bool Walk(Cursor& cursor, Order limit, Begin&& begin, End&& end, Anchor&& anchor, Token&& token, Gap&& gap) const
     {
-        const auto available = [] (Index i, size_t size) {
+        const auto available = [] (Index i, us size) {
             return Reverse ? i != 0 : i < size;
         };
         const auto at = [] (Index i) {
@@ -660,21 +663,21 @@ private:
     const parser::SyntaxTree& Tree_;
     std::string_view Source_;
     std::span<const FlatSpan> FlatSpans_;
-    std::pmr::vector<TokenLayout> Tokens_;
-    std::pmr::vector<uint8_t> Removed_;
-    std::pmr::vector<detail::Gap> Gaps_;
-    std::pmr::vector<GapLayout> GapLayouts_;
-    std::pmr::vector<Comma> Commas_;
-    std::pmr::vector<Group> Groups_;
-    std::pmr::vector<layout::GroupSpec> GroupSpecs_;
-    std::pmr::vector<GapLayout> ExtraGaps_;
-    std::pmr::vector<WhitespacePolicy> GapPolicies_;
-    std::pmr::vector<layout::GapSpec> BrokenGaps_;
-    std::pmr::vector<Index> Starts_, Ends_;
-    std::pmr::vector<AnchorLayout> Anchors_;
-    std::pmr::vector<Index> AnchorOrder_;
+    Vector<TokenLayout> Tokens_;
+    Vector<u8> Removed_;
+    Vector<detail::Gap> Gaps_;
+    Vector<GapLayout> GapLayouts_;
+    Vector<Comma> Commas_;
+    Vector<Group> Groups_;
+    Vector<layout::GroupSpec> GroupSpecs_;
+    Vector<GapLayout> ExtraGaps_;
+    Vector<WhitespacePolicy> GapPolicies_;
+    Vector<layout::GapSpec> BrokenGaps_;
+    Vector<Index> Starts_, Ends_;
+    Vector<AnchorLayout> Anchors_;
+    Vector<Index> AnchorOrder_;
     Index CurrentGap_ = 0, Sequence_ = 0, Depth_ = 0;
-    uint8_t TabWidth_ = 4;
+    u8 TabWidth_ = 4;
     layout::Status State_;
     bool Sealed_ = false;
 };

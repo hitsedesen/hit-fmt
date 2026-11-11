@@ -1,5 +1,8 @@
 #include "text_policies.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
@@ -22,7 +25,7 @@ bool CanRewriteTextAtom(const SourceAnalysis& safety, parser::SourceRange source
 
 namespace {
 
-std::string_view DirectiveName(std::string_view text, size_t& marker, size_t& begin)
+std::string_view DirectiveName(std::string_view text, us& marker, us& begin)
 {
     marker = text.starts_with('#') ? 1 : text.starts_with("%:") ? 2 : 0;
 
@@ -36,7 +39,7 @@ std::string_view DirectiveName(std::string_view text, size_t& marker, size_t& be
         ++begin;
     }
 
-    size_t end = begin;
+    us end = begin;
 
     while (end < text.size() &&
         ((text[end] >= 'a' && text[end] <= 'z') || (text[end] >= 'A' && text[end] <= 'Z') ||
@@ -50,9 +53,9 @@ std::string_view DirectiveName(std::string_view text, size_t& marker, size_t& be
 
 struct Continuation
 {
-    size_t Gap;
-    size_t Slash;
-    size_t Column;
+    us Gap;
+    us Slash;
+    us Column;
 };
 
 // Adjust padding only where preprocessing whitespace already separates the
@@ -65,19 +68,19 @@ void AlignContinuations(std::pmr::string& text, std::pmr::memory_resource& scrat
         return;
     }
 
-    std::pmr::vector<Continuation> lines(&scratch);
+    Vector<Continuation> lines(&scratch);
     char quote = 0;
     bool block = false;
     bool comment = false;
-    size_t target = 0;
+    us target = 0;
 
-    for (size_t i = 0; i < text.size(); ++i) {
+    for (us i = 0; i < text.size(); ++i) {
         const char c = text[i];
         const char next = i + 1 < text.size() ? text[i + 1] : '\0';
         const bool splice = c == '\\' && (next == '\n' || (next == '\r' && i + 2 < text.size() && text[i + 2] == '\n'));
 
         if (splice) {
-            size_t gap = i;
+            us gap = i;
 
             while (gap && (text[gap - 1] == ' ' || text[gap - 1] == '\t')) {
                 --gap;
@@ -93,11 +96,11 @@ void AlignContinuations(std::pmr::string& text, std::pmr::memory_resource& scrat
             }
 
             // Measure the prefix without its padding, with renderer tab stops.
-            size_t line = text.rfind('\n', gap);
+            us line = text.rfind('\n', gap);
             line = line == std::string_view::npos ? 0 : line + 1;
-            size_t width = 0;
+            us width = 0;
 
-            for (size_t p = line; p < gap; ++p) {
+            for (us p = line; p < gap; ++p) {
                 width += text[p] == '\t' ? 8 - width % 8 : 1;
             }
 
@@ -148,7 +151,7 @@ void AlignContinuations(std::pmr::string& text, std::pmr::memory_resource& scrat
 
     std::pmr::string aligned(&scratch);
     aligned.reserve(text.size());
-    size_t cursor = 0;
+    us cursor = 0;
 
     for (const auto& line : lines) {
         aligned.append(text.data() + cursor, line.Gap - cursor);
@@ -167,7 +170,7 @@ std::string_view StoreText(std::string_view text, std::pmr::memory_resource& fil
     return {bytes, text.size()};
 }
 
-bool RewriteIncludeDelimiters(std::pmr::string& text, size_t begin, IncludeDelimiterResolver& delimiters)
+bool RewriteIncludeDelimiters(std::pmr::string& text, us begin, IncludeDelimiterResolver& delimiters)
 {
     if (text.find_first_of("\n\\") != std::string_view::npos) {
         return false;
@@ -226,7 +229,7 @@ void ReplaceAtom(
     const auto stored = StoreText(text, file);
     const auto operation = static_cast<StructuralActionId>(plan.Operations.size());
     plan.Operations.push_back({action, {token, token + 1}});
-    const auto piece = static_cast<uint32_t>(plan.Pieces.size());
+    const auto piece = static_cast<u32>(plan.Pieces.size());
     plan.Pieces.push_back({{}, stored, false});
     plan.Edits.push_back({source, piece, piece + 1, operation});
 }
@@ -261,10 +264,10 @@ void PlanTextPolicyEdits(
     struct MovedAtom
     {
         parser::SourceRange Source;
-        uint32_t Piece;
+        u32 Piece;
     };
 
-    std::pmr::vector<MovedAtom> moved(&scratchMemory);
+    Vector<MovedAtom> moved(&scratchMemory);
 
     for (const auto& edit : plan.Edits) {
         if (plan.Operations[edit.Operation].Kind == StructuralAction::IncludeOrder) {
@@ -282,7 +285,7 @@ void PlanTextPolicyEdits(
         [] (const auto& a, const auto& b) {
             return a.Source.Begin < b.Source.Begin;
         });
-    size_t depth = 0;
+    us depth = 0;
     std::pmr::string replacement(&scratchMemory);
     std::pmr::string line(&scratchMemory);
 
@@ -314,7 +317,7 @@ void PlanTextPolicyEdits(
             continue;
         }
 
-        size_t marker = 0, begin = 0;
+        us marker = 0, begin = 0;
         const auto name = DirectiveName(text, marker, begin);
         const bool close = name == "endif";
         const bool branch = name == "else" || name == "elif" || name == "elifdef" || name == "elifndef";

@@ -1,3 +1,5 @@
+#include <util/types.hpp>
+
 #include <formatter/hunks.hpp>
 
 #include <gtest/gtest.h>
@@ -6,7 +8,6 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -14,8 +15,8 @@ namespace {
 
 TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
 {
-    std::istringstream input("file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n" "file src/file with spaces.cpp\nhunk 1:1\n"
-        "file src/../src/a.cpp\nhunk 9:10\n");
+    std::string_view input = "file src/a.cpp\r\nhunk 2:4\r\nhunk 8:8\n" "file src/file with spaces.cpp\nhunk 1:1\n"
+        "file src/../src/a.cpp\nhunk 9:10";
     const auto base = std::filesystem::current_path() / "hunk-test";
     const auto parsed = formatter::ParseChangedHunks(input, base);
     ASSERT_EQ(parsed.Paths.size(), 3);
@@ -34,8 +35,7 @@ TEST(HunkParser, GroupsFilesAndResolvesPathsAgainstGivenDirectory)
 
 TEST(HunkParser, EmptyInputSelectsNoFiles)
 {
-    std::istringstream input;
-    const auto parsed = formatter::ParseChangedHunks(input, std::filesystem::current_path());
+    const auto parsed = formatter::ParseChangedHunks({}, std::filesystem::current_path());
     EXPECT_TRUE(parsed.Paths.empty());
     EXPECT_TRUE(parsed.Hunks.empty());
 }
@@ -44,7 +44,7 @@ TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
 {
     for (auto [text, line] :
         {
-            std::pair<std::string_view, size_t>{"hunk 1:2\n", 1},
+            std::pair<std::string_view, us>{"hunk 1:2\n", 1},
             {"file a.cpp\nfile b.cpp\nhunk 1:1\n", 2},
             {"file a.cpp\nhunk 0:1\n", 2},
             {"file a.cpp\nhunk 4:2\n", 2},
@@ -53,9 +53,8 @@ TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
             {"file a.cpp\nline 1:2\n", 2},
         })
     {
-        std::istringstream input{std::string(text)};
         try {
-            (void)formatter::ParseChangedHunks(input, std::filesystem::current_path());
+            (void)formatter::ParseChangedHunks(text, std::filesystem::current_path());
             FAIL() << "Accepted: " << text;
         } catch (const std::runtime_error& error) {
             EXPECT_NE(std::string(error.what()).find("changed ranges line " + std::to_string(line)), std::string::npos)
@@ -66,8 +65,9 @@ TEST(HunkParser, RejectsMalformedRecordsWithLineNumbers)
 
 TEST(HunkParser, RejectsFileWithoutHunksAtEndOfInput)
 {
-    std::istringstream input("file a.cpp\n");
-    EXPECT_THROW(formatter::ParseChangedHunks(input, std::filesystem::current_path()), std::runtime_error);
+    EXPECT_THROW(
+        (void)formatter::ParseChangedHunks("file a.cpp\n", std::filesystem::current_path()),
+        std::runtime_error);
 }
 
 using test::Input;
@@ -298,10 +298,10 @@ TEST(HunkAdapter, BoundedNestedListsNeverPromoteFunctionOrOverTwoHundredLines)
             return record.Reason == formatter::HunkCoverageReason::SemanticProtection;
         }));
 
-    for (const size_t count : {200, 201}) {
+    for (const us count : {200, 201}) {
         source = "void f() {\n  call(\n";
 
-        for (size_t i = 0; i < count - 2; ++i) {
+        for (us i = 0; i < count - 2; ++i) {
             source += "    1,\n";
         }
 
@@ -355,10 +355,10 @@ TEST(HunkAdapter, IncludeSpillRetainsTwoHundredLineBoundAndOutsideStatements)
     auto style = HunkStyle();
     style.IncludeOrder = formatter::IncludeOrder::Sort;
 
-    for (const size_t count : {200, 201}) {
+    for (const us count : {200, 201}) {
         std::string source = "#include \"z.h\"\n";
 
-        for (size_t i = 1; i < count; ++i) {
+        for (us i = 1; i < count; ++i) {
             source += "#include \"a.h\"\n";
         }
 

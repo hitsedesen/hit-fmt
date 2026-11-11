@@ -2,6 +2,8 @@
 
 #include "config_enum.hpp"
 
+#include <util/types.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -13,7 +15,7 @@ namespace formatter {
 
 struct Style;
 
-enum class FirstArgumentAnnotation : std::uint8_t
+enum class FirstArgumentAnnotation : u8
 {
     // Only complete literal expressions qualify, never a literal prefix of
     // another expression. Overflow controls how qualifying arguments attach.
@@ -23,13 +25,13 @@ enum class FirstArgumentAnnotation : std::uint8_t
     PinAnyArgument
 };
 
-enum class ChainParticipation : std::uint8_t
+enum class ChainParticipation : u8
 {
     AllSafe,
     AnnotatedRoots
 };
 
-enum class VisualScopeLayout : std::uint8_t
+enum class VisualScopeLayout : u8
 {
     PreserveExistingExtraLevel
 };
@@ -84,21 +86,21 @@ public:
 private:
     struct NameFilter
     {
-        std::uint64_t Initials = 0;
-        std::uint64_t Lengths = 0;
+        u64 Initials = 0;
+        u64 Lengths = 0;
 
         void Add(std::string_view name) noexcept
         {
-            Initials |= std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63);
-            Lengths |= std::uint64_t{1} << (name.size() & 63);
+            Initials |= u64{1} << (static_cast<unsigned char>(name.front()) & 63);
+            Lengths |= u64{1} << (name.size() & 63);
         }
 
         [[nodiscard]] bool MayContain(std::string_view name) const noexcept
         {
             // Collisions only admit the existing exact string lookup. Modulo
             // lengths retain identifiers of any supported size.
-            return (Lengths & (std::uint64_t{1} << (name.size() & 63))) && !name.empty() &&
-                (Initials & (std::uint64_t{1} << (static_cast<unsigned char>(name.front()) & 63)));
+            return (Lengths & (u64{1} << (name.size() & 63))) && !name.empty() &&
+                (Initials & (u64{1} << (static_cast<unsigned char>(name.front()) & 63)));
         }
     };
 
@@ -107,7 +109,7 @@ private:
     NameFilter AlwaysBreakChainRootFilter_;
     NameFilter AlwaysBreakChainCallFilter_;
     NameFilter BlankLineMacroFilter_;
-    std::uint64_t BlankLinePrefixInitials_ = 0;
+    u64 BlankLinePrefixInitials_ = 0;
     std::vector<MessagePinAnnotation> MessagePins_;
     std::vector<std::string> ChainRoots_;
     std::vector<std::string> AlwaysBreakChainRoots_;
@@ -118,7 +120,7 @@ private:
     std::vector<ChainCallPairAnnotation> ChainScopes_;
     std::vector<ChainCallPairAnnotation> StickyChainPairs_;
     // Integer indices remain valid across snapshot copies/moves; no self-views.
-    std::vector<std::size_t> ScopeEndOrder_;
+    std::vector<us> ScopeEndOrder_;
     friend LibraryAnnotations CompileLibraryAnnotations(const Style& style);
 };
 

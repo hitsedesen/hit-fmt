@@ -1,6 +1,7 @@
 #pragma once
 
 #include <util/assert.hpp>
+#include <util/types.hpp>
 
 #include <cstdint>
 #include <string>
@@ -30,13 +31,13 @@ public:
         : Value_(cp)
     { }
 
-    [[nodiscard]] constexpr operator uint32_t() const noexcept
+    [[nodiscard]] constexpr operator u32() const noexcept
     {
         return Value_;
     }
 
 private:
-    uint32_t Value_;
+    u32 Value_;
 };
 
 constexpr std::string
@@ -46,7 +47,7 @@ operator+=(const std::string& lhs, const CodePoint& rhs) = delete;
 
 constexpr bool operator==(CodePoint lhs, CodePoint rhs)
 {
-    return static_cast<uint32_t>(lhs) == static_cast<uint32_t>(rhs);
+    return static_cast<u32>(lhs) == static_cast<u32>(rhs);
 }
 
 constexpr bool operator==(CodePoint lhs, char rhs)

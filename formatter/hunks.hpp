@@ -2,8 +2,10 @@
 
 #include "formatter.hpp"
 
-#include <filesystem>
-#include <istream>
+#include <util/types.hpp>
+
+#include <fs/fs.hpp>
+
 #include <span>
 #include <string>
 #include <string_view>
@@ -14,20 +16,20 @@ namespace formatter {
 
 struct Hunk
 {
-    size_t Begin;
-    size_t End;
+    us Begin;
+    us End;
 
     bool operator==(const Hunk& other) const = default;
 };
 
 struct ChangedHunkFiles
 {
-    std::vector<std::filesystem::path> Paths;
+    std::vector<fs::Path> Paths;
     std::unordered_map<std::string, std::vector<Hunk>> Hunks;
 };
 
-// Paths in file records are resolved against directory, not the input stream.
-[[nodiscard]] ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::path& directory);
+// Paths in file records are resolved against directory.
+[[nodiscard]] ChangedHunkFiles ParseChangedHunks(std::string_view input, const fs::Path& directory);
 
 enum class HunkCoverageReason
 {

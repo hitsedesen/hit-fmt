@@ -1,3 +1,5 @@
+#include <util/types.hpp>
+
 #include <formatter/config.hpp>
 #include <formatter/formatter.hpp>
 #include <formatter/hunks.hpp>
@@ -247,7 +249,7 @@ std::vector<FormatCase> FormatCases()
 {
     std::vector<FormatCase> cases;
     const auto data = std::filesystem::path(FORMATTER_TESTDATA_DIR).parent_path();
-    const auto examples = (data / "../../../hit-fmt/examples").lexically_normal();
+    const auto examples = (data / "../../../cli/examples").lexically_normal();
     const auto corpus = examples / "pdf-to-markdown";
 
     for (const auto& profileEntry : std::filesystem::directory_iterator(examples)) {
@@ -481,7 +483,7 @@ std::vector<FormatCase> FormatCases()
         data / "vertical-grouping",
         "contextual-ytsaurus",
         "contextual.input.cpp",
-        "../../../../hit-fmt/examples/ytsaurus",
+        "../../../../cli/examples/ytsaurus",
     });
     AddCases(
         cases,
@@ -521,7 +523,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::BlankLineSetting DeclarationBlankLines;
                 formatter::BlankLineSetting MemberDeclarationBlankLines;
                 formatter::BlankLineSetting DefinitionBlankLines;
-                std::optional<std::size_t> MaxEmptyLines;
+                std::optional<us> MaxEmptyLines;
             };
 
             for (const auto& policy :
@@ -579,7 +581,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::BreakRequirement ChainsBreak;
             };
 
@@ -608,7 +610,7 @@ std::vector<FormatCase> FormatCases()
         data / "control-expression-continuation",
         "ytsaurus",
         "input.cpp",
-        "../../../../hit-fmt/examples/ytsaurus",
+        "../../../../cli/examples/ytsaurus",
     });
 
     for (const auto* name : {"opaque-body", "opaque-body-expanded"}) {
@@ -616,7 +618,7 @@ std::vector<FormatCase> FormatCases()
             data / "control-expression-continuation",
             name,
             "opaque-body.input.cpp",
-            "../../../../hit-fmt/examples/ytsaurus",
+            "../../../../cli/examples/ytsaurus",
             {},
             true,
             {},
@@ -655,7 +657,7 @@ std::vector<FormatCase> FormatCases()
             {
                 const char* Profile;
                 formatter::LayoutMode Layout;
-                std::size_t IndentWidth;
+                us IndentWidth;
                 formatter::IndentationKind IndentationKind;
                 formatter::LineEnding LineEnding;
                 formatter::TrailingWhitespace TrailingWhitespace;
@@ -808,7 +810,7 @@ std::vector<FormatCase> FormatCases()
                 formatter::NamespaceComments NamespaceComments;
                 std::optional<formatter::TrailingCommentSpaceSetting>
                     TrailingCommentSpaces;
-                std::size_t NamespaceCommentSpaces;
+                us NamespaceCommentSpaces;
                 formatter::GapPolicy TrailingCommentSpacing;
             };
 
@@ -913,7 +915,7 @@ std::vector<FormatCase> FormatCases()
             })
         {
             const auto name = "fit-boundary-" + std::string(formatter::ConfigEnumNames<BracePlacement>::Values[
-                static_cast<std::size_t>(placement)]);
+                static_cast<us>(placement)]);
             cases.push_back({directory, name, "fit-boundary.input.cpp"});
             cases.back().Style = base;
             cases.back().Style->FunctionBracePlacement = placement;
@@ -1258,7 +1260,7 @@ std::vector<FormatCase> FormatCases()
                 directory,
                 "profile-" + std::string(profile),
                 "directory.input.cpp",
-                "../../../../hit-fmt/examples/" + std::string(profile),
+                "../../../../cli/examples/" + std::string(profile),
             };
             value.InputFilePath = "project/engine/widget.cpp";
 
@@ -1274,7 +1276,7 @@ std::vector<FormatCase> FormatCases()
             directory,
             "profile-ytsaurus-roots",
             "rule-groups.input.cpp",
-            "../../../../hit-fmt/examples/ytsaurus",
+            "../../../../cli/examples/ytsaurus",
         };
         ytsaurusRoots.InputFilePath = "yt/yt/core/rpc/runner.cpp";
         cases.push_back(std::move(ytsaurusRoots));
@@ -1851,7 +1853,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({closings, "trailing-only", "trailing-layout.input.cpp"});
     cases.push_back({closings, "trailing-new-line", "trailing-layout.input.cpp"});
     AddCases(cases, data / "fold-spacing", {"yt-like", "inherited", "group-space", "no-space", "preserve"});
-    const auto profile = (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string();
+    const auto profile = (data / "../../../cli/examples/ytsaurus").lexically_normal().string();
     auto addProfileCase = [&] (const char* directory, const char* name) {
         cases.push_back({
             std::filesystem::path(FORMATTER_TESTDATA_DIR) / directory,
@@ -2411,7 +2413,7 @@ std::vector<FormatCase> FormatCases()
         callReflow,
         "braced-arguments",
         "braced-arguments.input.cpp",
-        "../../../../hit-fmt/examples/ytsaurus",
+        "../../../../cli/examples/ytsaurus",
         {},
         true,
         {},
@@ -2468,7 +2470,7 @@ std::vector<FormatCase> FormatCases()
             {
                 const char* Profile;
                 formatter::LayoutMode Layout;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::BreakRequirement ChainsBreak;
                 formatter::ContinuationAlignment ChainsAlignment;
                 std::vector<std::string> ChainedCallRootNames;
@@ -2581,7 +2583,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::BreakRequirement ExpressionsBreak;
                 formatter::CategoryLayout ExpressionsLayout;
             };
@@ -2607,7 +2609,7 @@ std::vector<FormatCase> FormatCases()
     const auto unicode = data / "unicode-width";
     AddCases(cases, unicode, {"fitting", "overflow"});
     const auto google = data / "google-style-regressions";
-    const auto googleProfile = (data / "../../../hit-fmt/examples/google").lexically_normal().string();
+    const auto googleProfile = (data / "../../../cli/examples/google").lexically_normal().string();
     cases.push_back({google, "profile-trailing-comments", "profile-trailing-comments.input.cpp", googleProfile});
     cases.push_back({google, "inline-record", "inline-record.input.cpp"});
     cases.push_back({google, "widths", "widths.input.cpp"});
@@ -2626,7 +2628,7 @@ std::vector<FormatCase> FormatCases()
         data / "constructor-initializer-ranges",
         "template-ytsaurus",
         "template.input.cpp",
-        (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string(),
+        (data / "../../../cli/examples/ytsaurus").lexically_normal().string(),
     });
     // Braced entries exercise the same owned constructor ranges as parenthesized ones.
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
@@ -3015,7 +3017,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
             };
 
             for (const auto& policy :
@@ -3270,12 +3272,7 @@ std::vector<FormatCase> FormatCases()
 
     ShareExpected(cases, data / "uncertain-layout", "preserve.output.cpp", "input.cpp");
     AddCases(cases, data / "template-arguments", {"inherit", "vertical", "fill", "delimiter", "preserve", "tabs"});
-    cases.push_back({
-        data / "template-arguments",
-        "lambdas",
-        "lambdas.input.cpp",
-        "../../../../hit-fmt/examples/ytsaurus",
-    });
+    cases.push_back({data / "template-arguments", "lambdas", "lambdas.input.cpp", "../../../../cli/examples/ytsaurus"});
     {
         auto preserved = cases.back();
         preserved.Name = "lambdas-preserve";
@@ -3376,7 +3373,7 @@ std::vector<FormatCase> FormatCases()
             data / "template-parameters",
             profile,
             "input.cpp",
-            (data / "../../../hit-fmt/examples" / profile).lexically_normal().string(),
+            (data / "../../../cli/examples" / profile).lexically_normal().string(),
         });
     }
 
@@ -3516,7 +3513,7 @@ std::vector<FormatCase> FormatCases()
         data / "macro-generated-cases",
         "type-tuples",
         "type-tuples.input.cpp",
-        (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string(),
+        (data / "../../../cli/examples/ytsaurus").lexically_normal().string(),
         {},
         true,
         {},
@@ -3525,7 +3522,7 @@ std::vector<FormatCase> FormatCases()
         data / "macro-generated-cases",
         "ytsaurus",
         "input.cpp",
-        (data / "../../../hit-fmt/examples/ytsaurus").lexically_normal().string(),
+        (data / "../../../cli/examples/ytsaurus").lexically_normal().string(),
         {},
         true,
         {},
@@ -3633,7 +3630,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::BreakRequirement ExpressionsBreak;
                 formatter::CategoryLayout ExpressionsLayout;
                 formatter::OperatorSide BinaryOperatorSide;
@@ -3833,7 +3830,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::CategoryLayout DeclarationHeadersLayout;
                 formatter::GapPolicy FunctionBraceSpacing;
             };
@@ -3861,7 +3858,7 @@ std::vector<FormatCase> FormatCases()
                 const char* Profile;
                 formatter::IndentationKind IndentationKind;
                 formatter::CategoryLayout ParametersLayout;
-                std::optional<std::size_t> ParametersContinuationOffset;
+                std::optional<us> ParametersContinuationOffset;
                 formatter::CategoryLayout DeclarationHeadersLayout;
             };
 
@@ -3904,7 +3901,7 @@ std::vector<FormatCase> FormatCases()
 
         for (const auto* profileName : {"google", "llvm"}) {
             const auto base = formatter::LoadConfigFile(
-                data / ("../../../hit-fmt/examples/" + std::string(profileName) + ".hit-fmt")).FormattingStyle;
+                data / ("../../../cli/examples/" + std::string(profileName) + ".hit-fmt")).FormattingStyle;
 
             for (const auto* variant : {"flat", "multiline", "narrow", "preserve"}) {
                 const auto name = std::string(profileName) + "-" + variant;
@@ -4146,7 +4143,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::CategoryLayout CallsLayout;
                 std::optional<formatter::BreakRequirement> CallsBreak;
                 std::optional<formatter::ListPacking> CallsPacking;
@@ -4357,7 +4354,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::BreakRequirement ExpressionsBreak;
                 formatter::CategoryLayout ExpressionsLayout;
                 formatter::OperatorSide TernaryOperatorSide;
@@ -4490,7 +4487,7 @@ std::vector<FormatCase> FormatCases()
             {
                 const char* Profile;
                 formatter::LayoutMode Layout;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::OperatorSide TernaryOperatorSide;
                 formatter::TernaryLayout TernaryLayout;
                 formatter::TernaryOperatorIndentation OperatorIndentation;
@@ -4555,7 +4552,7 @@ std::vector<FormatCase> FormatCases()
             struct Policy
             {
                 const char* Profile;
-                std::size_t ColumnLimit;
+                us ColumnLimit;
                 formatter::TernaryLayout TernaryLayout;
             };
 
@@ -4907,7 +4904,7 @@ TEST_P(ParameterNameTest, Golden)
     const auto input = ReadFile(directory / "input.cpp");
     const bool ytsaurus = GetParam() == "ytsaurus";
     const auto configPath = ytsaurus
-        ? (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").lexically_normal()
+        ? (directory / "../../../../cli/examples/ytsaurus.hit-fmt").lexically_normal()
         : directory / (GetParam() + ".hit-fmt");
     const auto config = formatter::LoadConfigFile(configPath);
     const Input storage(input);
@@ -5162,7 +5159,7 @@ TEST(Formatter, WidthDiagnostics_CountsProtectedTabsAndMixedTerminators)
     EXPECT_EQ(result.Diagnostics[2].Position.Line, 5u);
     EXPECT_EQ(result.Diagnostics[3].Position.Line, 7u);
 
-    for (size_t index = 2; index < 4; ++index) {
+    for (us index = 2; index < 4; ++index) {
         EXPECT_EQ(result.Diagnostics[index].Message, "emitted line width 17 exceeds ColumnLimit 16");
     }
 
@@ -5254,7 +5251,7 @@ TEST(Formatter, SpacingOptions_ProfileOverflowHasNoDiagnostics)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../spacing-options";
     const auto input = ReadFile(directory / "profile-overflow.input.cpp");
     const auto config = formatter::LoadConfigFile(
-        (directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").lexically_normal()).FormattingStyle;
+        (directory / "../../../../cli/examples/ytsaurus.hit-fmt").lexically_normal()).FormattingStyle;
     const auto result = test::FormatInput(input, formatter::PreparedFormat(config));
     EXPECT_TRUE(result.Diagnostics.empty());
 }
@@ -5341,7 +5338,7 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
         "CallsFirstItem = NextLine\nCallsAlignment = Delimiter\n"
         "CallLineFirstStringNames = [\"YT_LOG_INFO\", \"YT_LOG_ERROR\"]\n"
         "IndentedCallScopePairs = [\"OnBeginList:OnEndList\"]\n" "Exclude = [ # list comment\n"
-        "  \"x\\\\]y\", # bracket in a quoted item\n" "  \"(^|/)generated(/|$)\"\n" "]\n" "ClassNamePrefixes = [\n"
+        "  \"x]y\", # bracket in a quoted item\n" "  \"(^|/)generated(/|$)\"\n" "]\n" "ClassNamePrefixes = [\n"
         "  \"S\", # prefix comment\n" "  \"C\"\n" "]\n" "IndentWidth = 3\n");
     const auto config = formatter::LoadConfigFile(path);
     const auto& style = config.FormattingStyle;
@@ -5374,9 +5371,7 @@ TEST(Formatter, PreserveConfig_ParsesSettings)
         Delimiter);
     EXPECT_EQ(style.CallLineFirstStringNames, (std::vector<std::string>{"YT_LOG_INFO", "YT_LOG_ERROR"}));
     EXPECT_EQ(style.IndentedCallScopePairs, (std::vector<std::string>{"OnBeginList:OnEndList"}));
-    ASSERT_EQ(config.Exclude.size(), 2u);
-    EXPECT_TRUE(std::regex_search("x]y", config.Exclude[0]));
-    EXPECT_TRUE(std::regex_search("generated/source.cpp", config.Exclude[1]));
+    EXPECT_EQ(config.Exclude, (std::vector<std::string>{"x]y", "(^|/)generated(/|$)"}));
     ASSERT_TRUE(config.Naming.Class.Prefixes.has_value());
     EXPECT_EQ(*config.Naming.Class.Prefixes, (std::vector<std::string>{"S", "C"}));
     save("ClassNameCase = Unchecked\nClassNamePrefixes = []\n" "BaseListsContinuationOffset = 0\n"

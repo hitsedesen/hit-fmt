@@ -1,3 +1,6 @@
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <formatter/config.hpp>
 #include <formatter/format_failure_internal.hpp>
 #include <formatter/format_pipeline.hpp>
@@ -17,7 +20,6 @@
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
-#include <tuple>
 
 namespace {
 
@@ -43,7 +45,7 @@ public:
     bool SizeFailure = false;
 
 private:
-    void* do_allocate(size_t /*size*/, size_t /*alignment*/) override
+    void* do_allocate(us /*size*/, us /*alignment*/) override
     {
         if (AllocationFailure) {
             throw std::bad_alloc();
@@ -60,7 +62,7 @@ private:
         throw formatter::detail::FormatFailure("failed pipeline operation", Source);
     }
 
-    void do_deallocate(void* /*storage*/, size_t /*size*/, size_t /*alignment*/) override
+    void do_deallocate(void* /*storage*/, us /*size*/, us /*alignment*/) override
     { }
 
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override
@@ -79,8 +81,8 @@ TEST(PublicPipeline, FailedPipelinePreservesRegionAndContinuesWithFreshState)
         "void uncertain(){if(a)invoke( x,y );}\nvoid safe(){if(b)invoke(x,y);}\n";
     const Input input(source);
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-    std::pmr::monotonic_buffer_resource analysisMemory;
-    std::pmr::monotonic_buffer_resource scratch;
+    Arena analysisMemory;
+    Arena scratch;
     const auto safety = formatter::BuildSourceAnalysis(tree, {}, analysisMemory, scratch);
     FailingFormatMemory memory;
     const auto begin = parser::SourceOffset(source.find("void uncertain"));
@@ -135,8 +137,8 @@ TEST(PublicPipeline, UnlocalizedPipelineFailureReturnsHonestUnchangedMetadata)
     const std::string source = "void f(){if(a)invoke( x,y );}\n";
     const Input input(source);
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-    std::pmr::monotonic_buffer_resource analysisMemory;
-    std::pmr::monotonic_buffer_resource scratch;
+    Arena analysisMemory;
+    Arena scratch;
     const auto safety = formatter::BuildSourceAnalysis(tree, {}, analysisMemory, scratch);
     FailingFormatMemory memory;
     const auto result = formatter::detail::FormatWithAnalysis(
@@ -314,8 +316,8 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     EXPECT_EQ(preserved.Text, source);
     Input input(source);
     const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
-    std::pmr::monotonic_buffer_resource file;
-    std::pmr::monotonic_buffer_resource scratch;
+    Arena file;
+    Arena scratch;
     formatter::SourceAnalysisOptions options;
     options.EditScope = selected;
     const auto safety = formatter::BuildSourceAnalysis(tree, options, file, scratch);
@@ -329,9 +331,7 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     EXPECT_EQ(gap.Source.End, begin + 12);
     EXPECT_EQ(safety.Original(gap), "\n            ");
     EXPECT_TRUE(gap.Preserve);
-    EXPECT_NE(
-        static_cast<uint16_t>(gap.Reasons) & static_cast<uint16_t>(formatter::ProtectionReason::OutsideEditScope),
-        0u);
+    EXPECT_NE(static_cast<u16>(gap.Reasons) & static_cast<u16>(formatter::ProtectionReason::OutsideEditScope), 0u);
     // A permission is not a style demand. Only explicit Spaces selects the
     // narrow final-indent edit, leaving the LF and excluded endpoint exact.
     style.IndentationKind = formatter::IndentationKind::Spaces;
@@ -523,7 +523,7 @@ TEST(PublicPipeline, ControlSeparatorsRespectProtectionAndScope)
 
 TEST(PublicPipeline, UnbracedControlSeparatorCompactWidthAndMultilineSuffix)
 {
-    for (size_t width : {size_t(10000), size_t(32)}) {
+    for (us width : {us(10000), us(32)}) {
         auto style = Canonical();
         style.IndentWidth = 2;
         style.ColumnLimit = width;
@@ -566,10 +566,10 @@ TEST(PublicPipeline, AmbiguousInitializersRespectEditScope)
         EXPECT_NE(result.Text.find("Acquire(\n"), std::string::npos);
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
         EXPECT_EQ(FormatInput(source, prepared, {.EditScope = std::span<const parser::SourceRange>{}}).Text, source);
-        const std::array immutable{parser::SourceRange{0, uint32_t(source.size())}};
+        const std::array immutable{parser::SourceRange{0, u32(source.size())}};
         EXPECT_EQ(FormatInput(source, prepared, {.ImmutableRanges = immutable}).Text, source);
-        const auto begin = uint32_t(source.find("Acquire"));
-        const auto end = uint32_t(source.find(';'));
+        const auto begin = u32(source.find("Acquire"));
+        const auto end = u32(source.find(';'));
         const std::array selected{parser::SourceRange{begin, end}};
         const auto scoped = FormatInput(source, prepared, {.EditScope = selected});
         EXPECT_TRUE(scoped.Text.starts_with(source.substr(0, begin)));
@@ -848,7 +848,7 @@ TEST(PublicPipeline, DeclarationSpacingRequiresRebuiltOwnerAndEditableGap)
     auto style = formatter::Style{};
     style.DeclarationHeadersLayout = formatter::CategoryLayout::Canonical;
     const formatter::PreparedFormat prepared(style);
-    const auto gapBegin = uint32_t(source.find("  make"));
+    const auto gapBegin = u32(source.find("  make"));
     const auto gapEnd = gapBegin + 2;
     const auto result = FormatInput(source, prepared);
     EXPECT_NE(result.Text.find("Box<int> make()"), std::string::npos);
@@ -865,9 +865,9 @@ TEST(PublicPipeline, DeclarationSpacingRequiresRebuiltOwnerAndEditableGap)
     const auto protectedGap = FormatInput(source, prepared, {.ImmutableRanges = selected});
     EXPECT_NE(protectedGap.Text.find("Box<int>  make()"), std::string::npos);
 
-    const auto qualifiedGap = uint32_t(source.find("\nOwner"));
-    const auto qualifiedBegin = uint32_t(source.rfind("Box<int>", qualifiedGap));
-    const auto qualifiedEnd = uint32_t(source.size());
+    const auto qualifiedGap = u32(source.find("\nOwner"));
+    const auto qualifiedBegin = u32(source.rfind("Box<int>", qualifiedGap));
+    const auto qualifiedEnd = u32(source.size());
     const std::array qualifiedScope{parser::SourceRange{qualifiedBegin, qualifiedEnd}};
     const std::array immutableQualifiedGap{parser::SourceRange{qualifiedGap, qualifiedGap + 1}};
     const auto qualified = FormatInput(source, prepared, {.EditScope = qualifiedScope});
@@ -902,7 +902,7 @@ TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
             };
             ASSERT_EQ(result.Diagnostics.size(), suffixes.size());
 
-            for (size_t i = 0; i < suffixes.size(); ++i) {
+            for (us i = 0; i < suffixes.size(); ++i) {
                 const auto suffix = result.Text.find(suffixes[i]);
                 ASSERT_NE(suffix, std::string::npos);
                 EXPECT_EQ(result.Diagnostics[i].Kind, formatter::LayoutDiagnosticKind::LineWidth);
@@ -921,13 +921,13 @@ TEST(PublicPipeline, DeclarationHeaderBreaksRespectWidthAndByteAuthority)
     style.WidthDiagnostics = formatter::WidthDiagnosticPolicy::Report;
     const formatter::PreparedFormat prepared(style);
     const auto firstLine = source.substr(0, source.find('\n') + 1);
-    const std::array immutable{parser::SourceRange{0, uint32_t(firstLine.size())}};
+    const std::array immutable{parser::SourceRange{0, u32(firstLine.size())}};
     const auto protectedResult = FormatInput(firstLine, prepared, {.ImmutableRanges = immutable});
     EXPECT_EQ(protectedResult.Text, firstLine);
     ASSERT_EQ(protectedResult.Diagnostics.size(), 1u);
     EXPECT_EQ(protectedResult.Diagnostics[0].Kind, formatter::LayoutDiagnosticKind::LineWidth);
 
-    const auto gap = uint32_t(firstLine.find("> ReadFirstResult") + 1);
+    const auto gap = u32(firstLine.find("> ReadFirstResult") + 1);
     const std::array selected{parser::SourceRange{gap, gap + 1}};
     const auto scoped = FormatInput(firstLine, prepared, {.EditScope = selected});
     EXPECT_NE(scoped.Text.find(">\nReadFirstResult"), std::string::npos);
@@ -943,7 +943,7 @@ TEST(PublicPipeline, LambdaLineBasesKeepSourceAuthority)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-captures";
     const auto input = test::golden::ReadFile(directory / "profile.input.cpp");
     const auto style =
-        formatter::LoadConfigFile(directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").FormattingStyle;
+        formatter::LoadConfigFile(directory / "../../../../cli/examples/ytsaurus.hit-fmt").FormattingStyle;
     const formatter::PreparedFormat prepared(style);
 
     for (const bool crlf : {false, true}) {
@@ -962,12 +962,12 @@ TEST(PublicPipeline, LambdaLineBasesKeepSourceAuthority)
         EXPECT_TRUE(result.Diagnostics.empty());
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
         EXPECT_NE(result.Text.find("\n            auto guard ="), std::string::npos);
-        const auto begin = uint32_t(source.find("class Adapter"));
-        const std::array scope{parser::SourceRange{begin, uint32_t(source.size())}};
+        const auto begin = u32(source.find("class Adapter"));
+        const std::array scope{parser::SourceRange{begin, u32(source.size())}};
         const auto scoped = FormatInput(source, prepared, {.EditScope = scope});
         EXPECT_NE(scoped.Text.find("\n            auto guard ="), std::string::npos);
-        const auto guardBegin = uint32_t(source.find("                    InvokerGuard", begin));
-        const auto guardEnd = uint32_t(source.find("                    callback();", guardBegin));
+        const auto guardBegin = u32(source.find("                    InvokerGuard", begin));
+        const auto guardEnd = u32(source.find("                    callback();", guardBegin));
         const std::array immutable{parser::SourceRange{guardBegin, guardEnd}};
         const auto frozen = FormatInput(source, prepared, {.ImmutableRanges = immutable});
         EXPECT_NE(frozen.Text.find(source.substr(guardBegin, guardEnd - guardBegin)), std::string::npos);
@@ -979,16 +979,16 @@ TEST(PublicPipeline, ConditionalFragmentsKeepSourceAuthority)
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../preprocessing-fragments";
     const auto source = test::golden::ReadFile(directory / "canonical.input.cpp");
     const auto style =
-        formatter::LoadConfigFile(directory / "../../../../hit-fmt/examples/ytsaurus.hit-fmt").FormattingStyle;
+        formatter::LoadConfigFile(directory / "../../../../cli/examples/ytsaurus.hit-fmt").FormattingStyle;
     const formatter::PreparedFormat prepared(style);
-    const auto begin = uint32_t(source.find("void Arguments()"));
-    const auto end = uint32_t(source.find("void Parameters(", begin));
+    const auto begin = u32(source.find("void Arguments()"));
+    const auto end = u32(source.find("void Parameters(", begin));
     const std::array scope{parser::SourceRange{begin, end}};
     const auto scoped = FormatInput(source, prepared, {.EditScope = scope});
     EXPECT_NE(scoped.Text.find("left + delta"), std::string::npos);
 
-    const auto immutableBegin = uint32_t(source.find("    Consume(first,\n"));
-    const auto immutableEnd = uint32_t(source.find("    Consume(\n", immutableBegin));
+    const auto immutableBegin = u32(source.find("    Consume(first,\n"));
+    const auto immutableEnd = u32(source.find("    Consume(\n", immutableBegin));
     const std::array immutable{parser::SourceRange{immutableBegin, immutableEnd}};
     const auto protectedResult = FormatInput(source, prepared, {.ImmutableRanges = immutable});
     EXPECT_NE(
@@ -1010,7 +1010,7 @@ TEST(
     EXPECT_TRUE(result.Text.starts_with("#include \"a.h\"\n#include \"z.h\"\n"));
     EXPECT_NE(result.Text.find("if (ok) {"), std::string::npos);
     EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-    const std::array<parser::SourceRange, 1> excluded{{{0, uint32_t(source.find(';'))}}};
+    const std::array<parser::SourceRange, 1> excluded{{{0, u32(source.find(';'))}}};
     auto constrained = FormatInput(source, prepared, {.ImmutableRanges = excluded});
     EXPECT_TRUE(constrained.Text.starts_with(source.substr(0, excluded[0].End)));
     EXPECT_NE(constrained.Text.find("if (ok) {"), std::string::npos);
@@ -1030,7 +1030,7 @@ TEST(PublicPipeline, ProtectedBytesSurviveBothBranchesAndCRLF)
         EXPECT_TRUE(result.Text.starts_with(source.substr(0, source.find("void f"))));
         EXPECT_NE(result.Text.find("KEEP(  x, y )"), std::string::npos);
 
-        for (size_t i = 0; i < result.Text.size(); ++i) {
+        for (us i = 0; i < result.Text.size(); ++i) {
             if (result.Text[i] == '\n') {
                 ASSERT_GT(i, 0u);
                 EXPECT_EQ(result.Text[i - 1], '\r');
@@ -1072,14 +1072,14 @@ TEST(PublicPipeline, EnumeratorAssignmentRespectsScopeAndProtection)
         std::filesystem::path(__FILE__).parent_path() / "testdata/consolidated-pipeline/enumerator-assignment";
     const auto source = test::golden::ReadFile(directory / "input.cpp");
     const formatter::PreparedFormat prepared(formatter::LoadConfigFile(directory / "space.hit-fmt").FormattingStyle);
-    const auto second = uint32_t(source.find("Second"));
+    const auto second = u32(source.find("Second"));
     const std::array<parser::SourceRange, 1> selected{{{0, second}}};
     const auto scoped = FormatInput(source, prepared, {.EditScope = selected});
     EXPECT_EQ(scoped.Text, "enum Mode { First = 1, Second=2 };\n");
     const std::array<parser::SourceRange, 1> immutable{{{0, second}}};
     const auto locked = FormatInput(source, prepared, {.ImmutableRanges = immutable});
     EXPECT_EQ(locked.Text, "enum Mode { First  =  1, Second = 2 };\n");
-    const auto gap = uint32_t(source.find("  ="));
+    const auto gap = u32(source.find("  ="));
     const std::array<parser::SourceRange, 1> partial{{{gap, gap + 1}}};
     const auto denied = FormatInput(source, prepared, {.EditScope = partial});
     EXPECT_EQ(denied.Text, source);
@@ -1162,7 +1162,7 @@ TEST(PublicPipeline, ImmutableRangesConstrainNamespaceAndStructuralPlanning)
     style.AddMissingControlBraces = true;
     const formatter::PreparedFormat prepared(style);
     const std::string source = "namespace Name { void f(){ if(ok)invoke(a,b); } }\nint tail;\n";
-    const std::array<parser::SourceRange, 1> immutable{{{0, uint32_t(source.find('\n') + 1)}}};
+    const std::array<parser::SourceRange, 1> immutable{{{0, u32(source.find('\n') + 1)}}};
     const auto result = FormatInput(source, prepared, {.ImmutableRanges = immutable});
     EXPECT_TRUE(result.Text.starts_with(source.substr(0, immutable[0].End)));
     EXPECT_EQ(result.StructuralDiagnostics.size(), 2u);
@@ -1193,10 +1193,10 @@ TEST(PublicPipeline, ImmutableRangesConstrainNamespaceAndStructuralPlanning)
     style.NamespaceComments = formatter::NamespaceComments::Preserve;
     const formatter::PreparedFormat removal(style);
     const std::string suffix = "namespace Name {};; // keep\nint tail;\n";
-    const auto begin = uint32_t(suffix.find(";;"));
+    const auto begin = u32(suffix.find(";;"));
 
     for (const bool protectSuffix : {false, true}) {
-        const auto comment = uint32_t(suffix.find("//"));
+        const auto comment = u32(suffix.find("//"));
         const std::array protectedRange{
             protectSuffix ? parser::SourceRange{begin, begin + 2} : parser::SourceRange{comment, comment + 7},
         };
@@ -1300,8 +1300,8 @@ TEST(PublicPipeline, EditScopeProjectsPermutationGeneratedBytesAndReasonUnions)
     const formatter::PreparedFormat prepared(style);
     const std::string source = "#include \"zzzz.h\"\n#include \"a.h\"\n;\n"
         "void selected(){ if(ok)invoke(a,b); KEEP(  x,y ); }\n" "void locked( ){  invoke( x,y ); }\n";
-    const auto tail = uint32_t(source.find("void locked"));
-    const auto sensitive = uint32_t(source.find("KEEP("));
+    const auto tail = u32(source.find("void locked"));
+    const auto sensitive = u32(source.find("KEEP("));
     const std::array<parser::SourceRange, 1> scope{{{0, tail}}};
     const std::array<parser::SourceRange, 1> immutable{{{sensitive, sensitive + 13}}};
     const auto result = FormatInput(source, prepared, {.ImmutableRanges = immutable, .EditScope = scope});
@@ -1310,7 +1310,7 @@ TEST(PublicPipeline, EditScopeProjectsPermutationGeneratedBytesAndReasonUnions)
     EXPECT_NE(result.Text.find("KEEP(  x,y )"), std::string::npos);
     // A partly selected include group must still skip atomically; neighboring
     // directive/source associations cannot authorize the other include.
-    const std::array<parser::SourceRange, 1> partial{{{0, uint32_t(source.find('\n') + 1)}}};
+    const std::array<parser::SourceRange, 1> partial{{{0, u32(source.find('\n') + 1)}}};
     EXPECT_EQ(FormatInput(source, prepared, {.EditScope = partial}).Text, source);
 }
 
@@ -1359,20 +1359,6 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
     }
 }
 
-TEST(PublicPipeline, MatchingHeaderSuffixOutlivesStyle)
-{
-    const auto directory = std::filesystem::path(__FILE__).parent_path() / "testdata/include-matching-suffix";
-    const auto source = test::golden::ReadFile(directory / "default.output.cpp");
-    const auto prepared = [&] {
-        auto style = formatter::LoadConfigFile(directory / "suffix.hit-fmt").FormattingStyle;
-        style.IncludeMatchingHeaderSuffix = "_integration_test";
-        return formatter::PreparedFormat(style);
-    }();
-    const auto copied = prepared;
-    const auto result = FormatInput(source, copied, {.InputFilePath = "example_integration_test.cpp"});
-    EXPECT_EQ(result.Text, test::golden::ReadFile(directory / "report.input.cpp"));
-}
-
 TEST(PublicPipeline, IncludeRegroupingRetainsLineEndingsAndIncompleteAtoms)
 {
     formatter::Style style;
@@ -1395,7 +1381,7 @@ TEST(PublicPipeline, IncludeRegroupingRetainsLineEndingsAndIncompleteAtoms)
         if (std::string_view(source).starts_with("#include \"z.h\"\r\n")) {
             EXPECT_NE(result.Text, source);
 
-            for (std::size_t i = 0; i < result.Text.size(); ++i) {
+            for (us i = 0; i < result.Text.size(); ++i) {
                 if (result.Text[i] == '\n') {
                     ASSERT_GT(i, 0u);
                     EXPECT_EQ(result.Text[i - 1], '\r');
@@ -1419,7 +1405,7 @@ TEST(PublicPipeline, EditScopeDeletionAndReplacementDoNotOwnTheirEnds)
     const auto result = FormatInput(source, prepared, {.EditScope = deleted});
     EXPECT_EQ(result.Text, "  int x;\n");
     const std::string control = "void f(){ while(ok); int x; }\n";
-    const auto semicolon = uint32_t(control.find(';'));
+    const auto semicolon = u32(control.find(';'));
     const std::array<parser::SourceRange, 1> endpoint{{{semicolon, semicolon + 1}}};
     const std::array<parser::SourceRange, 1> replacement{{{semicolon, semicolon + 2}}};
 
@@ -1430,7 +1416,7 @@ TEST(PublicPipeline, EditScopeDeletionAndReplacementDoNotOwnTheirEnds)
         EXPECT_TRUE(replaced.Text.ends_with("int x; }\n"));
     }
 
-    const std::array<parser::SourceRange, 1> tail{{{semicolon + 1, uint32_t(control.size())}}};
+    const std::array<parser::SourceRange, 1> tail{{{semicolon + 1, u32(control.size())}}};
     const auto protectedTail = FormatInput(control, prepared, {.ImmutableRanges = tail});
     EXPECT_NE(protectedTail.Text.find("{}"), std::string::npos);
     EXPECT_EQ(FormatInput(control, prepared, {.ImmutableRanges = endpoint}).Text, control);
@@ -1443,8 +1429,8 @@ TEST(PublicPipeline, EditScopeBraceInsertionRequiresBothOriginalPoints)
     style.ControlBlockSpaceBeforeBrace = formatter::GapPolicy::GeneratedSpace;
     const formatter::PreparedFormat prepared(style);
     const std::string source = "void f(){ if(ok)invoke(); }\n";
-    const auto begin = uint32_t(source.find("invoke"));
-    const auto end = uint32_t(source.find(';') + 1);
+    const auto begin = u32(source.find("invoke"));
+    const auto end = u32(source.find(';') + 1);
     const std::array<parser::SourceRange, 1> unownedEnd{{{begin, end}}};
     EXPECT_EQ(FormatInput(source, prepared, {.EditScope = unownedEnd}).Text, source);
     const std::array<parser::SourceRange, 1> ownedEnd{{{begin, end + 1}}};
@@ -1476,8 +1462,8 @@ TEST(PublicPipeline, EditScopeNamespaceOriginalWindowsAndEOFOwnership)
             const bool existing = policy != formatter::NamespaceComments::
                 AddMissing;
             const std::string source = bare + (existing ? " // namespace Wrong\n" : "\n");
-            const auto closeEnd = uint32_t(bare.size());
-            const std::array<parser::SourceRange, 1> selected{{{0, uint32_t(source.size())}}};
+            const auto closeEnd = u32(bare.size());
+            const std::array<parser::SourceRange, 1> selected{{{0, u32(source.size())}}};
             const auto result = FormatInput(source, prepared, {.EditScope = selected});
 
             if (policy == formatter::NamespaceComments::Remove) {
@@ -1496,16 +1482,16 @@ TEST(PublicPipeline, EditScopeNamespaceOriginalWindowsAndEOFOwnership)
             // Existing replacement windows cannot be authorized by their
             // close-brace point alone, even after a preceding deletion.
             if (existing) {
-                const std::array<parser::SourceRange, 1> cutComment{{{0, uint32_t(source.find("Wrong"))}}};
+                const std::array<parser::SourceRange, 1> cutComment{{{0, u32(source.find("Wrong"))}}};
                 EXPECT_NE(
                     FormatInput(source, prepared, {.EditScope = cutComment}).Text.find("Wrong"),
                     std::string::npos);
             } else {
-                const std::array<parser::SourceRange, 1> fullEOF{{{0, uint32_t(bare.size())}}};
+                const std::array<parser::SourceRange, 1> fullEOF{{{0, u32(bare.size())}}};
                 const auto eof = FormatInput(bare, prepared, {.EditScope = fullEOF});
                 EXPECT_EQ(eof.Text.find("// namespace"), std::string::npos);
                 const std::string withComment = bare + " // namespace Wrong\n";
-                const std::array<parser::SourceRange, 1> wholeComment{{{0, uint32_t(withComment.size())}}};
+                const std::array<parser::SourceRange, 1> wholeComment{{{0, u32(withComment.size())}}};
                 const auto retained = FormatInput(withComment, prepared, {.EditScope = wholeComment});
                 EXPECT_EQ(retained.Text, normalize ? withComment.substr(1) : withComment);
             }
@@ -1522,11 +1508,11 @@ TEST(PublicPipeline, EditScopeCopiedIntersectionsAfterNormalization)
     const formatter::PreparedFormat prepared(style);
     const std::string source = "#include \"z.h\"\r\n#include \"aaa.h\"\r\n;\r\n"
         "void locked( ){\r\n  invoke( x,y );  \r\n\t\n}\r\n" "void selected(){ invoke(a,b); }\n";
-    const auto firstFunction = uint32_t(source.find("void locked"));
-    const auto horizontal = uint32_t(source.find("  \r\n"));
-    const auto selectedFunction = uint32_t(source.find("void selected"));
+    const auto firstFunction = u32(source.find("void locked"));
+    const auto horizontal = u32(source.find("  \r\n"));
+    const auto selectedFunction = u32(source.find("void selected"));
     const std::array<parser::SourceRange, 3> selected{
-        {{0, firstFunction}, {horizontal, horizontal + 2}, {selectedFunction, uint32_t(source.size())}},
+        {{0, firstFunction}, {horizontal, horizontal + 2}, {selectedFunction, u32(source.size())}},
     };
     const auto result = FormatInput(source, prepared, {.EditScope = selected});
     EXPECT_TRUE(result.Text.starts_with("#include \"aaa.h\"\r\n#include \"z.h\"\r\n"));
@@ -1543,17 +1529,17 @@ TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
     auto style = Canonical();
     style.AddMissingControlBraces = true;
     const formatter::PreparedFormat prepared(style);
-    const std::array<parser::SourceRange, 1> full{{{0, uint32_t(source.size())}}};
+    const std::array<parser::SourceRange, 1> full{{{0, u32(source.size())}}};
     const auto result = FormatInput(source, prepared, {.EditScope = full});
     EXPECT_TRUE(result.Text.starts_with(source.substr(0, source.find("void safe"))));
     EXPECT_NE(result.Text.find("invoke(x, y)"), std::string::npos);
-    const auto safe = uint32_t(source.find("void safe"));
+    const auto safe = u32(source.find("void safe"));
 
     for (const std::vector<parser::SourceRange> invalid :
         {
             std::vector<parser::SourceRange>{{0, 0}},
             {{2, 1}},
-            {{0, uint32_t(source.size() + 1)}},
+            {{0, u32(source.size() + 1)}},
             {{4, 6}, {1, 3}},
             {{0, 5}, {4, 7}},
         })
@@ -1586,11 +1572,11 @@ TEST(PublicPipeline, RequiresOrdinaryReturnBoundaryRespectsScope)
             const auto source =
                 "template<class T> requires (requires(T v) { v.touch(); })\n" + std::string(declaration) + "\n";
             SCOPED_TRACE(source);
-            const auto function = uint32_t(source.find(declaration));
-            const std::array<parser::SourceRange, 1> selected{{{function, uint32_t(source.size())}}};
+            const auto function = u32(source.find(declaration));
+            const std::array<parser::SourceRange, 1> selected{{{function, u32(source.size())}}};
             const auto result = FormatInput(source, prepared, {.EditScope = selected});
             EXPECT_EQ(result.Text.substr(0, function), source.substr(0, function));
-            const std::array<parser::SourceRange, 1> selectedOutput{{{function, uint32_t(result.Text.size())}}};
+            const std::array<parser::SourceRange, 1> selectedOutput{{{function, u32(result.Text.size())}}};
             EXPECT_EQ(FormatInput(result.Text, prepared, {.EditScope = selectedOutput}).Text, result.Text);
             const auto unrestricted = FormatInput(source, prepared);
             EXPECT_EQ(FormatInput(unrestricted.Text, prepared).Text, unrestricted.Text);
@@ -1653,8 +1639,8 @@ TEST(PublicPipeline, RequiresRecoveryPreservesInvalidBytesOutsideScope)
             const auto source = "template<class T> requires requires(T v) { v.touch(); } " + std::string(terminal) +
                 "\n" + std::string(declaration) + "\n";
             SCOPED_TRACE(source);
-            const auto function = uint32_t(source.find(declaration));
-            const std::array<parser::SourceRange, 1> selected{{{function, uint32_t(source.size())}}};
+            const auto function = u32(source.find(declaration));
+            const std::array<parser::SourceRange, 1> selected{{{function, u32(source.size())}}};
             const auto result = FormatInput(source, prepared, {.EditScope = selected});
             EXPECT_EQ(result.Text.substr(0, function), source.substr(0, function));
         }
@@ -1703,8 +1689,8 @@ TEST(PublicPipeline, ConstructorInitializerLambdasRespectProtection)
         formatter::FormatResult result;
         ASSERT_NO_THROW(result = FormatInput(source, prepared));
         EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-        const auto begin = uint32_t(source.find('['));
-        const auto end = uint32_t(source.find('}', begin) + 1);
+        const auto begin = u32(source.find('['));
+        const auto end = u32(source.find('}', begin) + 1);
         const std::array<parser::SourceRange, 1> immutable{{{begin, end}}};
         const auto protectedResult = FormatInput(source, prepared, {.ImmutableRanges = immutable});
         EXPECT_NE(protectedResult.Text.find(source.substr(begin, end - begin)), std::string::npos);
@@ -1719,19 +1705,19 @@ TEST(PublicPipeline, TerminalConstructorTemplateIdsRespectProtectionAndScope)
     };
     const auto source = fixture.InputNamed(".input.cpp");
     const formatter::PreparedFormat prepared(formatter::LoadConfigFile(fixture.Named(".hit-fmt")).FormattingStyle);
-    const auto begin = uint32_t(source.find("explicit Parcel"));
-    const auto end = uint32_t(source.find('{', begin));
+    const auto begin = u32(source.find("explicit Parcel"));
+    const auto end = u32(source.find('{', begin));
     const std::array<parser::SourceRange, 1> header{{{begin, end}}};
     const auto protectedResult = FormatInput(source, prepared, {.ImmutableRanges = header});
     EXPECT_NE(protectedResult.Text.find(source.substr(begin, end - begin)), std::string::npos);
 
-    const auto point = uint32_t(source.find("value,1") + 6);
+    const auto point = u32(source.find("value,1") + 6);
     const std::array<parser::SourceRange, 1> selected{{{point, point + 1}}};
     const auto owned = FormatInput(source, prepared, {.EditScope = selected});
     auto expected = source;
     expected.insert(point, " ");
     EXPECT_EQ(owned.Text, expected);
-    const std::array<parser::SourceRange, 1> immutable{{{0, uint32_t(source.size())}}};
+    const std::array<parser::SourceRange, 1> immutable{{{0, u32(source.size())}}};
     const auto frozen = FormatInput(source, prepared, {.ImmutableRanges = immutable});
     EXPECT_EQ(frozen.Text, source);
 }
@@ -1744,13 +1730,13 @@ TEST(PublicPipeline, JoinedTemplateClosersRespectEditScope)
     const formatter::PreparedFormat prepared(style);
     const auto complete = FormatInput(source, prepared);
     EXPECT_EQ(complete.Text, "using First = Box<Box<int>>;\n" "using Second = Box<Box<int>>;\n");
-    const auto point = uint32_t(source.find("> >") + 1);
+    const auto point = u32(source.find("> >") + 1);
     const std::array selected{parser::SourceRange{point, point + 1}};
     const auto scoped = FormatInput(source, prepared, {.EditScope = selected});
     auto expected = source;
     expected.erase(point, 1);
     EXPECT_EQ(scoped.Text, expected);
-    const std::array all{parser::SourceRange{0, uint32_t(source.size())}};
+    const std::array all{parser::SourceRange{0, u32(source.size())}};
     const auto frozen = FormatInput(source, prepared, {.ImmutableRanges = all});
     EXPECT_EQ(frozen.Text, source);
 }
@@ -1776,14 +1762,14 @@ TEST(PublicPipeline, TerminalConstructorSelfTypeStatementsRespectEditScope)
         SCOPED_TRACE(source);
         formatter::FormatResult complete;
         ASSERT_NO_THROW(complete = FormatInput(source, prepared));
-        const auto point = uint32_t(source.find("seed,seed") + 5);
+        const auto point = u32(source.find("seed,seed") + 5);
         const std::array<parser::SourceRange, 1> selected{{{point, point + 1}}};
         const auto scoped = FormatInput(source, prepared, {.EditScope = selected});
         auto expected = source;
         expected.insert(point, " ");
         EXPECT_EQ(scoped.Text, expected);
         EXPECT_EQ(FormatInput(scoped.Text, prepared, {.EditScope = selected}).Text, scoped.Text);
-        const std::array<parser::SourceRange, 1> all{{{0, uint32_t(source.size())}}};
+        const std::array<parser::SourceRange, 1> all{{{0, u32(source.size())}}};
         const auto frozen = FormatInput(source, prepared, {.ImmutableRanges = all});
         EXPECT_EQ(frozen.Text, source);
     }
@@ -1798,7 +1784,7 @@ TEST(PublicPipeline,
     style.ColumnLimit = 10000;
     style.CommaSpaceAfter = formatter::GapPolicy::Space;
     const formatter::PreparedFormat prepared(style);
-    const auto point = uint32_t(source.find("seed,seed") + 5);
+    const auto point = u32(source.find("seed,seed") + 5);
     const std::array<parser::SourceRange, 1> selected{{{point, point + 1}}};
     const auto owned = FormatInput(source, prepared, {.EditScope = selected});
     auto expected = source;
@@ -1807,7 +1793,7 @@ TEST(PublicPipeline,
     EXPECT_EQ(FormatInput(owned.Text, prepared, {.EditScope = selected}).Text, owned.Text);
     const auto complete = FormatInput(source, prepared);
     EXPECT_EQ(FormatInput(complete.Text, prepared).Text, complete.Text);
-    const std::array<parser::SourceRange, 1> all{{{0, uint32_t(source.size())}}};
+    const std::array<parser::SourceRange, 1> all{{{0, u32(source.size())}}};
     const auto frozen = FormatInput(source, prepared, {.ImmutableRanges = all});
     EXPECT_EQ(frozen.Text, source);
 }
@@ -2613,140 +2599,6 @@ TEST(PublicPipeline, ConsumedNormalizationPreservesProtectionAndNamespaceValidat
             EXPECT_EQ(formatter::Format(input.View(), style), expected);
             const Input formatted(expected);
             EXPECT_EQ(formatter::Format(formatted.View(), style), expected);
-        }
-    }
-}
-
-TEST(PublicPipeline, AnalyzedPipelineOwnershipPreservesRequestsAndBorrowedInputs)
-{
-    auto style = Canonical();
-    style.IncludeOrder = formatter::IncludeOrder::Sort;
-    style.RulerPlacement = formatter::RulerPlacement::NamespaceBoundaries;
-    style.RulerLength = 16;
-    style.NamespaceComments = formatter::NamespaceComments::Fix;
-    style.ShortNamespaceLines = 0;
-    style.WhitespaceSensitiveMacros = {"TEXT"};
-    const formatter::PreparedFormat prepared(style);
-    const std::string source =
-        "#include <z.h>\n#include <a.h>\n" "namespace n {\nTEXT(alpha   + beta);\nint value;\n}\n";
-    const Input input(source);
-    const std::array sensitive{std::string_view("TEXT")};
-    const std::array ranges{parser::SourceRange{0, parser::SourceOffset(source.find("namespace"))}};
-
-    for (unsigned mode = 0; mode != 5; ++mode) {
-        SCOPED_TRACE(mode);
-        formatter::FormatRequest request{.InputProtection = true};
-        const bool widthDiagnostics = mode == 4;
-
-        if (mode == 1) {
-            request.SourceMap = true;
-            request.TokenMap = true;
-            request.Changes = true;
-            request.DiagnosticLocations = true;
-        } else if (mode == 2) {
-            request.EditScope = ranges;
-        } else if (mode == 3) {
-            request.ImmutableRanges = ranges;
-        }
-
-        auto original = parser::Parse(input.View(), {}, prepared.ParsingOptions());
-        std::pmr::monotonic_buffer_resource file, scratch;
-        auto safety = formatter::BuildSourceAnalysis(
-            original,
-            {
-                .WhitespaceSensitiveMacros = sensitive,
-                .ImmutableRanges = request.ImmutableRanges,
-                .EditScope = request.EditScope,
-            },
-            file,
-            scratch);
-        scratch.release();
-        const auto* root = &original.Root();
-        const auto* gaps = safety.Gaps().data();
-        const auto* regions = safety.Regions().data();
-        const auto expected = formatter::detail::FormatWithAnalysis(
-            original,
-            prepared,
-            safety,
-            sensitive,
-            request,
-            file,
-            scratch,
-            widthDiagnostics);
-        EXPECT_EQ(&original.Root(), root);
-        EXPECT_EQ(safety.Gaps().data(), gaps);
-        EXPECT_EQ(safety.Regions().data(), regions);
-        EXPECT_EQ(
-            formatter::detail::FormatWithAnalysis(
-                original,
-                prepared,
-                safety,
-                sensitive,
-                request,
-                file,
-                scratch,
-                widthDiagnostics).Text,
-            expected.Text);
-
-        const auto consumed = [&] {
-            auto tree = parser::Parse(input.View(), {}, prepared.ParsingOptions());
-            std::pmr::monotonic_buffer_resource ownedFile, ownedScratch;
-            auto analysis = formatter::BuildSourceAnalysis(
-                tree,
-                {
-                    .WhitespaceSensitiveMacros = sensitive,
-                    .ImmutableRanges = request.ImmutableRanges,
-                    .EditScope = request.EditScope,
-                },
-                ownedFile,
-                ownedScratch);
-            ownedScratch.release();
-            return formatter::detail::ConsumeFormatWithAnalysis(
-                std::move(tree),
-                prepared,
-                std::move(analysis),
-                sensitive,
-                request,
-                ownedFile,
-                ownedScratch,
-                widthDiagnostics);
-        }();
-        EXPECT_EQ(consumed.Text, expected.Text);
-        const auto mappingFacts = [] (const formatter::FormatMapping& mapping) {
-            return std::tuple{
-                mapping.Output.Begin,
-                mapping.Output.End,
-                mapping.Original.Begin,
-                mapping.Original.End,
-                mapping.OriginalToken,
-                mapping.Action,
-                mapping.HasOriginal,
-                mapping.Exact,
-                mapping.Protected,
-                mapping.Generated,
-            };
-        };
-        EXPECT_TRUE(
-            std::ranges::equal(consumed.Map, expected.Map, std::ranges::equal_to{}, mappingFacts, mappingFacts));
-        ASSERT_EQ(consumed.InputProtection.size(), expected.InputProtection.size());
-
-        for (size_t i = 0; i < consumed.InputProtection.size(); ++i) {
-            EXPECT_EQ(consumed.InputProtection[i].Source.Begin, expected.InputProtection[i].Source.Begin);
-            EXPECT_EQ(consumed.InputProtection[i].Source.End, expected.InputProtection[i].Source.End);
-            EXPECT_EQ(consumed.InputProtection[i].Reasons, expected.InputProtection[i].Reasons);
-        }
-
-        ASSERT_EQ(consumed.OriginalTokens.size(), expected.OriginalTokens.size());
-
-        for (size_t i = 0; i < consumed.OriginalTokens.size(); ++i) {
-            EXPECT_EQ(consumed.OriginalTokens[i].Present, expected.OriginalTokens[i].Present);
-            EXPECT_EQ(consumed.OriginalTokens[i].Output.Begin, expected.OriginalTokens[i].Output.Begin);
-            EXPECT_EQ(consumed.OriginalTokens[i].Output.End, expected.OriginalTokens[i].Output.End);
-        }
-
-        if (request.Changes) {
-            test::ExpectFormatChanges(source, consumed);
-            test::ExpectChangeSummary(consumed, expected);
         }
     }
 }

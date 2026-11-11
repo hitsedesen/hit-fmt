@@ -1,0 +1,4 @@
+generated/temporary-directory/source.cpp: failed to process the generated input
+warning: large.cpp: file is too large; skipping
+changed.cpp: missing changed ranges for input file
+unexpected argument: unexpected-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

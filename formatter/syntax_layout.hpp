@@ -6,6 +6,8 @@
 #include "formatter/source_analysis.hpp"
 #include "formatter/syntax_spacing.hpp"
 
+#include <util/types.hpp>
+
 #include <memory_resource>
 #include <span>
 
@@ -27,10 +29,10 @@ struct SyntaxLayoutOptions
     // authored paragraph, unlike a gap copied within a rebuilt adjacency.
     std::span<const GapId> ReassembledGaps = {};
     layout::Newline LineEnding = layout::Newline::LF;
-    uint8_t TabWidth = 8;
+    u8 TabWidth = 8;
 };
 
-enum class SyntaxLayoutError : uint8_t
+enum class SyntaxLayoutError : u8
 {
     None,
     MismatchedInputs,

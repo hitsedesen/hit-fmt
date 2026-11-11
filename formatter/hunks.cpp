@@ -1,19 +1,19 @@
 #include "hunks.hpp"
 
-#include <charconv>
-#include <istream>
+#include <util/parse.hpp>
+#include <util/types.hpp>
+
 #include <stdexcept>
 
 namespace formatter {
 
 namespace {
 
-size_t ParseHunkLine(std::string_view text, size_t record)
+us ParseHunkLine(std::string_view text, us record)
 {
-    size_t result = 0;
-    auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), result);
+    auto [result, success] = TryParseInteger<us>(text);
 
-    if (text.empty() || error != std::errc{} || end != text.data() + text.size() || result == 0) {
+    if (!success || result == 0) {
         throw std::runtime_error("changed ranges line " + std::to_string(record) + ": expected a positive line number");
     }
 
@@ -22,19 +22,21 @@ size_t ParseHunkLine(std::string_view text, size_t record)
 
 } // namespace
 
-ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::path& directory)
+ChangedHunkFiles ParseChangedHunks(std::string_view input, const fs::Path& directory)
 {
     ChangedHunkFiles files;
-    std::string record;
     std::string current;
-    size_t line = 0;
-    size_t groupHunks = 0;
+    us line = 0;
+    us groupHunks = 0;
 
-    while (std::getline(input, record)) {
+    while (!input.empty()) {
+        const auto newline = input.find('\n');
+        auto record = input.substr(0, newline);
+        input = newline == std::string_view::npos ? std::string_view{} : input.substr(newline + 1);
         ++line;
 
         if (!record.empty() && record.back() == '\r') {
-            record.pop_back();
+            record.remove_suffix(1);
         }
 
         if (record.empty()) {
@@ -52,7 +54,13 @@ ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::p
                 throw std::runtime_error("changed ranges line " + std::to_string(line) + ": empty file path");
             }
 
-            auto absolute = std::filesystem::absolute(directory / path).lexically_normal();
+            auto resolved = fs::Absolute(directory / fs::Path(path));
+
+            if (resolved.Error.Code) {
+                throw std::runtime_error(resolved.Error.Code.message());
+            }
+
+            auto absolute = resolved.Value.lexically_normal();
             current = absolute.string();
             files.Paths.emplace_back(absolute);
             groupHunks = 0;
@@ -61,7 +69,7 @@ ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::p
                 throw std::runtime_error("changed ranges line " + std::to_string(line) + ": hunk without file");
             }
 
-            auto range = std::string_view(record).substr(5);
+            auto range = record.substr(5);
             auto colon = range.find(':');
 
             if (colon == std::string_view::npos) {
@@ -80,10 +88,6 @@ ChangedHunkFiles ParseChangedHunks(std::istream& input, const std::filesystem::p
         } else {
             throw std::runtime_error("changed ranges line " + std::to_string(line) + ": expected file or hunk record");
         }
-    }
-
-    if (!input.eof()) {
-        throw std::runtime_error("failed to read changed ranges");
     }
 
     if (!current.empty() && groupHunks == 0) {

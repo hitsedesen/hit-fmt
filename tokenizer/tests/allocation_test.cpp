@@ -1,3 +1,5 @@
+#include <util/types.hpp>
+
 #include <tokenizer/tokenizer.hpp>
 
 #include <cstddef>
@@ -10,11 +12,11 @@ namespace {
 
 thread_local bool TrackAllocations = false;
 
-thread_local size_t AllocationCount = 0;
+thread_local us AllocationCount = 0;
 
 } // namespace
 
-void* operator new(size_t size)
+void* operator new(us size)
 {
     if (TrackAllocations) {
         ++AllocationCount;
@@ -27,7 +29,7 @@ void* operator new(size_t size)
     throw std::bad_alloc();
 }
 
-void* operator new[](size_t size)
+void* operator new[](us size)
 {
     return ::operator new(size);
 }
@@ -42,12 +44,12 @@ void operator delete[](void* storage) noexcept
     std::free(storage);
 }
 
-void operator delete(void* storage, size_t) noexcept
+void operator delete(void* storage, us) noexcept
 {
     std::free(storage);
 }
 
-void operator delete[](void* storage, size_t) noexcept
+void operator delete[](void* storage, us) noexcept
 {
     std::free(storage);
 }
@@ -75,8 +77,8 @@ auto broken = R"missing(raw contents;
         .Size = Source.size() - util::SourcePaddingSize,
     };
 
-    size_t errorCount = 0;
-    size_t descriptionSize = 0;
+    us errorCount = 0;
+    us descriptionSize = 0;
     TrackAllocations = true;
     tokenizer::Tokenizer tokenizer(
         SourceView,
@@ -84,7 +86,7 @@ auto broken = R"missing(raw contents;
             ++errorCount;
             descriptionSize += tokenizer::GetTokenizationErrorDescription(error.Kind).size();
         });
-    size_t tokenCount = 0;
+    us tokenCount = 0;
 
     for ([[maybe_unused]] const auto& token : tokenizer) {
         ++tokenCount;

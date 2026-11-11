@@ -3,6 +3,9 @@
 #include "hunk_scope.hpp"
 #include "hunks.hpp"
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <algorithm>
 #include <memory_resource>
 #include <stdexcept>
@@ -28,12 +31,12 @@ Range Source(const parser::SyntaxTree& tree, Tokens tokens)
     return {tree.Token(tokens.Begin).Text.Begin, tree.Token(tokens.End - 1).Text.End};
 }
 
-std::pmr::vector<Range> ByteScope(
+Vector<Range> ByteScope(
     const detail::OriginalHunkLines& lines,
     std::span<const Hunk> hunks,
     std::pmr::memory_resource& memory)
 {
-    std::pmr::vector<Range> result(&memory);
+    Vector<Range> result(&memory);
     result.reserve(hunks.size());
 
     for (const auto hunk : hunks) {
@@ -45,10 +48,10 @@ std::pmr::vector<Range> ByteScope(
 
 // Validate the caller's original authority BEFORE intersecting it: an invalid
 // interval outside the requested lines must not disappear into a valid result.
-std::pmr::vector<Range> NarrowScope(
+Vector<Range> NarrowScope(
     std::span<const Range> scope,
     std::optional<std::span<const Range>> caller,
-    size_t size,
+    us size,
     std::pmr::memory_resource& memory)
 {
     if (!caller) {
@@ -65,8 +68,8 @@ std::pmr::vector<Range> NarrowScope(
         previous = range.End;
     }
 
-    std::pmr::vector<Range> result(&memory);
-    size_t a = 0, b = 0;
+    Vector<Range> result(&memory);
+    us a = 0, b = 0;
 
     while (a < scope.size() && b < caller->size()) {
         const auto begin = std::max(scope[a].Begin, (*caller)[b].Begin);
@@ -100,13 +103,13 @@ bool SemanticProtection(const SourceAnalysis& safety, Range source)
         [&] (const auto& range, auto begin) {
             return source.Empty() ? range.Source.End < begin : range.Source.End <= begin;
         });
-    constexpr auto outside = uint16_t(ProtectionReason::OutsideEditScope);
+    constexpr auto outside = u16(ProtectionReason::OutsideEditScope);
 
     for (;
         it != ranges.end() && (it->Source.Begin < source.End || (source.Empty() && it->Source.Begin <= source.Begin));
         ++it)
     {
-        if (uint16_t(it->Reasons) & ~outside) {
+        if (u16(it->Reasons) & ~outside) {
             return true;
         }
     }
@@ -121,7 +124,7 @@ struct NamespaceFootprint
 };
 // Merge unit/gap coverage first, THEN intersect requested authority. Nested
 // units therefore cannot cause a per-unit scan of every requested hunk.
-std::vector<HunkCoverage> FinishCoverage(std::pmr::vector<HunkCoverage>& raw, std::span<const Range> selected)
+std::vector<HunkCoverage> FinishCoverage(Vector<HunkCoverage>& raw, std::span<const Range> selected)
 {
     std::sort(
         raw.begin(),
@@ -135,7 +138,7 @@ std::vector<HunkCoverage> FinishCoverage(std::pmr::vector<HunkCoverage>& raw, st
                 ? a.Original.Begin < b.Original.Begin
                 : a.Original.End < b.Original.End;
         });
-    size_t count = 0;
+    us count = 0;
 
     for (const auto record : raw) {
         if (count && raw[count - 1].Reason == record.Reason && record.Original.Begin <= raw[count - 1].Original.End) {
@@ -147,7 +150,7 @@ std::vector<HunkCoverage> FinishCoverage(std::pmr::vector<HunkCoverage>& raw, st
 
     raw.resize(count);
     std::vector<HunkCoverage> result;
-    size_t next = 0;
+    us next = 0;
     std::optional<Reason> reason;
 
     for (const auto record : raw) {
@@ -193,12 +196,12 @@ ChangedFormatResult FormatChanged(
     bool spillover,
     const FormatRequest& request)
 {
-    std::pmr::monotonic_buffer_resource file;
-    std::pmr::monotonic_buffer_resource scratch;
+    Arena file(tree.MemoryResource());
+    Arena scratch;
     const detail::OriginalHunkLines lines(tree.Source(), file);
     const auto selected = lines.Coalesce(hunks, file);
     const auto selectedBytes = ByteScope(lines, selected, file);
-    std::pmr::vector<std::string_view> sensitive(&file);
+    Vector<std::string_view> sensitive(&file);
 
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
@@ -215,9 +218,9 @@ ChangedFormatResult FormatChanged(
         file,
         scratch);
     scratch.release();
-    std::pmr::vector<Hunk> windows(selected.begin(), selected.end(), &file);
-    std::pmr::vector<HunkCoverage> coverage(&file);
-    std::pmr::vector<NamespaceFootprint> namespaces(&file);
+    Vector<Hunk> windows(selected.begin(), selected.end(), &file);
+    Vector<HunkCoverage> coverage(&file);
+    Vector<NamespaceFootprint> namespaces(&file);
 
     for (const auto& region : safety.Regions()) {
         if (region.Tokens.Empty()) {
@@ -341,7 +344,7 @@ ChangedFormatResult FormatChanged(
     // Canonical comments have already been applied. Their original planner
     // survivors supply authority; resolving them again would mistake generated
     // suffixes or rewritten comment identities for unsafe following text.
-    std::pmr::vector<StructuralOperation> canonicalComments(&file);
+    Vector<StructuralOperation> canonicalComments(&file);
 
     for (const auto& operation : canonical.StructuralOperations) {
         if (operation.Kind == StructuralAction::NamespaceComments) {
@@ -377,7 +380,7 @@ ChangedFormatResult FormatChanged(
             eligible.Operations.push_back(*operation);
             return true;
         });
-    std::pmr::vector<Range> outputProtection(&scratch);
+    Vector<Range> outputProtection(&scratch);
 
     for (const auto& range : canonical.OutputProtection) {
         outputProtection.push_back(range.Source);
@@ -452,8 +455,8 @@ ChangedFormatResult FormatChanged(
         if (requiredCandidate && !SemanticProtection(safety, footprint) &&
             !SemanticProtection(safety, {footprint.End, footprint.End}) && !safety.Gaps()[beginGap].IntrinsicPreserve &&
             !safety.Gaps()[endGap].IntrinsicPreserve &&
-            !(uint16_t(safety.Gaps()[beginGap].Reasons) & ~uint16_t(ProtectionReason::OutsideEditScope)) &&
-            !(uint16_t(safety.Gaps()[endGap].Reasons) & ~uint16_t(ProtectionReason::OutsideEditScope)))
+            !(u16(safety.Gaps()[beginGap].Reasons) & ~u16(ProtectionReason::OutsideEditScope)) &&
+            !(u16(safety.Gaps()[endGap].Reasons) & ~u16(ProtectionReason::OutsideEditScope)))
         {
             result.RequiredSkips.push_back(diagnostic);
         } else {

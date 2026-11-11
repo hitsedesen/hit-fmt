@@ -4,6 +4,7 @@
 #include "token.hpp"
 
 #include <util/input.hpp>
+#include <util/types.hpp>
 
 #include <unicode/code_point.hpp>
 
@@ -78,7 +79,7 @@ namespace tokenizer {
     TOKENIZATION_ERROR_KIND(                                                   \
         UnexpectedNullCharacter, "Unexpected NUL character")
 
-enum class TokenizationErrorKind : uint8_t
+enum class TokenizationErrorKind : u8
 {
 #define TOKENIZATION_ERROR_KIND(value, description) value,
     TOKENIZATION_ERROR_KINDS
@@ -101,7 +102,7 @@ template <typename Owner>
 class TokenizerCursor
 {
 protected:
-    enum class NewlineHandling : uint8_t
+    enum class NewlineHandling : u8
     {
         Track,
         Ignore,
@@ -124,14 +125,14 @@ protected:
     void ConsumeCodePoint(unicode::CodePoint value, NewlineHandling newlineHandling = NewlineHandling::Track);
     void ConsumeCodePoint(NewlineHandling newlineHandling = NewlineHandling::Track);
 
-    static constexpr unicode::CodePoint InvalidCodePoint = static_cast<char32_t>(std::numeric_limits<uint32_t>::max());
+    static constexpr unicode::CodePoint InvalidCodePoint = static_cast<char32_t>(std::numeric_limits<u32>::max());
 
     util::SourceOffset CurrentCodePointOffset_ = 0;
     // The cursor only advances, so ASCII never needs to invalidate this cache.
     util::SourceOffset CachedUnicodeOffset_ = std::numeric_limits<util::SourceOffset>::max();
     unicode::CodePoint CachedUnicodeValue_ = '\0';
-    uint8_t CachedUnicodeSize_ = 0;
-    uint32_t EncodingErrorCount_ = 0;
+    u8 CachedUnicodeSize_ = 0;
+    u32 EncodingErrorCount_ = 0;
     util::Position CurrentCodePointPosition_ = {.Line = 1, .Column = 1};
 
 private:
@@ -167,7 +168,7 @@ public:
     {
     public:
         using value_type = Token;
-        using difference_type = std::ptrdiff_t;
+        using difference_type = is;
         using iterator_concept = std::input_iterator_tag;
         using iterator_category = std::input_iterator_tag;
 
@@ -271,8 +272,8 @@ private:
     util::SourceOffset BlockOffset_ = std::numeric_limits<util::SourceOffset>::max();
 
     std::array<Token, detail::AsciiBlock::Size> Pending_;
-    uint8_t PendingIndex_ = 0;
-    uint8_t PendingCount_ = 0;
+    u8 PendingIndex_ = 0;
+    u8 PendingCount_ = 0;
 
     std::function<void(TokenizationError)> ErrorHandler_;
 

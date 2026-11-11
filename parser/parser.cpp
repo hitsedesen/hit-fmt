@@ -4,7 +4,9 @@
 #include "operator_info.hpp"
 
 #include <util/assert.hpp>
+#include <util/memory.hpp>
 #include <util/phase_profiler.hpp>
+#include <util/types.hpp>
 
 #include <tokenizer/tokenizer.hpp>
 
@@ -164,8 +166,9 @@ bool IsTypeKeyword(TK kind)
 
 } // namespace
 
-SyntaxTree::SyntaxTree(std::string_view input)
-    : Memory_(std::make_unique<std::pmr::monotonic_buffer_resource>(detail::InitialMemoryResourceSize))
+SyntaxTree::SyntaxTree(std::string_view input, std::pmr::memory_resource* memory)
+    : Memory_(
+        std::make_unique<Arena>(detail::InitialMemoryResourceSize, memory ? memory : std::pmr::get_default_resource()))
     , Input_(input)
     , Tokens_(*Memory_)
     , Trivia_(*Memory_)
@@ -233,8 +236,8 @@ public:
         util::PaddedSourceView input,
         std::span<const detail::NormalizedPiece> pieces,
         detail::NormalizedRegionTopology topology,
-        std::pmr::vector<TokenIndex>& originalToNormalized,
-        std::pmr::vector<detail::NormalizedCommentInsertion>& insertions);
+        Vector<TokenIndex>& originalToNormalized,
+        Vector<detail::NormalizedCommentInsertion>& insertions);
 
     [[nodiscard]] static SyntaxTree Run(
         util::PaddedSourceView input,
@@ -250,7 +253,7 @@ public:
         SyntaxTree& original,
         util::PaddedSourceView input,
         std::span<const detail::NormalizedPiece> pieces,
-        std::pmr::vector<TokenIndex>& originalToNormalized);
+        Vector<TokenIndex>& originalToNormalized);
 
     ParseContext(SyntaxTree& tree, ErrorHandler& errorHandler, const ParseOptions& options)
         : Tree_(tree)
@@ -333,9 +336,9 @@ public:
         bool rulers,
         SyntaxTree* consumed = nullptr,
         std::span<const TokenIndex> copied = {},
-        std::pmr::vector<TokenIndex>* transported = nullptr,
+        Vector<TokenIndex>* transported = nullptr,
         const detail::NormalizedRegionTopology* topology = nullptr,
-        std::pmr::vector<detail::NormalizedCommentInsertion>* insertions = nullptr,
+        Vector<detail::NormalizedCommentInsertion>* insertions = nullptr,
         std::span<const CopiedTokenRun> stable = {})
     {
         if (!consumed && !topology) {
@@ -422,7 +425,7 @@ public:
             Node* Parent;
         };
 
-        std::pmr::vector<Frame> stack(&ScratchMemory_);
+        Vector<Frame> stack(&ScratchMemory_);
         stack.push_back({original.Root().FirstChild, Tree_.Root_});
 
         while (!stack.empty()) {
@@ -464,9 +467,9 @@ public:
         const LiteralInclude& literalInclude,
         SyntaxTree* consumed,
         std::span<const TokenIndex> copied,
-        std::pmr::vector<TokenIndex>* transported,
+        Vector<TokenIndex>* transported,
         const detail::NormalizedRegionTopology* topology,
-        std::pmr::vector<detail::NormalizedCommentInsertion>* insertions,
+        Vector<detail::NormalizedCommentInsertion>* insertions,
         std::span<const CopiedTokenRun> stable)
     {
         constexpr auto none = std::numeric_limits<TokenIndex>::max();
@@ -501,14 +504,14 @@ public:
             TokenIndex NewToken;
             bool Insert;
             Node* Parent = nullptr;
-            uint32_t ParentRegion = none;
-            uint32_t BeforeRegion = none;
+            u32 ParentRegion = none;
+            u32 BeforeRegion = none;
         };
 
-        std::pmr::vector<TokenIndex> mapping(size_t(original.TokenCount()) + 1, none, &ScratchMemory_);
-        std::pmr::vector<Change> changes(&ScratchMemory_);
-        size_t deleted = 0;
-        size_t stableRun = 0;
+        Vector<TokenIndex> mapping(us(original.TokenCount()) + 1, none, &ScratchMemory_);
+        Vector<Change> changes(&ScratchMemory_);
+        us deleted = 0;
+        us stableRun = 0;
         TokenIndex old = 0, next = 0;
         const auto nativeLineBoundaryMatches = [&] {
             return !old ||
@@ -623,85 +626,84 @@ public:
             }
         };
         bool topologyValid = true;
-        const auto claimChanges =
-            [&] (const Node& node, Node& copy, uint32_t region = UINT32_MAX, uint32_t after = UINT32_MAX) {
-                auto begin = node.Tokens.Begin;
-                auto end = node.Tokens.End;
+        const auto claimChanges = [&] (const Node& node, Node& copy, u32 region = UINT32_MAX, u32 after = UINT32_MAX) {
+            auto begin = node.Tokens.Begin;
+            auto end = node.Tokens.End;
 
-                if (node.Kind == NodeKind::NamespaceDeclaration) {
-                    while (begin < end && original.Kind(begin) != TK::Operator_OpenBrace) {
-                        ++begin;
-                    }
-
-                    if (begin == end || original.MatchingDelimiter(begin) != end - 1) {
-                        return;
-                    }
-
+            if (node.Kind == NodeKind::NamespaceDeclaration) {
+                while (begin < end && original.Kind(begin) != TK::Operator_OpenBrace) {
                     ++begin;
-                    --end;
-                } else if (node.Kind != NodeKind::TranslationUnit) {
+                }
+
+                if (begin == end || original.MatchingDelimiter(begin) != end - 1) {
                     return;
                 }
 
-                auto change = std::lower_bound(
-                    changes.begin(),
-                    changes.end(),
-                    begin,
-                    [] (const Change& item, TokenIndex boundary) {
-                        return item.Before < boundary;
-                    });
-                const Node* previous = nullptr;
-                auto* child = node.FirstChild;
-                auto childRegion = topology ? topology->FirstChild(topology->Records, region) : none;
+                ++begin;
+                --end;
+            } else if (node.Kind != NodeKind::TranslationUnit) {
+                return;
+            }
 
-                for (; change != changes.end() && change->Before <= end; ++change) {
-                    const auto boundary = change->Before;
+            auto change = std::lower_bound(
+                changes.begin(),
+                changes.end(),
+                begin,
+                [] (const Change& item, TokenIndex boundary) {
+                    return item.Before < boundary;
+                });
+            const Node* previous = nullptr;
+            auto* child = node.FirstChild;
+            auto childRegion = topology ? topology->FirstChild(topology->Records, region) : none;
 
-                    // An unfinished body/conditional can consume newly appended
-                    // comments. EOF alone does not prove return to the root scope.
-                    if (node.Kind == NodeKind::TranslationUnit && boundary != 0 && boundary == original.TokenCount()) {
-                        continue;
-                    }
+            for (; change != changes.end() && change->Before <= end; ++change) {
+                const auto boundary = change->Before;
 
-                    while (child && child->Tokens.End <= boundary) {
-                        if (child->Kind != NodeKind::Comment || child->Tokens.Size() != 1 ||
-                            mapping[child->Tokens.Begin] != none)
-                        {
-                            previous = child;
-                        }
+                // An unfinished body/conditional can consume newly appended
+                // comments. EOF alone does not prove return to the root scope.
+                if (node.Kind == NodeKind::TranslationUnit && boundary != 0 && boundary == original.TokenCount()) {
+                    continue;
+                }
 
-                        if (topology) {
-                            if (childRegion >= topology->Count) {
-                                topologyValid = false;
-                                return;
-                            }
-
-                            childRegion = topology->NextSibling(topology->Records, childRegion);
-                        }
-
-                        child = child->NextSibling;
-                    }
-
-                    if ((child && child->Tokens.Begin < boundary) ||
-                        (boundary != begin && boundary != end && (!previous || previous->Tokens.End != boundary) &&
-                            (!child || child->Tokens.Begin != boundary)) || !previousStable(previous, *change))
+                while (child && child->Tokens.End <= boundary) {
+                    if (child->Kind != NodeKind::Comment || child->Tokens.Size() != 1 ||
+                        mapping[child->Tokens.Begin] != none)
                     {
-                        continue;
+                        previous = child;
                     }
-
-                    if (topology && child && childRegion >= topology->Count) {
-                        topologyValid = false;
-                        return;
-                    }
-
-                    change->Parent = &copy;
 
                     if (topology) {
-                        change->ParentRegion = region;
-                        change->BeforeRegion = child ? childRegion : after;
+                        if (childRegion >= topology->Count) {
+                            topologyValid = false;
+                            return;
+                        }
+
+                        childRegion = topology->NextSibling(topology->Records, childRegion);
                     }
+
+                    child = child->NextSibling;
                 }
-            };
+
+                if ((child && child->Tokens.Begin < boundary) ||
+                    (boundary != begin && boundary != end && (!previous || previous->Tokens.End != boundary) &&
+                        (!child || child->Tokens.Begin != boundary)) || !previousStable(previous, *change))
+                {
+                    continue;
+                }
+
+                if (topology && child && childRegion >= topology->Count) {
+                    topologyValid = false;
+                    return;
+                }
+
+                change->Parent = &copy;
+
+                if (topology) {
+                    change->ParentRegion = region;
+                    change->BeforeRegion = child ? childRegion : after;
+                }
+            }
+        };
 
         for (TokenIndex id = 0; id < original.TokenCount(); ++id) {
             if (mapping[id] == none) {
@@ -728,11 +730,11 @@ public:
             struct Affected
             {
                 const Node* Syntax;
-                uint32_t Region;
-                uint32_t After;
+                u32 Region;
+                u32 After;
             };
 
-            std::pmr::vector<Affected> affected(&ScratchMemory_);
+            Vector<Affected> affected(&ScratchMemory_);
 
             if (!changes.empty()) {
                 affected.push_back({&original.Root(), topology ? 0u : none, topology ? topology->Count : none});
@@ -810,11 +812,11 @@ public:
                 // No inserted/deleted token means every syntax endpoint keeps
                 // its index. Only nodes with old trivia need resetting before
                 // attachments are rebuilt in normalized source coordinates.
-                for (uint32_t id = 0; id < original.Trivia_.Size(); ++id) {
-                    original.Trivia_.Owner(id).TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+                for (u32 id = 0; id < original.Trivia_.Size(); ++id) {
+                    original.Trivia_.Owner(id).TriviaIndex_ = std::numeric_limits<u32>::max();
                 }
             } else {
-                std::pmr::vector<Node*> siblings(&ScratchMemory_);
+                Vector<Node*> siblings(&ScratchMemory_);
                 auto* node = Tree_.Root_;
                 while (node) {
                     const auto before = node->Tokens;
@@ -823,7 +825,7 @@ public:
                         : before.Empty()
                             ? TokenRange{mapping[before.Begin], mapping[before.Begin]}
                             : TokenRange{mapping[before.Begin], mapping[before.End - 1] + 1};
-                    node->TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+                    node->TriviaIndex_ = std::numeric_limits<u32>::max();
 
                     if (node->FirstChild) {
                         if (node->NextSibling) {
@@ -880,9 +882,9 @@ public:
                 Node* Parent;
             };
 
-            std::pmr::vector<Frame> stack(&ScratchMemory_);
+            Vector<Frame> stack(&ScratchMemory_);
             stack.push_back({original.Root().FirstChild, &original.Root(), root});
-            size_t deletedNodes = 0;
+            us deletedNodes = 0;
 
             while (!stack.empty()) {
                 auto& frame = stack.back();
@@ -1148,8 +1150,8 @@ private:
     bool TokenizePieces(
         const SyntaxTree& original,
         std::span<const detail::NormalizedPiece> pieces,
-        std::pmr::vector<TokenIndex>& copied,
-        std::pmr::vector<CopiedTokenRun>* stable = nullptr)
+        Vector<TokenIndex>& copied,
+        Vector<CopiedTokenRun>* stable = nullptr)
     {
         constexpr auto none = std::numeric_limits<TokenIndex>::max();
         const auto firstAt = [&] (const SyntaxTree& tree, SourceOffset offset) {
@@ -1168,7 +1170,7 @@ private:
             return low;
         };
         const auto advance = [] (util::Position position, std::string_view text) {
-            for (size_t at = 0; at < text.size();) {
+            for (us at = 0; at < text.size();) {
                 const auto byte = static_cast<unsigned char>(text[at]);
 
                 if (byte == '\n') {
@@ -1211,7 +1213,7 @@ private:
                 position.Line == before.Line ? after.Column + position.Column - before.Column : position.Column,
             };
         };
-        std::pmr::vector<SourceOffset> boundaries(&ScratchMemory_);
+        Vector<SourceOffset> boundaries(&ScratchMemory_);
         std::pmr::string atom(&ScratchMemory_);
         util::Position position{1, 1};
         SourceOffset end = 0;
@@ -1230,7 +1232,7 @@ private:
                 atom.append(util::SourcePaddingSize, '\0');
                 bool valid = true;
                 tokenizer::Tokenizer tokenizer(
-                    {atom.data(), static_cast<uint32_t>(size)},
+                    {atom.data(), static_cast<u32>(size)},
                     [&] (tokenizer::TokenizationError) {
                         valid = false;
                     });
@@ -1364,7 +1366,7 @@ private:
             atom.append(util::SourcePaddingSize, '\0');
             bool valid = true;
             tokenizer::Tokenizer tokenizer(
-                {atom.data(), static_cast<uint32_t>(size)},
+                {atom.data(), static_cast<u32>(size)},
                 [&] (tokenizer::TokenizationError) {
                     valid = false;
                 });
@@ -1401,7 +1403,7 @@ private:
     void Tokenize()
     {
         tokenizer::Tokenizer tokenizer(
-            {.Data = Tree_.Input_.data(), .Size = static_cast<uint32_t>(Tree_.Input_.size())},
+            {.Data = Tree_.Input_.data(), .Size = static_cast<u32>(Tree_.Input_.size())},
             [this] (tokenizer::TokenizationError error) {
                 OnError(ParseError{
                     .Message = std::string(tokenizer::GetTokenizationErrorDescription(error.Kind)),
@@ -1415,12 +1417,12 @@ private:
             TK Closing;
         };
 
-        std::pmr::vector<Delimiter> openings(&ScratchMemory_);
+        Vector<Delimiter> openings(&ScratchMemory_);
         openings.reserve(256);
         for (const auto& token : tokenizer) {
             Tree_.Tokens_.Add(token);
             auto index = Tree_.Tokens_.Size() - 1;
-            if (index >= std::numeric_limits<uint32_t>::max()) {
+            if (index >= std::numeric_limits<u32>::max()) {
                 HasDelimiterMap_ = false;
             } else if (IsOpenDelimiter(token.Kind)) {
                 openings.push_back({.Index = index, .Closing = ClosingDelimiter(token.Kind)});
@@ -1442,7 +1444,7 @@ private:
 
     [[nodiscard]] Node* MakeNode(NodeKind kind, TokenIndex begin)
     {
-        constexpr size_t NodesPerBlock = 256;
+        constexpr us NodesPerBlock = 256;
 
         if (RemainingNodes_ == 0) {
             NextNode_ = static_cast<Node*>(Tree_.Memory_->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
@@ -1459,7 +1461,7 @@ private:
     [[nodiscard]] static bool NeedsPunctuationRole(NodeKind kind)
     {
         static constexpr auto Kinds = [] {
-            std::array<bool, static_cast<size_t>(NodeKind::Error) + 1> result{};
+            std::array<bool, static_cast<us>(NodeKind::Error) + 1> result{};
 
             for (auto roleKind :
                 {
@@ -1506,12 +1508,12 @@ private:
                     NodeKind::FoldEllipsis,
                 })
             {
-                result[static_cast<size_t>(roleKind)] = true;
+                result[static_cast<us>(roleKind)] = true;
             }
 
             return result;
         }();
-        return Kinds[static_cast<size_t>(kind)];
+        return Kinds[static_cast<us>(kind)];
     }
 
     void Append(Node& parent, Node& child)
@@ -1641,9 +1643,9 @@ private:
             }
         }
 
-        constexpr size_t MaximumDepth = 256;
+        constexpr us MaximumDepth = 256;
         std::array<TK, MaximumDepth> closings;
-        size_t depth = 0;
+        us depth = 0;
         auto start = Cursor_;
 
         while (!AtEnd()) {
@@ -2091,7 +2093,7 @@ private:
                     }
 
                     if (braceDelta > 0 && ConditionalBraceScopeOverflow_ == 0 && ConditionalBraceScopeDepth_ != 0) {
-                        ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] += static_cast<size_t>(braceDelta);
+                        ConditionalOpenBraces_[ConditionalBraceScopeDepth_ - 1] += static_cast<us>(braceDelta);
                     }
                 }
 
@@ -2352,7 +2354,7 @@ private:
         const auto close = end - 1;
         auto sequence = opening + 1;
         bool valid = true;
-        size_t headerArguments = 0;
+        us headerArguments = 0;
 
         // Locate the final macro argument without interpreting type/expression
         // tokens inside balanced delimiters as C++ declarations.
@@ -2562,9 +2564,9 @@ private:
             }
         }
 
-        constexpr size_t MaximumDepth = 256;
+        constexpr us MaximumDepth = 256;
         std::array<TK, MaximumDepth> closings;
-        size_t depth = 0;
+        us depth = 0;
         for (auto i = opening; i < Tree_.Tokens_.Size(); ++i) {
             auto kind = Kind(i);
             if (IsOpenDelimiter(kind)) {
@@ -2598,7 +2600,7 @@ private:
         return index;
     }
 
-    void AddModuleDeclarationSyntax(Node& declaration, size_t begin, size_t end, bool import)
+    void AddModuleDeclarationSyntax(Node& declaration, us begin, us end, bool import)
     {
         auto nameBegin = NextSignificant(begin + 1);
         auto nameEnd = end;
@@ -2635,7 +2637,7 @@ private:
             return;
         }
 
-        size_t colon = nameEnd;
+        us colon = nameEnd;
 
         for (auto i = nameBegin; i < nameEnd; ++i) {
             if (Kind(i) == TK::Operator_Colon) {
@@ -2657,7 +2659,7 @@ private:
         }
     }
 
-    void AddConceptDeclarationSyntax(Node& declaration, size_t begin, size_t end)
+    void AddConceptDeclarationSyntax(Node& declaration, us begin, us end)
     {
         auto name = NextSignificant(begin + 1);
 
@@ -2747,7 +2749,7 @@ private:
         return node;
     }
 
-    void AddSeparatedElementSyntax(Node& element, NodeKind kind, size_t begin, size_t end)
+    void AddSeparatedElementSyntax(Node& element, NodeKind kind, us begin, us end)
     {
         if (kind == NodeKind::LambdaCapture) {
             auto name = NextSignificant(begin);
@@ -2864,13 +2866,13 @@ private:
         }
     }
 
-    void AddSeparatedElements(Node& list, size_t begin, size_t end, NodeKind elementKind, bool trackAngles = true)
+    void AddSeparatedElements(Node& list, us begin, us end, NodeKind elementKind, bool trackAngles = true)
     {
-        size_t elementBegin = begin;
+        us elementBegin = begin;
         int delimiterDepth = 0;
         int angleDepth = 0;
         unsigned conditionalMiddle = 0;
-        size_t explicitMemberWork = 4096;
+        us explicitMemberWork = 4096;
 
         for (auto i = begin; i <= end; ++i) {
             auto kind = Kind(i);
@@ -2951,7 +2953,7 @@ private:
         }
     }
 
-    Node* MakeTemplateList(NodeKind kind, size_t opening, size_t end)
+    Node* MakeTemplateList(NodeKind kind, us opening, us end)
     {
         auto* arguments = MakeNode(kind, opening);
         arguments->Tokens.End = end;
@@ -2998,12 +3000,12 @@ private:
         return arguments;
     }
 
-    Node* MakeTemplateArgumentList(size_t opening, size_t end)
+    Node* MakeTemplateArgumentList(us opening, us end)
     {
         return MakeTemplateList(NodeKind::TemplateArgumentList, opening, end);
     }
 
-    Node* MakeTemplateParameterList(size_t opening, size_t end)
+    Node* MakeTemplateParameterList(us opening, us end)
     {
         return MakeTemplateList(NodeKind::TemplateParameterList, opening, end);
     }
@@ -3058,7 +3060,7 @@ private:
         return node;
     }
 
-    void AddUsingDeclarationSyntax(Node& node, size_t begin, size_t end)
+    void AddUsingDeclarationSyntax(Node& node, us begin, us end)
     {
         const auto name = NextSignificant(NextSignificant(begin) + 1);
         const auto assign = SkipAttributeSpecifiers(name + 1);
@@ -3393,7 +3395,7 @@ private:
         return node;
     }
 
-    [[nodiscard]] size_t FindDeclaredTypeName(size_t start, bool isEnum = false) const
+    [[nodiscard]] us FindDeclaredTypeName(us start, bool isEnum = false) const
     {
         auto index = NextSignificant(start) + 1;
 
@@ -3433,18 +3435,18 @@ private:
 
     struct RecordHeadName
     {
-        size_t Token;
+        us Token;
         bool IsQualified;
         bool HasOpaquePrefix = false;
         bool HasTerminalName = false;
-        size_t FinalSpecifier = std::numeric_limits<TokenIndex>::max();
+        us FinalSpecifier = std::numeric_limits<TokenIndex>::max();
         bool HasMacroName = false;
     };
 
-    [[nodiscard]] RecordHeadName FindDeclaredRecordName(size_t start) const
+    [[nodiscard]] RecordHeadName FindDeclaredRecordName(us start) const
     {
         const auto end = Tree_.Tokens_.Size();
-        auto skipAttributes = [&] (size_t index) -> size_t {
+        auto skipAttributes = [&] (us index) -> us {
             while (index < end) {
                 auto after = index;
 
@@ -3592,7 +3594,7 @@ private:
         return node;
     }
 
-    [[nodiscard]] bool HasInitializerListSeparators(size_t opening) const
+    [[nodiscard]] bool HasInitializerListSeparators(us opening) const
     {
         const auto after = FindBalancedEnd(opening);
 
@@ -3602,7 +3604,7 @@ private:
 
         const auto closing = after - 1;
         bool sawComma = false;
-        size_t conditionals = 0;
+        us conditionals = 0;
 
         for (auto cursor = NextSignificant(opening + 1); cursor < closing;) {
             const auto kind = Kind(cursor);
@@ -3661,8 +3663,8 @@ private:
     }
 
     [[nodiscard]] bool IsElaboratedInitializer(
-        size_t start,
-        size_t opening,
+        us start,
+        us opening,
         const RecordHeadName& recordName,
         bool statementContext) const
     {
@@ -3741,7 +3743,7 @@ private:
         bool unknownHeader = recordName.HasOpaquePrefix || !recordName.HasTerminalName;
         bool ambiguousRecordForm = recordName.HasOpaquePrefix;
         bool invalidHeadAngles = false;
-        size_t baseClauseBegin = Tree_.Tokens_.Size();
+        us baseClauseBegin = Tree_.Tokens_.Size();
         int angleDepth = 0;
 
         while (!AtEnd() && CurrentKind() != TK::Operator_Semicolon && CurrentKind() != TK::Operator_CloseBrace) {
@@ -4019,7 +4021,7 @@ private:
         return node;
     }
 
-    bool LooksLikeLinkageSpecification(size_t externIndex) const
+    bool LooksLikeLinkageSpecification(us externIndex) const
     {
         auto next = NextSignificant(externIndex + 1);
 
@@ -4094,12 +4096,12 @@ private:
         return node;
     }
 
-    [[nodiscard]] bool IsExtensionAttribute(size_t index) const
+    [[nodiscard]] bool IsExtensionAttribute(us index) const
     {
         return Kind(index) == TK::Identifier && (Text(index) == "__attribute__" || Text(index) == "__declspec");
     }
 
-    [[nodiscard]] bool IsCallingConvention(size_t index) const
+    [[nodiscard]] bool IsCallingConvention(us index) const
     {
         if (Kind(index) != TK::Identifier) {
             return false;
@@ -4110,7 +4112,7 @@ private:
             text == "__vectorcall" || text == "__regcall" || text == "__clrcall";
     }
 
-    [[nodiscard]] size_t FindExtensionAttributeEnd(size_t index, size_t end) const
+    [[nodiscard]] us FindExtensionAttributeEnd(us index, us end) const
     {
         if (!IsExtensionAttribute(index)) {
             return index;
@@ -4171,9 +4173,9 @@ private:
             IsHintedDeclarationMacro(index);
     }
 
-    [[nodiscard]] size_t SkipTemplateArguments(
-        size_t index,
-        size_t end,
+    [[nodiscard]] us SkipTemplateArguments(
+        us index,
+        us end,
         bool requireComplete = false,
         bool* exactClosing = nullptr) const
     {
@@ -4219,8 +4221,8 @@ private:
     }
 
     [[nodiscard]] bool LooksLikeConstructorDeclarator(
-        size_t index,
-        size_t end,
+        us index,
+        us end,
         FunctionKind* functionKind = nullptr,
         std::optional<TokenRange> constructorParameters = std::nullopt) const
     {
@@ -4257,7 +4259,7 @@ private:
                 next = NextSignificant(after);
             }
             if (Kind(next) == TK::Operator_OpenParenthesis) {
-                size_t after;
+                us after;
 
                 if (templateId) {
                     // The declaration owner selected this delimiter-inclusive
@@ -4313,9 +4315,9 @@ private:
         return false;
     }
 
-    [[nodiscard]] size_t SkipDeclarationTypeName(
-        size_t index,
-        size_t end,
+    [[nodiscard]] us SkipDeclarationTypeName(
+        us index,
+        us end,
         bool requireComplete,
         FunctionKind* functionKind = nullptr) const
     {
@@ -4374,7 +4376,7 @@ private:
         return index;
     }
 
-    [[nodiscard]] bool IsConstructionExpression(size_t typeEnd, size_t end) const
+    [[nodiscard]] bool IsConstructionExpression(us typeEnd, us end) const
     {
         const auto kind = Kind(typeEnd);
 
@@ -4395,9 +4397,9 @@ private:
             (Kind(after) == TK::Operator_ClassMemberAccess || Kind(after) == TK::Operator_IndirectClassMemberAccess);
     }
 
-    [[nodiscard]] size_t FindDeclarationSpecifiersEnd(
-        size_t begin,
-        size_t end,
+    [[nodiscard]] us FindDeclarationSpecifiersEnd(
+        us begin,
+        us end,
         bool requireComplete = false,
         FunctionKind* functionKind = nullptr,
         std::optional<TokenRange> constructorParameters = std::nullopt) const
@@ -4484,7 +4486,7 @@ private:
         return SkipDeclarationTypeName(index, end, requireComplete, functionKind);
     }
 
-    [[nodiscard]] size_t FindMemberPointerEnd(size_t begin, size_t end) const
+    [[nodiscard]] us FindMemberPointerEnd(us begin, us end) const
     {
         auto index = NextSignificant(begin);
 
@@ -4519,7 +4521,7 @@ private:
         return begin;
     }
 
-    [[nodiscard]] size_t FindDeclaratorName(size_t begin, size_t end, std::optional<TokenRange> parameters) const
+    [[nodiscard]] us FindDeclaratorName(us begin, us end, std::optional<TokenRange> parameters) const
     {
         if (parameters && !parameters->Empty()) {
             auto candidate = parameters->Begin;
@@ -4581,7 +4583,7 @@ private:
         return end;
     }
 
-    [[nodiscard]] size_t FindInitializerStart(size_t begin, size_t end, size_t name, bool functionDeclarator) const
+    [[nodiscard]] us FindInitializerStart(us begin, us end, us name, bool functionDeclarator) const
     {
         int parenthesisDepth = 0;
         int bracketDepth = 0;
@@ -4647,7 +4649,7 @@ private:
         TokenIndex end,
         ListFragmentKind kind,
         ListFragmentState& state,
-        size_t& work,
+        us& work,
         unsigned depth = 0)
     {
         if (depth == 32) {
@@ -4898,7 +4900,7 @@ private:
         ListFragmentKind kind,
         bool constructor = false)
     {
-        size_t work = 4096;
+        us work = 4096;
         auto state = constructor ? ListFragmentState::Constructor : ListFragmentState::Empty;
         const auto valid =
             AddListFragments(parent, begin, end, kind, state, work) && state != ListFragmentState::Item &&
@@ -4924,14 +4926,14 @@ private:
                 ListFragmentKind::Parameters);
         }
 
-        size_t segmentBegin = parameters.Begin + 1;
+        us segmentBegin = parameters.Begin + 1;
         int delimiterDepth = 0;
         int angleDepth = 0;
         bool hasParameterToken = false;
         bool sawSeparator = false;
         bool noEmptyParameterSlots = true;
         unsigned conditionalMiddle = 0;
-        size_t explicitMemberWork = 4096;
+        us explicitMemberWork = 4096;
 
         for (auto i = segmentBegin; i + 1 <= parameters.End; ++i) {
             bool atEnd = i + 1 == parameters.End;
@@ -5062,7 +5064,7 @@ private:
         bool expectingArgument = true;
         bool sawSeparator = false;
         unsigned conditionalMiddle = 0;
-        size_t explicitMemberWork = 4096;
+        us explicitMemberWork = 4096;
         for (auto i = NextSignificant(opening + 1); i + 1 < closingEnd; i = NextSignificant(i + 1)) {
             if (Kind(i) == TK::Keyword_template) {
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, opening + 1, closingEnd - 1, explicitMemberWork);
@@ -5128,7 +5130,7 @@ private:
         return false;
     }
 
-    void AddArgumentList(Node& parent, size_t opening, size_t closingEnd)
+    void AddArgumentList(Node& parent, us opening, us closingEnd)
     {
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = closingEnd;
@@ -5151,7 +5153,7 @@ private:
             return;
         }
 
-        size_t boundaryWork = 4096;
+        us boundaryWork = 4096;
         while (argumentCursor + 1 < closingEnd) {
             auto before = argumentCursor;
             const auto argumentEnd = ArgumentExpressionEnd(before, closingEnd - 1, boundaryWork);
@@ -5226,7 +5228,7 @@ private:
         Append(parent, *arguments);
     }
 
-    void AddBracedInitializerElements(Node& braced, size_t opening, size_t closingEnd)
+    void AddBracedInitializerElements(Node& braced, us opening, us closingEnd)
     {
         auto* list = MakeNode(NodeKind::InitializerList, opening);
         list->Tokens.End = closingEnd;
@@ -5298,7 +5300,7 @@ private:
         Append(braced, *list);
     }
 
-    void AddInitializerExpression(Node& initializer, size_t begin, size_t end)
+    void AddInitializerExpression(Node& initializer, us begin, us end)
     {
         auto expressionBegin = NextSignificant(begin);
 
@@ -5325,7 +5327,7 @@ private:
         AddUnparsedSyntax(initializer, expressionBegin, end);
     }
 
-    [[nodiscard]] bool AddStructuredBindingSyntax(Node& initDeclarator, size_t begin, size_t end)
+    [[nodiscard]] bool AddStructuredBindingSyntax(Node& initDeclarator, us begin, us end)
     {
         auto bindingBegin = begin;
         bool hasReference = false;
@@ -5390,7 +5392,7 @@ private:
         return true;
     }
 
-    void AddConstructorInitializers(Node& function, size_t begin, size_t end)
+    void AddConstructorInitializers(Node& function, us begin, us end)
     {
         auto* list = MakeNode(NodeKind::ConstructorInitializerList, begin);
         list->Tokens.End = end;
@@ -5401,7 +5403,7 @@ private:
             return;
         }
 
-        size_t initializerBegin = begin + 1;
+        us initializerBegin = begin + 1;
         int delimiterDepth = 0;
         for (auto i = initializerBegin; i <= end; ++i) {
             auto kind = Kind(i);
@@ -5523,11 +5525,7 @@ private:
         }
     }
 
-    [[nodiscard]] std::optional<TokenIndex> AddFunctionSuffixSyntax(
-        Node& function,
-        size_t begin,
-        size_t end,
-        bool constructor)
+    [[nodiscard]] std::optional<TokenIndex> AddFunctionSuffixSyntax(Node& function, us begin, us end, bool constructor)
     {
         auto index = NextSignificant(begin);
         while (index < end) {
@@ -5666,7 +5664,7 @@ private:
         return std::nullopt;
     }
 
-    Node* MakeAlignmentOperand(size_t keyword, size_t end)
+    Node* MakeAlignmentOperand(us keyword, us end)
     {
         const auto opening = NextSignificant(keyword + 1);
         const auto after = Kind(opening) == TK::Operator_OpenParenthesis
@@ -5701,7 +5699,7 @@ private:
         return operand;
     }
 
-    void AddTypeSyntaxChildren(Node& node, size_t begin, size_t end)
+    void AddTypeSyntaxChildren(Node& node, us begin, us end)
     {
         if (TypeSyntaxDepth_ >= 64) {
             return;
@@ -5896,7 +5894,7 @@ private:
         --TypeSyntaxDepth_;
     }
 
-    [[nodiscard]] std::optional<TokenRange> InferNestedFunctionParameters(size_t begin, size_t end) const
+    [[nodiscard]] std::optional<TokenRange> InferNestedFunctionParameters(us begin, us end) const
     {
         if (Kind(begin) != TK::Operator_OpenParenthesis) {
             return std::nullopt;
@@ -5919,7 +5917,7 @@ private:
         return TokenRange{.Begin = suffixBegin, .End = suffixEnd};
     }
 
-    [[nodiscard]] bool ContainsPointerOperator(size_t begin, size_t end) const
+    [[nodiscard]] bool ContainsPointerOperator(us begin, us end) const
     {
         for (auto i = begin; i < end; ++i) {
             auto kind = Kind(i);
@@ -5932,7 +5930,7 @@ private:
         return false;
     }
 
-    void AddQualifiedTemplateSyntax(Node& core, size_t begin, size_t name)
+    void AddQualifiedTemplateSyntax(Node& core, us begin, us name)
     {
         // Only a complete, independently proven function head reaches here.
         // A balanced angle span followed by :: is not proof in an expression.
@@ -5978,8 +5976,8 @@ private:
 
     FunctionKind AddDeclaratorSyntax(
         Node& initDeclarator,
-        size_t begin,
-        size_t end,
+        us begin,
+        us end,
         std::optional<TokenRange> parameters,
         bool ambiguousSuffix = false,
         bool inferNestedParameters = true,
@@ -6103,8 +6101,8 @@ private:
         Append(initDeclarator, *declarator);
 
         Node* core = declarator;
-        size_t coreBegin = begin;
-        size_t nestedEnd = begin;
+        us coreBegin = begin;
+        us nestedEnd = begin;
         // An explicitly selected parameter list is never a grouped declarator,
         // even when its payload contains pointer/reference operators.
         if (Kind(begin) == TK::Operator_OpenParenthesis && (!parameters || begin != parameters->Begin)) {
@@ -6155,7 +6153,7 @@ private:
                 coreBegin = memberPointerEnd;
             }
 
-            size_t qualifiedArgumentsEnd = coreBegin;
+            us qualifiedArgumentsEnd = coreBegin;
             for (auto i = coreBegin; i < name; ++i) {
                 if (i < qualifiedArgumentsEnd) {
                     continue;
@@ -6267,7 +6265,7 @@ private:
                 }
             }
 
-            auto makeFunction = [&] (TokenRange list, size_t functionEnd) {
+            auto makeFunction = [&] (TokenRange list, us functionEnd) {
                 auto* result = MakeNode(NodeKind::FunctionDeclarator, list.Begin);
                 result->Tokens.End = functionEnd;
                 auto* parameterList = MakeNode(NodeKind::ParameterList, list.Begin);
@@ -6527,7 +6525,7 @@ private:
         bool functionType = false) const
     {
         ambiguous = false;
-        size_t proofWork = 4096;
+        us proofWork = 4096;
         const auto uncertain = [&] () -> std::optional<TokenRange> {
             ambiguous = true;
             return std::nullopt;
@@ -6878,8 +6876,8 @@ private:
 
     void AddDeclarationSyntax(
         Node& declaration,
-        size_t begin,
-        size_t end,
+        us begin,
+        us end,
         std::optional<TokenRange> parameters = std::nullopt,
         bool ungroupedConstructorInitializer = false,
         bool terminalConstructorEligible = false)
@@ -6917,7 +6915,7 @@ private:
         list->Tokens.End = end;
         Append(declaration, *list);
 
-        size_t segmentBegin = specifiersEnd;
+        us segmentBegin = specifiersEnd;
         int delimiterDepth = 0;
         int angleDepth = 0;
         for (auto i = specifiersEnd; i <= end; ++i) {
@@ -6988,8 +6986,8 @@ private:
 
     void AddSingleDeclaratorDeclarationSyntax(
         Node& declaration,
-        size_t begin,
-        size_t end,
+        us begin,
+        us end,
         TokenRange parameters,
         bool ungroupedConstructorInitializer,
         bool terminalConstructorEligible = false)
@@ -7035,7 +7033,7 @@ private:
         }
     }
 
-    [[nodiscard]] bool IsParenthesizedDeclarator(size_t begin, size_t end) const
+    [[nodiscard]] bool IsParenthesizedDeclarator(us begin, us end) const
     {
         auto first = NextSignificant(begin + 1);
 
@@ -7181,7 +7179,7 @@ private:
 
     // Called only at a contextually introduced template opener, never for
     // every comparison angle. The shared budget includes unsuccessful probes.
-    [[nodiscard]] std::optional<TokenIndex> ArgumentTemplateEnd(TokenIndex opening, TokenIndex end, size_t& work) const
+    [[nodiscard]] std::optional<TokenIndex> ArgumentTemplateEnd(TokenIndex opening, TokenIndex end, us& work) const
     {
         end = std::min(end, ParseLimit_);
         unsigned depth = 0;
@@ -7246,7 +7244,7 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] std::optional<TokenIndex> ArgumentOperatorNameEnd(TokenIndex name, TokenIndex end, size_t& work) const
+    [[nodiscard]] std::optional<TokenIndex> ArgumentOperatorNameEnd(TokenIndex name, TokenIndex end, us& work) const
     {
         end = std::min(end, ParseLimit_);
 
@@ -7304,7 +7302,7 @@ private:
         TokenIndex introducer,
         TokenIndex begin,
         TokenIndex end,
-        size_t& work) const
+        us& work) const
     {
         end = std::min(end, ParseLimit_);
 
@@ -7391,7 +7389,7 @@ private:
         bool atStart = true;
         bool hasDefault = false;
         unsigned conditionalMiddle = 0;
-        size_t work = 4096;
+        us work = 4096;
 
         for (auto i = ArgumentSignificant(opening + 1, end);
             i < end && work != 0;
@@ -7484,7 +7482,7 @@ private:
         return false;
     }
 
-    [[nodiscard]] TokenIndex ArgumentExpressionEnd(TokenIndex begin, TokenIndex end, size_t& work) const
+    [[nodiscard]] TokenIndex ArgumentExpressionEnd(TokenIndex begin, TokenIndex end, us& work) const
     {
         end = std::min(end, ParseLimit_);
         unsigned conditionalMiddle = 0;
@@ -8634,7 +8632,7 @@ private:
         return node;
     }
 
-    void AddExpressionRange(Node& node, size_t begin, size_t end)
+    void AddExpressionRange(Node& node, us begin, us end)
     {
         auto expressionCursor = NextSignificant(begin);
 
@@ -8649,11 +8647,11 @@ private:
         AddUnparsedSyntax(node, expressionCursor, end);
     }
 
-    void AddForHeaderSyntax(Node& header, size_t begin, size_t end)
+    void AddForHeaderSyntax(Node& header, us begin, us end)
     {
-        std::array<size_t, 2> semicolons{Tree_.Tokens_.Size(), Tree_.Tokens_.Size()};
-        size_t semicolonCount = 0;
-        size_t rangeColon = Tree_.Tokens_.Size();
+        std::array<us, 2> semicolons{Tree_.Tokens_.Size(), Tree_.Tokens_.Size()};
+        us semicolonCount = 0;
+        us rangeColon = Tree_.Tokens_.Size();
         int delimiterDepth = 0;
         int conditionalDepth = 0;
 
@@ -8737,9 +8735,9 @@ private:
         Append(header, *iteration);
     }
 
-    bool AddConditionInitSyntax(Node& header, size_t begin, size_t end)
+    bool AddConditionInitSyntax(Node& header, us begin, us end)
     {
-        size_t separator = end;
+        us separator = end;
         unsigned depth = 0;
 
         for (auto i = begin; i < end; ++i) {
@@ -8791,7 +8789,7 @@ private:
         return true;
     }
 
-    [[nodiscard]] bool IsDeclarationCondition(size_t begin, size_t end) const
+    [[nodiscard]] bool IsDeclarationCondition(us begin, us end) const
     {
         auto cursor = FindDeclarationSpecifiersEnd(begin, end, true);
         // A type-shaped prefix is not a declaration by itself: qualified
@@ -8841,7 +8839,7 @@ private:
             (Kind(cursor) == TK::Operator_Assign || Kind(cursor) == TK::Operator_OpenBrace);
     }
 
-    void AddConditionSyntax(Node& header, size_t begin, size_t end)
+    void AddConditionSyntax(Node& header, us begin, us end)
     {
         if (!IsDeclarationCondition(begin, end)) {
             AddExpressionRange(header, begin, end);
@@ -9073,7 +9071,7 @@ private:
             kind == TK::Keyword_reinterpret_cast || kind == TK::Keyword_static_cast;
     }
 
-    [[nodiscard]] bool LooksLikeTypeId(size_t begin, size_t end) const
+    [[nodiscard]] bool LooksLikeTypeId(us begin, us end) const
     {
         auto first = SkipAttributeSpecifiers(begin);
         const auto second = NextSignificant(first + 1);
@@ -9144,7 +9142,7 @@ private:
         Append(*lambda, *captures);
         cursor = ArgumentSignificant(captureEnd, end);
 
-        size_t suffixWork = 4096;
+        us suffixWork = 4096;
         Node* templateParameters = nullptr;
 
         if (Kind(cursor) == TK::Operator_Less) {
@@ -9491,7 +9489,7 @@ private:
     {
         auto opening = cursor;
         auto closing = closingEnd - 1;
-        size_t ellipsis = closing;
+        us ellipsis = closing;
         int depth = 0;
 
         for (auto i = opening + 1; i < closing; ++i) {
@@ -9605,7 +9603,7 @@ private:
             cursor = std::min(NextSignificant(cursor + 1), end);
         }
 
-        size_t work = 4096;
+        us work = 4096;
 
         while (true) {
             if (cursor >= end || Kind(cursor) != TK::Identifier) {
@@ -10099,7 +10097,7 @@ private:
         // A definite type in any top-level argument rules out comparison
         // syntax. Nested lists, operand delimiters, and conditional middles
         // must not expose their commas as the enclosing list's separators.
-        size_t work = 4096;
+        us work = 4096;
         unsigned depth = 1;
         unsigned middle = 0;
 
@@ -10190,7 +10188,7 @@ private:
 
         const auto memberBegin = cursor;
         bool explicitTemplate = Kind(cursor) == TK::Keyword_template;
-        size_t templateWork = 4096;
+        us templateWork = 4096;
 
         if (explicitTemplate) {
             cursor = NextSignificant(cursor + 1);
@@ -10778,7 +10776,7 @@ private:
         return left;
     }
 
-    [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(size_t first, size_t end, bool& unambiguous) const
+    [[nodiscard]] bool LooksLikeUnknownTypeDeclaration(us first, us end, bool& unambiguous) const
     {
         unambiguous = false;
         bool hasTemplateArguments = false;
@@ -10848,7 +10846,7 @@ private:
         return cursor < end && Kind(cursor) == TK::Identifier;
     }
 
-    [[nodiscard]] NodeKind ClassifySimpleStatement(size_t start) const
+    [[nodiscard]] NodeKind ClassifySimpleStatement(us start) const
     {
         auto first = SkipAttributeSpecifiers(start);
         while (Kind(first) == TK::Keyword_alignas && SignificantKind(first + 1) == TK::Operator_OpenParenthesis) {
@@ -10966,7 +10964,7 @@ private:
         auto* arguments = MakeNode(NodeKind::ArgumentList, opening);
         arguments->Tokens.End = end;
         auto cursor = NextSignificant(opening + 1);
-        size_t work = 4096;
+        us work = 4096;
 
         while (cursor < end - 1) {
             if (Kind(cursor) == TK::Operator_Comma) {
@@ -11014,7 +11012,7 @@ private:
         Append(statement, *arguments);
     }
 
-    void AddAmbiguousInitializer(Node& statement, size_t end, bool allowDirect = false)
+    void AddAmbiguousInitializer(Node& statement, us end, bool allowDirect = false)
     {
         // Bound the shared tail without choosing declaration or expression
         // roles for this head. Conditions share only an assignment RHS;
@@ -11194,7 +11192,7 @@ private:
 
     // Specialized parsers already add directive children in nested bodies.
     // Add only directives not covered by any existing child range.
-    void AddDirectiveChildrenInGap(Node& parent, size_t begin, size_t end)
+    void AddDirectiveChildrenInGap(Node& parent, us begin, us end)
     {
         Node* previous = nullptr;
         auto* child = parent.FirstChild;
@@ -11232,7 +11230,7 @@ private:
 
     TriviaAttachments& EnsureTriviaAttachments(Node& node)
     {
-        if (node.TriviaIndex_ == std::numeric_limits<uint32_t>::max()) {
+        if (node.TriviaIndex_ == std::numeric_limits<u32>::max()) {
             node.TriviaIndex_ = Tree_.Trivia_.Add(node);
         }
         return Tree_.Trivia_[node.TriviaIndex_];
@@ -11333,7 +11331,7 @@ private:
         return nullptr;
     }
 
-    [[nodiscard]] uint32_t SourceLine(TokenIndex token) const
+    [[nodiscard]] u32 SourceLine(TokenIndex token) const
     {
         return Tree_.Tokens_[token].Line;
     }
@@ -11391,7 +11389,7 @@ private:
     {
         int newlines = 0;
 
-        for (size_t i = 0; i < whitespace.size(); ++i) {
+        for (us i = 0; i < whitespace.size(); ++i) {
             if (whitespace[i] == '\n' && (i == 0 || whitespace[i - 1] != '\\')) {
                 if (++newlines == 2) {
                     return true;
@@ -11799,34 +11797,34 @@ private:
 
     SyntaxTree& Tree_;
     ErrorHandler& ErrorHandler_;
-    std::pmr::monotonic_buffer_resource ScratchMemory_{detail::InitialMemoryResourceSize};
-    std::pmr::vector<std::string_view> RecordNames_{&ScratchMemory_};
-    std::pmr::vector<std::string_view> CallLikeMacroNames_{&ScratchMemory_};
-    std::pmr::vector<std::string_view> FunctionBodyMacroNames_{&ScratchMemory_};
-    std::pmr::vector<std::string_view> EnumMacroNames_{&ScratchMemory_};
-    std::pmr::vector<std::pair<std::string_view, std::string_view>> ClassMacroPairs_{&ScratchMemory_};
-    std::pmr::vector<std::string_view> ClassEndMacroNames_{&ScratchMemory_};
-    size_t MacroRecordDepth_ = 0;
+    Arena ScratchMemory_{detail::InitialMemoryResourceSize, Tree_.MemoryResource()};
+    Vector<std::string_view> RecordNames_{&ScratchMemory_};
+    Vector<std::string_view> CallLikeMacroNames_{&ScratchMemory_};
+    Vector<std::string_view> FunctionBodyMacroNames_{&ScratchMemory_};
+    Vector<std::string_view> EnumMacroNames_{&ScratchMemory_};
+    Vector<std::pair<std::string_view, std::string_view>> ClassMacroPairs_{&ScratchMemory_};
+    Vector<std::string_view> ClassEndMacroNames_{&ScratchMemory_};
+    us MacroRecordDepth_ = 0;
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;
-    size_t RemainingNodes_ = 0;
+    us RemainingNodes_ = 0;
     TokenIndex Cursor_ = 0;
     TokenIndex ParseLimit_ = 0;
-    size_t BranchParseDepth_ = 0;
+    us BranchParseDepth_ = 0;
     unsigned TemplateListDepth_ = 0;
     unsigned CaptureInitializerDepth_ = 0;
     unsigned TypeSyntaxDepth_ = 0;
     unsigned RequiresSyntaxDepth_ = 0;
-    static constexpr size_t MaximumParseDepth = 256;
-    std::array<size_t, MaximumParseDepth> ConditionalOpenBraces_{};
-    size_t ConditionalBraceScopeDepth_ = 0;
-    size_t ConditionalBraceScopeOverflow_ = 0;
+    static constexpr us MaximumParseDepth = 256;
+    std::array<us, MaximumParseDepth> ConditionalOpenBraces_{};
+    us ConditionalBraceScopeDepth_ = 0;
+    us ConditionalBraceScopeOverflow_ = 0;
     bool HasDelimiterMap_ = true;
 };
 
 SyntaxTree ParseContext::Run(util::PaddedSourceView input, ErrorHandler errorHandler, const ParseOptions& options)
 {
-    SyntaxTree tree(input.View());
+    SyntaxTree tree(input.View(), options.Memory);
     ParseContext context(tree, errorHandler, options);
     context.Build();
     return tree;
@@ -11843,7 +11841,7 @@ std::optional<SyntaxTree> ParseContext::ReparseIncludes(
     util::PaddedSourceView input,
     bool rulers)
 {
-    SyntaxTree tree(input.View());
+    SyntaxTree tree(input.View(), original.Memory_ ? original.Memory_->upstream_resource() : nullptr);
     ErrorHandler errors = [] (ParseError) { };
     ParseContext context(tree, errors, {});
 
@@ -11859,8 +11857,8 @@ std::optional<SyntaxTree> ParseContext::NormalizeTokens(
     util::PaddedSourceView input,
     std::span<const detail::NormalizedPiece> pieces,
     detail::NormalizedRegionTopology topology,
-    std::pmr::vector<TokenIndex>& originalToNormalized,
-    std::pmr::vector<detail::NormalizedCommentInsertion>& insertions)
+    Vector<TokenIndex>& originalToNormalized,
+    Vector<detail::NormalizedCommentInsertion>& insertions)
 {
     originalToNormalized.clear();
     insertions.clear();
@@ -11869,11 +11867,11 @@ std::optional<SyntaxTree> ParseContext::NormalizeTokens(
         return std::nullopt;
     }
 
-    SyntaxTree tree(input.View());
+    SyntaxTree tree(input.View(), original.Memory_ ? original.Memory_->upstream_resource() : nullptr);
     ErrorHandler errors = [] (ParseError) { };
     ParseContext context(tree, errors, {});
-    std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
-    std::pmr::vector<CopiedTokenRun> stable(&context.ScratchMemory_);
+    Vector<TokenIndex> copied(&context.ScratchMemory_);
+    Vector<CopiedTokenRun> stable(&context.ScratchMemory_);
 
     if (!context.TokenizePieces(original, pieces, copied, &stable) ||
         !context.ReuseIncludeSyntax(
@@ -11899,8 +11897,8 @@ std::optional<SyntaxTree> detail::TryBuildNormalizedTokenView(
     util::PaddedSourceView input,
     std::span<const NormalizedPiece> pieces,
     NormalizedRegionTopology topology,
-    std::pmr::vector<TokenIndex>& originalToNormalized,
-    std::pmr::vector<NormalizedCommentInsertion>& insertions)
+    Vector<TokenIndex>& originalToNormalized,
+    Vector<NormalizedCommentInsertion>& insertions)
 {
     return ParseContext::NormalizeTokens(original, input, pieces, topology, originalToNormalized, insertions);
 }
@@ -11909,16 +11907,16 @@ std::optional<SyntaxTree> ParseContext::ConsumeNormalized(
     SyntaxTree& original,
     util::PaddedSourceView input,
     std::span<const detail::NormalizedPiece> pieces,
-    std::pmr::vector<TokenIndex>& originalToNormalized)
+    Vector<TokenIndex>& originalToNormalized)
 {
     if (!original.Memory_ || original.OriginalMemory_) {
         return std::nullopt;
     }
 
-    SyntaxTree tree(input.View());
+    SyntaxTree tree(input.View(), original.Memory_ ? original.Memory_->upstream_resource() : nullptr);
     ErrorHandler errors = [] (ParseError) { };
     ParseContext context(tree, errors, {});
-    std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
+    Vector<TokenIndex> copied(&context.ScratchMemory_);
 
     if (!context.TokenizePieces(original, pieces, copied) ||
         !context.ReuseIncludeSyntax(original, true, &original, copied, &originalToNormalized))
@@ -11933,7 +11931,7 @@ std::optional<SyntaxTree> detail::TryConsumeNormalizedSyntax(
     SyntaxTree& original,
     util::PaddedSourceView input,
     std::span<const NormalizedPiece> pieces,
-    std::pmr::vector<TokenIndex>& originalToNormalized)
+    Vector<TokenIndex>& originalToNormalized)
 {
     return ParseContext::ConsumeNormalized(original, input, pieces, originalToNormalized);
 }

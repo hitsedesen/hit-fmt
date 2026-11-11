@@ -2,6 +2,8 @@
 
 #include "token.hpp"
 
+#include <util/types.hpp>
+
 #include <unicode/code_point.hpp>
 #include <unicode/utf8.hpp>
 
@@ -50,15 +52,15 @@ std::string_view GetTokenizationErrorDescription(TokenizationErrorKind kind)
 
 namespace {
 
-constexpr uint32_t AsciiLimit = 0x80;
+constexpr u32 AsciiLimit = 0x80;
 
-constexpr uint64_t IdentifierKey(std::string_view text)
+constexpr u64 IdentifierKey(std::string_view text)
 {
-    return text.size() | (static_cast<uint64_t>(text[0]) << 8) | (static_cast<uint64_t>(text[1]) << 16) |
-        (static_cast<uint64_t>(text.size() > 4 ? text[4] : '\0') << 24) | (static_cast<uint64_t>(text.back()) << 32);
+    return text.size() | (static_cast<u64>(text[0]) << 8) | (static_cast<u64>(text[1]) << 16) |
+        (static_cast<u64>(text.size() > 4 ? text[4] : '\0') << 24) | (static_cast<u64>(text.back()) << 32);
 }
 
-constexpr size_t KeywordSlot(uint64_t key)
+constexpr us KeywordSlot(u64 key)
 {
     return (key * 0x1ed83522862e78afULL) >> 54;
 }
@@ -67,12 +69,12 @@ struct KeywordLookup
 {
     struct Text
     {
-        uint64_t First;
-        uint64_t Second;
-        uint8_t Length;
+        u64 First;
+        u64 Second;
+        u8 Length;
     };
 
-    std::array<Text, static_cast<size_t>(TokenKind::Keyword_while) + 1> Words;
+    std::array<Text, static_cast<us>(TokenKind::Keyword_while) + 1> Words;
     std::array<TokenKind, 1024> Slots;
 };
 
@@ -86,12 +88,12 @@ constexpr auto Keywords = [] {
         }
 
         table.Slots[slot] = kind;
-        auto& word = table.Words[static_cast<size_t>(kind)];
-        word.Length = static_cast<uint8_t>(text.size());
+        auto& word = table.Words[static_cast<us>(kind)];
+        word.Length = static_cast<u8>(text.size());
 
-        for (size_t i = 0; i < text.size(); ++i) {
+        for (us i = 0; i < text.size(); ++i) {
             auto& part = i < 8 ? word.First : word.Second;
-            part |= static_cast<uint64_t>(text[i]) << ((i % 8) * 8);
+            part |= static_cast<u64>(text[i]) << ((i % 8) * 8);
         }
     };
 #define TOKENIZER_KEYWORD(text, kind) add(text, TokenKind::kind)
@@ -203,13 +205,13 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
     }
 
     const auto kind = Keywords.Slots[KeywordSlot(IdentifierKey(identifier))];
-    const auto& candidate = Keywords.Words[static_cast<size_t>(kind)];
+    const auto& candidate = Keywords.Words[static_cast<us>(kind)];
 
     if (candidate.Length != identifier.size()) {
         return TokenKind::Identifier;
     }
 
-    uint64_t first;
+    u64 first;
     // Identifier views borrow the padded source, including short final words.
     std::memcpy(&first, identifier.data(), sizeof(first));
 
@@ -229,10 +231,10 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
         return TokenKind::Identifier;
     }
 
-    uint64_t second = 0;
+    u64 second = 0;
 
-    for (size_t i = 8; i < identifier.size(); ++i) {
-        second |= static_cast<uint64_t>(static_cast<unsigned char>(identifier[i])) << ((i - 8) * 8);
+    for (us i = 8; i < identifier.size(); ++i) {
+        second |= static_cast<u64>(static_cast<unsigned char>(identifier[i])) << ((i - 8) * 8);
     }
 
     return second == candidate.Second ? kind : TokenKind::Identifier;
@@ -273,12 +275,12 @@ TokenKind ClassifyIdentifier(std::string_view identifier)
     return IsDigit(value) || (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') || value == '_';
 }
 
-constexpr uint64_t LowBits(unsigned count) noexcept
+constexpr u64 LowBits(unsigned count) noexcept
 {
-    return count == 64 ? ~uint64_t{0} : (uint64_t{1} << count) - 1;
+    return count == 64 ? ~u64{0} : (u64{1} << count) - 1;
 }
 
-[[nodiscard]] unsigned FirstBit(uint64_t bits) noexcept
+[[nodiscard]] unsigned FirstBit(u64 bits) noexcept
 {
     assert(bits != 0);
 #if defined(_MSC_VER) && defined(_M_X64)
@@ -290,9 +292,9 @@ constexpr uint64_t LowBits(unsigned count) noexcept
 #endif
 }
 
-constexpr uint16_t OperatorKey(unsigned char first, unsigned char second)
+constexpr u16 OperatorKey(unsigned char first, unsigned char second)
 {
-    return static_cast<uint16_t>(first | (second << 8));
+    return static_cast<u16>(first | (second << 8));
 }
 
 constexpr auto SingleOperators = [] {
@@ -630,7 +632,7 @@ inline const unsigned char* Tokenizer::ScanAscii(const unsigned char* cursor, bo
             std::countr_one(continuations));
 
         if constexpr (TrackNonSpace) {
-            const auto consumed = count == detail::AsciiBlock::Size ? ~uint64_t{0} : (uint64_t{1} << count) - 1;
+            const auto consumed = count == detail::AsciiBlock::Size ? ~u64{0} : (u64{1} << count) - 1;
             *nonSpace |= (consumed & ~(Block_[detail::AsciiRun::Whitespace] >> within)) != 0;
         }
 
@@ -659,7 +661,7 @@ void detail::TokenizerCursor<Tokenizer>::DecodeCurrentUnicodeCodePoint()
         CachedUnicodeSize_ = 1;
     } else {
         CachedUnicodeValue_ = first->Value;
-        CachedUnicodeSize_ = static_cast<uint8_t>(first->Size);
+        CachedUnicodeSize_ = static_cast<u8>(first->Size);
     }
 
     CachedUnicodeOffset_ = CurrentCodePointOffset_;
@@ -697,7 +699,7 @@ SourceOffset Tokenizer::FindBlockCommentEnd(SourceOffset offset) noexcept
         const auto stops = (closers | Block_.NonAscii | Block_.Nulls) >> within;
         if (stops != 0) {
             const auto end = offset + static_cast<SourceOffset>(std::countr_zero(stops));
-            return (closers & (uint64_t{1} << (end - BlockOffset_))) != 0
+            return (closers & (u64{1} << (end - BlockOffset_))) != 0
                 ? end + 2
                 : std::numeric_limits<SourceOffset>::max();
         }
@@ -721,7 +723,7 @@ SourceOffset Tokenizer::FindQuotedEnd(SourceOffset offset, bool character) noexc
             (delimiters | Block_.Backslashes | Block_.Newlines | Block_.NonAscii | Block_.Nulls) >> within;
         if (stops != 0) {
             const auto end = offset + static_cast<SourceOffset>(std::countr_zero(stops));
-            return (delimiters & (uint64_t{1} << (end - BlockOffset_))) != 0
+            return (delimiters & (u64{1} << (end - BlockOffset_))) != 0
                 ? end + 1
                 : std::numeric_limits<SourceOffset>::max();
         }
@@ -777,8 +779,8 @@ bool Tokenizer::ReadBlock()
     auto starts = (wordStarts | (~words & ~whitespace)) & ~LowBits(cursor - base) & LowBits(limit - base);
 
     // A continuation arriving from another block starts at the current cursor.
-    if (cursor < limit && (words & (uint64_t{1} << (cursor - base))) != 0) {
-        starts |= uint64_t{1} << (cursor - base);
+    if (cursor < limit && (words & (u64{1} << (cursor - base))) != 0) {
+        starts |= u64{1} << (cursor - base);
     }
 
     auto advance = [&] (SourceOffset end) {
@@ -789,7 +791,7 @@ bool Tokenizer::ReadBlock()
             const auto lines = newlines & range;
 
             if (lines != 0) {
-                position.Line += static_cast<uint32_t>(std::popcount(lines));
+                position.Line += static_cast<u32>(std::popcount(lines));
                 const auto last = 63u - static_cast<unsigned>(std::countl_zero(lines));
                 position.Column = stop - last;
                 isNewLine = (range & ~LowBits(last + 1) & ~whitespace) == 0;
@@ -812,7 +814,7 @@ bool Tokenizer::ReadBlock()
             const auto lines = Block_.Newlines & range;
 
             if (lines != 0) {
-                position.Line += static_cast<uint32_t>(std::popcount(lines));
+                position.Line += static_cast<u32>(std::popcount(lines));
                 const auto last = 63u - static_cast<unsigned>(std::countl_zero(lines));
                 position.Column = stop - last;
                 isNewLine = (range & ~LowBits(last + 1) & ~(Block_[AsciiRun::Whitespace] | Block_.Newlines)) == 0;
@@ -832,12 +834,12 @@ bool Tokenizer::ReadBlock()
     while (starts != 0) {
         const auto index = FirstBit(starts);
         const auto start = base + index;
-        const auto bit = uint64_t{1} << index;
+        const auto bit = u64{1} << index;
         const auto skippedLines = remainingLines & LowBits(index);
 
         if (skippedLines != 0) {
             remainingLines &= ~skippedLines;
-            position.Line += static_cast<uint32_t>(std::popcount(skippedLines));
+            position.Line += static_cast<u32>(std::popcount(skippedLines));
             position.Column = index - (63u - static_cast<unsigned>(std::countl_zero(skippedLines)));
             isNewLine = true;
         } else {
@@ -931,9 +933,8 @@ bool Tokenizer::ReadBlock()
                 end = FindQuotedEnd(start + 1, character);
             } else {
                 const auto close = FirstBit(stops);
-                end = (delimiters & (uint64_t{1} << close)) != 0
-                    ? base + close + 1
-                    : std::numeric_limits<SourceOffset>::max();
+                end =
+                    (delimiters & (u64{1} << close)) != 0 ? base + close + 1 : std::numeric_limits<SourceOffset>::max();
             }
             if (end > Input_.Size || (character && end == start + 2) || IsAsciiIdentifierStart(data[end]) ||
                 data[end] >= AsciiLimit)
@@ -974,7 +975,7 @@ bool Tokenizer::ReadBlock()
 
         starts = consumedStarts;
     }
-    PendingCount_ = static_cast<uint8_t>(count);
+    PendingCount_ = static_cast<u8>(count);
 
     if (count != 0) {
         const auto& last = Pending_[count - 1];
@@ -1407,7 +1408,7 @@ bool Tokenizer::ConsumeEscapeSequence()
     if (cur == 'u' || cur == 'U') {
         auto marker = cur;
         ConsumeCodePoint();
-        uint32_t value = 0;
+        u32 value = 0;
         bool valid = true;
 
         if (marker == 'u' && CurrentCodePoint() == '{') {
@@ -1419,9 +1420,7 @@ bool Tokenizer::ConsumeEscapeSequence()
                 value = value > 0x10ffff / 16
                     ? 0x110000
                     : value * 16 +
-                        (IsDigit(digit)
-                            ? static_cast<uint32_t>(digit) - '0'
-                            : (static_cast<uint32_t>(digit) | 0x20) - 'a' + 10);
+                        (IsDigit(digit) ? static_cast<u32>(digit) - '0' : (static_cast<u32>(digit) | 0x20) - 'a' + 10);
                 ConsumeCodePoint();
                 ++digits;
             }
@@ -1443,9 +1442,7 @@ bool Tokenizer::ConsumeEscapeSequence()
                 }
 
                 value = value * 16 +
-                    (IsDigit(digit)
-                        ? static_cast<uint32_t>(digit) - '0'
-                        : (static_cast<uint32_t>(digit) | 0x20) - 'a' + 10);
+                    (IsDigit(digit) ? static_cast<u32>(digit) - '0' : (static_cast<u32>(digit) | 0x20) - 'a' + 10);
                 ConsumeCodePoint();
             }
         }
@@ -1525,7 +1522,7 @@ Token Tokenizer::ParseCharacterLiteral()
     auto encodingErrorCount = EncodingErrorCount_;
     ConsumeAsciiByte('\'');
     bool valid = true;
-    uint32_t characterCount = 0;
+    u32 characterCount = 0;
     unsigned char lastByte;
 
     while (true) {
@@ -1639,13 +1636,13 @@ Token Tokenizer::ParseRawStringLiteral()
 
     auto delimiterStart = CurrentCodePointOffset_;
     auto encodingErrorCount = EncodingErrorCount_;
-    uint32_t delimiterLength = 0;
+    u32 delimiterLength = 0;
     bool valid = true;
     bool reportedInvalidDelimiter = false;
     bool reportedLongDelimiter = false;
 
     while (!AtEnd() && cur != '(' && cur != '\n') {
-        auto value = static_cast<uint32_t>(cur);
+        auto value = static_cast<u32>(cur);
 
         if ((value < 0x21 || value > 0x7e || cur == ')' || cur == '\\') && !reportedInvalidDelimiter) {
             OnError(TokenizationErrorKind::InvalidRawStringDelimiter);
@@ -1735,24 +1732,24 @@ Token Tokenizer::ParseNumber()
             const auto within = offset - BlockOffset_;
 
             if (within < detail::AsciiBlock::Size) {
-                const auto digits = static_cast<uint32_t>(Block_.Digits >> within);
-                const auto separators = static_cast<uint32_t>(Block_.Apostrophes >> within);
+                const auto digits = static_cast<u32>(Block_.Digits >> within);
+                const auto separators = static_cast<u32>(Block_.Apostrophes >> within);
                 const auto available = std::min<unsigned>(32, detail::AsciiBlock::Size - within);
-                const auto full = ~uint32_t{0} >> (32 - available);
+                const auto full = ~u32{0} >> (32 - available);
 
                 if ((digits | separators) != full) {
                     const auto length = static_cast<unsigned>(std::countr_one(digits | separators));
-                    const auto consumed = (uint32_t{1} << length) - 1;
+                    const auto consumed = (u32{1} << length) - 1;
                     const auto quotes = separators & consumed;
                     valid &= (quotes & ((quotes << 1) | 1)) == 0;
-                    valid &= length == 0 || (quotes & (uint32_t{1} << (length - 1))) == 0;
+                    valid &= length == 0 || (quotes & (u32{1} << (length - 1))) == 0;
                     cursor += length;
-                    return static_cast<uint32_t>((digits & consumed) != 0);
+                    return static_cast<u32>((digits & consumed) != 0);
                 }
             }
         }
 
-        uint32_t count = 0;
+        u32 count = 0;
         bool separator = false;
 
         while (true) {
@@ -1891,7 +1888,7 @@ Token Tokenizer::DiagnoseFloatingPoint()
         cur = CurrentCodePoint();
     };
     auto parseDigits = [&] (auto isDigit) {
-        uint32_t count = 0;
+        u32 count = 0;
         bool previousSeparator = false;
         bool lastSeparatorReported = false;
 
@@ -2011,7 +2008,7 @@ Token Tokenizer::DiagnoseInteger()
     TokenKind kind = TokenKind::Invalid;
     auto cur = CurrentCodePoint();
     ConsumeCodePoint(cur);
-    uint32_t parsedDigits = 1;
+    u32 parsedDigits = 1;
     auto prev = cur;
     cur = CurrentCodePoint();
     auto next = [&] {

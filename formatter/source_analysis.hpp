@@ -1,5 +1,8 @@
 #pragma once
 
+#include <util/memory.hpp>
+#include <util/types.hpp>
+
 #include <parser/normalized_syntax.hpp>
 #include <parser/syntax_tree.hpp>
 
@@ -22,12 +25,12 @@ struct NormalizationAnalysisReuse;
 
 using GapId = parser::TokenIndex;
 
-using RegionId = uint32_t;
+using RegionId = u32;
 
 inline constexpr RegionId NoRegion = UINT32_MAX;
 
 // Reasons apply to immutable bytes, not to ordinary comment line barriers.
-enum class ProtectionReason : uint16_t
+enum class ProtectionReason : u16
 {
     None = 0,
     Disabled = 1,
@@ -43,7 +46,7 @@ enum class ProtectionReason : uint16_t
 
 constexpr ProtectionReason operator|(ProtectionReason a, ProtectionReason b)
 {
-    return static_cast<ProtectionReason>(static_cast<uint16_t>(a) | static_cast<uint16_t>(b));
+    return static_cast<ProtectionReason>(static_cast<u16>(a) | static_cast<u16>(b));
 }
 
 struct ProtectedSourceRange
@@ -52,13 +55,13 @@ struct ProtectedSourceRange
     ProtectionReason Reasons = ProtectionReason::None;
 };
 
-enum class GapSeparation : uint8_t
+enum class GapSeparation : u8
 {
     Optional,
     Required
 };
 
-enum class GapLineBoundary : uint8_t
+enum class GapLineBoundary : u8
 {
     Any,
     Required,
@@ -97,7 +100,7 @@ struct SourceGap
 
 static_assert(sizeof(SourceGap) <= 16);
 
-enum class RegionStatus : uint8_t
+enum class RegionStatus : u8
 {
     Complete,
     Recovery,
@@ -130,7 +133,7 @@ static_assert(sizeof(SourceRegion) <= 40);
 // LF/CRLF, stays exact. Fully byte-covered but insertion-fenced gaps may use
 // CanSpellGapNewlines independently; these descriptors grant no such rights.
 // These are properties, not edit instructions or editable owned line breaks.
-enum class PartialGapPermissionKind : uint8_t
+enum class PartialGapPermissionKind : u8
 {
     FinalIndentation,
     TrimHorizontal,
@@ -277,17 +280,17 @@ public:
 
 private:
     std::string_view Source_;
-    std::pmr::vector<SourceGap> Gaps_;
-    std::pmr::vector<ProtectedSourceRange> Protection_;
+    Vector<SourceGap> Gaps_;
+    Vector<ProtectedSourceRange> Protection_;
     // Retain precise exceptional fences before directive line coalescing.
-    std::pmr::vector<ProtectedSourceRange> DirectiveFences_;
-    std::pmr::vector<SourceRegion> Regions_;
-    std::pmr::vector<parser::SourceRange> EditScope_;
-    std::pmr::vector<PartialGapPermission> PartialGapPermissions_;
+    Vector<ProtectedSourceRange> DirectiveFences_;
+    Vector<SourceRegion> Regions_;
+    Vector<parser::SourceRange> EditScope_;
+    Vector<PartialGapPermission> PartialGapPermissions_;
     bool HasEditScope_ = false;
     bool Built_ = false;
 
-    std::pmr::vector<PartialGapPermission> CollectPartialGapPermissions(
+    Vector<PartialGapPermission> CollectPartialGapPermissions(
         std::optional<std::span<const parser::SourceRange>> scope) const;
 
     friend struct detail::NormalizationAnalysisReuse;
@@ -318,7 +321,7 @@ private:
 // Throws std::length_error for sizes exceeding util::MaxSourceSize. Exposed
 // separately so callers/tests can validate lengths without constructing huge
 // source buffers. BuildSourceAnalysis checks this before scanning/allocating.
-[[nodiscard]] parser::SourceOffset CheckedSourceAnalysisSize(size_t size);
+[[nodiscard]] parser::SourceOffset CheckedSourceAnalysisSize(us size);
 
 // Throws std::length_error for oversized sources, before reading source bytes.
 // One source scan, one token classification, one iterative tree traversal;

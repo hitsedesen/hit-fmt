@@ -2,6 +2,8 @@
 
 #include "formatter.hpp"
 
+#include <util/memory.hpp>
+
 #include <memory_resource>
 
 namespace formatter::detail {
@@ -18,7 +20,7 @@ namespace formatter::detail {
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics = true);
 
 // Private inputs may be consumed during trusted normalization: original may
@@ -31,7 +33,7 @@ namespace formatter::detail {
     std::span<const std::string_view> sensitive,
     const FormatRequest& request,
     std::pmr::memory_resource& file,
-    std::pmr::monotonic_buffer_resource& scratch,
+    Arena& scratch,
     bool widthDiagnostics = true);
 
 } // namespace formatter::detail
