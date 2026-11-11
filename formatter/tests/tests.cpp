@@ -2455,6 +2455,7 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../call-reflow", "nested-operator-choice");
     cases.push_back({callReflow, "balanced-initializers", "balanced-initializers.input.cpp"});
     addProfileCase("../call-reflow", "profile-nested");
+    addProfileCase("../chained-calls", "profile-single-call");
     addProfileCase("../chained-calls", "profile-multiline-lambda");
     // Exercise forced layout for mixed member/invocation spines.
     cases.back().Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;

@@ -396,8 +396,8 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             for (const auto& change : checked.Formatting.Summary->IncludeOrderChanges) {
                 const auto before =
                     input.View().View().substr(change.Original.Begin, change.Original.End - change.Original.Begin);
-                const auto after = std::string_view(checked.Formatting.Text)
-                    .substr(change.Output.Begin, change.Output.End - change.Output.Begin);
+                const auto after = std::string_view(
+                    checked.Formatting.Text).substr(change.Output.Begin, change.Output.End - change.Output.Begin);
                 EXPECT_TRUE(before.ends_with('\n'));
                 EXPECT_TRUE(after.ends_with('\n'));
                 EXPECT_EQ(before.find("int "), std::string_view::npos);

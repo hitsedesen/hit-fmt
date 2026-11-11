@@ -6761,8 +6761,9 @@ private:
                     // The expression in an exception specification is not
                     // a parameter list, even when it contains commas.
                     auto nested = proveDirectInitializer
-                        ? ArgumentPairEnd(ArgumentSignificant(cursor + 1, closing - 1), closing - 1)
-                            .value_or(std::numeric_limits<TokenIndex>::max())
+                        ? ArgumentPairEnd(
+                            ArgumentSignificant(cursor + 1, closing - 1),
+                            closing - 1).value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() || nested >= closing) {
                         return proveDirectInitializer ? uncertain() : std::nullopt;
@@ -6772,8 +6773,9 @@ private:
                     TK::Operator_OpenParenthesis)
                 {
                     auto nested = proveDirectInitializer
-                        ? ArgumentPairEnd(ArgumentSignificant(cursor + 1, closing - 1), closing - 1)
-                            .value_or(std::numeric_limits<TokenIndex>::max())
+                        ? ArgumentPairEnd(
+                            ArgumentSignificant(cursor + 1, closing - 1),
+                            closing - 1).value_or(std::numeric_limits<TokenIndex>::max())
                         : FindBalancedEnd(NextSignificant(cursor + 1));
                     if (nested == std::numeric_limits<TokenIndex>::max() || nested >= closing) {
                         return proveDirectInitializer ? uncertain() : std::nullopt;

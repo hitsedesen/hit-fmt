@@ -4991,12 +4991,21 @@ private:
             layout::GroupMode::Fill,
             int32_t(policy.Indent.ContinuationOffset),
             policy.Indent);
-        // Prefer operator/list boundaries over splitting field paths or
-        // multi-call chains. Outside control headers, a single suffix call
-        // may split before its arguments; header chains prefer argument
-        // breaks as well as operator and clause boundaries.
+        // A lone member call on a named receiver should wrap its arguments
+        // before leaving the receiver alone. Empty calls have no such alternative.
+        bool singleMemberCall = false;
+
+        if (links == 1 && calls == 1 && namedRoot && Region(entry).Kind == NodeKind::CallExpression) {
+            const auto callee = Region(entry).FirstChild;
+            const auto args = Region(Syntax_[callee]).NextSibling;
+            singleMemberCall = args != None && Region(Syntax_[args]).Kind == NodeKind::ArgumentList &&
+                Region(Syntax_[args]).FirstChild != None;
+        }
+
+        // Prefer operator/list boundaries over field paths and multi-call
+        // chains; control headers also prefer clause and argument breaks.
         GroupSpecs_[group].BreakPenalty =
-            entry.ControlHeader ? 3 : packingCalls == 0 || (links > 1 && packingCalls != 1) ? 2 : 0;
+            entry.ControlHeader ? 3 : singleMemberCall || packingCalls == 0 || (links > 1 && packingCalls != 1) ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         GroupSpecs_[group].StructuralBase = true;

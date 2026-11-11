@@ -134,15 +134,14 @@ Task<void> openPdf(Desktop &ActiveDesktop) {
 #if defined(PAPER_ENABLE_OCR)
     Reader.ocr({.Language = "eng", .MinimumConfidence = 0.85});
 #endif
-    auto SourceDocument = co_await Reader
-        .extract(*Path,
-                 [&ActiveDesktop, Label = Path->filename()](unsigned Done,
-                                                            unsigned Total) {
-                   ActiveDesktop.status()
-                       .show(Label,
-                             Total == 0 ? 0
-                             : static_cast<unsigned>(100.0 * Done / Total));
-                 });
+    auto SourceDocument = co_await Reader.extract(*Path, [&ActiveDesktop,
+                                                          Label = Path
+                                                              ->filename()](
+        unsigned Done, unsigned Total) {
+      ActiveDesktop.status()
+          .show(Label,
+                Total == 0 ? 0 : static_cast<unsigned>(100.0 * Done / Total));
+    });
     Session{ActiveDesktop, std::move(SourceDocument), {.KeepImages =
                 true, .AssetDirectory = Path->stem() + "-assets"}}.run();
   } catch (const std::exception &Error) {

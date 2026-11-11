@@ -68,11 +68,11 @@ void Report() {
     beta);
   message(
     firstArgumentWithAnIntentionallyLongName);
-  receiver
-    .message(value + offset,
-      alpha,
-      beta,
-      gamma);
+  receiver.message(
+    value + offset,
+    alpha,
+    beta,
+    gamma);
   message("left" " right",
     alpha,
     beta,
