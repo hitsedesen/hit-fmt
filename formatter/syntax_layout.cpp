@@ -2702,16 +2702,19 @@ private:
             GroupSpecs_[group].FlatInBrokenParentPenalty = 2;
         }
 
-        // Comparisons may keep their operand/operator prefix while call or
-        // list operands break. Other binary sequences retain their own
-        // precedence-level breaks; conditionals retain their branch layout.
+        // Comparisons and shifts may keep their operand/operator prefix while
+        // call or list operands break, avoiding an extra line for streamed
+        // calls. Other binary sequences retain their precedence-level breaks;
+        // conditionals retain their branch layout.
         const auto expressionOperator = Syntax_[id].Operator;
         const bool comparison = kind == NodeKind::BinaryExpression && expressionOperator != None &&
             (Tree_.Role(expressionOperator) == PunctuationRole::ComparisonOperator ||
                 Tree_.Kind(expressionOperator) == TokenKind::Operator_Equals ||
                 Tree_.Kind(expressionOperator) == TokenKind::Operator_NotEquals);
+        const bool shift = kind == NodeKind::BinaryExpression && expressionOperator != None &&
+            Tree_.Role(expressionOperator) == PunctuationRole::ShiftOperator;
         GroupSpecs_[group].ChildBreaks =
-            (kind != NodeKind::BinaryExpression || comparison) && kind != NodeKind::ConditionalExpression;
+            (kind != NodeKind::BinaryExpression || comparison || shift) && kind != NodeKind::ConditionalExpression;
         GroupSpecs_[group].ForceBreak = canonical && policy.Break == BreakRequirement::Always &&
             (assignmentPrefix || kind == NodeKind::BinaryExpression || kind == NodeKind::AssignmentExpression ||
                 kind == NodeKind::ConditionalExpression || Syntax_[id].String);
