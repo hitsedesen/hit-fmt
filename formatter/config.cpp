@@ -181,6 +181,7 @@ std::vector<std::string> ParseStringList(std::string_view value, const std::file
     value.remove_suffix(1);
 
     std::vector<std::string> result;
+
     while (true) {
         value = Trim(value);
 
@@ -272,6 +273,7 @@ std::vector<IncludeGroupRule> ParseIncludeGroups(std::string_view value, const s
     };
     expect('[');
     std::vector<IncludeGroupRule> result;
+
     while (true) {
         value = Trim(value);
 

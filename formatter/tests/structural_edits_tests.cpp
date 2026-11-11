@@ -141,6 +141,7 @@ std::vector<TokenOutputOffset> MapOutput(const parser::SyntaxTree& original, std
     auto tokens = parser::Parse(padded.View(), [] (parser::ParseError) { });
     EXPECT_EQ(tokens.TokenCount(), original.TokenCount());
     std::vector<TokenOutputOffset> map(original.TokenCount());
+
     for (parser::TokenIndex i = 0; i < std::min(tokens.TokenCount(), original.TokenCount()); ++i) {
         EXPECT_EQ(tokens.TokenText(i), original.TokenText(i));
         auto r = tokens.Token(i).Text;
@@ -408,6 +409,7 @@ TEST(StructuralEdits, IncludeDiscoveryContainsSortedGroupsAndExactPermutations)
     EXPECT_EQ(plan.Edits.front().Source.Begin, groups[1].Source.Begin);
     EXPECT_EQ(plan.Edits.front().Source.End, groups[1].Source.End);
     std::vector<parser::SourceRange> atoms;
+
     for (const auto& piece : plan.Pieces) {
         EXPECT_TRUE(piece.FromSource);
         EXPECT_TRUE(piece.Literal.empty());
@@ -658,6 +660,7 @@ TEST(StructuralEdits, OwnershipValidationRejectsOverlapsAndCoownedInsertions)
     File includes("#include <b.h>\n#include <a.h>\n");
     auto repeated = includes.Plan({.SortIncludes = true});
     std::vector<size_t> sources;
+
     for (size_t i = 0; i < repeated.Pieces.size(); ++i) {
         if (repeated.Pieces[i].FromSource) {
             sources.push_back(i);
@@ -913,6 +916,7 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         braces.Scratch);
     ASSERT_EQ(identities.Namespaces.size(), 2u);
     std::vector<parser::TokenIndex> closers;
+
     for (parser::TokenIndex i = 0; i < braces.Tree.TokenCount(); ++i) {
         if (braces.Tree.Kind(i) == tokenizer::TokenKind::Operator_CloseBrace) {
             closers.push_back(i);

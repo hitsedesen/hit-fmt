@@ -520,6 +520,7 @@ void PrintFileIssues(
         ? (fix ? &checked.Formatting.Changes->OutputLines : &checked.Formatting.Changes->OriginalLines)
         : nullptr;
     std::optional<formatter::SourceLines> ownedLines;
+
     // Width diagnostics treat bare CR as an emitted newline, while source
     // coordinates and hunk authority use physical LF-delimited lines.
     if (!lines || (fix && lines->ContainsBareCR())) {

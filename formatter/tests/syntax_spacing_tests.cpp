@@ -780,6 +780,7 @@ TEST(SyntaxSpacing, JointPreferencesRetainExactTokenKindsAndSpellings)
             SCOPED_TRACE(static_cast<int>(context));
             checkTokens(lexical, context);
         }
+
         std::array<parser::SourceRange, 1> ranges{{{9, 27}}};
         Analysis protectedSource(
             "void f(){value = alpha + beta;}",

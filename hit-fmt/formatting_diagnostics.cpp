@@ -300,7 +300,9 @@ std::vector<Chunk> DiagnosticChunks(std::string_view source, const formatter::Fo
             cursor = range.Begin;
             column = 1;
         }
+
         const auto end = std::min<size_t>(offset, range.Begin + changes.OriginalLines.Text(source, line).size());
+
         while (cursor < end) {
             cursor += unicode::utf8::GetFirstCodePointSize(source.substr(cursor, end - cursor)).value_or(1);
             ++column;
@@ -318,6 +320,7 @@ std::vector<Chunk> DiagnosticChunks(std::string_view source, const formatter::Fo
         const auto end = std::max<size_t>(
             position.Line,
             changes.OriginalLines.LineAt(change.Original.Empty() ? change.Original.End : change.Original.End - 1)) + 1;
+
         if (chunks.empty() || begin > chunks.back().End) {
             chunks.push_back({begin, end, i, i, {}});
         } else {

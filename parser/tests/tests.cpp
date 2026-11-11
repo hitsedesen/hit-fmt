@@ -354,7 +354,9 @@ TEST_P(FileTest, IncludeReuseMatchesFreshParse)
             EXPECT_EQ(reused->TokenPosition(i).Line, fresh.TokenPosition(i).Line) << i;
             EXPECT_EQ(reused->TokenPosition(i).Column, fresh.TokenPosition(i).Column) << i;
         }
+
         std::vector<std::pair<const Node*, const Node*>> pending{{&reused->Root(), &fresh.Root()}};
+
         while (!pending.empty()) {
             const auto [copy, reference] = pending.back();
             pending.pop_back();
@@ -2645,12 +2647,14 @@ TEST(Parser, HandlesDeepCompoundNesting)
 
     EXPECT_EQ(errors, 0);
     auto outerOpening = std::numeric_limits<parser::TokenIndex>::max();
+
     for (parser::TokenIndex index = 0; index < tree.TokenCount(); ++index) {
         if (tree.Kind(index) == tokenizer::TokenKind::Operator_OpenBrace) {
             outerOpening = index;
             break;
         }
     }
+
     ASSERT_NE(outerOpening, std::numeric_limits<parser::TokenIndex>::max());
     auto outerClosing = tree.MatchingDelimiter(outerOpening);
     ASSERT_NE(outerClosing, std::numeric_limits<parser::TokenIndex>::max());
@@ -2807,6 +2811,7 @@ TEST(Parser, RecordHeadTemplateArgumentsOwnTheirSeparators)
             }
         }
     };
+
     for (const auto& value : boundaries) {
         checkBoundary(value);
     }
@@ -4376,6 +4381,7 @@ TEST(Parser, OpaqueRecordHeadsHaveOnlyLocalConstructorOwners)
             std::vector<const Node*> pending{&tree.Root()};
             std::vector<parser::TokenRange> lists;
             std::vector<parser::TokenRange> nested;
+
             while (!pending.empty()) {
                 const auto* node = pending.back();
                 pending.pop_back();
@@ -4520,6 +4526,7 @@ TEST(Parser, OpaqueRecordOwnersPreserveGroupedMemberDeclarators)
             AppendSExpression(serialized, tree, *member, 0);
             actual.push_back(std::move(serialized));
             std::vector<parser::PunctuationRole> memberRoles;
+
             for (auto i = member->Tokens.Begin; i < member->Tokens.End; ++i) {
                 memberRoles.push_back(tree.Role(i));
             }

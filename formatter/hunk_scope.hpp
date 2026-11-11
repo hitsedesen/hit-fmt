@@ -36,6 +36,7 @@ public:
         for (const auto hunk : hunks) {
             Validate(hunk);
         }
+
         std::pmr::vector<Hunk> result(hunks.begin(), hunks.end(), &memory);
         std::sort(
             result.begin(),

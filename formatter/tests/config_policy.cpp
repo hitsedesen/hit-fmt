@@ -1404,6 +1404,7 @@ TEST(ConfigPolicy, OrderedGroupIndexPreservesEarliestRule)
     EXPECT_EQ(empty.Classify("engine/item.h").Group, empty.GroupCount());
     // Exercise branching and long shared prefixes in the compact index.
     std::vector<formatter::IncludeGroupRule> many;
+
     for (int index = 255; index >= 1; --index) {
         if (index == '/' || index == '\\' || index == '.') {
             continue;

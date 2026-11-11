@@ -310,6 +310,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
             });
         }
     }
+
     std::vector<std::size_t> order(Prefixes_.size());
     std::iota(order.begin(), order.end(), 0);
     std::sort(
@@ -383,6 +384,7 @@ PreparedIncludeGroups::PreparedIncludeGroups(std::span<const IncludeGroupRule> g
 
     Edges_.resize(pending.size());
     std::vector<std::size_t> inserted(Nodes_.size(), 0);
+
     for (const auto& edge : pending) {
         Edges_[Nodes_[edge.Parent].FirstEdge + inserted[edge.Parent]++] = edge.Value;
     }

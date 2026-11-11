@@ -17,6 +17,7 @@ TEST(FileBatch, FlushesOnCountOrEstimatedBytes)
     std::vector<std::vector<size_t>> groups;
     auto flush = [&] {
         std::vector<size_t> indices;
+
         for (size_t offset = 0; offset < batch.Paths.size(); ++offset) {
             EXPECT_EQ(batch.Paths[offset], std::to_string(batch.FirstIndex + offset));
             indices.push_back(batch.FirstIndex + offset);

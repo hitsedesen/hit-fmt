@@ -139,6 +139,7 @@ TEST(HunkScope, IndexOutlivesSourceAndScaleUsesContiguousOperationMemory)
     // geometric growth factor (MSVC grows by 1.5, not 2).
     CountingResource referenceMemory;
     std::pmr::vector<parser::SourceOffset> reference(&referenceMemory);
+
     for (size_t i = 0; i <= count; ++i) {
         reference.push_back(0);
     }

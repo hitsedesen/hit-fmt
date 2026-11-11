@@ -199,6 +199,7 @@ ChangedFormatResult FormatChanged(
     const auto selected = lines.Coalesce(hunks, file);
     const auto selectedBytes = ByteScope(lines, selected, file);
     std::pmr::vector<std::string_view> sensitive(&file);
+
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
     }
@@ -217,6 +218,7 @@ ChangedFormatResult FormatChanged(
     std::pmr::vector<Hunk> windows(selected.begin(), selected.end(), &file);
     std::pmr::vector<HunkCoverage> coverage(&file);
     std::pmr::vector<NamespaceFootprint> namespaces(&file);
+
     for (const auto& region : safety.Regions()) {
         if (region.Tokens.Empty()) {
             continue;
@@ -340,6 +342,7 @@ ChangedFormatResult FormatChanged(
     // survivors supply authority; resolving them again would mistake generated
     // suffixes or rewritten comment identities for unsafe following text.
     std::pmr::vector<StructuralOperation> canonicalComments(&file);
+
     for (const auto& operation : canonical.StructuralOperations) {
         if (operation.Kind == StructuralAction::NamespaceComments) {
             canonicalComments.push_back(operation);
@@ -375,6 +378,7 @@ ChangedFormatResult FormatChanged(
             return true;
         });
     std::pmr::vector<Range> outputProtection(&scratch);
+
     for (const auto& range : canonical.OutputProtection) {
         outputProtection.push_back(range.Source);
     }
