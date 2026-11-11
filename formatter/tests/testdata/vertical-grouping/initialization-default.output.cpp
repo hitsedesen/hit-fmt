@@ -82,3 +82,43 @@ void Grouping(bool ready) {
     }
 #endif
 }
+
+void DefaultConstruction(int actions) {
+    ScopeTimer timer;
+
+    for (int i = 0; i < actions; ++i) {
+        auto callback = Bind([&] {
+            Yield();
+
+            if (Finished()) {
+                Complete();
+            }
+        });
+        Invoke(callback);
+    }
+    [[maybe_unused]] ScopeTimer annotatedTimer;
+
+    if (Check()) {
+        Run();
+    }
+    bool ready;
+
+    if (Check()) {
+        ready = true;
+    }
+    int (*callback)();
+
+    while (Pending()) {
+        Invoke(callback);
+    }
+    int* FunctionReturningPointer();
+
+    if (Check()) {
+        Run();
+    }
+    int (&FunctionReturningReference())();
+
+    while (Pending()) {
+        Run();
+    }
+}

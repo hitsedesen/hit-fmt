@@ -836,16 +836,17 @@ BlockBlankLinesAfter = Preserve
 # Before sibling if/for/while statements, outside attached leading comments.
 # No gap is added at the beginning of a body or after a case/ordinary label.
 # Includes preceding declarations unless KeepControlStatementWithInitialization
-# exempts an initialized variable declaration.
+# exempts a variable declaration.
 # Example: 1 separates Prepare(); from a following while (ready) { Run(); }.
 # Values: Preserve | 0..10000 | Minimum:0..10000
 ControlStatementBlankLinesBefore = Preserve
 
-# Skip ControlStatementBlankLinesBefore after an initialized variable declaration.
+# Skip ControlStatementBlankLinesBefore after a variable declaration.
 # Preserves the authored gap; other blank-line rules and caps still apply.
-# Recognizes =, braces and unambiguous parenthesized initialization, including
-# structured bindings. Does not infer whether the control statement uses it.
-# Example: true keeps auto value = Read(); adjacent to if (ready) { Use(value); }.
+# Includes default initialization (Timer timer;), explicit initializers and
+# structured bindings. Excludes function declarations; does not resolve types
+# or infer whether the control statement uses the variable.
+# Example: true keeps Timer timer; adjacent to for (;;) { Run(); }.
 # Values: false | true
 KeepControlStatementWithInitialization = false
 

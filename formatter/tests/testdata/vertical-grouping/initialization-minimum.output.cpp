@@ -34,7 +34,6 @@ void Grouping(bool ready) {
         Use(spaced);
     }
     int uninitialized;
-
     if (ready) {
         uninitialized = 1;
     }
@@ -74,4 +73,40 @@ void Grouping(bool ready) {
         Use(beforeDirective);
     }
 #endif
+}
+
+void DefaultConstruction(int actions) {
+    ScopeTimer timer;
+    for (int i = 0; i < actions; ++i) {
+        auto callback = Bind([&] {
+            Yield();
+
+            if (Finished()) {
+                Complete();
+            }
+        });
+        Invoke(callback);
+    }
+    [[maybe_unused]] ScopeTimer annotatedTimer;
+    if (Check()) {
+        Run();
+    }
+    bool ready;
+    if (Check()) {
+        ready = true;
+    }
+    int (*callback)();
+    while (Pending()) {
+        Invoke(callback);
+    }
+    int* FunctionReturningPointer();
+
+    if (Check()) {
+        Run();
+    }
+    int (&FunctionReturningReference())();
+
+    while (Pending()) {
+        Run();
+    }
 }
