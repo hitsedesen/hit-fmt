@@ -1860,6 +1860,15 @@ std::vector<FormatCase> FormatCases()
     addProfileCase("../ytsaurus-corpus", "includes");
     cases.back().InputFilePath = "yt/yt/core/concurrency/worker.cpp";
     addProfileCase("../ytsaurus-corpus", "expressions");
+    addProfileCase("../ytsaurus-corpus", "shift-call-operands");
+    {
+        auto trailing = cases.back();
+        trailing.Name = "shift-call-operands-trailing";
+        trailing.Style = formatter::LoadConfigFile(profile + ".hit-fmt").FormattingStyle;
+        trailing.Style->ShiftOperatorSide = formatter::OperatorSide::Trailing;
+        cases.push_back(std::move(trailing));
+    }
+
     addProfileCase("../ytsaurus-corpus", "macros");
     cases.push_back({data / "enum-macros", "enabled", "enabled.input.cpp"});
 

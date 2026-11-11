@@ -46,10 +46,9 @@ void otherOperators() {
         source.read(
             span.InitialSourceOffset,
             span.FinalSourceOffset - span.InitialSourceOffset);
-    auto shifted = baseValue <<
-        source.read(
-            span.InitialSourceOffset,
-            span.FinalSourceOffset - span.InitialSourceOffset);
+    auto shifted = baseValue << source.read(
+        span.InitialSourceOffset,
+        span.FinalSourceOffset - span.InitialSourceOffset);
     bool ready = firstCondition ||
         source.check(
             span.InitialSourceOffset,
