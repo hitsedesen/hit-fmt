@@ -438,6 +438,7 @@ std::pmr::vector<PartialGapPermission> SourceAnalysis::CollectPartialGapPermissi
     std::optional<std::span<const parser::SourceRange>> scope) const
 {
     std::pmr::vector<PartialGapPermission> permissions(Gaps_.get_allocator().resource());
+
     // A directive owns its terminating LF, not the next line's indentation.
     // Keep the same slice authority for unrestricted and scoped formatting.
     for (GapId id = 0; id < Gaps_.size(); ++id) {
@@ -716,6 +717,7 @@ SourceAnalysis BuildSourceAnalysis(
             return Next < Positions.size() && Positions[Next] < range.End;
         }
     };
+
     TokenMarkers recoveryTokens{std::pmr::vector<parser::TokenIndex>(&scratchMemory)};
     TokenMarkers ambiguousTokens{std::pmr::vector<parser::TokenIndex>(&scratchMemory)};
     Offset disabledBegin = 0;
@@ -1330,6 +1332,7 @@ bool CanReuseNormalizedSourceAnalysis(
             }
         }
     }
+
     std::pmr::vector<parser::SourceRange> copied(&scratch);
     copied.reserve(pieces.size());
 
@@ -1471,6 +1474,7 @@ struct detail::NormalizationAnalysisReuse
         if (next != added.size()) {
             return false;
         }
+
         std::pmr::vector<RegionId> insertedIds(&scratch);
         insertedIds.reserve(added.size());
 
@@ -1570,7 +1574,9 @@ struct detail::NormalizationAnalysisReuse
                 }
             }
         }
+
         std::pmr::vector<parser::TokenIndex> prior(&scratch);
+
         if constexpr (!Consume) {
             prior.resize(size_t(count) + 1, NoToken);
 

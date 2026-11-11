@@ -359,6 +359,7 @@ FileResult ProcessFile(
         const auto& config = resolver.Resolve(path);
         const auto inputFilePath = path.generic_string();
         std::optional<ChangedFileScope> scope;
+
         if (options.HunkInput) {
             const auto absolute = std::filesystem::absolute(path).lexically_normal();
             scope = ChangedFileScope{changed.Hunks.at(absolute.string()), options.Spillover};

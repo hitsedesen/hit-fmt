@@ -896,6 +896,7 @@ TEST(SourceAnalysis, SourceSizeIsCheckedBeforeOffsetNarrowing)
     EXPECT_THROW(
         static_cast<void>(formatter::CheckedSourceAnalysisSize(std::numeric_limits<size_t>::max())),
         std::length_error);
+
     if constexpr (sizeof(size_t) > sizeof(parser::SourceOffset)) {
         EXPECT_THROW(static_cast<void>(formatter::CheckedSourceAnalysisSize(uint64_t{1} << 32)), std::length_error);
     }
@@ -1127,6 +1128,7 @@ TEST(SourceAnalysis, PartialTrailingAndBlankHorizontalTrimKeepsSuffix)
     const std::array<parser::SourceRange, 2> scope{{{begin, begin + 2}, {begin + 4, begin + 6}}};
     auto analysis = Analyze(tree, memory, {.EditScope = scope});
     std::vector<parser::SourceRange> slices;
+
     for (const auto& permission : analysis.PartialGapPermissions()) {
         if (permission.Gap == gap) {
             EXPECT_EQ(permission.Kind, PermissionKind::TrimHorizontal);
@@ -1310,6 +1312,7 @@ TEST(SourceAnalysis, PartialUnsafeRealSyntaxAndUnsupportedWhitespace)
         Input input(source);
         auto tree = Parse(input);
         std::vector<parser::SourceRange> scope;
+
         // Select only complete horizontal runs, never newline topology.
         for (uint32_t i = 0; i < input.Size;) {
             const auto begin = i;
@@ -1476,6 +1479,7 @@ TEST(SourceAnalysis, IterativeClassificationScalesWithScopes)
     // Many disjoint line scopes exercise sparse point permissions without
     // per-hunk rescans or retaining the caller's interval storage.
     std::vector<parser::SourceRange> scope;
+
     for (uint32_t i = 0; i < 2000; ++i) {
         scope.push_back({i * 11, i * 11 + 10});
     }
@@ -1500,6 +1504,7 @@ TEST(SourceAnalysis, IterativeClassificationScalesWithScopes)
     // vector grows incrementally. Use this library's vector growth policy.
     CountingResource permissionMemory;
     std::pmr::vector<formatter::PartialGapPermission> permissions(&permissionMemory);
+
     for (size_t i = 0; i < deferred.PartialGapPermissions().size(); ++i) {
         permissions.emplace_back();
     }
@@ -1656,6 +1661,7 @@ TEST(SourceAnalysis, NormalizationTransportMatchesFreshAnalysis)
         const Input normalized(material.Text);
         std::pmr::vector<parser::detail::NormalizedPiece> pieces(&scratch);
         std::pmr::vector<parser::SourceRange> edits(&scratch);
+
         for (const auto& piece : material.Provenance) {
             pieces.push_back({piece.Output, piece.Original, piece.Generated});
         }
@@ -1666,6 +1672,7 @@ TEST(SourceAnalysis, NormalizationTransportMatchesFreshAnalysis)
 
         ASSERT_TRUE(formatter::CanReuseNormalizedSourceAnalysis(original, safety, edits, pieces, scratch));
         std::pmr::vector<formatter::ProtectedSourceRange> inherited(&scratch);
+
         for (const auto& piece : pieces) {
             if (piece.Generated) {
                 continue;

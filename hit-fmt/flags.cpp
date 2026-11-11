@@ -75,7 +75,9 @@ void Flags::Parse(std::span<const char* const> args) const
         if (flag == Registered_.end()) {
             throw UsageError("unknown option: " + std::string(argument));
         }
+
         std::optional<std::string_view> value;
+
         if (argument != flag->Name) {
             value = argument.substr(flag->Name.size() + (flag->Name.starts_with("--") ? 1 : 0));
         } else if (flag->Mode != ValueMode::None && !args.empty() &&

@@ -43,6 +43,7 @@ size_t SourceLines::LineAt(parser::SourceOffset offset) const
     if (Boundaries_.empty() || offset > Boundaries_.back()) {
         throw std::out_of_range("invalid source line offset");
     }
+
     return std::max<size_t>(
         1,
         std::min<size_t>(
@@ -240,11 +241,14 @@ std::pmr::vector<FormatChange> IncludeBlocks(
     std::pmr::memory_resource& scratch)
 {
     std::pmr::vector<FormatChange> blocks(&scratch);
+
     if (result.StructuralOperations.empty()) {
         return blocks;
     }
+
     constexpr auto missing = std::numeric_limits<uint32_t>::max();
     std::pmr::vector<uint32_t> indices(result.StructuralOperations.size(), missing, &scratch);
+
     for (size_t i = 0; i < indices.size(); ++i) {
         const auto& operation = result.StructuralOperations[i];
 
@@ -462,7 +466,9 @@ void detail::BuildChangeMetadata(
         sourceLines = originalLines.empty() ? SourceLines(source) : SourceLines(originalLines, originalBareCR);
         outputLines = SourceLines(output);
     }
+
     std::pmr::vector<FormatChange> blocks(&scratch);
+
     if (includes) {
         const auto& original = changes ? changes->OriginalLines : sourceLines;
         blocks = IncludeBlocks(tree, result, original, changes ? changes->OutputLines : outputLines, scratch);

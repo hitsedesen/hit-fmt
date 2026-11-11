@@ -277,6 +277,7 @@ std::pmr::vector<uint8_t> NullRemovalContexts(
     std::pmr::memory_resource& scratch)
 {
     std::pmr::vector<uint8_t> contexts(regions.size(), KnownSyntax, &scratch);
+
     // Complete only rules out recovery and ambiguity. A function-shaped macro
     // can still have an unknown function kind and require its trailing ';'.
     // Its apparent body is not a proven statement sequence either.
@@ -553,6 +554,7 @@ void Includes(
     if (options.Grouping == IncludeGrouping::Preserve) {
         context.Groups = nullptr;
     }
+
     std::pmr::vector<std::string_view> current(&scratch), parts(&scratch);
     std::pmr::vector<std::string_view> grouped(&scratch);
     const auto inputDirectory = Directory(context.InputFilePath);
@@ -574,6 +576,7 @@ void Includes(
 
         return current.size() - common + path.size() - common;
     };
+
     if (needPaths) {
         AppendIncludePathComponents(current, inputDirectory, inputAbsolute);
     }
@@ -1046,6 +1049,7 @@ StructuralPlan PlanStructuralEditsImpl(
     // ancestors; each marked control stops later walks of that shared path.
     auto regions = safety.Regions();
     std::pmr::vector<uint8_t> trailingLabels(&scratchMemory);
+
     if (controlEdits || options.RemoveNullStatements) {
         for (RegionId id = 0; id < regions.size(); ++id) {
             if (regions[id].Kind != NK::LabelStatement && regions[id].Kind != NK::CaseLabel) {
@@ -1243,6 +1247,7 @@ StructuralPlan PlanStructuralEditsImpl(
     if constexpr (Certified) {
         CheckAnalysisSource(tree, safety);
         std::pmr::vector<uint32_t> depths(&scratchMemory);
+
         for (RegionId id = 0; id < regions.size(); ++id) {
             const auto& node = regions[id];
             const bool control = controlEdits && Control(node.Kind);
@@ -1569,6 +1574,7 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
         // Linear nearest-survivor tables bound chains of neighboring deletions.
         std::pmr::vector<TI> before(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
         std::pmr::vector<TI> after(tree.TokenCount() + 1, tree.TokenCount(), &scratchMemory);
+
         for (TI i = 0; i < tree.TokenCount(); ++i) {
             before[i + 1] = result.OriginalTokens[i].Present ? i : before[i];
         }
@@ -1750,7 +1756,9 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
     if (options.Policy == NamespaceCommentPolicy::Preserve) {
         return plan;
     }
+
     std::pmr::vector<TI> namespaceKeywords(&scratchMemory);
+
     for (TI i = 0; i < original.TokenCount(); ++i) {
         if (original.Kind(i) == TK::Keyword_namespace) {
             namespaceKeywords.push_back(i);

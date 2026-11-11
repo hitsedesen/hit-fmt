@@ -1058,6 +1058,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
                     const auto indent = SourceColumn(text.substr(begin, end - begin), policy.TabWidth);
                     const auto shifted = std::clamp<std::int64_t>(std::int64_t(indent) + shift, 0, Infinity - 1);
+
                     if (shifted != indent) {
                         const auto copied = text.substr(run, begin - run);
                         appendSource(copied);

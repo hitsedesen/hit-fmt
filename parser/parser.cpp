@@ -504,6 +504,7 @@ public:
             uint32_t ParentRegion = none;
             uint32_t BeforeRegion = none;
         };
+
         std::pmr::vector<TokenIndex> mapping(size_t(original.TokenCount()) + 1, none, &ScratchMemory_);
         std::pmr::vector<Change> changes(&ScratchMemory_);
         size_t deleted = 0;
@@ -823,6 +824,7 @@ public:
                             ? TokenRange{mapping[before.Begin], mapping[before.Begin]}
                             : TokenRange{mapping[before.Begin], mapping[before.End - 1] + 1};
                     node->TriviaIndex_ = std::numeric_limits<uint32_t>::max();
+
                     if (node->FirstChild) {
                         if (node->NextSibling) {
                             siblings.push_back(node->NextSibling);
@@ -952,6 +954,7 @@ public:
         Node* parent = nullptr;
         Node* previous = nullptr;
         Node* child = nullptr;
+
         for (const auto& change : changes) {
             if (!change.Insert) {
                 continue;
@@ -1445,6 +1448,7 @@ private:
             NextNode_ = static_cast<Node*>(Tree_.Memory_->allocate(sizeof(Node) * NodesPerBlock, alignof(Node)));
             RemainingNodes_ = NodesPerBlock;
         }
+
         auto* node = ::new (NextNode_++) Node;
         node->Kind = kind;
         node->Tokens = {.Begin = begin, .End = begin};
@@ -1685,11 +1689,13 @@ private:
         if (HasDelimiterMap_ || BranchParseDepth_ != 0 || CurrentKind() != TK::Operator_CloseBrace) {
             return;
         }
+
         // Alternative branches can each open a scope closed after #endif.
         // The linear token stack then pairs enclosing braces incorrectly.
         // Publish only the boundaries proven by the statement/declaration
         // parser; do not make the whole delimiter map authoritative again.
         const auto none = std::numeric_limits<TokenIndex>::max();
+
         for (auto token : {opening, Cursor_}) {
             const auto previous = Tree_.Tokens_.MatchingDelimiter(token);
 
@@ -2011,6 +2017,7 @@ private:
             --ConditionalBraceScopeOverflow_;
             return;
         }
+
         ASSERT(ConditionalBraceScopeDepth_ != 0)
         --ConditionalBraceScopeDepth_;
     }
@@ -2106,6 +2113,7 @@ private:
     [[nodiscard]] TokenIndex MacroInvocationEnd(TokenIndex first, std::string_view name) const
     {
         constexpr auto none = std::numeric_limits<TokenIndex>::max();
+
         if (Kind(first) != TK::Identifier || Text(first) != name) {
             return none;
         }
@@ -2377,6 +2385,7 @@ private:
             const auto entryEnd = Kind(token) == TK::Operator_OpenParenthesis
                 ? FindBalancedEnd(token)
                 : std::numeric_limits<TokenIndex>::max();
+
             if (entryEnd > close) {
                 valid = false;
                 break;
@@ -3178,6 +3187,7 @@ private:
 
         auto parametersEnd = Cursor_;
         Node* parameters = nullptr;
+
         if (parametersBegin < parametersEnd && Kind(parametersBegin) == TK::Operator_Less) {
             if (closedHeader) {
                 parameters = MakeTemplateParameterList(parametersBegin, parametersEnd);
@@ -3202,7 +3212,9 @@ private:
             Append(*node, *ParseRequiresClause());
             ParseTriviaBeforeChild(*node);
         }
+
         Node* declaration = nullptr;
+
         if (!AtEnd()) {
             declaration = ParseDeclaration();
             Append(*node, *declaration);
@@ -4271,11 +4283,14 @@ private:
                 } else {
                     after = FindBalancedEnd(next);
                 }
+
                 bool matches = !owner.empty() && Text(name) == owner &&
                     after != std::numeric_limits<TokenIndex>::max() && after <= end;
+
                 if (matches && exactOwner && functionKind) {
                     *functionKind = destructor ? FunctionKind::Destructor : FunctionKind::Constructor;
                 }
+
                 // A qualified terminal name followed directly by parameters
                 // has no return type. Its qualifier may be an alias defined in
                 // an include; retain the declarator without claiming that the
@@ -5657,6 +5672,7 @@ private:
         const auto after = Kind(opening) == TK::Operator_OpenParenthesis
             ? FindBalancedEnd(opening)
             : std::numeric_limits<TokenIndex>::max();
+
         if (after > end || after > ParseLimit_) {
             return nullptr;
         }
@@ -5706,6 +5722,7 @@ private:
                 const auto after = Kind(opening) == TK::Operator_OpenParenthesis
                     ? FindBalancedEnd(opening)
                     : std::numeric_limits<TokenIndex>::max();
+
                 if (after <= end) {
                     const auto first = NextSignificant(opening + 1);
 
@@ -6606,6 +6623,7 @@ private:
                 if (functionType && hasDefiniteType) {
                     ambiguous = false;
                 }
+
                 return ambiguous
                     ? std::nullopt
                     : std::optional<TokenRange>(TokenRange{.Begin = opening, .End = closing});
@@ -6929,6 +6947,7 @@ private:
                 init->Tokens.End = segmentEnd;
                 Append(*list, *init);
                 std::optional<TokenRange> segmentParameters;
+
                 if (parameters && segmentBegin <= parameters->Begin && parameters->End <= segmentEnd) {
                     segmentParameters = parameters;
                 }
@@ -6982,6 +7001,7 @@ private:
             terminalConstructorEligible && declaration.Kind == NodeKind::FunctionDefinition
             ? std::optional<TokenRange>(parameters)
             : std::nullopt);
+
         if (ungroupedConstructorInitializer && !RecordNames_.empty() && RecordNames_.back().empty() &&
             specifiersEnd == parameters.Begin)
         {
@@ -7798,6 +7818,7 @@ private:
                 ++Cursor_;
                 continue;
             }
+
             TokenIndex immediateOperand = std::numeric_limits<TokenIndex>::max();
             if (sawTopLevelParameters && !constructorInitializer && !terminalDenied && kind != TK::Comment) {
                 bool reservationToken = false;
@@ -7824,6 +7845,7 @@ private:
                         terminalDenied = true;
                     } else if (kind == TK::Operator_Assign) {
                         terminalDenied = functionTry != std::numeric_limits<TokenIndex>::max();
+
                         if (!terminalDenied) {
                             terminalPending = TerminalPending::DefaultDelete;
                         }
@@ -8308,6 +8330,7 @@ private:
         AddDirectiveChildrenInGap(*node, start, Cursor_);
         Node* bodyParent = node;
         Node* tryBlock = nullptr;
+
         if (functionTry < Tree_.Tokens_.Size()) {
             tryBlock = MakeNode(NodeKind::FunctionTryBlock, functionTry);
             bodyParent = tryBlock;
@@ -9121,6 +9144,7 @@ private:
 
         size_t suffixWork = 4096;
         Node* templateParameters = nullptr;
+
         if (Kind(cursor) == TK::Operator_Less) {
             auto templateAfter = ArgumentTemplateEnd(cursor, end, suffixWork);
             auto templateEnd = templateAfter.value_or(cursor);
@@ -9133,7 +9157,9 @@ private:
                 cursor = ArgumentSignificant(templateEnd, end);
             }
         }
+
         Node* actualParameters = nullptr;
+
         if (Kind(cursor) == TK::Operator_OpenParenthesis) {
             auto parameterEnd = ArgumentPairEnd(cursor, end).value_or(cursor);
 
@@ -10488,6 +10514,7 @@ private:
             auto statementEnd = Kind(innerBegin) == TK::Operator_OpenBrace
                 ? FindBalancedEnd(innerBegin)
                 : std::numeric_limits<TokenIndex>::max();
+
             // `({ ... })` can also wrap a braced initializer in a direct
             // initializer. A top-level semicolon distinguishes the GNU
             // statement expression from an initializer list.
@@ -11335,6 +11362,7 @@ private:
 
         TokenIndex gapBegin = node.Tokens.Begin;
         Node* previous = nullptr;
+
         for (auto* child = node.FirstChild; child; child = child->NextSibling) {
             auto* next = child->Kind == NodeKind::Comment ? NextSyntaxSibling(child->NextSibling) : child;
 
@@ -11844,6 +11872,7 @@ std::optional<SyntaxTree> ParseContext::NormalizeTokens(
     ParseContext context(tree, errors, {});
     std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
     std::pmr::vector<CopiedTokenRun> stable(&context.ScratchMemory_);
+
     if (!context.TokenizePieces(original, pieces, copied, &stable) ||
         !context.ReuseIncludeSyntax(
             original,
@@ -11888,6 +11917,7 @@ std::optional<SyntaxTree> ParseContext::ConsumeNormalized(
     ErrorHandler errors = [] (ParseError) { };
     ParseContext context(tree, errors, {});
     std::pmr::vector<TokenIndex> copied(&context.ScratchMemory_);
+
     if (!context.TokenizePieces(original, pieces, copied) ||
         !context.ReuseIncludeSyntax(original, true, &original, copied, &originalToNormalized))
     {

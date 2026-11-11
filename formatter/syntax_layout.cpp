@@ -167,6 +167,7 @@ Index HorizontalColumns(std::string_view text, uint8_t tabWidth)
 
         width += c == '\t' ? tabWidth : 1;
     }
+
     return Index(std::min<uint64_t>(width, None));
 }
 
@@ -5624,8 +5625,10 @@ private:
             plan.Shape = Boundary::Preserve;
             return;
         }
+
         plan.NewlineCount =
             uint16_t(std::min<std::size_t>(UINT16_MAX, std::max<std::size_t>(policy.EmptyLines + 1, originalLines)));
+
         if (policy.EmptyLines != 0) {
             plan.Shape = Boundary::Hard;
         }
@@ -5842,7 +5845,8 @@ private:
                 continue;
             }
 
-            if (!entry.Safe || part.Kind == NodeKind::PreprocessingDirective ||
+            // Opaque expression interiors do not invalidate proven statement edges.
+            if ((!entry.Safe && !part.StatementBoundary) || part.Kind == NodeKind::PreprocessingDirective ||
                 part.Kind == NodeKind::PreprocessingConditional || IsCaseLabel(child) ||
                 part.Kind == NodeKind::LabelStatement)
             {

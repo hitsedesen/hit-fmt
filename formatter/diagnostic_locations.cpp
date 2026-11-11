@@ -73,6 +73,7 @@ void MapWidthLocations(const parser::SyntaxTree& tree, FormatResult& result, std
     if (result.Diagnostics.empty()) {
         return;
     }
+
     std::pmr::vector<parser::TokenIndex> tokens(&scratch);
     tokens.reserve(tree.TokenCount());
     const auto& mapped = result.OriginalTokens;

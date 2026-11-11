@@ -97,6 +97,7 @@ std::optional<Range> ProtectFailedRegion(parser::SyntaxTree& tree, Range source)
     for (auto* child = tree.Root().FirstChild; child; child = child->NextSibling) {
         pending.push_back({child, &tree.Root()});
     }
+
     parser::Node* selected = nullptr;
     Range selectedRange{0, CheckedSourceAnalysisSize(tree.Source().size())};
 
@@ -215,6 +216,7 @@ std::pmr::vector<ProtectedSourceRange> ProjectProtection(
     std::pmr::memory_resource& memory)
 {
     std::pmr::vector<ProtectedSourceRange> result(&memory);
+
     for (const auto& piece : provenance) {
         if (piece.Generated) {
             continue;
@@ -404,6 +406,7 @@ std::pmr::vector<layout::Identity> OriginalIdentities(
     std::pmr::memory_resource& scratch)
 {
     std::pmr::vector<layout::Identity> identities(&scratch);
+
     if (!normalized) {
         // Empty storage represents unchanged original token numbering.
         return identities;
@@ -1367,6 +1370,7 @@ void ApplyComments(
         result.StructuralOperations
             .insert(result.StructuralOperations.end(), comments.Operations.begin(), comments.Operations.end());
     }
+
     std::pmr::vector<NamespaceIdentity> namespaces(
         namespacePlan.Namespaces.begin(),
         namespacePlan.Namespaces.end(),
@@ -1485,6 +1489,7 @@ void ApplyComments(
     if (!sourceMap) {
         return;
     }
+
     std::vector<FormatMapping> maps;
     maps.reserve(result.Map.size() + generated.size());
 
@@ -1688,6 +1693,7 @@ FormatResult FormatTree(
     auto* scratchBuffer = file.allocate(scratchCapacity);
     std::pmr::monotonic_buffer_resource scratch(scratchBuffer, scratchCapacity);
     std::pmr::vector<std::string_view> sensitive(&file);
+
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
     }
@@ -1828,6 +1834,7 @@ FormatResult FormatAnalyzedTree(
                 for (const auto& piece : normalized->Provenance) {
                     pieces.push_back({piece.Output, piece.Original, piece.Generated});
                 }
+
                 std::pmr::vector<Range> edits(&scratch);
                 edits.reserve(plan.Edits.size());
 
@@ -1889,6 +1896,7 @@ FormatResult FormatAnalyzedTree(
         auto inherited = ProjectProtection(safety.Protection(), normalized->Provenance, scratch);
         std::optional<std::span<const Range>> currentScope;
         std::pmr::vector<Range> selected(&scratch);
+
         if (request.EditScope) {
             selected = ProjectEditScope(*request.EditScope, safety, plan, normalized->Provenance, scratch);
             currentScope = selected;
@@ -2001,6 +2009,7 @@ FormatResult FormatAnalyzedTree(
             options.LineEnding = layout::Newline::CRLF;
         }
     }
+
     std::pmr::vector<GapId> reassembled(&scratch);
     auto gaps = GeneratedGaps(
         *currentSafety,
@@ -2059,6 +2068,7 @@ FormatResult FormatAnalyzedTree(
     const bool needMaps =
         sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations || needNamespaceAnchors;
     std::optional<SparseNamespaceAnchors> sparseNamespaces;
+
     if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&
         !request.DiagnosticLocations && needNamespaceAnchors)
     {
@@ -2139,6 +2149,7 @@ FormatResult FormatAnalyzedTree(
         renderPolicy.TrackSource = {};
         return output;
     }();
+
     if (!rendered.State) {
         throw FormatFailure(std::format(
             "layout rendering failed: code {} position {}",
@@ -2207,6 +2218,7 @@ FormatResult FormatAnalyzedTree(
 
         scratch.release();
         std::pmr::vector<Range> outputProtection(&scratch);
+
         for (const auto& range : result.OutputProtection) {
             outputProtection.push_back(range.Source);
         }
@@ -2302,6 +2314,7 @@ FormatResult PreserveInput(
         ProtectedSourceRange{{0, CheckedSourceAnalysisSize(tree.Source().size())}, ProtectionReason::Recovery},
     };
     std::pmr::vector<std::string_view> sensitive(&file);
+
     for (const auto& name : prepared.WhitespaceSensitiveMacros) {
         sensitive.push_back(name);
     }
@@ -2371,6 +2384,7 @@ FormatResult RecoverFormat(
 {
     std::vector<Range> preserved;
     std::vector<Range> immutable(request.ImmutableRanges.begin(), request.ImmutableRanges.end());
+
     // Bound retries and arena growth even if several independent regions fail.
     // Each retry owns its parse and processing arenas; none survives the try.
     for (unsigned attempt = 0; failure && attempt < 2; ++attempt) {
