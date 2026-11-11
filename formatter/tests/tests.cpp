@@ -1865,6 +1865,7 @@ std::vector<FormatCase> FormatCases()
     cases.push_back({data / "separator-lines", "crlf", "crlf.input.cpp"});
     cases.push_back({data / "separator-lines", "minimal", "minimal.input.cpp"});
     cases.push_back({data / "separator-lines", "scope", "scope.input.cpp", "blocks", {{2, 3}}, false});
+    addProfileCase("../ytsaurus-corpus", "control-followed-by-return");
     addProfileCase("../ytsaurus-corpus", "vertical");
     {
         auto continuation = cases.back();

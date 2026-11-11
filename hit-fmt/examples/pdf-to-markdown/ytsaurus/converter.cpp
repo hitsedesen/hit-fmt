@@ -100,6 +100,7 @@ std::string TConverter::Render(const TContent& content) const
 
                 auto result = TableRow(item.Headings);
                 result += TableRow(std::vector<std::string>(item.Headings.size(), "---"));
+
                 for (const auto& row : item.Rows) {
                     result += TableRow(row);
                 }
