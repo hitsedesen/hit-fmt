@@ -1,6 +1,7 @@
 add_executable(tests
     ../tokenizer/tests/tests.cpp
     ../parser/tests/tests.cpp
+    ../parser/tests/delimiters.cpp
     ../formatter/tests/hunks.cpp
     ../formatter/tests/hunk_scope.cpp
     ../formatter/tests/source_analysis_tests.cpp

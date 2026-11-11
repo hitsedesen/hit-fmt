@@ -15,6 +15,7 @@
 #include <memory>
 #include <memory_resource>
 #include <new>
+#include <span>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -589,6 +590,22 @@ public:
             ? PunctuationRole::Generic
             : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] = std::numeric_limits<TokenIndex>::max();
+    }
+
+    [[nodiscard]] std::span<const tokenizer::TokenKind> KindBlock(TokenIndex begin) const
+    {
+        assert(begin < Storage_.Size());
+        auto* chunk = Storage_.ResolveChunk(begin / TokensPerChunk);
+        const auto offset = begin % TokensPerChunk;
+        return {chunk->Kinds.data() + offset, chunk->Size - offset};
+    }
+
+    [[nodiscard]] std::span<TokenIndex> MatchingBlock(TokenIndex begin)
+    {
+        assert(begin < Storage_.Size());
+        auto* chunk = Storage_.ResolveChunk(begin / TokensPerChunk);
+        const auto offset = begin % TokensPerChunk;
+        return {chunk->MatchingDelimiters.data() + offset, chunk->Size - offset};
     }
 
     void Seal()

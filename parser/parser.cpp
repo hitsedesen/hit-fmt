@@ -1,5 +1,6 @@
 #include "parser.hpp"
 
+#include "delimiters.hpp"
 #include "normalized_syntax.hpp"
 #include "operator_info.hpp"
 
@@ -73,24 +74,8 @@ namespace {
 
 using TK = tokenizer::TokenKind;
 
-bool IsOpenDelimiter(TK kind)
-{
-    return kind == TK::Operator_OpenParenthesis || kind == TK::Operator_OpenBracket || kind == TK::Operator_OpenBrace;
-}
-
-TK ClosingDelimiter(TK kind)
-{
-    switch (kind) {
-        case TK::Operator_OpenParenthesis:
-            return TK::Operator_CloseParenthesis;
-        case TK::Operator_OpenBracket:
-            return TK::Operator_CloseBracket;
-        case TK::Operator_OpenBrace:
-            return TK::Operator_CloseBrace;
-        default:
-            return TK::Invalid;
-    }
-}
+using detail::ClosingDelimiter;
+using detail::IsOpenDelimiter;
 
 bool IsWordToken(TK kind)
 {
@@ -1412,35 +1397,14 @@ private:
                 });
             });
 
-        struct Delimiter
-        {
-            TokenIndex Index;
-            TK Closing;
-        };
-
-        Vector<Delimiter> openings(&ScratchMemory_);
-        openings.reserve(256);
         for (const auto& token : tokenizer) {
             Tree_.Tokens_.Add(token);
-            auto index = Tree_.Tokens_.Size() - 1;
-            if (index >= std::numeric_limits<u32>::max()) {
-                HasDelimiterMap_ = false;
-            } else if (IsOpenDelimiter(token.Kind)) {
-                openings.push_back({.Index = index, .Closing = ClosingDelimiter(token.Kind)});
-            } else if (token.Kind == TK::Operator_CloseParenthesis || token.Kind == TK::Operator_CloseBracket ||
-                token.Kind == TK::Operator_CloseBrace)
-            {
-                if (openings.empty() || openings.back().Closing != token.Kind) {
-                    HasDelimiterMap_ = false;
-                } else {
-                    auto opening = openings.back();
-                    openings.pop_back();
-                    Tree_.Tokens_.SetMatchingDelimiter(opening.Index, index);
-                    Tree_.Tokens_.SetMatchingDelimiter(index, opening.Index);
-                }
-            }
         }
-        HasDelimiterMap_ &= openings.empty();
+
+        {
+            HIT_FMT_PROFILE_PHASE("parser.delimiters");
+            HasDelimiterMap_ = detail::MatchDelimiters(Tree_.Tokens_, ScratchMemory_);
+        }
     }
 
     [[nodiscard]] Node* MakeNode(NodeKind kind, TokenIndex begin)
