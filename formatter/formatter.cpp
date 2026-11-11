@@ -1883,8 +1883,8 @@ FormatResult FormatAnalyzedTree(
         }
 
         if (!normalizedTree) {
-            normalizedTree
-                .emplace(parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
+            normalizedTree.emplace(
+                parser::Parse(normalizedSource, [] (parser::ParseError) { }, prepared.ParsingOptions()));
         }
 
         if (!preserved.empty()) {

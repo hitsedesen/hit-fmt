@@ -399,8 +399,9 @@ void BuildDetailedChanges(
         anchor(token++);
     }
 
-    builder
-        .Gap({original, CheckedSourceAnalysisSize(source.size())}, {emitted, CheckedSourceAnalysisSize(output.size())});
+    builder.Gap(
+        {original, CheckedSourceAnalysisSize(source.size())},
+        {emitted, CheckedSourceAnalysisSize(output.size())});
 
     for (const auto& map : result.Map) {
         if (!map.Generated || map.Action == NoStructuralAction || map.Output.Empty()) {

@@ -623,8 +623,9 @@ public:
 
         // Grammar scans need kinds much more often than spelling/positions.
         // Keep their immutable bytes directly indexed after tokenization.
-        Kinds_ = static_cast<tokenizer::TokenKind*>(Memory_
-            ->allocate(sizeof(tokenizer::TokenKind) * count, alignof(tokenizer::TokenKind)));
+        Kinds_ = static_cast<tokenizer::TokenKind*>(Memory_->allocate(
+            sizeof(tokenizer::TokenKind) * count,
+            alignof(tokenizer::TokenKind)));
         for (uint32_t begin = 0; begin < count;) {
             const auto size = std::min<uint32_t>(TokensPerChunk, count - begin);
             std::memcpy(
