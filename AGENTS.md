@@ -40,6 +40,16 @@ in the repo.
   small, synthesized examples that exercise the same syntax or behavior.
   Preserve the relevant structural features, not upstream names or content.
 
+## C++ conventions
+
+- Use the integer and size aliases from `util/types.hpp`, and `Vector<T>` and
+  `Arena` from `util/memory.hpp` for their corresponding types. Preserve domain
+  aliases such as `TokenIndex` and `SourceOffset`.
+- Reuse `fs::Path` and the `fs` operations for production filesystem work,
+  `TryParseInteger` for integer parsing, and `DEFER` for local scope cleanup
+  where appropriate. Extend established utilities rather than introducing
+  parallel conventions.
+
 ## General solutions
 
 - Fix the underlying rule or abstraction rather than special-casing each
@@ -56,13 +66,13 @@ in the repo.
 - Performance is a design constraint, especially in tokenizer, parser, and
   formatter hot paths. Avoid unnecessary dynamic allocations, particularly
   per-token, per-node, and per-iteration allocations.
-- Use arenas scoped to processing one input file for data that lives for the
-  whole operation, and scratch arenas for temporary work. Reuse the existing
-  allocator infrastructure. File-scoped means an input-file lifetime, not
-  mutable global storage.
-- Keep ownership and lifetimes explicit. Never return or retain references
-  into a scratch arena after it is reset or destroyed. Release file-scoped
-  memory when processing that file finishes.
+- Scope allocation to the actual lifetime: configuration/discovery state,
+  reusable worker buffers, per-file data, temporary scratch, and batches awaiting
+  consumption. Reuse the existing allocator infrastructure.
+- Keep returned output and errors valid after worker memory resets. Destroy
+  arena-backed objects before releasing their arena. Reuse bounded backing
+  buffers and release overflow allocations when their operation or batch
+  finishes.
 - Prefer views, spans, indices, and references over copying strings or
   containers when their backing storage remains valid. Reserve capacity
   when a reasonable size is known, and reuse buffers where practical.
@@ -72,6 +82,10 @@ in the repo.
 - Bound scratch memory and stack usage. Do not replace heap allocations with
   large stack buffers or input-dependent recursion. Avoid retaining peak
   allocations indefinitely across files.
+- Treat discovery, path handling, diagnostics, and output buffering as
+  performance-sensitive parts of the pipeline. Bound queued work and retained
+  output as well as worker count. State ownership transfers between discovery,
+  processing, and printing explicitly.
 - Measure nontrivial performance changes with the existing benchmarks using
   representative input sizes. Consider runtime, allocation count, and peak
   memory; do not sacrifice correctness for an unmeasured micro-optimization.
