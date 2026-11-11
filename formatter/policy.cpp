@@ -517,6 +517,7 @@ CompiledPolicies CompilePolicies(const Style& style)
             CompileBlankLines(style.StandaloneCommentBlankLinesAfter),
             CompileBlankLines(style.BlockBlankLinesAfter),
             CompileBlankLines(style.ControlStatementBlankLinesBefore),
+            style.KeepControlStatementWithInitialization,
             CompileBlankLines(style.MacroBlankLinesAround),
             {style.MemberGroupMaxEmptyLines.has_value(),
                 static_cast<std::uint16_t>(style.MemberGroupMaxEmptyLines.value_or(0))}},

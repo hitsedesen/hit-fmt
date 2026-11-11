@@ -341,7 +341,12 @@ InitializersTrailingComma = WhenMultiline
   definitions, namespaces and linkage blocks; declaration counts win.
 - ControlStatementBlankLinesBefore separates sibling if/for/while statements
   from preceding code, including declarations. It skips body starts and
-  labels; optional semantic grouping with initializations is not inferred.
+  labels.
+- KeepControlStatementWithInitialization (default false) skips that rule
+  after an initialized variable declaration, preserving the authored gap.
+  Applies to =, brace and unambiguous parenthesized initializers, including
+  structured bindings; variable usage is not inferred. Other blank-line
+  rules and caps still apply.
 - MacroBlankLinesAround separates complete standalone calls selected by
   BlankLineMacroNames (unqualified identifiers or prefixes ending in *).
   Consecutive calls of the same name form a group with zero blank lines.
@@ -371,6 +376,7 @@ MemberDefinitionBlankLines = Minimum:1
 CaseBlankLines = 1
 BlockBlankLinesAfter = 1
 ControlStatementBlankLinesBefore = 1
+KeepControlStatementWithInitialization = true
 MacroBlankLinesAround = 1
 BlankLineMacroNames = ["CHECK", "LOG_*"]
 MaxEmptyLines = 1

@@ -835,10 +835,19 @@ BlockBlankLinesAfter = Preserve
 
 # Before sibling if/for/while statements, outside attached leading comments.
 # No gap is added at the beginning of a body or after a case/ordinary label.
-# Includes preceding declarations; optional semantic grouping is not inferred.
+# Includes preceding declarations unless KeepControlStatementWithInitialization
+# exempts an initialized variable declaration.
 # Example: 1 separates Prepare(); from a following while (ready) { Run(); }.
 # Values: Preserve | 0..10000 | Minimum:0..10000
 ControlStatementBlankLinesBefore = Preserve
+
+# Skip ControlStatementBlankLinesBefore after an initialized variable declaration.
+# Preserves the authored gap; other blank-line rules and caps still apply.
+# Recognizes =, braces and unambiguous parenthesized initialization, including
+# structured bindings. Does not infer whether the control statement uses it.
+# Example: true keeps auto value = Read(); adjacent to if (ready) { Use(value); }.
+# Values: false | true
+KeepControlStatementWithInitialization = false
 
 # Around complete expression statements rooted in BlankLineMacroNames.
 # Consecutive invocations of the same name form a group with zero empty lines.
