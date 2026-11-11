@@ -937,7 +937,7 @@ SourceAnalysis BuildSourceAnalysis(
             NoRegion,
             node.Kind,
             status,
-            node.GetFunctionKind(),
+            node.Function,
             boundaryParent != NoRegion && SimpleStatementBoundary(tree, node, result.Regions_[boundaryParent].Kind));
 
         if (parent != NoRegion) {
@@ -975,7 +975,7 @@ SourceAnalysis BuildSourceAnalysis(
             case parser::NodeKind::ConstructorInitializerList:
                 if (!tokens.Empty()) {
                     prefix = tokens.Begin + 1;
-                    next = node.Child();
+                    next = node.FirstChild;
                 }
 
                 break;
@@ -1054,7 +1054,7 @@ SourceAnalysis BuildSourceAnalysis(
             auto protectedEnd = end;
 
             if (ambiguous) {
-                for (auto* child = node.Child(); child; child = child->NextSibling) {
+                for (auto* child = node.FirstChild; child; child = child->NextSibling) {
                     if (child->Kind == parser::NodeKind::Initializer || child->Kind == parser::NodeKind::ArgumentList) {
                         protectedEnd = tree.Token(child->Tokens.Begin).Text.Begin;
 
@@ -1165,7 +1165,7 @@ SourceAnalysis BuildSourceAnalysis(
             }
         }
 
-        const auto* child = node.Child();
+        const auto* child = node.FirstChild;
 
         if (!child) {
             if (parent != NoRegion) {
@@ -1868,7 +1868,7 @@ struct detail::NormalizationAnalysisReuse
                     region.FirstChild = NoRegion;
                     region.NextSibling = NoRegion;
                     region.Kind = node->Kind;
-                    region.Function = node->GetFunctionKind();
+                    region.Function = node->Function;
                     result.Regions_.push_back(region);
 
                     if (frame.Parent != NoRegion) {

@@ -23,7 +23,7 @@ using Node = parser::Node;
 
 const Node* Child(const Node& node, NK kind)
 {
-    for (auto* child = node.Child(); child; child = child->NextSibling) {
+    for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         if (child->Kind == kind) {
             return child;
         }
@@ -46,7 +46,7 @@ bool UnsafeSyntax(const Node& node)
             break;
     }
 
-    for (auto* child = node.Child(); child; child = child->NextSibling) {
+    for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         if (UnsafeSyntax(*child)) {
             return true;
         }
@@ -67,7 +67,7 @@ bool HasName(const Node& node)
         return false;
     }
 
-    for (auto* child = node.Child(); child; child = child->NextSibling) {
+    for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         if (HasName(*child)) {
             return true;
         }
@@ -86,7 +86,7 @@ const Node* FunctionName(const Node& node)
         return nullptr;
     }
 
-    for (auto* child = node.Child(); child; child = child->NextSibling) {
+    for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         if (auto* name = FunctionName(*child)) {
             return name;
         }
@@ -117,7 +117,7 @@ TokenAnchor NameAnchor(const parser::SyntaxTree& tree, const Node& parameter, co
                     return {token, tree.Token(token).Text.Begin};
                 }
 
-                for (auto* child = abstract->Child(); child; child = child->NextSibling) {
+                for (auto* child = abstract->FirstChild; child; child = child->NextSibling) {
                     if (child->Kind == NK::ArrayDeclarator || child->Kind == NK::FunctionDeclarator) {
                         return {child->Tokens.Begin, tree.Token(child->Tokens.Begin).Text.Begin};
                     }
@@ -191,7 +191,7 @@ void CheckFunction(
         return;
     }
 
-    for (auto* init = list->Child(); init; init = init->NextSibling) {
+    for (auto* init = list->FirstChild; init; init = init->NextSibling) {
         if (init->Kind != NK::InitDeclarator) {
             continue;
         }
@@ -230,7 +230,7 @@ void CheckFunction(
         const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
         us number = 0;
 
-        for (auto* parameter = parameters->Child(); parameter; parameter = parameter->NextSibling) {
+        for (auto* parameter = parameters->FirstChild; parameter; parameter = parameter->NextSibling) {
             if (parameter->Kind != NK::ParameterDeclaration) {
                 continue;
             }
@@ -341,7 +341,7 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTre
             CheckFunction(tree, *node, config.FunctionDefinitionParameterNames, diagnostics);
         }
 
-        for (auto* child = node->Child(); child; child = child->NextSibling) {
+        for (auto* child = node->FirstChild; child; child = child->NextSibling) {
             stack.push_back(child);
         }
     }

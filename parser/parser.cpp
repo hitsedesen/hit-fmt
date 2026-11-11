@@ -415,7 +415,7 @@ public:
         const auto clone = [&] (const Node& node) {
             auto* copy = MakeNode(node.Kind, node.Tokens.Begin);
             copy->Tokens.End = node.Tokens.End;
-            copy->FunctionKind_ = node.FunctionKind_;
+            copy->Function = node.Function;
             return copy;
         };
         Tree_.Root_ = clone(original.Root());
@@ -813,11 +813,12 @@ public:
                 // its index. Only nodes with old trivia need resetting before
                 // attachments are rebuilt in normalized source coordinates.
                 for (u32 id = 0; id < original.Trivia_.Size(); ++id) {
-                    original.Trivia_.Owner(id).TriviaIndex_ = std::numeric_limits<u32>::max();
+                    original.Trivia_.Owner(id).TriviaIndex = NoTrivia;
                 }
             } else {
                 Vector<Node*> siblings(&ScratchMemory_);
                 auto* node = Tree_.Root_;
+
                 while (node) {
                     const auto before = node->Tokens;
                     node->Tokens = node == Tree_.Root_
@@ -825,7 +826,7 @@ public:
                         : before.Empty()
                             ? TokenRange{mapping[before.Begin], mapping[before.Begin]}
                             : TokenRange{mapping[before.Begin], mapping[before.End - 1] + 1};
-                    node->TriviaIndex_ = std::numeric_limits<u32>::max();
+                    node->TriviaIndex = NoTrivia;
 
                     if (node->FirstChild) {
                         if (node->NextSibling) {
@@ -870,7 +871,7 @@ public:
 
                 auto* copy = MakeNode(node.Kind, tokens.Begin);
                 copy->Tokens = tokens;
-                copy->FunctionKind_ = node.FunctionKind_;
+                copy->Function = node.Function;
                 claimChanges(node, *copy);
                 return copy;
             };
@@ -6971,7 +6972,7 @@ private:
                     (declaration.Kind == NodeKind::FunctionDeclaration ||
                         declaration.Kind == NodeKind::FunctionDefinition))
                 {
-                    declaration.FunctionKind_ = kind;
+                    declaration.Function = kind;
                 }
             }
             if (i != end) {
@@ -7029,7 +7030,7 @@ private:
         auto kind = AddDeclaratorSyntax(*init, specifiersEnd, end, parameters, false, true, functionKind);
 
         if (declaration.Kind == NodeKind::FunctionDefinition) {
-            declaration.FunctionKind_ = kind;
+            declaration.Function = kind;
         }
     }
 
@@ -11230,10 +11231,11 @@ private:
 
     TriviaAttachments& EnsureTriviaAttachments(Node& node)
     {
-        if (node.TriviaIndex_ == std::numeric_limits<u32>::max()) {
-            node.TriviaIndex_ = Tree_.Trivia_.Add(node);
+        if (node.TriviaIndex == NoTrivia) {
+            node.TriviaIndex = Tree_.Trivia_.Add(node);
         }
-        return Tree_.Trivia_[node.TriviaIndex_];
+
+        return Tree_.Trivia_[node.TriviaIndex];
     }
 
     enum class TriviaPlacement
@@ -11696,7 +11698,7 @@ private:
             case NodeKind::SubscriptExpression: {
                 // A nested subscript's first '[' belongs to its base, not
                 // this expression. Mark the bracket after that base instead.
-                const auto* base = node.Child();
+                const auto* base = node.FirstChild;
                 auto open = base ? base->Tokens.End : node.Tokens.End;
 
                 if (open < node.Tokens.End && Kind(open) == TK::Operator_OpenBracket &&

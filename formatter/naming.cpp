@@ -183,7 +183,7 @@ bool ValidCase(std::string_view name, NameCase casing)
 
 const parser::Node* Child(const parser::Node& node, NK kind)
 {
-    for (auto* child = node.Child(); child; child = child->NextSibling) {
+    for (auto* child = node.FirstChild; child; child = child->NextSibling) {
         if (child->Kind == kind) {
             return child;
         }
@@ -286,7 +286,7 @@ public:
                     context.Access = Tree.Kind(Next(node.Tokens.Begin, node.Tokens.End));
                 }
 
-                frame.NextChild = node.Child();
+                frame.NextChild = node.FirstChild;
             }
 
             if (frame.NextChild) {
@@ -626,10 +626,8 @@ private:
         // Constructors can have declaration specifiers such as explicit or
         // constexpr, but their name still belongs to the type.
         if (function &&
-            (node.GetFunctionKind() == parser::FunctionKind::Constructor ||
-                node.GetFunctionKind() == parser::FunctionKind::Destructor || !Child(
-                    node,
-                    NK::DeclarationSpecifiers)))
+            (node.Function == parser::FunctionKind::Constructor || node.Function == parser::FunctionKind::Destructor ||
+                !Child(node, NK::DeclarationSpecifiers)))
         {
             return;
         }
@@ -642,7 +640,7 @@ private:
             return;
         }
 
-        for (auto* init = list->Child(); init; init = init->NextSibling) {
+        for (auto* init = list->FirstChild; init; init = init->NextSibling) {
             if (init->Kind != NK::InitDeclarator) {
                 continue;
             }
@@ -655,7 +653,7 @@ private:
 
             if (!function) {
                 if (const auto* binding = Child(*declarator, NK::StructuredBinding)) {
-                    for (auto* name = binding->Child(); name; name = name->NextSibling) {
+                    for (auto* name = binding->FirstChild; name; name = name->NextSibling) {
                         if (name->Kind == NK::DeclaratorName) {
                             Check(name->Tokens.Begin, variableRule, "variable");
                         }
