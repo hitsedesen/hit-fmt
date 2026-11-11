@@ -4,10 +4,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <memory_resource>
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace formatter {
@@ -34,7 +36,8 @@ bool IsStandardInclude(std::string_view path, bool angled) noexcept;
 // Lexical normalization, retaining unresolved leading parents for relative paths.
 void AppendIncludePathComponents(std::pmr::vector<std::string_view>& parts, std::string_view path, bool absolute);
 
-// Reuses scratch storage across includes; never queries the filesystem.
+// Caches classifications for one structural plan in scratch memory.
+// The source directory view borrows the input filename.
 class IncludeDelimiterResolver
 {
 public:
@@ -43,15 +46,43 @@ public:
         IncludePathBase base,
         std::string_view inputFilePath,
         std::pmr::memory_resource& scratch);
+    ~IncludeDelimiterResolver();
+    IncludeDelimiterResolver(const IncludeDelimiterResolver& other) = delete;
+    IncludeDelimiterResolver& operator=(const IncludeDelimiterResolver& other) = delete;
 
     [[nodiscard]] bool Angled(std::string_view path, bool original);
 
 private:
+    struct PathHash
+    {
+        using is_transparent = void;
+
+        size_t operator()(std::string_view path) const noexcept
+        {
+            return std::hash<std::string_view>{}(path);
+        }
+    };
+
+    using Cache = std::pmr::unordered_map<std::pmr::string, bool, PathHash, std::equal_to<>>;
+
+    bool InitializeDirectory();
+    bool Resolve(std::string_view path);
+#ifndef _WIN32
+    bool SameDirectory(std::string_view path, bool sourceRelative);
+    int DirectoryFd_ = -1;
+    std::uintmax_t Device_ = 0;
+    std::uintmax_t Inode_ = 0;
+#else
+    std::filesystem::path CurrentDirectory_;
+#endif
     IncludeDelimiters Policy_;
     IncludePathBase Base_;
-    bool InputAbsolute_;
-    std::pmr::vector<std::string_view> Current_;
-    std::pmr::vector<std::string_view> Parts_;
+    std::string_view InputDirectory_;
+    bool Initialized_ = false;
+    std::pmr::string Buffer_;
+    Cache Headers_;
+    Cache SourceDirectories_;
+    Cache RootDirectories_;
 };
 
 // Owns grouping metadata for read-only reuse across files. Rule order controls

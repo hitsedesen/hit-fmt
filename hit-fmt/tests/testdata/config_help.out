@@ -621,12 +621,13 @@ Paired calls and chains
 
 Include directives
 - IncludeDelimiters: Preserve (default) or QuotedLocal. QuotedLocal uses
-  quotes for explicit ./ and ../ paths and lexically same-directory paths,
-  and angles for other paths using IncludePathBase and the input filename;
-  it never changes paths.
-  Bare names retain their delimiters: spelling alone cannot distinguish
-  local headers from system headers such as <stdio.h> or <vector>.
-  For example, <../sibling/header.h> becomes "../sibling/header.h".
+  quotes only for existing headers in the exact same directory as the input
+  file, and angles for all other headers, including bare system names.
+  Filesystem resolution follows symlinks; missing headers or an unavailable
+  input directory use angles. Bare names and explicit ./ or ../ paths are
+  resolved from the input directory; other relative paths use IncludePathBase
+  (ProjectRoot means the working directory). Paths themselves never change.
+  For example, "../sibling/header.h" becomes <../sibling/header.h>.
   This policy works independently of sorting, including commented and
   standalone includes. Macros, splices and protected directives stay exact.
 - IncludeOrder = Sort sorts safe blocks;

@@ -118,7 +118,7 @@ NamespaceComments = Fix
 # Shared YT libraries keep directory groups; other library/cpp code groups
 # by project. Headers within each group sort alphabetically.
 # Pass project-relative input filenames so directory distances share that root.
-# Same-directory paths use quotes; bare local/system names retain delimiters.
+# Only existing headers in the exact same directory use quotes; all others use angles.
 IncludeOrder = Sort
 IncludeDelimiters = QuotedLocal
 IncludeMatchingHeader = First

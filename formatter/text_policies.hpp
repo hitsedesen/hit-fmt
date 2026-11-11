@@ -18,7 +18,7 @@ void PlanTextPolicyEdits(
     StructuralPlan& plan,
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory,
-    std::string_view inputFilePath = {});
+    IncludeDelimiterResolver& delimiters);
 
 void PlanRulerEdits(
     const parser::SyntaxTree& tree,

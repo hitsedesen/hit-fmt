@@ -274,7 +274,7 @@ std::vector<FormatCase> FormatCases()
             value.Name = relative.generic_string();
             value.Input = relative.string();
             value.Config = (examples / profile).string();
-            value.InputFilePath = relative.generic_string();
+            value.InputFilePath = entry.path().generic_string();
             value.GoldenPath = entry.path();
             value.TestName = "pdf_to_markdown_" + profile + "_" + relative.generic_string();
 
@@ -971,6 +971,23 @@ std::vector<FormatCase> FormatCases()
 
             cases.push_back(std::move(value));
         }
+
+        for (const auto profile : {"source", "root"}) {
+            const bool root = std::string_view(profile) == "root";
+            FormatCase physical{
+                directory,
+                "physical-" + std::string(profile),
+                root ? "physical-root.input.cpp" : "physical.input.cpp",
+                profile,
+            };
+            physical.InputFilePath = (directory / "local.cpp").generic_string();
+            physical.Expected = root ? "physical-root.output.cpp" : "physical.output.cpp";
+            cases.push_back(std::move(physical));
+        }
+
+        FormatCase sortedPhysical{directory, "physical-sorted", "physical-root.input.cpp", "sorted"};
+        sortedPhysical.InputFilePath = (directory / "local.cpp").generic_string();
+        cases.push_back(std::move(sortedPhysical));
 
         FormatCase absolute{directory, "root-absolute", "input.cpp", "root"};
         absolute.InputFilePath = std::filesystem::absolute("project/engine/widget.cpp").generic_string();

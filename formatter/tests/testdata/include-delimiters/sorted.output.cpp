@@ -1,17 +1,16 @@
-#include "project/engine/widget.h"
+#include <project/engine/alpha.h>
+#include <./local.h>
+#include <../engine/normalized.h>
+#include <project/engine/widget.h>
 
-#include "project/engine/alpha.h"
-#include "bare.h"
-#include "./local.h"
-#include "../engine/normalized.h"
+#include <./detail/header.h>
 
-#include "./detail/header.h"
-
-#include "../sibling/header.h"
-
-#include "../../shared/header.h"
-
+#include <bare.h>
 #include <stdio.h>
+
+#include <../sibling/header.h>
+
+#include <../../shared/header.h>
 
 #include <sys/types.h>
 
@@ -22,12 +21,12 @@
 // An attached comment prevents sorting, but permits delimiter changes.
 #include <external/commented.h> // Keep this comment.
 #include <external/block.h> /* Keep > and " here. */
-#include "../sibling/commented.h" // Keep this relative path.
+#include <../sibling/commented.h> // Keep this relative path.
 
 #if FEATURE
-    %:include "./digraph.h"
+    %:include <./digraph.h>
 
-    #include "../sibling/conditional.h"
+    #include <../sibling/conditional.h>
 
     #include <external/conditional.h>
 #endif

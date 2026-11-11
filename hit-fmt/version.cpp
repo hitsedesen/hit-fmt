@@ -1,6 +1,6 @@
 #include "version.hpp"
 
-#include "build_version.hpp"
+#include <build_version.hpp>
 
 namespace hit_fmt {
 

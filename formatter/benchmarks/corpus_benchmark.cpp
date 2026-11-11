@@ -52,7 +52,8 @@ int main(int argc, char* argv[])
     }
     try {
         auto config = formatter::LoadConfigFile(argv[2]);
-        std::filesystem::path root(argv[1]);
+        const auto root = std::filesystem::absolute(argv[1]);
+        const formatter::PreparedFormat prepared(config.FormattingStyle);
         std::vector<std::filesystem::path> paths;
         for (const auto& entry :
              std::filesystem::recursive_directory_iterator(root))
@@ -91,8 +92,9 @@ int main(int argc, char* argv[])
                 .Size = static_cast<uint32_t>(
                     storage.size() - util::SourcePaddingSize),
             };
+            const auto inputFilePath = path.generic_string();
             auto start = std::chrono::steady_clock::now();
-            auto output = formatter::Format(source, config.FormattingStyle);
+            auto output = formatter::Format(source, prepared, {.InputFilePath = inputFilePath}).Text;
             auto fileElapsed = std::chrono::steady_clock::now() - start;
             elapsed += fileElapsed;
             if (perFile) {
