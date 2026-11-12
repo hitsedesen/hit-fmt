@@ -17,7 +17,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -87,6 +86,7 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
         std::pmr::synchronized_pool_resource batchMemory;
         std::atomic<us> processed{0};
         us printed = 0;
+        std::array<bool, count> seen{};
         std::array<std::pmr::memory_resource*, count> resultAllocators{};
         const std::string spill(64 * 1024, 'e');
         auto discover = [&] (auto visit) -> cli::Result<bool> {
@@ -123,8 +123,15 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
             return result;
         };
         auto print = [&] (const auto& result) {
-            auto index = printed++;
-            EXPECT_EQ(std::string_view(result.Output), std::to_string(index));
+            auto index = std::stoul(std::string(result.Output));
+
+            if (threads == 1) {
+                EXPECT_EQ(index, printed);
+            }
+
+            ++printed;
+            EXPECT_FALSE(seen[index]);
+            seen[index] = true;
             EXPECT_EQ(result.Output.get_allocator().resource(), resultAllocators[index]);
 
             if (result.Failed) {
@@ -248,52 +255,52 @@ TEST(FileDispatch, DispatchFailuresStopWorkersAndDiscovery)
     }
 }
 
-TEST(FileDispatch, ProcessesDuringDiscoveryAndPrintsInOrder)
+TEST(FileDispatch, RecyclesCompletedBatchesWhileFirstFileIsBlocked)
 {
-    std::promise<void> firstStarted;
-    auto started = firstStarted.get_future();
-    std::atomic<bool> secondProcessed{false};
-    auto discover = [&] (auto visit) -> cli::Result<bool> {
-        if (!visit(std::filesystem::path("first.cpp"))) {
-            return {false, {}};
-        }
-
-        if (started.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
-            throw std::runtime_error("discovery waited for formatting");
-        }
-
-        return {visit(std::filesystem::path("second.cpp")), {}};
-    };
-    auto process = [&] (const auto& path, int&, std::pmr::memory_resource* resultMemory) {
-        if (path == "first.cpp") {
-            firstStarted.set_value();
-            auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-
-            while (!secondProcessed.load() && std::chrono::steady_clock::now() < deadline) {
-                std::this_thread::yield();
-            }
-        } else {
-            secondProcessed = true;
-        }
-
-        return cli::FileResult{.Output = std::pmr::string(path.string(), resultMemory)};
-    };
-    std::vector<std::string> printed;
+    constexpr us count = 140;
+    const FileInputs files(count);
+    std::promise<void> lastPrinted;
+    auto finished = lastPrinted.get_future();
+    std::array<bool, count> seen{};
+    us printed = 0;
     auto completed = cli::RunParallelFiles(
         2,
-        discover,
+        [&] (auto visit) -> cli::Result<bool> {
+            for (us index = 0; index < count; ++index) {
+                if (!visit(files.Path(index))) {
+                    return {false, {}};
+                }
+            }
+
+            return {true, {}};
+        },
         [] {
             return 0;
         },
-        process,
+        [&] (const auto& path, int&, std::pmr::memory_resource* memory) {
+            auto index = std::stoul(path.stem().string());
+
+            if (index == 0 && finished.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+                throw std::runtime_error("completed batches did not release slots behind the blocked first file");
+            }
+
+            return cli::FileResult{.Output = std::pmr::string(std::to_string(index), memory)};
+        },
         [&] (const auto& result) {
-            printed.emplace_back(result.Output);
+            auto index = std::stoul(std::string(result.Output));
+            EXPECT_FALSE(seen[index]);
+            seen[index] = true;
+            ++printed;
+
+            if (index == count - 1) {
+                lastPrinted.set_value();
+            }
+
             return false;
         });
-    EXPECT_TRUE(completed.Value);
-    EXPECT_FALSE(completed.Error);
-    EXPECT_TRUE(secondProcessed.load());
-    EXPECT_EQ(printed, (std::vector<std::string>{"first.cpp", "second.cpp"}));
+    EXPECT_TRUE(completed.Value) << completed.Error;
+    EXPECT_FALSE(completed.Error) << completed.Error;
+    EXPECT_EQ(printed, count);
 }
 
 TEST(FileDispatch, PreservesDiscoveredContextAcrossBatches)
@@ -342,7 +349,13 @@ TEST(FileDispatch, PreservesDiscoveredContextAcrossBatches)
             return result;
         };
         auto print = [&] (const auto& result) {
-            EXPECT_EQ(result.Output, printed++ % 2 ? "23" : "17");
+            if (threads == 1) {
+                EXPECT_EQ(result.Output, printed % 2 ? "23" : "17");
+            } else {
+                EXPECT_TRUE(result.Output == "17" || result.Output == "23");
+            }
+
+            ++printed;
             return result.Failed;
         };
         cli::Result<bool, cli::FileFailure> success;
@@ -449,7 +462,7 @@ TEST(FileDispatch, BoundsSlotsAndDrainsAfterOversizedHead)
     const FileInputs files(count);
     std::atomic<us> discovered{0};
     std::promise<void> filled;
-    auto filledFuture = filled.get_future();
+    auto filledFuture = filled.get_future().share();
     auto discover = [&] (auto visit) -> cli::Result<bool> {
         for (us index = 0; index < count; ++index) {
             if (!visit(files.Path(index))) {
@@ -467,12 +480,11 @@ TEST(FileDispatch, BoundsSlotsAndDrainsAfterOversizedHead)
         auto index = std::stoul(path.stem().string());
         cli::FileResult result{.Output = std::pmr::string(memory)};
 
-        if (index == 0) {
-            if (filledFuture.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
-                throw std::runtime_error("discovery did not fill the available slots");
-            }
+        if (filledFuture.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+            throw std::runtime_error("discovery did not fill the available slots");
+        }
 
-            EXPECT_EQ(discovered.load(), queuedLimit);
+        if (index == 0) {
             result.Output.assign(outputSize, 'x');
         } else {
             result.Output = std::to_string(index);
@@ -481,6 +493,8 @@ TEST(FileDispatch, BoundsSlotsAndDrainsAfterOversizedHead)
         return result;
     };
     us printed = 0;
+    us oversized = 0;
+    std::array<bool, count> seen{};
     auto completed = cli::RunParallelFiles(
         2,
         discover,
@@ -490,16 +504,25 @@ TEST(FileDispatch, BoundsSlotsAndDrainsAfterOversizedHead)
         process,
         [&] (const auto& result) {
             if (printed == 0) {
-                EXPECT_EQ(result.Output.size(), outputSize);
+                EXPECT_EQ(discovered.load(), queuedLimit);
+            }
+
+            us index = 0;
+
+            if (result.Output.size() == outputSize) {
+                ++oversized;
                 EXPECT_EQ(result.Output.front(), 'x');
                 EXPECT_EQ(result.Output.back(), 'x');
             } else {
-                EXPECT_EQ(std::string_view(result.Output), std::to_string(printed));
+                index = std::stoul(std::string(result.Output));
             }
 
+            EXPECT_FALSE(seen[index]);
+            seen[index] = true;
             ++printed;
             return false;
         });
     EXPECT_TRUE(completed.Value) << completed.Error;
     EXPECT_EQ(printed, count);
+    EXPECT_EQ(oversized, 1u);
 }
