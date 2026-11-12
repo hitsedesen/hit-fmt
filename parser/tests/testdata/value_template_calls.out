@@ -1,13 +1,11 @@
 (translation-unit
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Build")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Build")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -15,192 +13,68 @@
       "{"
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "MakeBuilder" "<" "EMode" "::" "Map" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (member-expression
-                              (identifier-expression "EEncoding")
-                              "::"
-                              (identifier-expression "Binary")
-                            )
-                          )
-                          ")"
-                        )
-                      )
-                      "."
-                      (identifier-expression "Item")
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
-                  )
-                  "."
-                  (identifier-expression "Finish")
-                )
-                (argument-list "(" ")")
-              )
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "number")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (member-expression
-                          (identifier-expression "ns")
-                          "::"
-                          (unparsed-syntax "Create" "<" "42" ">")
-                        )
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "value")
-                          )
-                          ")"
-                        )
-                      )
-                      "."
-                      (identifier-expression "Item")
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
-                  )
-                  "."
-                  (identifier-expression "Finish")
-                )
-                (argument-list "(" ")")
-              )
-            )
-          )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "qualified")
-            )
-            (initializer
-              "="
-              (call-expression
-                (unparsed-syntax "Create" "<" "::" "modes" "::" "Map" "," "-" "2" ">")
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "value")
-                  )
-                  ")"
-                )
-              )
-            )
-          )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "mixed")
-            )
-            (initializer
-              "="
-              (call-expression
-                (unparsed-syntax "Create" "<" "Unknown" "," "&" "ns" "::" "value" ">")
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "value")
-                  )
-                  ")"
-                )
-              )
-            )
-          )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "member")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (identifier-expression "object")
-                  "."
-                  (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
-                )
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "value")
-                  )
-                  ")"
-                )
-              )
-            )
-          )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "argument")
-            )
-            (initializer
-              "="
-              (call-expression
-                (identifier-expression "Consume")
-                (argument-list
-                  "("
-                  (argument
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
                     (call-expression
-                      (unparsed-syntax "Create" "<" "modes" "::" "Map" "," "2" ">")
+                      (unparsed-syntax "MakeBuilder" "<" "EMode" "::" "Map" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (member-expression
+                            (identifier-expression "EEncoding")
+                            "::"
+                            (identifier-expression "Binary")
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                    "."
+                    (identifier-expression "Item")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
+                )
+                "."
+                (identifier-expression "Finish")
+              )
+              (argument-list "(" ")")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "number")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (member-expression
+                        (identifier-expression "ns")
+                        "::"
+                        (unparsed-syntax "Create" "<" "42" ">")
+                      )
                       (argument-list
                         "("
                         (argument
@@ -209,13 +83,42 @@
                         ")"
                       )
                     )
+                    "."
+                    (identifier-expression "Item")
                   )
-                  (list-separator ",")
-                  (argument
-                    (identifier-expression "other")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
                   )
-                  ")"
                 )
+                "."
+                (identifier-expression "Finish")
+              )
+              (argument-list "(" ")")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "qualified")
+          )
+          (initializer
+            "="
+            (call-expression
+              (unparsed-syntax "Create" "<" "::" "modes" "::" "Map" "," "-" "2" ">")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "value")
+                )
+                ")"
               )
             )
           )
@@ -224,42 +127,20 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "comparison")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "left" "<" "modes" "::" "Map" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "value")
-                          )
-                          ")"
-                        )
-                      )
-                      "."
-                      (identifier-expression "Item")
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
-                  )
-                  "."
-                  (identifier-expression "Finish")
+        (init-declarator
+          (declarator
+            (declarator-name "mixed")
+          )
+          (initializer
+            "="
+            (call-expression
+              (unparsed-syntax "Create" "<" "Unknown" "," "&" "ns" "::" "value" ">")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "value")
                 )
-                (argument-list "(" ")")
+                ")"
               )
             )
           )
@@ -268,42 +149,24 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "literalComparison")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "left" "<" "42" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "value")
-                          )
-                          ")"
-                        )
-                      )
-                      "."
-                      (identifier-expression "Item")
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
-                  )
-                  "."
-                  (identifier-expression "Finish")
+        (init-declarator
+          (declarator
+            (declarator-name "member")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (identifier-expression "object")
+                "."
+                (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
+              )
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "value")
                 )
-                (argument-list "(" ")")
+                ")"
               )
             )
           )
@@ -312,42 +175,33 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "compactCallComparison")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
+        (init-declarator
+          (declarator
+            (declarator-name "argument")
+          )
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "Consume")
+              (argument-list
+                "("
+                (argument
                   (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "left" "<" "modes" "::" "Map" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "encoding")
-                          )
-                          ")"
-                        )
-                      )
-                      "."
-                      (identifier-expression "Item")
-                    )
+                    (unparsed-syntax "Create" "<" "modes" "::" "Map" "," "2" ">")
                     (argument-list
                       "("
                       (argument
-                        (literal-expression "\"key\"")
+                        (identifier-expression "value")
                       )
                       ")"
                     )
                   )
-                  "."
-                  (identifier-expression "Finish")
                 )
-                (argument-list "(" ")")
+                (list-separator ",")
+                (argument
+                  (identifier-expression "other")
+                )
+                ")"
               )
             )
           )
@@ -356,43 +210,41 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "spaced")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "encoding")
-                          )
-                          ")"
+        (init-declarator
+          (declarator
+            (declarator-name "comparison")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "left" "<" "modes" "::" "Map" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "value")
                         )
+                        ")"
                       )
-                      "."
-                      (identifier-expression "Item")
                     )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
+                    "."
+                    (identifier-expression "Item")
                   )
-                  "."
-                  (identifier-expression "Finish")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
                 )
-                (argument-list "(" ")")
+                "."
+                (identifier-expression "Finish")
               )
+              (argument-list "(" ")")
             )
           )
         )
@@ -400,48 +252,41 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "commented")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax
-                          "Create" "<" "/* mode */" "modes" "::" "Map" ">"
-                          (dangling-trivia
-                            (comment "/* mode */")
-                          )
+        (init-declarator
+          (declarator
+            (declarator-name "literalComparison")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "left" "<" "42" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "value")
                         )
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "encoding")
-                          )
-                          ")"
-                        )
+                        ")"
                       )
-                      "."
-                      (identifier-expression "Item")
                     )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
+                    "."
+                    (identifier-expression "Item")
                   )
-                  "."
-                  (identifier-expression "Finish")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
                 )
-                (argument-list "(" ")")
+                "."
+                (identifier-expression "Finish")
               )
+              (argument-list "(" ")")
             )
           )
         )
@@ -449,43 +294,41 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "multiline")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "encoding")
-                          )
-                          ")"
+        (init-declarator
+          (declarator
+            (declarator-name "compactCallComparison")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "left" "<" "modes" "::" "Map" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "encoding")
                         )
+                        ")"
                       )
-                      "."
-                      (identifier-expression "Item")
                     )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
+                    "."
+                    (identifier-expression "Item")
                   )
-                  "."
-                  (identifier-expression "Finish")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
                 )
-                (argument-list "(" ")")
+                "."
+                (identifier-expression "Finish")
               )
+              (argument-list "(" ")")
             )
           )
         )
@@ -493,43 +336,172 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "malformed")
+        (init-declarator
+          (declarator
+            (declarator-name "spaced")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "encoding")
+                        )
+                        ")"
+                      )
+                    )
+                    "."
+                    (identifier-expression "Item")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
+                )
+                "."
+                (identifier-expression "Finish")
+              )
+              (argument-list "(" ")")
             )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "Create" "<" "modes" "::" "Map" "," ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "encoding")
-                          )
-                          ")"
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "commented")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax
+                        "Create" "<" "/* mode */" "modes" "::" "Map" ">"
+                        (dangling-trivia
+                          (comment "/* mode */")
                         )
                       )
-                      "."
-                      (identifier-expression "Item")
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "encoding")
+                        )
+                        ")"
                       )
-                      ")"
                     )
+                    "."
+                    (identifier-expression "Item")
                   )
-                  "."
-                  (identifier-expression "Finish")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
                 )
-                (argument-list "(" ")")
+                "."
+                (identifier-expression "Finish")
               )
+              (argument-list "(" ")")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "multiline")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "encoding")
+                        )
+                        ")"
+                      )
+                    )
+                    "."
+                    (identifier-expression "Item")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
+                )
+                "."
+                (identifier-expression "Finish")
+              )
+              (argument-list "(" ")")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "malformed")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "Create" "<" "modes" "::" "Map" "," ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "encoding")
+                        )
+                        ")"
+                      )
+                    )
+                    "."
+                    (identifier-expression "Item")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
+                )
+                "."
+                (identifier-expression "Finish")
+              )
+              (argument-list "(" ")")
             )
           )
         )
@@ -541,43 +513,41 @@
           (comment "// hit-fmt off")
         )
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "disabled")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (call-expression
-                    (member-expression
-                      (call-expression
-                        (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "encoding")
-                          )
-                          ")"
+        (init-declarator
+          (declarator
+            (declarator-name "disabled")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
+                  (member-expression
+                    (call-expression
+                      (unparsed-syntax "Create" "<" "modes" "::" "Map" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "encoding")
                         )
+                        ")"
                       )
-                      "."
-                      (identifier-expression "Item")
                     )
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "\"key\"")
-                      )
-                      ")"
-                    )
+                    "."
+                    (identifier-expression "Item")
                   )
-                  "."
-                  (identifier-expression "Finish")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
+                  )
                 )
-                (argument-list "(" ")")
+                "."
+                (identifier-expression "Finish")
               )
+              (argument-list "(" ")")
             )
           )
         )
@@ -589,26 +559,87 @@
           (comment "// hit-fmt on")
         )
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "compactComparison")
-            )
-            (initializer
-              "="
+        (init-declarator
+          (declarator
+            (declarator-name "compactComparison")
+          )
+          (initializer
+            "="
+            (binary-expression
               (binary-expression
-                (binary-expression
-                  (identifier-expression "left")
-                  "<"
+                (identifier-expression "left")
+                "<"
+                (member-expression
+                  (identifier-expression "modes")
+                  "::"
+                  (identifier-expression "Map")
+                )
+              )
+              ">"
+              (identifier-expression "right")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "compactLiteralComparison")
+          )
+          (initializer
+            "="
+            (binary-expression
+              (binary-expression
+                (identifier-expression "left")
+                "<"
+                (literal-expression "42")
+              )
+              ">"
+              (identifier-expression "right")
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "unresolved")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (call-expression
                   (member-expression
-                    (identifier-expression "modes")
-                    "::"
-                    (identifier-expression "Map")
+                    (call-expression
+                      (unparsed-syntax "Create" "<" "value" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "argument")
+                        )
+                        ")"
+                      )
+                    )
+                    "."
+                    (identifier-expression "Item")
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "\"key\"")
+                    )
+                    ")"
                   )
                 )
-                ">"
-                (identifier-expression "right")
+                "."
+                (identifier-expression "Finish")
               )
+              (argument-list "(" ")")
             )
           )
         )
@@ -616,46 +647,29 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "compactLiteralComparison")
-            )
-            (initializer
-              "="
-              (binary-expression
-                (binary-expression
-                  (identifier-expression "left")
-                  "<"
-                  (literal-expression "42")
-                )
-                ">"
-                (identifier-expression "right")
-              )
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "relationalArgument")
           )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "unresolved")
-            )
-            (initializer
-              "="
+          (initializer
+            "="
+            (binary-expression
+              (identifier-expression "Create")
+              "<"
               (call-expression
                 (member-expression
                   (call-expression
                     (member-expression
                       (call-expression
-                        (unparsed-syntax "Create" "<" "value" ">")
+                        (member-expression
+                          (identifier-expression "modes")
+                          "::"
+                          (unparsed-syntax "Map" "<" "limit" ">")
+                        )
                         (argument-list
                           "("
                           (argument
-                            (identifier-expression "argument")
+                            (identifier-expression "value")
                           )
                           ")"
                         )
@@ -675,58 +689,6 @@
                   (identifier-expression "Finish")
                 )
                 (argument-list "(" ")")
-              )
-            )
-          )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "relationalArgument")
-            )
-            (initializer
-              "="
-              (binary-expression
-                (identifier-expression "Create")
-                "<"
-                (call-expression
-                  (member-expression
-                    (call-expression
-                      (member-expression
-                        (call-expression
-                          (member-expression
-                            (identifier-expression "modes")
-                            "::"
-                            (unparsed-syntax "Map" "<" "limit" ">")
-                          )
-                          (argument-list
-                            "("
-                            (argument
-                              (identifier-expression "value")
-                            )
-                            ")"
-                          )
-                        )
-                        "."
-                        (identifier-expression "Item")
-                      )
-                      (argument-list
-                        "("
-                        (argument
-                          (literal-expression "\"key\"")
-                        )
-                        ")"
-                      )
-                    )
-                    "."
-                    (identifier-expression "Finish")
-                  )
-                  (argument-list "(" ")")
-                )
               )
             )
           )

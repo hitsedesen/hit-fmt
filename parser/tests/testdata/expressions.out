@@ -25,12 +25,10 @@
             "("
             (parameter-declaration
               (declaration-specifiers "Values")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    "..."
-                    (declarator-name "values")
-                  )
+              (init-declarator
+                (declarator
+                  "..."
+                  (declarator-name "values")
                 )
               )
             )
@@ -89,26 +87,22 @@
     )
     (function-definition
       (declaration-specifiers "auto")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "evaluate")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Values")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        "..."
-                        (declarator-name "values")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "evaluate")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Values")
+                (init-declarator
+                  (declarator
+                    "..."
+                    (declarator-name "values")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -211,24 +205,124 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "external")
+          (init-declarator
+            (declarator
+              (declarator-name "external")
+            )
+            (initializer
+              "="
+              (cast-expression
+                "static_cast"
+                (template-argument-list
+                  "<"
+                  (type-id "ExternalType")
+                  ">"
+                )
+                "("
+                (identifier-expression "value")
+                ")"
               )
-              (initializer
-                "="
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "external_pointer")
+            )
+            (initializer
+              "="
+              (cast-expression
+                "const_cast"
+                (template-argument-list
+                  "<"
+                  (type-id "ExternalType" "*")
+                  ">"
+                )
+                "("
+                (identifier-expression "pointer")
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "external_bits")
+            )
+            (initializer
+              "="
+              (cast-expression
+                "reinterpret_cast"
+                (template-argument-list
+                  "<"
+                  (type-id "ExternalType" "*")
+                  ">"
+                )
+                "("
+                (identifier-expression "pointer")
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "external_object")
+            )
+            (initializer
+              "="
+              (cast-expression
+                "dynamic_cast"
+                (template-argument-list
+                  "<"
+                  (type-id "ExternalType" "*")
+                  ">"
+                )
+                "("
+                (identifier-expression "base")
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "cast_comparison")
+            )
+            (initializer
+              "="
+              (binary-expression
                 (cast-expression
                   "static_cast"
                   (template-argument-list
                     "<"
-                    (type-id "ExternalType")
-                    ">"
+                    (type-id
+                      "types" "::" "Box"
+                      (template-argument-list
+                        "<"
+                        (template-argument "ExternalType")
+                        ">>"
+                      )
+                    )
                   )
                   "("
                   (identifier-expression "value")
                   ")"
                 )
+                ">"
+                (identifier-expression "limit")
               )
             )
           )
@@ -236,108 +330,52 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "external_pointer")
-              )
-              (initializer
-                "="
-                (cast-expression
-                  "const_cast"
-                  (template-argument-list
-                    "<"
-                    (type-id "ExternalType" "*")
-                    ">"
-                  )
-                  "("
-                  (identifier-expression "pointer")
-                  ")"
+          (init-declarator
+            (declarator
+              (declarator-name "lambda")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture "value")
+                  (list-separator ",")
+                  (lambda-capture "&" "reference")
+                  "]"
                 )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "external_bits")
-              )
-              (initializer
-                "="
-                (cast-expression
-                  "reinterpret_cast"
-                  (template-argument-list
-                    "<"
-                    (type-id "ExternalType" "*")
-                    ">"
-                  )
-                  "("
-                  (identifier-expression "pointer")
-                  ")"
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "external_object")
-              )
-              (initializer
-                "="
-                (cast-expression
-                  "dynamic_cast"
-                  (template-argument-list
-                    "<"
-                    (type-id "ExternalType" "*")
-                    ">"
-                  )
-                  "("
-                  (identifier-expression "base")
-                  ")"
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "cast_comparison")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (cast-expression
-                    "static_cast"
-                    (template-argument-list
-                      "<"
-                      (type-id
-                        "types" "::" "Box"
-                        (template-argument-list
-                          "<"
-                          (template-argument "ExternalType")
-                          ">>"
-                        )
-                      )
-                    )
-                    "("
-                    (identifier-expression "value")
-                    ")"
-                  )
+                (template-parameter-list
+                  "<"
+                  (template-parameter "typename" "Element")
                   ">"
-                  (identifier-expression "limit")
+                )
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "Element")
+                    (init-declarator
+                      (declarator
+                        (declarator-name "argument")
+                      )
+                    )
+                  )
+                  ")"
+                )
+                (function-qualifier "mutable")
+                (exception-specification "noexcept")
+                (trailing-return-type "->" "Element")
+                (lambda-body
+                  "{"
+                  (return-statement
+                    "return"
+                    (binary-expression
+                      (identifier-expression "argument")
+                      "+"
+                      (identifier-expression "value")
+                    )
+                    ";"
+                  )
+                  "}"
                 )
               )
             )
@@ -346,124 +384,181 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "lambda")
-              )
-              (initializer
-                "="
-                (lambda-expression
-                  (lambda-capture-list
-                    "["
-                    (lambda-capture "value")
-                    (list-separator ",")
-                    (lambda-capture "&" "reference")
-                    "]"
-                  )
-                  (template-parameter-list
-                    "<"
-                    (template-parameter "typename" "Element")
-                    ">"
-                  )
-                  (parameter-list
-                    "("
-                    (parameter-declaration
-                      (declaration-specifiers "Element")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "argument")
-                          )
-                        )
-                      )
-                    )
-                    ")"
-                  )
-                  (function-qualifier "mutable")
-                  (exception-specification "noexcept")
-                  (trailing-return-type "->" "Element")
-                  (lambda-body
-                    "{"
-                    (return-statement
-                      "return"
-                      (binary-expression
-                        (identifier-expression "argument")
-                        "+"
-                        (identifier-expression "value")
-                      )
-                      ";"
-                    )
-                    "}"
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "nested")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "nested")
-              )
-              (initializer
-                "="
-                (lambda-expression
-                  (lambda-capture-list
-                    "["
-                    (lambda-capture "value")
-                    "]"
-                  )
-                  (lambda-body
-                    "{"
-                    (expression-statement
-                      (call-expression
-                        (identifier-expression "invoke")
-                        (argument-list
-                          "("
-                          (argument
-                            (lambda-expression
-                              (lambda-capture-list
-                                "["
-                                (lambda-capture "&")
-                                "]"
-                              )
-                              (parameter-list
-                                "("
-                                (parameter-declaration
-                                  (declaration-specifiers "auto")
-                                  (init-declarator-list
-                                    (init-declarator
-                                      (declarator
-                                        (declarator-name "item")
-                                      )
-                                    )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list
+                  "["
+                  (lambda-capture "value")
+                  "]"
+                )
+                (lambda-body
+                  "{"
+                  (expression-statement
+                    (call-expression
+                      (identifier-expression "invoke")
+                      (argument-list
+                        "("
+                        (argument
+                          (lambda-expression
+                            (lambda-capture-list
+                              "["
+                              (lambda-capture "&")
+                              "]"
+                            )
+                            (parameter-list
+                              "("
+                              (parameter-declaration
+                                (declaration-specifiers "auto")
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "item")
                                   )
                                 )
-                                ")"
                               )
-                              (lambda-body
-                                "{"
-                                (return-statement
-                                  "return"
-                                  (binary-expression
-                                    (identifier-expression "item")
-                                    "+"
-                                    (identifier-expression "value")
-                                  )
-                                  ";"
+                              ")"
+                            )
+                            (lambda-body
+                              "{"
+                              (return-statement
+                                "return"
+                                (binary-expression
+                                  (identifier-expression "item")
+                                  "+"
+                                  (identifier-expression "value")
                                 )
-                                "}"
+                                ";"
                               )
+                              "}"
                             )
                           )
-                          ")"
                         )
+                        ")"
                       )
-                      ";"
+                    )
+                    ";"
+                  )
+                  "}"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "left_fold")
+            )
+            (initializer
+              "="
+              (fold-expression
+                "("
+                (fold-ellipsis "...")
+                (fold-operator "+")
+                (fold-operand
+                  (identifier-expression "values")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "right_fold")
+            )
+            (initializer
+              "="
+              (fold-expression
+                "("
+                (fold-operand
+                  (identifier-expression "values")
+                )
+                (fold-operator "+")
+                (fold-ellipsis "...")
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "binary_fold")
+            )
+            (initializer
+              "="
+              (fold-expression
+                "("
+                (fold-operand
+                  (literal-expression "0")
+                )
+                (fold-operator "+")
+                (fold-ellipsis "...")
+                (fold-operator "+")
+                (fold-operand
+                  (identifier-expression "values")
+                )
+                ")"
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "placed")
+            )
+            (initializer
+              "="
+              (new-expression
+                "new"
+                (new-placement
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "arena")
+                    )
+                    ")"
+                  )
+                )
+                (new-type-id
+                  "Item" "["
+                  (binary-expression
+                    (identifier-expression "count")
+                    "+"
+                    (literal-expression "1")
+                  )
+                  "]" "["
+                  (binary-expression
+                    (identifier-expression "columns")
+                    "*"
+                    (literal-expression "2")
+                  )
+                  "]"
+                )
+                (new-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "1")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (literal-expression "2")
                     )
                     "}"
                   )
@@ -475,125 +570,137 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "left_fold")
-              )
-              (initializer
-                "="
-                (fold-expression
-                  "("
-                  (fold-ellipsis "...")
-                  (fold-operator "+")
-                  (fold-operand
-                    (identifier-expression "values")
-                  )
-                  ")"
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "direct")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "right_fold")
-              )
-              (initializer
-                "="
-                (fold-expression
-                  "("
-                  (fold-operand
-                    (identifier-expression "values")
-                  )
-                  (fold-operator "+")
-                  (fold-ellipsis "...")
-                  ")"
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "binary_fold")
-              )
-              (initializer
-                "="
-                (fold-expression
-                  "("
-                  (fold-operand
-                    (literal-expression "0")
-                  )
-                  (fold-operator "+")
-                  (fold-ellipsis "...")
-                  (fold-operator "+")
-                  (fold-operand
-                    (identifier-expression "values")
-                  )
-                  ")"
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "placed")
-              )
-              (initializer
-                "="
-                (new-expression
-                  "new"
-                  (new-placement
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "arena")
-                      )
-                      ")"
-                    )
-                  )
-                  (new-type-id
-                    "Item" "["
-                    (binary-expression
-                      (identifier-expression "count")
-                      "+"
+            (initializer
+              "="
+              (new-expression
+                "new"
+                (new-type-id "Item")
+                (new-initializer
+                  (argument-list
+                    "("
+                    (argument
                       (literal-expression "1")
                     )
-                    "]" "["
-                    (binary-expression
-                      (identifier-expression "columns")
-                      "*"
+                    (list-separator ",")
+                    (argument
                       (literal-expression "2")
                     )
-                    "]"
+                    ")"
                   )
-                  (new-initializer
-                    (initializer-list
-                      "{"
-                      (initializer-element
-                        (literal-expression "1")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "owned")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "std")
+                  "::"
+                  (template-id-expression
+                    (identifier-expression "unique_ptr")
+                    (template-argument-list
+                      "<"
+                      (template-argument "char" "[" "]")
+                      ">"
+                    )
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (new-expression
+                      "new"
+                      (new-type-id
+                        "char" "["
+                        (identifier-expression "count")
+                        "]"
                       )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "bounded")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "helpers")
+                  "::"
+                  (template-id-expression
+                    (identifier-expression "Build")
+                    (template-argument-list
+                      "<"
+                      (template-argument
+                        (type-id "const" "Type" "*" "[" "extent" "(" "1" "," "2" ")" "]" "[" "3" "]")
+                      )
+                      ">"
+                    )
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "source")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "later_array")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "object")
+                  "."
+                  (template-id-expression
+                    (identifier-expression "Build")
+                    (template-argument-list
+                      "<"
+                      (template-argument "value")
                       (list-separator ",")
-                      (initializer-element
-                        (literal-expression "2")
-                      )
-                      "}"
+                      (template-argument "char" "[" "4" "]")
+                      ">"
                     )
                   )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "source")
+                  )
+                  ")"
                 )
               )
             )
@@ -602,30 +709,26 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "direct")
-              )
-              (initializer
-                "="
-                (new-expression
-                  "new"
-                  (new-type-id "Item")
-                  (new-initializer
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "1")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (literal-expression "2")
-                      )
-                      ")"
+          (init-declarator
+            (declarator
+              (declarator-name "dependent")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "object")
+                  "." "template"
+                  (template-id-expression
+                    (identifier-expression "get")
+                    (template-argument-list
+                      "<"
+                      (template-argument "Type")
+                      ">"
                     )
                   )
                 )
+                (argument-list "(" ")")
               )
             )
           )
@@ -633,173 +736,26 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "owned")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (identifier-expression "std")
-                    "::"
-                    (template-id-expression
-                      (identifier-expression "unique_ptr")
-                      (template-argument-list
-                        "<"
-                        (template-argument "char" "[" "]")
-                        ">"
-                      )
-                    )
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (new-expression
-                        "new"
-                        (new-type-id
-                          "char" "["
-                          (identifier-expression "count")
-                          "]"
-                        )
-                      )
-                    )
-                    ")"
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "indirect")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "bounded")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (identifier-expression "helpers")
-                    "::"
-                    (template-id-expression
-                      (identifier-expression "Build")
-                      (template-argument-list
-                        "<"
-                        (template-argument
-                          (type-id "const" "Type" "*" "[" "extent" "(" "1" "," "2" ")" "]" "[" "3" "]")
-                        )
-                        ">"
-                      )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (identifier-expression "this")
+                  "->" "template"
+                  (template-id-expression
+                    (identifier-expression "find")
+                    (template-argument-list
+                      "<"
+                      (template-argument "Item")
+                      ">"
                     )
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "source")
-                    )
-                    ")"
                   )
                 )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "later_array")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (identifier-expression "object")
-                    "."
-                    (template-id-expression
-                      (identifier-expression "Build")
-                      (template-argument-list
-                        "<"
-                        (template-argument "value")
-                        (list-separator ",")
-                        (template-argument "char" "[" "4" "]")
-                        ">"
-                      )
-                    )
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "source")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "dependent")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (identifier-expression "object")
-                    "." "template"
-                    (template-id-expression
-                      (identifier-expression "get")
-                      (template-argument-list
-                        "<"
-                        (template-argument "Type")
-                        ">"
-                      )
-                    )
-                  )
-                  (argument-list "(" ")")
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "indirect")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (identifier-expression "this")
-                    "->" "template"
-                    (template-id-expression
-                      (identifier-expression "find")
-                      (template-argument-list
-                        "<"
-                        (template-argument "Item")
-                        ">"
-                      )
-                    )
-                  )
-                  (argument-list "(" ")")
-                )
+                (argument-list "(" ")")
               )
             )
           )
@@ -855,22 +811,54 @@
         )
         (declaration-statement
           (declaration-specifiers "int")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "initialized")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "initialized")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (identifier-expression "source")
+                "+"
                 (binary-expression
-                  (identifier-expression "source")
-                  "+"
+                  (identifier-expression "scale")
+                  "*"
+                  (literal-expression "2")
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "shifted")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (parenthesized-expression
+                  "("
                   (binary-expression
-                    (identifier-expression "scale")
-                    "*"
-                    (literal-expression "2")
+                    (call-expression
+                      (identifier-expression "Type")
+                      (argument-list
+                        "("
+                        (argument
+                          (literal-expression "1")
+                        )
+                        ")"
+                      )
+                    )
+                    "<<"
+                    (identifier-expression "offset")
                   )
+                  ")"
                 )
+                "-"
+                (literal-expression "1")
               )
             )
           )
@@ -878,71 +866,33 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "shifted")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (parenthesized-expression
-                    "("
-                    (binary-expression
-                      (call-expression
-                        (identifier-expression "Type")
-                        (argument-list
-                          "("
-                          (argument
-                            (literal-expression "1")
-                          )
-                          ")"
-                        )
-                      )
-                      "<<"
-                      (identifier-expression "offset")
-                    )
-                    ")"
-                  )
-                  "-"
-                  (literal-expression "1")
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "summed")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "summed")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (parenthesized-expression
-                    "("
-                    (binary-expression
-                      (call-expression
-                        (identifier-expression "Type")
-                        (argument-list
-                          "("
-                          (argument
-                            (literal-expression "2")
-                          )
-                          ")"
+            (initializer
+              "="
+              (binary-expression
+                (parenthesized-expression
+                  "("
+                  (binary-expression
+                    (call-expression
+                      (identifier-expression "Type")
+                      (argument-list
+                        "("
+                        (argument
+                          (literal-expression "2")
                         )
+                        ")"
                       )
-                      "+"
-                      (identifier-expression "offset")
                     )
-                    ")"
+                    "+"
+                    (identifier-expression "offset")
                   )
-                  "-"
-                  (literal-expression "1")
+                  ")"
                 )
+                "-"
+                (literal-expression "1")
               )
             )
           )
@@ -950,20 +900,18 @@
         )
         (declaration-statement
           (declaration-specifiers "int")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "braced")
-              )
-              (initializer
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (literal-expression "1")
-                    )
-                    "}"
+          (init-declarator
+            (declarator
+              (declarator-name "braced")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "1")
                   )
+                  "}"
                 )
               )
             )
@@ -972,72 +920,24 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "mixed")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "mixed")
+            )
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
-                  (binary-expression
-                    (identifier-expression "a")
-                    "+"
-                    (binary-expression
-                      (identifier-expression "b")
-                      "*"
-                      (identifier-expression "c")
-                    )
-                  )
-                  "+"
-                  (identifier-expression "d")
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "equal")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (binary-expression
-                    (identifier-expression "a")
-                    "-"
-                    (identifier-expression "b")
-                  )
-                  "+"
-                  (identifier-expression "c")
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "assigned")
-              )
-              (initializer
-                "="
-                (assignment-expression
                   (identifier-expression "a")
-                  "="
-                  (assignment-expression
+                  "+"
+                  (binary-expression
                     (identifier-expression "b")
-                    "+="
+                    "*"
                     (identifier-expression "c")
                   )
                 )
+                "+"
+                (identifier-expression "d")
               )
             )
           )
@@ -1045,26 +945,66 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "grouped")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "equal")
+            )
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
-                  (parenthesized-expression
-                    "("
-                    (binary-expression
-                      (identifier-expression "a")
-                      "+"
-                      (identifier-expression "b")
-                    )
-                    ")"
-                  )
-                  "*"
+                  (identifier-expression "a")
+                  "-"
+                  (identifier-expression "b")
+                )
+                "+"
+                (identifier-expression "c")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "assigned")
+            )
+            (initializer
+              "="
+              (assignment-expression
+                (identifier-expression "a")
+                "="
+                (assignment-expression
+                  (identifier-expression "b")
+                  "+="
                   (identifier-expression "c")
                 )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "grouped")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (parenthesized-expression
+                  "("
+                  (binary-expression
+                    (identifier-expression "a")
+                    "+"
+                    (identifier-expression "b")
+                  )
+                  ")"
+                )
+                "*"
+                (identifier-expression "c")
               )
             )
           )
@@ -1100,52 +1040,27 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "member_product")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (binary-expression
-                    (binary-expression
-                      (identifier-expression "object")
-                      ".*"
-                      (identifier-expression "member")
-                    )
-                    "*"
-                    (identifier-expression "factor")
-                  )
-                  "+"
-                  (binary-expression
-                    (identifier-expression "pointer")
-                    "->*"
-                    (identifier-expression "member")
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "member_product")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "member_chain")
-              )
-              (initializer
-                "="
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
                   (binary-expression
                     (identifier-expression "object")
                     ".*"
-                    (identifier-expression "first")
+                    (identifier-expression "member")
                   )
+                  "*"
+                  (identifier-expression "factor")
+                )
+                "+"
+                (binary-expression
+                  (identifier-expression "pointer")
                   "->*"
-                  (identifier-expression "second")
+                  (identifier-expression "member")
                 )
               )
             )
@@ -1154,21 +1069,20 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "member_unary")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "member_chain")
+            )
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
-                  (unary-expression
-                    "*"
-                    (identifier-expression "pointer")
-                  )
+                  (identifier-expression "object")
                   ".*"
-                  (identifier-expression "member")
+                  (identifier-expression "first")
                 )
+                "->*"
+                (identifier-expression "second")
               )
             )
           )
@@ -1176,22 +1090,70 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "member_cast")
+          (init-declarator
+            (declarator
+              (declarator-name "member_unary")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (unary-expression
+                  "*"
+                  (identifier-expression "pointer")
+                )
+                ".*"
+                (identifier-expression "member")
               )
-              (initializer
-                "="
-                (binary-expression
-                  (cast-expression
-                    "("
-                    (type-id "Type" "*")
-                    ")"
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "member_cast")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (cast-expression
+                  "("
+                  (type-id "Type" "*")
+                  ")"
+                  (identifier-expression "pointer")
+                )
+                "->*"
+                (identifier-expression "member")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "member_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (parenthesized-expression
+                  "("
+                  (binary-expression
                     (identifier-expression "pointer")
+                    "->*"
+                    (identifier-expression "method")
                   )
-                  "->*"
-                  (identifier-expression "member")
+                  ")"
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "argument")
+                  )
+                  ")"
                 )
               )
             )
@@ -1200,66 +1162,32 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "member_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (parenthesized-expression
-                    "("
-                    (binary-expression
-                      (identifier-expression "pointer")
-                      "->*"
-                      (identifier-expression "method")
-                    )
-                    ")"
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "argument")
-                    )
-                    ")"
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "alternatives")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "alternatives")
-              )
-              (initializer
-                "="
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
                   (binary-expression
                     (binary-expression
                       (binary-expression
-                        (binary-expression
-                          (identifier-expression "a")
-                          "bitand"
-                          (identifier-expression "b")
-                        )
-                        "xor"
-                        (identifier-expression "c")
+                        (identifier-expression "a")
+                        "bitand"
+                        (identifier-expression "b")
                       )
-                      "bitor"
-                      (identifier-expression "d")
+                      "xor"
+                      (identifier-expression "c")
                     )
-                    "and"
-                    (identifier-expression "e")
+                    "bitor"
+                    (identifier-expression "d")
                   )
-                  "or"
-                  (identifier-expression "f")
+                  "and"
+                  (identifier-expression "e")
                 )
+                "or"
+                (identifier-expression "f")
               )
             )
           )
@@ -1283,17 +1211,66 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "unequal")
+          (init-declarator
+            (declarator
+              (declarator-name "unequal")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (identifier-expression "a")
+                "not_eq"
+                (identifier-expression "b")
               )
-              (initializer
-                "="
-                (binary-expression
-                  (identifier-expression "a")
-                  "not_eq"
-                  (identifier-expression "b")
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "negated")
+            )
+            (initializer
+              "="
+              (unary-expression
+                "not"
+                (identifier-expression "a")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "complemented")
+            )
+            (initializer
+              "="
+              (unary-expression
+                "compl"
+                (identifier-expression "a")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "text")
+            )
+            (initializer
+              "="
+              (literal-expression
+                "\"first\"" "/* join */" "\"second\"" "/* again */" "\"third\""
+                (dangling-trivia
+                  (comment "/* join */")
+                  (comment "/* again */")
                 )
               )
             )
@@ -1302,132 +1279,65 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "negated")
-              )
-              (initializer
-                "="
-                (unary-expression
-                  "not"
-                  (identifier-expression "a")
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "raw_text")
+            )
+            (initializer
+              "="
+              (literal-expression "R\"tag(raw)tag\"" "\" tail\"")
             )
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "complemented")
-              )
-              (initializer
-                "="
-                (unary-expression
-                  "compl"
-                  (identifier-expression "a")
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "wide_text")
+            )
+            (initializer
+              "="
+              (literal-expression "L\"wide\"" "LR\"tag( tail)tag\"")
             )
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "text")
-              )
-              (initializer
-                "="
-                (literal-expression
-                  "\"first\"" "/* join */" "\"second\"" "/* again */" "\"third\""
-                  (dangling-trivia
-                    (comment "/* join */")
-                    (comment "/* again */")
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "utf8_text")
+            )
+            (initializer
+              "="
+              (literal-expression "u8\"head\"" "u8R\"(tail)\"")
             )
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "raw_text")
-              )
-              (initializer
-                "="
-                (literal-expression "R\"tag(raw)tag\"" "\" tail\"")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "utf16_text")
+            )
+            (initializer
+              "="
+              (literal-expression "u\"head\"" "uR\"(tail)\"")
             )
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "wide_text")
-              )
-              (initializer
-                "="
-                (literal-expression "L\"wide\"" "LR\"tag( tail)tag\"")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "utf32_text")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "utf8_text")
-              )
-              (initializer
-                "="
-                (literal-expression "u8\"head\"" "u8R\"(tail)\"")
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "utf16_text")
-              )
-              (initializer
-                "="
-                (literal-expression "u\"head\"" "uR\"(tail)\"")
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "utf32_text")
-              )
-              (initializer
-                "="
-                (literal-expression "U\"head\"" "UR\"(tail)\"")
-              )
+            (initializer
+              "="
+              (literal-expression "U\"head\"" "UR\"(tail)\"")
             )
           )
           ";"
@@ -1489,21 +1399,19 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "sum")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "sum")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (literal-expression "\"left\"" "\" part\"")
+                "+"
                 (binary-expression
-                  (literal-expression "\"left\"" "\" part\"")
-                  "+"
-                  (binary-expression
-                    (literal-expression "\"right\"" "\" part\"")
-                    "*"
-                    (identifier-expression "scale")
-                  )
+                  (literal-expression "\"right\"" "\" part\"")
+                  "*"
+                  (identifier-expression "scale")
                 )
               )
             )
@@ -1512,19 +1420,17 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "character")
-              )
-              (initializer
-                "="
-                (subscript-expression
-                  (literal-expression "\"indexed\"" "\" text\"")
-                  "["
-                  (identifier-expression "index")
-                  "]"
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "character")
+            )
+            (initializer
+              "="
+              (subscript-expression
+                (literal-expression "\"indexed\"" "\" text\"")
+                "["
+                (identifier-expression "index")
+                "]"
               )
             )
           )
@@ -1532,52 +1438,48 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "size")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (parenthesized-expression
-                      "("
-                      (literal-expression "\"member\"" "\" text\"")
-                      ")"
-                    )
-                    "."
-                    (identifier-expression "size")
-                  )
-                  (argument-list "(" ")")
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "size")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "called")
-              )
-              (initializer
-                "="
-                (call-expression
+            (initializer
+              "="
+              (call-expression
+                (member-expression
                   (parenthesized-expression
                     "("
-                    (literal-expression "\"callee\"" "\" text\"")
+                    (literal-expression "\"member\"" "\" text\"")
                     ")"
                   )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
+                  "."
+                  (identifier-expression "size")
+                )
+                (argument-list "(" ")")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "called")
+            )
+            (initializer
+              "="
+              (call-expression
+                (parenthesized-expression
+                  "("
+                  (literal-expression "\"callee\"" "\" text\"")
+                  ")"
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
                   )
+                  ")"
                 )
               )
             )
@@ -1586,22 +1488,183 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "literal_call")
+          (init-declarator
+            (declarator
+              (declarator-name "literal_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression "\"hello\"_world")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "8")
+                  )
+                  ")"
+                )
               )
-              (initializer
-                "="
-                (call-expression
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "raw_literal_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression "R\"tag(raw)tag\"_world")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "encoded_literal_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression "u8\"hello\"_world")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "character_literal_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression "U'x'_character")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "unicode_literal_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression "\"hello\"_世界")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "joined_literal_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression
+                  "\"head\"" "/* join */" "\"tail\"_world"
+                  (dangling-trivia
+                    (comment "/* join */")
+                  )
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "suffixed_head_call")
+            )
+            (initializer
+              "="
+              (call-expression
+                (literal-expression "\"head\"_world" "\"tail\"")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "literal_member")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
                   (literal-expression "\"hello\"_world")
-                  (argument-list
-                    "("
-                    (argument
-                      (literal-expression "8")
-                    )
-                    ")"
+                  "."
+                  (identifier-expression "member")
+                )
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "value")
                   )
+                  ")"
                 )
               )
             )
@@ -1610,196 +1673,17 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "raw_literal_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (literal-expression "R\"tag(raw)tag\"_world")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "literal_index")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "encoded_literal_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (literal-expression "u8\"hello\"_world")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "character_literal_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (literal-expression "U'x'_character")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "unicode_literal_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (literal-expression "\"hello\"_世界")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "joined_literal_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (literal-expression
-                    "\"head\"" "/* join */" "\"tail\"_world"
-                    (dangling-trivia
-                      (comment "/* join */")
-                    )
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "suffixed_head_call")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (literal-expression "\"head\"_world" "\"tail\"")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "literal_member")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (literal-expression "\"hello\"_world")
-                    "."
-                    (identifier-expression "member")
-                  )
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "literal_index")
-              )
-              (initializer
-                "="
-                (subscript-expression
-                  (literal-expression "\"hello\"_world")
-                  "["
-                  (identifier-expression "index")
-                  "]"
-                )
+            (initializer
+              "="
+              (subscript-expression
+                (literal-expression "\"hello\"_world")
+                "["
+                (identifier-expression "index")
+                "]"
               )
             )
           )
@@ -1807,19 +1691,17 @@
         )
         (declaration-statement
           (declaration-specifiers "RAISE")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "exception")
-              )
-              (initializer
-                (binary-expression
-                  (braced-initializer
-                    (initializer-list "{" "}")
-                  )
-                  "<<"
-                  (literal-expression "\"first\"" "\" second\"")
+          (init-declarator
+            (declarator
+              (declarator-name "exception")
+            )
+            (initializer
+              (binary-expression
+                (braced-initializer
+                  (initializer-list "{" "}")
                 )
+                "<<"
+                (literal-expression "\"first\"" "\" second\"")
               )
             )
           )
@@ -1827,28 +1709,26 @@
         )
         (declaration-statement
           (declaration-specifiers "WARN")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "exception")
-              )
-              (initializer
-                (binary-expression
-                  (braced-initializer
-                    (initializer-list
-                      "{"
-                      (initializer-element
-                        (identifier-expression "code")
-                      )
-                      "}"
+          (init-declarator
+            (declarator
+              (declarator-name "exception")
+            )
+            (initializer
+              (binary-expression
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (identifier-expression "code")
                     )
+                    "}"
                   )
-                  "<<"
-                  (literal-expression
-                    "\"first\"" "/* join */" "\" second\""
-                    (dangling-trivia
-                      (comment "/* join */")
-                    )
+                )
+                "<<"
+                (literal-expression
+                  "\"first\"" "/* join */" "\" second\""
+                  (dangling-trivia
+                    (comment "/* join */")
                   )
                 )
               )
@@ -1858,85 +1738,79 @@
         )
         (declaration-statement
           (declaration-specifiers "NOTICE")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "types")
-                "::" "exception"
-              )
-              (initializer
-                (binary-expression
-                  (braced-initializer
-                    (initializer-list "{" "}")
-                  )
-                  "+"
-                  (literal-expression "R\"(raw)\"" "\" tail\"")
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "types")
+              "::" "exception"
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "commented_member")
-              )
-              (initializer
-                "="
-                (member-expression
-                  (identifier-expression
-                    "object"
-                    (trailing-trivia
-                      (comment "/* internal */")
-                    )
-                  )
-                  "." "/* internal */"
-                  (identifier-expression "member")
-                  (trailing-trivia
-                    (comment "/* trailing */")
-                  )
-                )
-                "/* trailing */"
-              )
-            )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "qualified_values")
-              )
-              (initializer
-                "="
+            (initializer
+              (binary-expression
                 (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (member-expression
-                        (identifier-expression "Value")
-                        "::"
-                        (identifier-expression "First")
-                      )
-                    )
-                    (list-separator ",")
-                    (initializer-element
-                      (member-expression
-                        (identifier-expression "Value")
-                        "::"
-                        (identifier-expression "Last")
-                      )
-                      (trailing-trivia
-                        (comment "// last")
-                      )
-                    )
-                    "// last" "}"
+                  (initializer-list "{" "}")
+                )
+                "+"
+                (literal-expression "R\"(raw)\"" "\" tail\"")
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "commented_member")
+            )
+            (initializer
+              "="
+              (member-expression
+                (identifier-expression
+                  "object"
+                  (trailing-trivia
+                    (comment "/* internal */")
                   )
+                )
+                "." "/* internal */"
+                (identifier-expression "member")
+                (trailing-trivia
+                  (comment "/* trailing */")
+                )
+              )
+              "/* trailing */"
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "qualified_values")
+            )
+            (initializer
+              "="
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (member-expression
+                      (identifier-expression "Value")
+                      "::"
+                      (identifier-expression "First")
+                    )
+                  )
+                  (list-separator ",")
+                  (initializer-element
+                    (member-expression
+                      (identifier-expression "Value")
+                      "::"
+                      (identifier-expression "Last")
+                    )
+                    (trailing-trivia
+                      (comment "// last")
+                    )
+                  )
+                  "// last" "}"
                 )
               )
             )

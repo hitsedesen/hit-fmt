@@ -634,13 +634,7 @@ private:
 
         const auto& variableRule = VariableRule(node, context);
 
-        auto* list = Child(node, NK::InitDeclaratorList);
-
-        if (!list) {
-            return;
-        }
-
-        for (auto* init = list->FirstChild; init; init = init->NextSibling) {
+        for (auto* init = parser::FirstInitDeclarator(node); init; init = init->NextSibling) {
             if (init->Kind != NK::InitDeclarator) {
                 continue;
             }

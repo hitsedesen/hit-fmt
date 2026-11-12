@@ -36,14 +36,12 @@
     "template"
     (function-declaration
       (declaration-specifiers "std" "::" "string")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "instantiate")
-            "<" "int" ">"
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "instantiate")
+          "<" "int" ">"
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -85,11 +83,9 @@
       "struct" "Box" "{"
       (declaration
         (declaration-specifiers "T")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
         )
         ";"
@@ -118,11 +114,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -160,73 +154,67 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "constrained")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "F")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "function")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "constrained")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "F")
+                (init-declarator
+                  (declarator
+                    (declarator-name "function")
                   )
                 )
-                ")"
               )
-              (requires-clause
-                "requires"
-                (constraint-expression
-                  (requires-expression
-                    "requires"
-                    (parameter-list
-                      "("
-                      (parameter-declaration
-                        (declaration-specifiers "int")
-                        (init-declarator-list
-                          (init-declarator
-                            (declarator
-                              (declarator-name "value")
-                            )
-                          )
+              ")"
+            )
+            (requires-clause
+              "requires"
+              (constraint-expression
+                (requires-expression
+                  "requires"
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator
+                        (declarator
+                          (declarator-name "value")
                         )
                       )
-                      ")"
                     )
-                    (requirement-body
-                      "{"
-                      (compound-requirement
-                        (requirement-expression
-                          "{"
-                          (call-expression
-                            (identifier-expression "function")
-                            (argument-list
-                              "("
-                              (argument
-                                (identifier-expression "value")
-                              )
-                              ")"
+                    ")"
+                  )
+                  (requirement-body
+                    "{"
+                    (compound-requirement
+                      (requirement-expression
+                        "{"
+                        (call-expression
+                          (identifier-expression "function")
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "value")
                             )
+                            ")"
                           )
-                          "}"
                         )
-                        (type-constraint
-                          "->" "std" "::" "same_as"
-                          (template-argument-list
-                            "<"
-                            (template-argument "int")
-                            ">"
-                          )
+                        "}"
+                      )
+                      (type-constraint
+                        "->" "std" "::" "same_as"
+                        (template-argument-list
+                          "<"
+                          (template-argument "int")
+                          ">"
                         )
                       )
-                      (list-separator ";")
-                      "}"
                     )
+                    (list-separator ";")
+                    "}"
                   )
                 )
               )
@@ -265,31 +253,29 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "parenthesized_constraint")
-            (function-declarator
-              (parameter-list "(" ")")
-              (requires-clause
-                "requires"
-                (constraint-expression
-                  (parenthesized-expression
-                    "("
-                    (binary-expression
-                      (unary-expression
-                        "sizeof"
-                        (parenthesized-expression
-                          "("
-                          (identifier-expression "T")
-                          ")"
-                        )
+      (init-declarator
+        (declarator
+          (declarator-name "parenthesized_constraint")
+          (function-declarator
+            (parameter-list "(" ")")
+            (requires-clause
+              "requires"
+              (constraint-expression
+                (parenthesized-expression
+                  "("
+                  (binary-expression
+                    (unary-expression
+                      "sizeof"
+                      (parenthesized-expression
+                        "("
+                        (identifier-expression "T")
+                        ")"
                       )
-                      ">"
-                      (literal-expression "0")
                     )
-                    ")"
+                    ">"
+                    (literal-expression "0")
                   )
+                  ")"
                 )
               )
             )
@@ -304,13 +290,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "auto")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "coroutine")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "coroutine")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

@@ -15,11 +15,9 @@
               "("
               (parameter-declaration
                 (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
               )
@@ -51,11 +49,9 @@
   )
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "following")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "following")
       )
     )
     ";"
@@ -77,11 +73,9 @@
               "("
               (parameter-declaration
                 (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "Shared")
-                    )
+                (init-declarator
+                  (declarator
+                    (declarator-name "Shared")
                   )
                 )
               )
@@ -107,12 +101,10 @@
   )
   (declaration
     (declaration-specifiers "Shared")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          (declarator-name "pointer")
-        )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        (declarator-name "pointer")
       )
     )
     ";"
@@ -182,13 +174,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "install")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "install")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -328,11 +318,9 @@
   (unparsed-syntax "bind_handler_EXTRA" "(" "\"opaque\"" "," "[" "]" "{" "return" "6" ";" "}" ")")
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "tail")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "tail")
       )
     )
     ";"

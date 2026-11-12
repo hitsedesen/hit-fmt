@@ -1,31 +1,29 @@
 (translation-unit
   (declaration
     (declaration-specifiers "struct" "Record")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "record")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (call-expression
-                  (identifier-expression "First")
-                  (argument-list "(" ")")
-                )
+    (init-declarator
+      (declarator
+        (declarator-name "record")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (call-expression
+                (identifier-expression "First")
+                (argument-list "(" ")")
               )
-              (list-separator ",")
-              (initializer-element
-                (call-expression
-                  (identifier-expression "Second")
-                  (argument-list "(" ")")
-                )
-              )
-              (list-separator ",")
-              "}"
             )
+            (list-separator ",")
+            (initializer-element
+              (call-expression
+                (identifier-expression "Second")
+                (argument-list "(" ")")
+              )
+            )
+            (list-separator ",")
+            "}"
           )
         )
       )
@@ -34,132 +32,126 @@
   )
   (declaration
     (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "callPair")
+    (init-declarator
+      (declarator
+        (declarator-name "callPair")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (call-expression
+                (identifier-expression "produce")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "1")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "2")
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ",")
+            (initializer-element
+              (call-expression
+                (identifier-expression "consume")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "3")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (literal-expression "4")
+                  )
+                  ")"
+                )
+              )
+            )
+            "}"
+          )
         )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator
+      (declarator
+        (declarator-name "conditionalPair")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (conditional-expression
+                (identifier-expression "flag")
+                "?"
                 (call-expression
                   (identifier-expression "produce")
-                  (argument-list
-                    "("
-                    (argument
-                      (literal-expression "1")
-                    )
-                    (list-separator ",")
-                    (argument
-                      (literal-expression "2")
-                    )
-                    ")"
-                  )
+                  (argument-list "(" ")")
                 )
-              )
-              (list-separator ",")
-              (initializer-element
+                ":"
                 (call-expression
                   (identifier-expression "consume")
-                  (argument-list
-                    "("
-                    (argument
-                      (literal-expression "3")
-                    )
+                  (argument-list "(" ")")
+                )
+              )
+            )
+            (list-separator ",")
+            (initializer-element
+              (call-expression
+                (identifier-expression "finish")
+                (argument-list "(" ")")
+              )
+            )
+            "}"
+          )
+        )
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "External")
+    (init-declarator
+      (declarator
+        (declarator-name "templatePair")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (call-expression
+                (template-id-expression
+                  (identifier-expression "make")
+                  (template-argument-list
+                    "<"
+                    (template-argument "int")
                     (list-separator ",")
-                    (argument
-                      (literal-expression "4")
-                    )
-                    ")"
+                    (template-argument "long")
+                    ">"
                   )
                 )
+                (argument-list "(" ")")
               )
-              "}"
             )
-          )
-        )
-      )
-    )
-    ";"
-  )
-  (declaration
-    (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "conditionalPair")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (conditional-expression
-                  (identifier-expression "flag")
-                  "?"
-                  (call-expression
-                    (identifier-expression "produce")
-                    (argument-list "(" ")")
-                  )
-                  ":"
-                  (call-expression
-                    (identifier-expression "consume")
-                    (argument-list "(" ")")
-                  )
-                )
+            (list-separator ",")
+            (initializer-element
+              (call-expression
+                (identifier-expression "finish")
+                (argument-list "(" ")")
               )
-              (list-separator ",")
-              (initializer-element
-                (call-expression
-                  (identifier-expression "finish")
-                  (argument-list "(" ")")
-                )
-              )
-              "}"
             )
-          )
-        )
-      )
-    )
-    ";"
-  )
-  (declaration
-    (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "templatePair")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (call-expression
-                  (template-id-expression
-                    (identifier-expression "make")
-                    (template-argument-list
-                      "<"
-                      (template-argument "int")
-                      (list-separator ",")
-                      (template-argument "long")
-                      ">"
-                    )
-                  )
-                  (argument-list "(" ")")
-                )
-              )
-              (list-separator ",")
-              (initializer-element
-                (call-expression
-                  (identifier-expression "finish")
-                  (argument-list "(" ")")
-                )
-              )
-              "}"
-            )
+            "}"
           )
         )
       )
@@ -168,16 +160,14 @@
   )
   (declaration
     (declaration-specifiers "struct" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "first")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list "{" "}")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "first")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list "{" "}")
         )
       )
     )
@@ -185,16 +175,14 @@
   )
   (declaration
     (declaration-specifiers "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "second")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list "{" "}")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "second")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list "{" "}")
         )
       )
     )
@@ -202,21 +190,19 @@
   )
   (declaration
     (declaration-specifiers "struct" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "third")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "1")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "third")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "1")
             )
+            "}"
           )
         )
       )
@@ -225,21 +211,19 @@
   )
   (declaration
     (declaration-specifiers "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "fourth")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "1")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "fourth")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "1")
             )
+            "}"
           )
         )
       )
@@ -248,21 +232,19 @@
   )
   (declaration
     (declaration-specifiers "class" "Message")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "message")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "2")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "message")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "2")
             )
+            "}"
           )
         )
       )
@@ -271,21 +253,19 @@
   )
   (declaration
     (declaration-specifiers "union" "Payload")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "payload")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "3")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "payload")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "3")
             )
+            "}"
           )
         )
       )
@@ -294,21 +274,19 @@
   )
   (declaration
     (declaration-specifiers "struct" "Scope" "::" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "qualified")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "4")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "qualified")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "4")
             )
+            "}"
           )
         )
       )
@@ -324,21 +302,19 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "batch")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "5")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "batch")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "5")
             )
+            "}"
           )
         )
       )
@@ -347,42 +323,40 @@
   )
   (declaration
     (declaration-specifiers "struct" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "pair")
-          (array-declarator "[" "]")
-        )
-        (initializer
-          "="
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (literal-expression "1")
-                    )
-                    "}"
+    (init-declarator
+      (declarator
+        (declarator-name "pair")
+        (array-declarator "[" "]")
+      )
+      (initializer
+        "="
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "1")
                   )
+                  "}"
                 )
               )
-              (list-separator ",")
-              (initializer-element
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (literal-expression "2")
-                    )
-                    "}"
-                  )
-                )
-              )
-              "}"
             )
+            (list-separator ",")
+            (initializer-element
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "2")
+                  )
+                  "}"
+                )
+              )
+            )
+            "}"
           )
         )
       )
@@ -391,29 +365,25 @@
   )
   (declaration
     (declaration-specifiers "struct" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          (declarator-name "pointer")
-        )
-        (initializer
-          "="
-          (literal-expression "nullptr")
-        )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        (declarator-name "pointer")
+      )
+      (initializer
+        "="
+        (literal-expression "nullptr")
       )
     )
     ";"
   )
   (function-definition
     (declaration-specifiers "struct" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "make")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "make")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -433,21 +403,19 @@
     "struct" "Holder" "{"
     (declaration
       (declaration-specifiers "struct" "Packet")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "member")
-          )
-          (initializer
-            "="
-            (braced-initializer
-              (initializer-list
-                "{"
-                (initializer-element
-                  (literal-expression "6")
-                )
-                "}"
+      (init-declarator
+        (declarator
+          (declarator-name "member")
+        )
+        (initializer
+          "="
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "6")
               )
+              "}"
             )
           )
         )
@@ -458,13 +426,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "use")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "use")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -472,16 +438,14 @@
       "{"
       (declaration
         (declaration-specifiers "struct" "Packet")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localEmpty")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "localEmpty")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -489,16 +453,14 @@
       )
       (declaration-statement
         (declaration-specifiers "Packet")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "plainEmpty")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "plainEmpty")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -506,21 +468,19 @@
       )
       (declaration
         (declaration-specifiers "struct" "Packet")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localValue")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (literal-expression "7")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "localValue")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "7")
                 )
+                "}"
               )
             )
           )
@@ -529,21 +489,19 @@
       )
       (declaration-statement
         (declaration-specifiers "Packet")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "plainValue")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (literal-expression "7")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "plainValue")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "7")
                 )
+                "}"
               )
             )
           )
@@ -552,21 +510,19 @@
       )
       (declaration
         (declaration-specifiers "class" "Message")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localMessage")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (literal-expression "8")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "localMessage")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "8")
                 )
+                "}"
               )
             )
           )
@@ -575,21 +531,19 @@
       )
       (declaration
         (declaration-specifiers "union" "Payload")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localPayload")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (literal-expression "9")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "localPayload")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "9")
                 )
+                "}"
               )
             )
           )
@@ -603,11 +557,9 @@
     "struct" "Known" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
         )
       )
       ";"
@@ -616,14 +568,32 @@
   )
   (declaration
     (declaration-specifiers "struct" "Known")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directEmpty")
+    (init-declarator
+      (declarator
+        (declarator-name "directEmpty")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list "{" "}")
         )
-        (initializer
-          (braced-initializer
-            (initializer-list "{" "}")
+      )
+    )
+    ";"
+  )
+  (declaration
+    (declaration-specifiers "struct" "Known")
+    (init-declarator
+      (declarator
+        (declarator-name "directValue")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "1")
+            )
+            "}"
           )
         )
       )
@@ -632,45 +602,21 @@
   )
   (declaration
     (declaration-specifiers "struct" "Known")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directValue")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "1")
-              )
-              "}"
-            )
-          )
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "directCall")
       )
-    )
-    ";"
-  )
-  (declaration
-    (declaration-specifiers "struct" "Known")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directCall")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (call-expression
-                  (identifier-expression "produce")
-                  (argument-list "(" ")")
-                )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (call-expression
+                (identifier-expression "produce")
+                (argument-list "(" ")")
               )
-              "}"
             )
+            "}"
           )
         )
       )
@@ -680,20 +626,18 @@
   (record-declaration "class" "KnownMessage" ";")
   (declaration
     (declaration-specifiers "class" "KnownMessage")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directMessage")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "2")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "directMessage")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "2")
             )
+            "}"
           )
         )
       )
@@ -703,20 +647,18 @@
   (record-declaration "union" "KnownPayload" ";")
   (declaration
     (declaration-specifiers "union" "KnownPayload")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directPayload")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "3")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "directPayload")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "3")
             )
+            "}"
           )
         )
       )
@@ -725,20 +667,18 @@
   )
   (declaration
     (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directExternal")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "9")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "directExternal")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "9")
             )
+            "}"
           )
         )
       )
@@ -747,23 +687,21 @@
   )
   (declaration
     (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "negative")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (unary-expression
-                  "-"
-                  (literal-expression "1")
-                )
+    (init-declarator
+      (declarator
+        (declarator-name "negative")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (unary-expression
+                "-"
+                (literal-expression "1")
               )
-              "}"
             )
+            "}"
           )
         )
       )
@@ -772,21 +710,19 @@
   )
   (declaration
     (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "designated")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                "." "value" "="
-                (literal-expression "10")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "designated")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              "." "value" "="
+              (literal-expression "10")
             )
+            "}"
           )
         )
       )
@@ -795,16 +731,14 @@
   )
   (declaration
     (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          (declarator-name "directPointer")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list "{" "}")
-          )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        (declarator-name "directPointer")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list "{" "}")
         )
       )
     )
@@ -812,20 +746,18 @@
   )
   (declaration
     (declaration-specifiers "struct" "Scope" "::" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directQualified")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "4")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "directQualified")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "4")
             )
+            "}"
           )
         )
       )
@@ -841,20 +773,18 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directBatch")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (literal-expression "5")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "directBatch")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (literal-expression "5")
             )
+            "}"
           )
         )
       )
@@ -863,41 +793,39 @@
   )
   (declaration
     (declaration-specifiers "struct" "Packet")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "directPair")
-          (array-declarator "[" "]")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (literal-expression "1")
-                    )
-                    "}"
+    (init-declarator
+      (declarator
+        (declarator-name "directPair")
+        (array-declarator "[" "]")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "1")
                   )
+                  "}"
                 )
               )
-              (list-separator ",")
-              (initializer-element
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (literal-expression "2")
-                    )
-                    "}"
-                  )
-                )
-              )
-              "}"
             )
+            (list-separator ",")
+            (initializer-element
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (literal-expression "2")
+                  )
+                  "}"
+                )
+              )
+            )
+            "}"
           )
         )
       )
@@ -908,20 +836,18 @@
     "struct" "DirectHolder" "{"
     (declaration
       (declaration-specifiers "struct" "Known")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "member")
-          )
-          (initializer
-            (braced-initializer
-              (initializer-list
-                "{"
-                (initializer-element
-                  (literal-expression "6")
-                )
-                "}"
+      (init-declarator
+        (declarator
+          (declarator-name "member")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list
+              "{"
+              (initializer-element
+                (literal-expression "6")
               )
+              "}"
             )
           )
         )
@@ -932,13 +858,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "useDirect")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "useDirect")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -946,15 +870,13 @@
       "{"
       (declaration
         (declaration-specifiers "struct" "Known")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localEmpty")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "localEmpty")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -962,20 +884,18 @@
       )
       (declaration
         (declaration-specifiers "struct" "Known")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localValue")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (literal-expression "7")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "localValue")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "7")
                 )
+                "}"
               )
             )
           )
@@ -984,20 +904,18 @@
       )
       (declaration
         (declaration-specifiers "struct" "External")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "localExternal")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (literal-expression "8")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "localExternal")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (literal-expression "8")
                 )
+                "}"
               )
             )
           )
@@ -1006,35 +924,31 @@
       )
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "seed")
-            )
-            (initializer
-              "="
-              (literal-expression "11")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "seed")
+          )
+          (initializer
+            "="
+            (literal-expression "11")
           )
         )
         ";"
       )
       (declaration
         (declaration-specifiers "struct" "External")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "fromValue")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (identifier-expression "seed")
-                  )
-                  "}"
+        (init-declarator
+          (declarator
+            (declarator-name "fromValue")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (identifier-expression "seed")
                 )
+                "}"
               )
             )
           )
@@ -1051,11 +965,9 @@
     "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
         )
       )
       ";"
@@ -1068,11 +980,9 @@
     "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
         )
       )
       ";"
@@ -1112,37 +1022,35 @@
     (unparsed-syntax "Exported" "Constructed")
     "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Constructed")
-            (function-declarator
-              (parameter-list "(" ")")
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "first")
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "1")
-                      )
-                      ")"
+      (init-declarator
+        (declarator
+          (declarator-name "Constructed")
+          (function-declarator
+            (parameter-list "(" ")")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "first")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "1")
                     )
+                    ")"
                   )
                 )
-                (list-separator ",")
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "second")
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "2")
-                      )
-                      ")"
+              )
+              (list-separator ",")
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "second")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "2")
                     )
+                    ")"
                   )
                 )
               )
@@ -1154,22 +1062,18 @@
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "first")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "first")
         )
       )
       ";"
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "second")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "second")
         )
       )
       ";"
@@ -1190,36 +1094,30 @@
         ">"
       )
       (function-definition
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Callable")
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "A")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (declarator-name "a")
-                        )
-                      )
+        (init-declarator
+          (declarator
+            (declarator-name "Callable")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "A")
+                  (init-declarator
+                    (declarator
+                      (declarator-name "a")
                     )
                   )
-                  (list-separator ",")
-                  (parameter-declaration
-                    (declaration-specifiers "B")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (declarator-name "b")
-                        )
-                      )
-                    )
-                  )
-                  ")"
                 )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "B")
+                  (init-declarator
+                    (declarator
+                      (declarator-name "b")
+                    )
+                  )
+                )
+                ")"
               )
             )
           )
@@ -1250,11 +1148,9 @@
                 "("
                 (parameter-declaration
                   (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
+                  (init-declarator
+                    (declarator
+                      (declarator-name "value")
                     )
                   )
                 )
@@ -1284,13 +1180,11 @@
     (unparsed-syntax "Exported" "Destructible")
     "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (destructor-name "~" "Destructible")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (destructor-name "~" "Destructible")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -1323,11 +1217,9 @@
       "{"
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
         )
         ";"
@@ -1348,54 +1240,46 @@
   )
   (declaration
     (declaration-specifiers "enum" "Kind")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "value")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "value")
       )
     )
     ";"
   )
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "afterEnum")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "afterEnum")
       )
     )
     ";"
   )
   (declaration
     (declaration-specifiers "enum" "Kind")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          (declarator-name "enumPointer")
-        )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        (declarator-name "enumPointer")
       )
     )
     ";"
   )
   (declaration
     (declaration-specifiers "enum" "Kind")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "braced")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (identifier-expression "First")
-              )
-              "}"
+    (init-declarator
+      (declarator
+        (declarator-name "braced")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (identifier-expression "First")
             )
+            "}"
           )
         )
       )
@@ -1404,28 +1288,24 @@
   )
   (declaration
     (declaration-specifiers "enum" "Kind")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "copy")
-        )
-        (initializer
-          "="
-          (identifier-expression "First")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "copy")
+      )
+      (initializer
+        "="
+        (identifier-expression "First")
       )
     )
     ";"
   )
   (function-declaration
     (declaration-specifiers "enum" "Kind")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "makeKind")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "makeKind")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1448,11 +1328,9 @@
   )
   (declaration
     (declaration-specifiers "enum" "Api" "::" "State")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "qualified")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "qualified")
       )
     )
     ";"
@@ -1471,11 +1349,9 @@
   )
   (declaration
     (declaration-specifiers "enum" "Forward")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "scoped")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "scoped")
       )
     )
     ";"
@@ -1488,15 +1364,13 @@
   )
   (declaration
     (declaration-specifiers "State")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "control")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list "{" "}")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "control")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list "{" "}")
         )
       )
     )
@@ -1504,13 +1378,11 @@
   )
   (function-declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "State")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "State")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1518,15 +1390,13 @@
   )
   (declaration
     (declaration-specifiers "struct" "State")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "plain")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list "{" "}")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "plain")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list "{" "}")
         )
       )
     )
@@ -1534,15 +1404,13 @@
   )
   (declaration
     (declaration-specifiers "struct" "::" "State")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "qualified")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list "{" "}")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "qualified")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list "{" "}")
         )
       )
     )
@@ -1550,23 +1418,21 @@
   )
   (declaration
     (declaration-specifiers "struct" "State")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "hiddenCall")
-        )
-        (initializer
-          (braced-initializer
-            (initializer-list
-              "{"
-              (initializer-element
-                (call-expression
-                  (identifier-expression "produce")
-                  (argument-list "(" ")")
-                )
+    (init-declarator
+      (declarator
+        (declarator-name "hiddenCall")
+      )
+      (initializer
+        (braced-initializer
+          (initializer-list
+            "{"
+            (initializer-element
+              (call-expression
+                (identifier-expression "produce")
+                (argument-list "(" ")")
               )
-              "}"
             )
+            "}"
           )
         )
       )
@@ -1575,13 +1441,11 @@
   )
   (function-definition
     (declaration-specifiers "struct" "State")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "makeState")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "makeState")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1602,26 +1466,22 @@
     "struct" "StateOwner" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "State")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "State")
         )
       )
       ";"
     )
     (declaration
       (declaration-specifiers "struct" "State")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "member")
-          )
-          (initializer
-            (braced-initializer
-              (initializer-list "{" "}")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "member")
+        )
+        (initializer
+          (braced-initializer
+            (initializer-list "{" "}")
           )
         )
       )
@@ -1631,13 +1491,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "useHiddenState")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "useHiddenState")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1645,26 +1503,22 @@
       "{"
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "State")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "State")
           )
         )
         ";"
       )
       (declaration
         (declaration-specifiers "struct" "State")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "local")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "local")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1672,15 +1526,13 @@
       )
       (declaration
         (declaration-specifiers "struct" "::" "State")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "qualified")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "qualified")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1702,11 +1554,9 @@
     "union" "HiddenPayload" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
         )
       )
       ";"
@@ -1715,36 +1565,30 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "useHiddenRecords")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "HiddenMessage")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "useHiddenRecords")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "HiddenMessage")
                 )
               )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "HiddenPayload")
-                    )
-                  )
-                )
-              )
-              ")"
             )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "HiddenPayload")
+                )
+              )
+            )
+            ")"
           )
         )
       )
@@ -1753,15 +1597,13 @@
       "{"
       (declaration
         (declaration-specifiers "class" "HiddenMessage")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "message")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "message")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1769,15 +1611,13 @@
       )
       (declaration
         (declaration-specifiers "union" "HiddenPayload")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "payload")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "payload")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1789,11 +1629,9 @@
   (record-declaration "struct" "HiddenFinal" ";")
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "HiddenFinal")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "HiddenFinal")
       )
     )
     ";"
@@ -1814,13 +1652,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Run")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Run")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1828,15 +1664,13 @@
       "{"
       (declaration
         (declaration-specifiers "struct" "ImportedState")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "plain")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "plain")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1844,15 +1678,13 @@
       )
       (declaration-statement
         (declaration-specifiers "ImportedState")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "control")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "control")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1860,15 +1692,13 @@
       )
       (declaration
         (declaration-specifiers "class" "ImportedMessage")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "message")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "message")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1876,15 +1706,13 @@
       )
       (declaration
         (declaration-specifiers "union" "ImportedPayload")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "payload")
-            )
-            (initializer
-              (braced-initializer
-                (initializer-list "{" "}")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "payload")
+          )
+          (initializer
+            (braced-initializer
+              (initializer-list "{" "}")
             )
           )
         )
@@ -1902,11 +1730,9 @@
         "{"
         (declaration
           (declaration-specifiers "int")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "value")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "value")
             )
           )
           ";"

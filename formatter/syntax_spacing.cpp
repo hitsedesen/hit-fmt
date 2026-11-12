@@ -587,8 +587,9 @@ public:
             state.NestedDeclarator = false;
         }
 
-        if (kind == NK::InitDeclarator && parent && parent->Kind == NK::InitDeclaratorList) {
-            state.SeparatedDeclarator = begin != parent->Tokens.Begin;
+        if (kind == NK::InitDeclarator) {
+            state.SeparatedDeclarator =
+                parent && parent->Kind == NK::InitDeclaratorList && begin != parent->Tokens.Begin;
         }
 
         auto list = [&] (C category, const SourceRegion* owner = nullptr) {
@@ -1626,8 +1627,8 @@ public:
 
             if (kind == TK::Operator_Ellipsis &&
                 (node.Kind == NK::TemplateParameter || node.Kind == NK::Declarator ||
-                    (node.Kind == NK::InitDeclaratorList && node.Parent != NoRegion &&
-                        Regions_[node.Parent].Kind == NK::ParameterDeclaration) ||
+                    ((node.Kind == NK::InitDeclaratorList || node.Kind == NK::InitDeclarator) &&
+                        node.Parent != NoRegion && Regions_[node.Parent].Kind == NK::ParameterDeclaration) ||
                     (node.Kind == NK::TypeId && i + 1 == node.Tokens.End) ||
                     (node.Kind == NK::UnaryExpression &&
                         (Tree_.Kind(node.Tokens.Begin) == TK::Keyword_sizeof ||
@@ -1743,13 +1744,14 @@ public:
         if ((!IsDeclaration(declaration.Kind) && declaration.Kind != NK::FunctionDefinition &&
             declaration.Kind != NK::ParameterDeclaration && declaration.Kind != NK::ForInitStatement &&
             declaration.Kind != NK::ForCondition && declaration.Kind != NK::RangeForDeclaration) ||
-            specifiers.Kind != NK::DeclarationSpecifiers || list.Kind != NK::InitDeclaratorList ||
-            specifiers.Tokens.Empty() || specifiers.Tokens.End != list.Tokens.Begin)
+            specifiers.Kind != NK::DeclarationSpecifiers ||
+            (list.Kind != NK::InitDeclaratorList && list.Kind != NK::InitDeclarator) || specifiers.Tokens.Empty() ||
+            specifiers.Tokens.End != list.Tokens.Begin)
         {
             return;
         }
 
-        const auto* init = Child(list);
+        const auto* init = list.Kind == NK::InitDeclarator ? &list : Child(list);
         const auto* declarator = init ? Child(*init) : nullptr;
         const auto* name = declarator ? Child(*declarator) : nullptr;
 

@@ -2,29 +2,25 @@
   (unparsed-syntax "META" "(" "Key" "," "const" "Item" "*" "," "const" "Value" "*" ")")
   (function-definition
     (declaration-specifiers "const" "Item")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          "Factory" "::"
-          (declarator-name "build")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "n")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        "Factory" "::"
+        (declarator-name "build")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "n")
                 )
               )
-              ")"
             )
-            (function-qualifier "const")
+            ")"
           )
+          (function-qualifier "const")
         )
       )
     )
@@ -44,26 +40,22 @@
       (attribute-specifier "[" "[" "maybe_unused" "]" "]")
       "static" "bool"
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "check")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "const" "Item")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "*")
-                      (declarator-name "p")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "check")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "const" "Item")
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "p")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -81,29 +73,25 @@
   (unparsed-syntax "BIND" "(" "Key" "," "const" "Item" "*" ")" "TRACK" "(" "Group" "," "const" "Item" "*" ")" "MAP" "(" "Key" "," "const" "Item" "*" "," "const" "Value" "*" ")")
   (function-definition
     (declaration-specifiers "const" "Item")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          "Factory" "::"
-          (declarator-name "sequence")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "n")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        "Factory" "::"
+        (declarator-name "sequence")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "n")
                 )
               )
-              ")"
             )
-            (function-qualifier "const")
+            ")"
           )
+          (function-qualifier "const")
         )
       )
     )
@@ -130,55 +118,47 @@
   (record-declaration
     "struct" "C" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "C")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "n")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "C")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "n")
                   )
                 )
-                ")"
               )
-              (exception-specification "noexcept")
+              ")"
             )
+            (exception-specification "noexcept")
           )
         )
       )
       (compound-statement "{" "}")
     )
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (destructor-name "~" "C")
-            (function-declarator
-              (parameter-list "(" ")")
-              (exception-specification "noexcept")
-            )
+      (init-declarator
+        (declarator
+          (destructor-name "~" "C")
+          (function-declarator
+            (parameter-list "(" ")")
+            (exception-specification "noexcept")
           )
         )
       )
       (compound-statement "{" "}")
     )
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (operator-function-name "operator" "int")
-            (function-declarator
-              (parameter-list "(" ")")
-              (function-qualifier "const")
-            )
+      (init-declarator
+        (declarator
+          (operator-function-name "operator" "int")
+          (function-declarator
+            (parameter-list "(" ")")
+            (function-qualifier "const")
           )
         )
       )
@@ -194,36 +174,32 @@
     )
     (function-definition
       (declaration-specifiers "virtual" "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "f")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "n")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "f")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "n")
                   )
                 )
-                ")"
               )
-              (function-qualifier "const")
-              (function-qualifier "volatile")
-              (function-qualifier "&")
-              (exception-specification
-                "noexcept" "("
-                (literal-expression "true")
-                ")"
-              )
-              (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
-              (function-qualifier "override")
+              ")"
             )
+            (function-qualifier "const")
+            (function-qualifier "volatile")
+            (function-qualifier "&")
+            (exception-specification
+              "noexcept" "("
+              (literal-expression "true")
+              ")"
+            )
+            (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
+            (function-qualifier "override")
           )
         )
       )
@@ -239,27 +215,23 @@
     )
     (function-declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "g")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "n")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "g")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "n")
                   )
                 )
-                ")"
               )
-              (attribute-specifier "[" "[" "maybe_unused" "]" "]")
+              ")"
             )
+            (attribute-specifier "[" "[" "maybe_unused" "]" "]")
           )
         )
       )
@@ -269,29 +241,25 @@
   )
   (function-definition
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (nested-declarator
+    (init-declarator
+      (declarator
+        (nested-declarator
+          "("
+          (declarator-name "grouped")
+          ")"
+        )
+        (function-declarator
+          (parameter-list
             "("
-            (declarator-name "grouped")
-            ")"
-          )
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "n")
-                    )
-                  )
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "n")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -308,39 +276,35 @@
   )
   (function-declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (nested-declarator
-            "("
-            (pointer-operator "*")
-            (declarator-name "pointer")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "n")
-                      )
-                    )
-                  )
-                )
-                ")"
-              )
-            )
-            ")"
-          )
+    (init-declarator
+      (declarator
+        (nested-declarator
+          "("
+          (pointer-operator "*")
+          (declarator-name "pointer")
           (function-declarator
             (parameter-list
               "("
               (parameter-declaration
                 (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "n")
+                  )
+                )
               )
               ")"
             )
+          )
+          ")"
+        )
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+            )
+            ")"
           )
         )
       )
@@ -352,25 +316,21 @@
       (extension-attribute-specifier "__attribute__" "(" "(" "unused" ")" ")")
       "static" "int"
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "extension")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "n")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "extension")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "n")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -387,24 +347,22 @@
   )
   (unparsed-syntax
     (declaration-specifiers "Vec")
-    (init-declarator-list
-      (init-declarator
-        (abstract-declarator
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-              )
-              ")"
+    (init-declarator
+      (abstract-declarator
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
             )
-            (trailing-return-type
-              "->" "Vec"
-              (template-argument-list
-                "<"
-                (template-argument "int")
-                ">"
-              )
+            ")"
+          )
+          (trailing-return-type
+            "->" "Vec"
+            (template-argument-list
+              "<"
+              (template-argument "int")
+              ">"
             )
           )
         )
@@ -432,27 +390,23 @@
   )
   (function-definition
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "genuine")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "n")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "genuine")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "n")
                 )
               )
-              ")"
             )
-            "try"
+            ")"
           )
+          "try"
         )
       )
     )
@@ -472,11 +426,9 @@
         (condition
           "("
           (declaration-specifiers "int")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "code")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "code")
             )
           )
           ")"
@@ -508,11 +460,9 @@
   )
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "tail")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "tail")
       )
     )
     ";"
@@ -610,25 +560,21 @@
     )
     (function-declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "entry")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "entry")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -644,11 +590,9 @@
   (preprocessing-directive "#define OPTIONAL_ANNOTATION")
   (declaration
     (declaration-specifiers "OPTIONAL_ANNOTATION" "extern" "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "counter")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "counter")
       )
     )
     ";"

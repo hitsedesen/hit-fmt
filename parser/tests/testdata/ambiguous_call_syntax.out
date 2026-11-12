@@ -10,34 +10,30 @@
     )
     (function-declaration
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "select")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Result")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (nested-declarator
-                          "("
-                          (member-pointer-operator "Owner" "::" "*")
-                          (declarator-name "member")
-                          ")"
-                        )
-                        (function-declarator
-                          (parameter-list "(" ")")
-                          (function-qualifier "const")
-                        )
-                      )
+      (init-declarator
+        (declarator
+          (declarator-name "select")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Result")
+                (init-declarator
+                  (declarator
+                    (nested-declarator
+                      "("
+                      (member-pointer-operator "Owner" "::" "*")
+                      (declarator-name "member")
+                      ")"
+                    )
+                    (function-declarator
+                      (parameter-list "(" ")")
+                      (function-qualifier "const")
                     )
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -88,46 +84,40 @@
           )
         )
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "select")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Result")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (nested-declarator
-                          "("
-                          (member-pointer-operator "Owner" "::" "*")
-                          (declarator-name "member")
-                          ")"
-                        )
-                        (function-declarator
-                          (parameter-list "(" ")")
-                          (function-qualifier "const")
-                        )
-                      )
+      (init-declarator
+        (declarator
+          (declarator-name "select")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Result")
+                (init-declarator
+                  (declarator
+                    (nested-declarator
+                      "("
+                      (member-pointer-operator "Owner" "::" "*")
+                      (declarator-name "member")
+                      ")"
+                    )
+                    (function-declarator
+                      (parameter-list "(" ")")
+                      (function-qualifier "const")
                     )
                   )
                 )
-                (list-separator ",")
-                (parameter-declaration
-                  (declaration-specifiers "const" "Rule")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "&")
-                        (declarator-name "rule")
-                      )
-                    )
-                  )
-                )
-                ")"
               )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "const" "Rule")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&")
+                    (declarator-name "rule")
+                  )
+                )
+              )
+              ")"
             )
           )
         )
@@ -147,13 +137,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "f")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "f")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -215,20 +203,18 @@
       )
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "x")
-            )
-            (initializer
-              "="
-              (binary-expression
-                (identifier-expression "a")
+        (init-declarator
+          (declarator
+            (declarator-name "x")
+          )
+          (initializer
+            "="
+            (binary-expression
+              (identifier-expression "a")
+              "*"
+              (unary-expression
                 "*"
-                (unary-expression
-                  "*"
-                  (identifier-expression "p")
-                )
+                (identifier-expression "p")
               )
             )
           )
@@ -237,26 +223,24 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "indexed")
-            )
-            (initializer
-              "="
-              (call-expression
-                (member-expression
-                  (identifier-expression "helpers")
-                  "::"
-                  (unparsed-syntax "Build" "<" "values" "[" "index" "]" ">")
+        (init-declarator
+          (declarator
+            (declarator-name "indexed")
+          )
+          (initializer
+            "="
+            (call-expression
+              (member-expression
+                (identifier-expression "helpers")
+                "::"
+                (unparsed-syntax "Build" "<" "values" "[" "index" "]" ">")
+              )
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "source")
                 )
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "source")
-                  )
-                  ")"
-                )
+                ")"
               )
             )
           )
@@ -318,14 +302,12 @@
       )
       (declaration-statement
         (declaration-specifiers "Result")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "deferred")
-              (function-declarator
-                (parameter-list "(" ")")
-                "CUSTOM_SUFFIX"
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "deferred")
+            (function-declarator
+              (parameter-list "(" ")")
+              "CUSTOM_SUFFIX"
             )
           )
         )
@@ -333,15 +315,278 @@
       )
       (declaration-statement
         (declaration-specifiers "Result")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "linked")
-              (function-declarator
-                (parameter-list "(" ")")
-                "asm" "(" "\"linked_symbol\"" ")"
+        (init-declarator
+          (declarator
+            (declarator-name "linked")
+            (function-declarator
+              (parameter-list "(" ")")
+              "asm" "(" "\"linked_symbol\"" ")"
+            )
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (call-expression
+                (identifier-expression "nested")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "third")
+                  )
+                  ")"
+                )
               )
             )
+            (list-separator ",")
+            (argument
+              (identifier-expression "fourth")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (identifier-expression "first")
+            )
+            (list-separator ",")
+            (argument
+              (call-expression
+                (identifier-expression "nested")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  (list-separator ",")
+                  (argument
+                    (call-expression
+                      (identifier-expression "inner")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "third")
+                        )
+                        (list-separator ",")
+                        (argument
+                          (identifier-expression "fourth")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "fifth")
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "sixth")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "(" "/* before */"
+            (argument
+              (leading-trivia
+                (comment "/* before */")
+              )
+              (identifier-expression "first")
+              (trailing-trivia
+                (comment "/* after */")
+              )
+            )
+            "/* after */"
+            (list-separator ",")
+            (argument
+              (identifier-expression "second")
+            )
+            (list-separator ",")
+            "/* tail */"
+            (argument
+              (leading-trivia
+                (comment "/* tail */")
+              )
+              (identifier-expression "third")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (conditional-expression
+                (identifier-expression "condition")
+                "?"
+                (binary-expression
+                  (identifier-expression "first")
+                  ","
+                  (identifier-expression "second")
+                )
+                ":"
+                (identifier-expression "third")
+              )
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "fourth")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (unparsed-syntax
+              "first" "," "nested" "(" "second" ")" "," "/* empty */" "," "fourth"
+              (dangling-trivia
+                (comment "/* empty */")
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (unparsed-syntax
+              "first" "," "nested" "(" "second" ")" "," "/* trailing */"
+              (dangling-trivia
+                (comment "/* trailing */")
+              )
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (lambda-expression
+                (lambda-capture-list "[" "]")
+                (template-parameter-list
+                  "<"
+                  (template-parameter "typename" "T")
+                  (list-separator ",")
+                  (template-parameter "typename" "U")
+                  ">"
+                )
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "T")
+                  )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "U")
+                  )
+                  ")"
+                )
+                (lambda-body "{" "}")
+              )
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "next")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (call-expression
+                (member-expression
+                  (identifier-expression "object")
+                  "." "template"
+                  (template-id-expression
+                    (identifier-expression "build")
+                    (template-argument-list
+                      "<"
+                      (template-argument "int")
+                      (list-separator ",")
+                      (template-argument "long")
+                      ">"
+                    )
+                  )
+                )
+                (argument-list "(" ")")
+              )
+            )
+            (list-separator ",")
+            (argument
+              (identifier-expression "next")
+            )
+            ")"
+          )
+        )
+        ";"
+      )
+      (expression-statement
+        (call-expression
+          (identifier-expression "invoke")
+          (argument-list
+            "("
+            (argument
+              (binary-expression
+                (identifier-expression "first")
+                "<"
+                (identifier-expression "second")
+              )
+              (unparsed-syntax "," "third" ">" "fourth" "," "next")
+            )
+            ")"
           )
         )
         ";"

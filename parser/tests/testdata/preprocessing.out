@@ -23,13 +23,11 @@
           (preprocessing-directive "#  if NESTED")
           (function-declaration
             (declaration-specifiers "int")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "nested")
-                  (function-declarator
-                    (parameter-list "(" ")")
-                  )
+            (init-declarator
+              (declarator
+                (declarator-name "nested")
+                (function-declarator
+                  (parameter-list "(" ")")
                 )
               )
             )
@@ -62,13 +60,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "function")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "function")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -79,22 +75,20 @@
           (preprocessing-directive "#if ENABLED")
           (declaration-statement
             (declaration-specifiers "int")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "value")
-                )
-                (initializer
-                  "="
-                  (call-expression
-                    (identifier-expression "APPLY")
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "1")
-                      )
-                      ")"
+            (init-declarator
+              (declarator
+                (declarator-name "value")
+              )
+              (initializer
+                "="
+                (call-expression
+                  (identifier-expression "APPLY")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "1")
                     )
+                    ")"
                   )
                 )
               )
@@ -140,13 +134,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "split_conditional_block")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "split_conditional_block")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -208,13 +200,11 @@
       "class" "Guard" "{"
       (access-specifier "public" ":")
       (function-definition
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (destructor-name "~" "Guard")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (destructor-name "~" "Guard")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -274,13 +264,11 @@
       )
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Run")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -298,13 +286,11 @@
       )
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Stop")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Stop")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -325,13 +311,11 @@
     (record-declaration
       "struct" "Worker" "{"
       (function-definition
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (destructor-name "~" "Worker")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (destructor-name "~" "Worker")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -365,13 +349,11 @@
       )
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Run")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -419,13 +401,11 @@
       )
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Stop")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Stop")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )

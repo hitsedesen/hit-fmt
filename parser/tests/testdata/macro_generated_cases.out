@@ -1,37 +1,31 @@
 (translation-unit
   (function-definition
     (declaration-specifiers "const" "char")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          (declarator-name "Describe")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "group")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        (declarator-name "Describe")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "group")
                 )
               )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
-                )
-              )
-              ")"
             )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
+                )
+              )
+            )
+            ")"
           )
         )
       )
@@ -116,25 +110,21 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Dispatch")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "Dispatch")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -196,25 +186,21 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "OpaqueTail")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "OpaqueTail")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -242,25 +228,21 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "ExplicitBoundary")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "ExplicitBoundary")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -319,13 +301,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "OrdinaryCalls")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "OrdinaryCalls")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

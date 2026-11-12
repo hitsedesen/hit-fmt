@@ -5,13 +5,11 @@
       (macro-record-begin "BEGIN_SETTER" "(" "Missing" "," "int" ")")
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Run")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -39,13 +37,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Neighbor")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Neighbor")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -81,13 +77,11 @@
       (macro-record-begin "OPEN_RECORD" "(" "Inner" "," "int" ")")
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Run")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Run")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -115,13 +109,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "AfterMismatchedPair")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "AfterMismatchedPair")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -155,13 +147,11 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Run")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )

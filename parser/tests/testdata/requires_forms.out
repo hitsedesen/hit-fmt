@@ -17,11 +17,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -118,11 +116,9 @@
                               "("
                               (parameter-declaration
                                 (declaration-specifiers "U")
-                                (init-declarator-list
-                                  (init-declarator
-                                    (declarator
-                                      (declarator-name "item")
-                                    )
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "item")
                                   )
                                 )
                               )
@@ -284,11 +280,9 @@
                     "("
                     (parameter-declaration
                       (declaration-specifiers "T")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "other")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "other")
                         )
                       )
                     )
@@ -339,11 +333,9 @@
   )
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "outside")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "outside")
       )
     )
     ";"
@@ -374,11 +366,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "int")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "Local")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "Local")
                 )
               )
             )
@@ -426,11 +416,9 @@
   )
   (declaration
     (declaration-specifiers "Local")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "outside_type")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "outside_type")
       )
     )
     ";"
@@ -456,12 +444,10 @@
             "("
             (parameter-declaration
               (declaration-specifiers "Types")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    "..."
-                    (declarator-name "values")
-                  )
+              (init-declarator
+                (declarator
+                  "..."
+                  (declarator-name "values")
                 )
               )
             )

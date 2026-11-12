@@ -15,4 +15,13 @@ void f() {
   invoke("head" "tail"_label, next);
   Result deferred() CUSTOM_SUFFIX;
   Result linked() asm("linked_symbol");
+  invoke(first, nested(second, third), fourth);
+  invoke(first, nested(second, inner(third, fourth)), fifth, sixth);
+  invoke(/* before */ first /* after */, second, /* tail */ third);
+  invoke(condition ? first, second : third, fourth);
+  invoke(first, nested(second), /* empty */ , fourth);
+  invoke(first, nested(second), /* trailing */);
+  invoke([]<typename T, typename U>(T, U) {}, next);
+  invoke(object.template build<int, long>(), next);
+  invoke(first < second, third > fourth, next);
 }

@@ -18,25 +18,21 @@
       (comment "// independent")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "following")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "following")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -58,27 +54,23 @@
   (record-declaration
     "struct" "Record" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Record")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Record")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
       (compound-statement "{" "}")
     )
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (operator-function-name "operator" "bool")
-            (function-declarator
-              (parameter-list "(" ")")
-              (function-qualifier "const")
-            )
+      (init-declarator
+        (declarator
+          (operator-function-name "operator" "bool")
+          (function-declarator
+            (parameter-list "(" ")")
+            (function-qualifier "const")
           )
         )
       )
@@ -95,14 +87,12 @@
     "}" ";"
   )
   (function-definition
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "Record" "::"
-          (declarator-name "Record")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        "Record" "::"
+        (declarator-name "Record")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -110,43 +100,39 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "defaults")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                    (initializer
-                      "="
-                      (call-expression
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "1")
-                              ";"
-                            )
-                            "}"
-                          )
+    (init-declarator
+      (declarator
+        (declarator-name "defaults")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
+                )
+                (initializer
+                  "="
+                  (call-expression
+                    (lambda-expression
+                      (lambda-capture-list "[" "]")
+                      (lambda-body
+                        "{"
+                        (return-statement
+                          "return"
+                          (literal-expression "1")
+                          ";"
                         )
-                        (argument-list "(" ")")
+                        "}"
                       )
                     )
+                    (argument-list "(" ")")
                   )
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )

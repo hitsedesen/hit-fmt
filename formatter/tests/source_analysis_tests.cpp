@@ -1450,7 +1450,7 @@ TEST(SourceAnalysis, AdversarialMarkersHaveLinearStorage)
         CountingResource scratch;
         auto analysis = formatter::BuildSourceAnalysis(tree, {}, file, scratch);
         EXPECT_EQ(tree.TokenCount(), count + 3);
-        EXPECT_EQ(analysis.Regions().size(), count + 7);
+        EXPECT_EQ(analysis.Regions().size(), count + 6);
         EXPECT_TRUE(analysis.Protection().empty());
         EXPECT_TRUE(analysis.CanReplaceGap(Before(tree, "after"), "  "));
         EXPECT_LE(file.BytesRequested + scratch.BytesRequested, source.size() * 128);

@@ -1,13 +1,11 @@
 (translation-unit
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Test")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Test")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -15,52 +13,50 @@
       "{"
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "result")
-            )
-            (initializer
-              "="
-              (call-expression
-                (identifier-expression "APPLY")
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "key")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (call-expression
-                      (unparsed-syntax "factory" "<" "Accessor" "<" "Base" "," "Value" ">>")
-                      (argument-list
-                        "("
-                        (argument
-                          (identifier-expression "field")
-                        )
-                        ")"
-                      )
-                    )
-                  )
-                  (list-separator ",")
-                  (argument
-                    (identifier-expression "fieldIndex")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (call-expression
-                      (expression "typeid")
-                      (argument-list
-                        "("
-                        (argument
-                          (identifier-expression "Record")
-                        )
-                        ")"
-                      )
-                    )
-                  )
-                  ")"
+        (init-declarator
+          (declarator
+            (declarator-name "result")
+          )
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "APPLY")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "key")
                 )
+                (list-separator ",")
+                (argument
+                  (call-expression
+                    (unparsed-syntax "factory" "<" "Accessor" "<" "Base" "," "Value" ">>")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "field")
+                      )
+                      ")"
+                    )
+                  )
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "fieldIndex")
+                )
+                (list-separator ",")
+                (argument
+                  (call-expression
+                    (expression "typeid")
+                    (argument-list
+                      "("
+                      (argument
+                        (identifier-expression "Record")
+                      )
+                      ")"
+                    )
+                  )
+                )
+                ")"
               )
             )
           )

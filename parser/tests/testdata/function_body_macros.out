@@ -17,35 +17,31 @@
         "{"
         (declaration-statement
           (declaration-specifiers "Shared")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (pointer-operator "*")
-                (declarator-name "pointer")
-              )
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "pointer")
             )
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "sum")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (call-expression
-                    (identifier-expression "ReadFirst")
-                    (argument-list "(" ")")
-                  )
-                  "+"
-                  (call-expression
-                    (identifier-expression "ReadSecond")
-                    (argument-list "(" ")")
-                  )
+          (init-declarator
+            (declarator
+              (declarator-name "sum")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (call-expression
+                  (identifier-expression "ReadFirst")
+                  (argument-list "(" ")")
+                )
+                "+"
+                (call-expression
+                  (identifier-expression "ReadSecond")
+                  (argument-list "(" ")")
                 )
               )
             )
@@ -123,12 +119,10 @@
         "{"
         (declaration-statement
           (declaration-specifiers "Shared")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (pointer-operator "*")
-                (declarator-name "pointer")
-              )
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "pointer")
             )
           )
           ";"
@@ -157,15 +151,13 @@
           "{"
           (declaration-statement
             (declaration-specifiers "int")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "count")
-                )
-                (initializer
-                  "="
-                  (literal-expression "1")
-                )
+            (init-declarator
+              (declarator
+                (declarator-name "count")
+              )
+              (initializer
+                "="
+                (literal-expression "1")
               )
             )
             ";"
@@ -200,21 +192,19 @@
     )
     (function-declaration
       (declaration-specifiers "DEFINE_CASE")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Suite")
-                )
-                (list-separator ",")
-                (parameter-declaration
-                  (declaration-specifiers "DeclarationOnly")
-                )
-                ")"
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Suite")
               )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "DeclarationOnly")
+              )
+              ")"
             )
           )
         )
@@ -223,29 +213,25 @@
     )
     (function-declaration
       (declaration-specifiers "DEFINE_CASE")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (nested-declarator
-              "(" "Suite" ","
-              (declarator-name "DeclarationOnly")
-              ")"
-            )
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Shared")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "(" "Suite" ","
+            (declarator-name "DeclarationOnly")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Shared")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -297,21 +283,19 @@
     )
     (function-declaration
       (declaration-specifiers "static" "DEFINE_CASE")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Suite")
-                )
-                (list-separator ",")
-                (parameter-declaration
-                  (declaration-specifiers "DeclarationOnly")
-                )
-                ")"
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Suite")
               )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "DeclarationOnly")
+              )
+              ")"
             )
           )
         )
@@ -320,11 +304,9 @@
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "tail")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "tail")
         )
       )
       ";"
@@ -336,13 +318,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "EXPORT")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "DEFINE_CASE")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "DEFINE_CASE")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -353,13 +333,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "Result")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "OrdinaryFunction")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "OrdinaryFunction")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -442,12 +420,10 @@
           "{"
           (declaration-statement
             (declaration-specifiers "Local")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (pointer-operator "*")
-                  (declarator-name "pointer")
-                )
+            (init-declarator
+              (declarator
+                (pointer-operator "*")
+                (declarator-name "pointer")
               )
             )
             ";"
@@ -498,13 +474,35 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "result")
+        (init-declarator
+          (declarator
+            (declarator-name "result")
+          )
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "DEFINE_CASE")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "value")
+                )
+                ")"
+              )
             )
-            (initializer
-              "="
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "auto")
+        (init-declarator
+          (declarator
+            (declarator-name "curried")
+          )
+          (initializer
+            "="
+            (call-expression
               (call-expression
                 (identifier-expression "DEFINE_CASE")
                 (argument-list
@@ -515,38 +513,12 @@
                   ")"
                 )
               )
-            )
-          )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "curried")
-            )
-            (initializer
-              "="
-              (call-expression
-                (call-expression
-                  (identifier-expression "DEFINE_CASE")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "value")
-                    )
-                    ")"
-                  )
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "other")
                 )
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "other")
-                  )
-                  ")"
-                )
+                ")"
               )
             )
           )
@@ -572,18 +544,16 @@
           "{"
           (declaration-statement
             (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (pointer-operator "*")
-                  (declarator-name "pointer")
-                )
-                (initializer
-                  "="
-                  (unary-expression
-                    "&"
-                    (identifier-expression "object")
-                  )
+            (init-declarator
+              (declarator
+                (pointer-operator "*")
+                (declarator-name "pointer")
+              )
+              (initializer
+                "="
+                (unary-expression
+                  "&"
+                  (identifier-expression "object")
                 )
               )
             )
@@ -610,16 +580,14 @@
     "namespace" "Types" "{"
     (function-declaration
       (declaration-specifiers "Result")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            "#if FEATURE"
-            (pointer-operator "*")
-            (declarator-name "Select")
-            (function-declarator
-              (parameter-list "(" ")")
-              (exception-specification "noexcept")
-            )
+      (init-declarator
+        (declarator
+          "#if FEATURE"
+          (pointer-operator "*")
+          (declarator-name "Select")
+          (function-declarator
+            (parameter-list "(" ")")
+            (exception-specification "noexcept")
           )
         )
       )
@@ -627,15 +595,13 @@
     )
     (preprocessing-directive "#else")
     (function-declaration
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (pointer-operator "&")
-            (declarator-name "Select")
-            (function-declarator
-              (parameter-list "(" ")")
-              (exception-specification "noexcept")
-            )
+      (init-declarator
+        (declarator
+          (pointer-operator "&")
+          (declarator-name "Select")
+          (function-declarator
+            (parameter-list "(" ")")
+            (exception-specification "noexcept")
           )
         )
       )

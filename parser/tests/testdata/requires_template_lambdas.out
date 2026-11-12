@@ -17,11 +17,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -46,33 +44,27 @@
                     "("
                     (parameter-declaration
                       (declaration-specifiers "LeftArgumentWithContext")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "left")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "left")
                         )
                       )
                     )
                     (list-separator ",")
                     (parameter-declaration
                       (declaration-specifiers "RightArgumentWithContext")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "right")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "right")
                         )
                       )
                     )
                     (list-separator ",")
                     (parameter-declaration
                       (declaration-specifiers "ExtraArgumentWithContext")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "extra")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "extra")
                         )
                       )
                     )
@@ -153,22 +145,18 @@
                       "("
                       (parameter-declaration
                         (declaration-specifiers "Argument")
-                        (init-declarator-list
-                          (init-declarator
-                            (declarator
-                              (declarator-name "argument")
-                            )
+                        (init-declarator
+                          (declarator
+                            (declarator-name "argument")
                           )
                         )
                       )
                       (list-separator ",")
                       (parameter-declaration
                         (declaration-specifiers "ExtraArgument")
-                        (init-declarator-list
-                          (init-declarator
-                            (declarator
-                              (declarator-name "extra")
-                            )
+                        (init-declarator
+                          (declarator
+                            (declarator-name "extra")
                           )
                         )
                       )
@@ -239,11 +227,9 @@
                         "("
                         (parameter-declaration
                           (declaration-specifiers "Argument")
-                          (init-declarator-list
-                            (init-declarator
-                              (declarator
-                                (declarator-name "argument")
-                              )
+                          (init-declarator
+                            (declarator
+                              (declarator-name "argument")
                             )
                           )
                         )
@@ -318,11 +304,9 @@
                             "("
                             (parameter-declaration
                               (declaration-specifiers "Argument")
-                              (init-declarator-list
-                                (init-declarator
-                                  (declarator
-                                    (declarator-name "argument")
-                                  )
+                              (init-declarator
+                                (declarator
+                                  (declarator-name "argument")
                                 )
                               )
                             )
@@ -384,11 +368,9 @@
                               "("
                               (parameter-declaration
                                 (declaration-specifiers "Argument")
-                                (init-declarator-list
-                                  (init-declarator
-                                    (declarator
-                                      (declarator-name "argument")
-                                    )
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "argument")
                                   )
                                 )
                               )
@@ -435,11 +417,9 @@
                     "("
                     (parameter-declaration
                       (declaration-specifiers "A")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "a")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "a")
                         )
                       )
                     )
@@ -473,11 +453,9 @@
                     "("
                     (parameter-declaration
                       (declaration-specifiers "int")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "item")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "item")
                         )
                       )
                     )
@@ -551,11 +529,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -578,22 +554,18 @@
                     "("
                     (parameter-declaration
                       (declaration-specifiers "FirstArgument")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "first")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "first")
                         )
                       )
                     )
                     (list-separator ",")
                     (parameter-declaration
                       (declaration-specifiers "SecondArgument")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "second")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "second")
                         )
                       )
                     )
@@ -656,25 +628,21 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "check")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "check")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -694,117 +662,109 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "trailing")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "trailing")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
-              (requires-clause
-                "requires"
-                (constraint-expression
-                  (requires-expression
-                    "requires"
-                    (parameter-list
-                      "("
-                      (parameter-declaration
-                        (declaration-specifiers "T")
-                        (init-declarator-list
-                          (init-declarator
-                            (declarator
-                              (declarator-name "item")
-                            )
-                          )
+              ")"
+            )
+            (requires-clause
+              "requires"
+              (constraint-expression
+                (requires-expression
+                  "requires"
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "T")
+                      (init-declarator
+                        (declarator
+                          (declarator-name "item")
                         )
                       )
-                      ")"
                     )
-                    (requirement-body
-                      "{"
-                      (compound-requirement
-                        (requirement-expression
-                          "{"
-                          (call-expression
-                            (lambda-expression
-                              (lambda-capture-list "[" "]")
-                              (template-parameter-list
-                                "<"
-                                (template-parameter "class" "Argument")
-                                ">"
-                              )
-                              (parameter-list
-                                "("
-                                (parameter-declaration
-                                  (declaration-specifiers "Argument")
-                                  (init-declarator-list
-                                    (init-declarator
-                                      (declarator
-                                        (declarator-name "argument")
-                                      )
-                                    )
-                                  )
-                                )
-                                ")"
-                              )
-                              (lambda-body
-                                "{"
-                                (return-statement
-                                  "return"
-                                  (call-expression
-                                    (identifier-expression "combine")
-                                    (argument-list
-                                      "("
-                                      (argument
-                                        (identifier-expression "argument")
-                                      )
-                                      (list-separator ",")
-                                      (argument
-                                        (call-expression
-                                          (identifier-expression "make_extra_argument")
-                                          (argument-list
-                                            "("
-                                            (argument
-                                              (identifier-expression "argument")
-                                            )
-                                            ")"
-                                          )
-                                        )
-                                      )
-                                      ")"
-                                    )
-                                  )
-                                  ";"
-                                )
-                                "}"
-                              )
+                    ")"
+                  )
+                  (requirement-body
+                    "{"
+                    (compound-requirement
+                      (requirement-expression
+                        "{"
+                        (call-expression
+                          (lambda-expression
+                            (lambda-capture-list "[" "]")
+                            (template-parameter-list
+                              "<"
+                              (template-parameter "class" "Argument")
+                              ">"
                             )
-                            (argument-list
+                            (parameter-list
                               "("
-                              (argument
-                                (identifier-expression "item")
+                              (parameter-declaration
+                                (declaration-specifiers "Argument")
+                                (init-declarator
+                                  (declarator
+                                    (declarator-name "argument")
+                                  )
+                                )
                               )
                               ")"
                             )
+                            (lambda-body
+                              "{"
+                              (return-statement
+                                "return"
+                                (call-expression
+                                  (identifier-expression "combine")
+                                  (argument-list
+                                    "("
+                                    (argument
+                                      (identifier-expression "argument")
+                                    )
+                                    (list-separator ",")
+                                    (argument
+                                      (call-expression
+                                        (identifier-expression "make_extra_argument")
+                                        (argument-list
+                                          "("
+                                          (argument
+                                            (identifier-expression "argument")
+                                          )
+                                          ")"
+                                        )
+                                      )
+                                    )
+                                    ")"
+                                  )
+                                )
+                                ";"
+                              )
+                              "}"
+                            )
                           )
-                          "}"
+                          (argument-list
+                            "("
+                            (argument
+                              (identifier-expression "item")
+                            )
+                            ")"
+                          )
                         )
+                        "}"
                       )
-                      (list-separator ";")
-                      "}"
                     )
+                    (list-separator ";")
+                    "}"
                   )
                 )
               )

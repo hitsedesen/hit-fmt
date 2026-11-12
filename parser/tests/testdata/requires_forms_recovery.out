@@ -17,11 +17,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -167,11 +165,9 @@
   )
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "outside")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "outside")
       )
     )
     ";"
@@ -197,14 +193,12 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
-                  (initializer
-                    (unparsed-syntax "=" "{" "}")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
+                )
+                (initializer
+                  (unparsed-syntax "=" "{" "}")
                 )
               )
             )
@@ -241,11 +235,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -286,11 +278,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -353,11 +343,9 @@
   )
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "final_outside")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "final_outside")
       )
     )
     ";"

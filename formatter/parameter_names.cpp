@@ -108,24 +108,22 @@ TokenAnchor AfterToken(const parser::SyntaxTree& tree, parser::TokenIndex index)
 
 TokenAnchor NameAnchor(const parser::SyntaxTree& tree, const Node& parameter, const Node& specifiers)
 {
-    if (auto* declarators = Child(parameter, NK::InitDeclaratorList)) {
-        if (auto* init = Child(*declarators, NK::InitDeclarator)) {
-            if (auto* abstract = Child(*init, NK::AbstractDeclarator)) {
-                if (auto* nested = Child(*abstract, NK::NestedDeclarator)) {
-                    // In a function pointer, the name goes inside (*...).
-                    const auto token = nested->Tokens.End - 1;
-                    return {token, tree.Token(token).Text.Begin};
-                }
+    if (auto* init = parser::FirstInitDeclarator(parameter)) {
+        if (auto* abstract = Child(*init, NK::AbstractDeclarator)) {
+            if (auto* nested = Child(*abstract, NK::NestedDeclarator)) {
+                // In a function pointer, the name goes inside (*...).
+                const auto token = nested->Tokens.End - 1;
+                return {token, tree.Token(token).Text.Begin};
+            }
 
-                for (auto* child = abstract->FirstChild; child; child = child->NextSibling) {
-                    if (child->Kind == NK::ArrayDeclarator || child->Kind == NK::FunctionDeclarator) {
-                        return {child->Tokens.Begin, tree.Token(child->Tokens.Begin).Text.Begin};
-                    }
+            for (auto* child = abstract->FirstChild; child; child = child->NextSibling) {
+                if (child->Kind == NK::ArrayDeclarator || child->Kind == NK::FunctionDeclarator) {
+                    return {child->Tokens.Begin, tree.Token(child->Tokens.Begin).Text.Begin};
                 }
+            }
 
-                if (!abstract->Tokens.Empty()) {
-                    return AfterToken(tree, abstract->Tokens.End - 1);
-                }
+            if (!abstract->Tokens.Empty()) {
+                return AfterToken(tree, abstract->Tokens.End - 1);
             }
         }
     }
@@ -185,13 +183,7 @@ void CheckFunction(
     FunctionDefinitionParameterNames definitionPolicy,
     std::vector<ParameterNameDiagnostic>& diagnostics)
 {
-    auto* list = Child(function, NK::InitDeclaratorList);
-
-    if (!list) {
-        return;
-    }
-
-    for (auto* init = list->FirstChild; init; init = init->NextSibling) {
+    for (auto* init = parser::FirstInitDeclarator(function); init; init = init->NextSibling) {
         if (init->Kind != NK::InitDeclarator) {
             continue;
         }

@@ -3,28 +3,24 @@
     (macro-record-begin "BEGIN_SETTER" "(" "String" "," "std" "::" "string" ")")
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "OnStringScalar")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "const" "char")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "*")
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "OnStringScalar")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "char")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
-              (function-qualifier "override")
+              ")"
             )
+            (function-qualifier "override")
           )
         )
       )
@@ -77,27 +73,23 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "OnIntegerScalar")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "OnIntegerScalar")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
-              (function-qualifier "override")
+              ")"
             )
+            (function-qualifier "override")
           )
         )
       )
@@ -125,14 +117,12 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Reset")
-            (function-declarator
-              (parameter-list "(" ")")
-              (function-qualifier "override")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Reset")
+          (function-declarator
+            (parameter-list "(" ")")
+            (function-qualifier "override")
           )
         )
       )
@@ -170,14 +160,12 @@
       (access-specifier "public" ":")
       (function-definition
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Read")
-              (function-declarator
-                (parameter-list "(" ")")
-                (function-qualifier "const")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Read")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
             )
           )
         )
@@ -195,25 +183,21 @@
         (macro-record-begin "BEGIN_SETTER" "(" "Inner" "," "int" ")")
         (function-definition
           (declaration-specifiers "void")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "Update")
-                (function-declarator
-                  (parameter-list
-                    "("
-                    (parameter-declaration
-                      (declaration-specifiers "int")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "value")
-                          )
-                        )
+          (init-declarator
+            (declarator
+              (declarator-name "Update")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator
+                      (declarator
+                        (declarator-name "value")
                       )
                     )
-                    ")"
                   )
+                  ")"
                 )
               )
             )
@@ -236,11 +220,9 @@
       (access-specifier "private" ":")
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value_")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value_")
           )
         )
         ";"
@@ -252,25 +234,21 @@
         (whitespace "\n\n")
       )
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Neighbor")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Neighbor")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -322,13 +300,11 @@
         (preprocessing-directive "#if FEATURE")
         (function-definition
           (declaration-specifiers "void")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "Enabled")
-                (function-declarator
-                  (parameter-list "(" ")")
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "Enabled")
+              (function-declarator
+                (parameter-list "(" ")")
               )
             )
           )
@@ -355,13 +331,11 @@
         (preprocessing-directive "#else")
         (function-definition
           (declaration-specifiers "void")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "Disabled")
-                (function-declarator
-                  (parameter-list "(" ")")
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "Disabled")
+              (function-declarator
+                (parameter-list "(" ")")
               )
             )
           )
@@ -424,13 +398,11 @@
         (comment "// hit-fmt off")
       )
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Untouched")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Untouched")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -458,13 +430,11 @@
         (comment "// hit-fmt on")
       )
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Editable")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Editable")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -495,13 +465,11 @@
     "struct" "Ordinary" "{"
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Neighbor")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Neighbor")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -527,13 +495,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Calls")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Calls")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -568,13 +534,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Qualified")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Qualified")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

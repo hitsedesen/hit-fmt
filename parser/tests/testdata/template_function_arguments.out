@@ -19,18 +19,16 @@
     )
     (function-declaration
       (declaration-specifiers "static" "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Run")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                )
-                ")"
+      (init-declarator
+        (declarator
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
               )
+              ")"
             )
           )
         )
@@ -52,13 +50,11 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "dispatch")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "dispatch")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -87,11 +83,9 @@
                               ">"
                             )
                           )
-                          (init-declarator-list
-                            (init-declarator
-                              (abstract-declarator
-                                (pointer-operator "&&")
-                              )
+                          (init-declarator
+                            (abstract-declarator
+                              (pointer-operator "&&")
                             )
                           )
                         )
@@ -181,23 +175,19 @@
                     "("
                     (parameter-declaration
                       (declaration-specifiers "T")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "first")
-                          )
+                      (init-declarator
+                        (declarator
+                          (declarator-name "first")
                         )
                       )
                     )
                     (list-separator ",")
                     (parameter-declaration
                       (declaration-specifiers "const" "U")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (pointer-operator "&")
-                            (declarator-name "second")
-                          )
+                      (init-declarator
+                        (declarator
+                          (pointer-operator "&")
+                          (declarator-name "second")
                         )
                       )
                     )
@@ -208,11 +198,9 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "named")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "named")
             )
           )
           ";"
@@ -243,11 +231,9 @@
                                 ">"
                               )
                             )
-                            (init-declarator-list
-                              (init-declarator
-                                (abstract-declarator
-                                  (pointer-operator "&&")
-                                )
+                            (init-declarator
+                              (abstract-declarator
+                                (pointer-operator "&&")
                               )
                             )
                           )
@@ -312,11 +298,9 @@
                               ">"
                             )
                           )
-                          (init-declarator-list
-                            (init-declarator
-                              (abstract-declarator
-                                (pointer-operator "&&")
-                              )
+                          (init-declarator
+                            (abstract-declarator
+                              (pointer-operator "&&")
                             )
                           )
                         )
@@ -382,11 +366,9 @@
                               ">"
                             )
                           )
-                          (init-declarator-list
-                            (init-declarator
-                              (abstract-declarator
-                                (pointer-operator "&&")
-                              )
+                          (init-declarator
+                            (abstract-declarator
+                              (pointer-operator "&&")
                             )
                           )
                         )
@@ -487,11 +469,9 @@
                           ">"
                         )
                       )
-                      (init-declarator-list
-                        (init-declarator
-                          (abstract-declarator
-                            (pointer-operator "&&")
-                          )
+                      (init-declarator
+                        (abstract-declarator
+                          (pointer-operator "&&")
                         )
                       )
                     )
@@ -502,11 +482,9 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "local")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "local")
             )
           )
           ";"
@@ -529,20 +507,18 @@
           ";"
         )
         (declaration-statement
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "Owner")
-                "::" "Type"
-              )
-              (initializer
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "number")
-                  )
-                  ")"
+          (init-declarator
+            (declarator
+              (declarator-name "Owner")
+              "::" "Type"
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "number")
                 )
+                ")"
               )
             )
           )
@@ -550,21 +526,19 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "comparison")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (member-expression
-                    (unparsed-syntax "left" "<" "right" ">")
-                    "::"
-                    (identifier-expression "Run")
-                  )
-                  (argument-list "(" ")")
+          (init-declarator
+            (declarator
+              (declarator-name "comparison")
+            )
+            (initializer
+              "="
+              (call-expression
+                (member-expression
+                  (unparsed-syntax "left" "<" "right" ">")
+                  "::"
+                  (identifier-expression "Run")
                 )
+                (argument-list "(" ")")
               )
             )
           )
@@ -625,35 +599,29 @@
               "("
               (parameter-declaration
                 (declaration-specifiers "const" "DispatchPlan")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "plan")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&")
+                    (declarator-name "plan")
                   )
                 )
               )
               (list-separator ",")
               (parameter-declaration
                 (declaration-specifiers "JobQueue")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "*")
-                      (declarator-name "queue")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "queue")
                   )
                 )
               )
               (list-separator ",")
               (parameter-declaration
                 (declaration-specifiers "unsigned" "long" "long")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "ticket")
-                    )
+                (init-declarator
+                  (declarator
+                    (declarator-name "ticket")
                   )
                 )
               )
@@ -664,11 +632,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "submit")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "submit")
       )
     )
     ";"
@@ -685,35 +651,29 @@
               "("
               (parameter-declaration
                 (declaration-specifiers "const" "scheduling" "::" "WorkUnit")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "*")
-                      (declarator-name "work")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "work")
                   )
                 )
               )
               (list-separator ",")
               (parameter-declaration
                 (declaration-specifiers "JobQueue")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "*")
-                      (declarator-name "queue")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "queue")
                   )
                 )
               )
               (list-separator ",")
               (parameter-declaration
                 (declaration-specifiers "bool")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "urgent")
-                    )
+                (init-declarator
+                  (declarator
+                    (declarator-name "urgent")
                   )
                 )
               )
@@ -724,11 +684,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "schedule")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "schedule")
       )
     )
     ";"
@@ -752,12 +710,10 @@
                     ">"
                   )
                 )
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "incoming")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&")
+                    (declarator-name "incoming")
                   )
                 )
               )
@@ -771,24 +727,20 @@
                     ">"
                   )
                 )
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "deferred")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&")
+                    (declarator-name "deferred")
                   )
                 )
               )
               (list-separator ",")
               (parameter-declaration
                 (declaration-specifiers "JobQueue")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "*")
-                      (declarator-name "destination")
-                    )
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "destination")
                   )
                 )
               )
@@ -799,11 +751,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "route")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "route")
       )
     )
     ";"
@@ -817,35 +767,29 @@
           "("
           (parameter-declaration
             (declaration-specifiers "JobQueue")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (pointer-operator "*")
-                  (declarator-name "queue")
-                )
+            (init-declarator
+              (declarator
+                (pointer-operator "*")
+                (declarator-name "queue")
               )
             )
           )
           (list-separator ",")
           (parameter-declaration
             (declaration-specifiers "const" "DispatchPlan")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (pointer-operator "&")
-                  (declarator-name "plan")
-                )
+            (init-declarator
+              (declarator
+                (pointer-operator "&")
+                (declarator-name "plan")
               )
             )
           )
           (list-separator ",")
           (parameter-declaration
             (declaration-specifiers "bool")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "urgent")
-                )
+            (init-declarator
+              (declarator
+                (declarator-name "urgent")
               )
             )
           )
@@ -865,11 +809,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "constant")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "constant")
       )
     )
     ";"
@@ -883,11 +825,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "unresolved")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "unresolved")
       )
     )
     ";"
@@ -901,11 +841,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "product")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "product")
       )
     )
     ";"
@@ -919,11 +857,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "bitwise")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "bitwise")
       )
     )
     ";"
@@ -937,11 +873,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "logical")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "logical")
       )
     )
     ";"
@@ -977,24 +911,20 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "result")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "result")
       )
     )
     ";"
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "external_types")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "external_types")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1078,13 +1008,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "default_arguments")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "default_arguments")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

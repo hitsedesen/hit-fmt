@@ -2,62 +2,60 @@
   (record-declaration
     "struct" "PairCallbacks" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "PairCallbacks")
-            (function-declarator
-              (parameter-list "(" ")")
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "callback")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list
-                            "["
-                            (lambda-capture "this")
-                            "]"
-                          )
-                          (lambda-body
-                            "{"
-                            (expression-statement
-                              (call-expression
-                                (identifier-expression "stop")
-                                (argument-list "(" ")")
-                              )
-                              ";"
+      (init-declarator
+        (declarator
+          (declarator-name "PairCallbacks")
+          (function-declarator
+            (parameter-list "(" ")")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "callback")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list
+                          "["
+                          (lambda-capture "this")
+                          "]"
+                        )
+                        (lambda-body
+                          "{"
+                          (expression-statement
+                            (call-expression
+                              (identifier-expression "stop")
+                              (argument-list "(" ")")
                             )
-                            "}"
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      (list-separator ",")
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list
-                            "["
-                            (lambda-capture "this")
-                            "]"
-                          )
-                          (lambda-body
-                            "{"
-                            (expression-statement
-                              (call-expression
-                                (identifier-expression "start")
-                                (argument-list "(" ")")
-                              )
-                              ";"
-                            )
-                            "}"
-                          )
-                        )
-                      )
-                      ")"
                     )
+                    (list-separator ",")
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list
+                          "["
+                          (lambda-capture "this")
+                          "]"
+                        )
+                        (lambda-body
+                          "{"
+                          (expression-statement
+                            (call-expression
+                              (identifier-expression "start")
+                              (argument-list "(" ")")
+                            )
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                    )
+                    ")"
                   )
                 )
               )
@@ -72,59 +70,57 @@
   (record-declaration
     "struct" "SeparateMembers" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "SeparateMembers")
-            (function-declarator
-              (parameter-list "(" ")")
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "first")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "1")
-                              ";"
-                            )
-                            "}"
+      (init-declarator
+        (declarator
+          (declarator-name "SeparateMembers")
+          (function-declarator
+            (parameter-list "(" ")")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "first")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      ")"
                     )
+                    ")"
                   )
                 )
-                (list-separator ",")
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "second")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "2")
-                              ";"
-                            )
-                            "}"
+              )
+              (list-separator ",")
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "second")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "2")
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      ")"
                     )
+                    ")"
                   )
                 )
               )
@@ -139,67 +135,65 @@
   (record-declaration
     "struct" "NoexceptCallbacks" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "NoexceptCallbacks")
-            (function-declarator
-              (parameter-list "(" ")")
-              (exception-specification "noexcept")
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "callback")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list
-                            "["
-                            (lambda-capture "this")
-                            "]"
-                          )
-                          (parameter-list "(" ")")
-                          (exception-specification "noexcept")
-                          (lambda-body
-                            "{"
-                            (expression-statement
-                              (call-expression
-                                (identifier-expression "stop")
-                                (argument-list "(" ")")
-                              )
-                              ";"
+      (init-declarator
+        (declarator
+          (declarator-name "NoexceptCallbacks")
+          (function-declarator
+            (parameter-list "(" ")")
+            (exception-specification "noexcept")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "callback")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list
+                          "["
+                          (lambda-capture "this")
+                          "]"
+                        )
+                        (parameter-list "(" ")")
+                        (exception-specification "noexcept")
+                        (lambda-body
+                          "{"
+                          (expression-statement
+                            (call-expression
+                              (identifier-expression "stop")
+                              (argument-list "(" ")")
                             )
-                            "}"
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      (list-separator ",")
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list
-                            "["
-                            (lambda-capture "this")
-                            "]"
-                          )
-                          (parameter-list "(" ")")
-                          (exception-specification "noexcept")
-                          (lambda-body
-                            "{"
-                            (expression-statement
-                              (call-expression
-                                (identifier-expression "start")
-                                (argument-list "(" ")")
-                              )
-                              ";"
-                            )
-                            "}"
-                          )
-                        )
-                      )
-                      ")"
                     )
+                    (list-separator ",")
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list
+                          "["
+                          (lambda-capture "this")
+                          "]"
+                        )
+                        (parameter-list "(" ")")
+                        (exception-specification "noexcept")
+                        (lambda-body
+                          "{"
+                          (expression-statement
+                            (call-expression
+                              (identifier-expression "start")
+                              (argument-list "(" ")")
+                            )
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                    )
+                    ")"
                   )
                 )
               )
@@ -214,100 +208,96 @@
   (record-declaration
     "struct" "NestedCallback" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "NestedCallback")
-            (function-declarator
-              (parameter-list "(" ")")
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "first")
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "0")
-                      )
-                      ")"
+      (init-declarator
+        (declarator
+          (declarator-name "NestedCallback")
+          (function-declarator
+            (parameter-list "(" ")")
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "first")
+                  (argument-list
+                    "("
+                    (argument
+                      (literal-expression "0")
                     )
+                    ")"
                   )
                 )
-                (list-separator ",")
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "callback")
-                    (argument-list
-                      "("
-                      (argument
-                        (call-expression
-                          (identifier-expression "wrap")
-                          (argument-list
-                            "("
-                            (argument
-                              (call-expression
-                                (identifier-expression "bind")
-                                (argument-list
-                                  "("
-                                  (argument
-                                    (lambda-expression
-                                      (lambda-capture-list
-                                        "["
-                                        (lambda-capture
-                                          "id" "="
-                                          (literal-expression "1")
-                                        )
-                                        "]"
+              )
+              (list-separator ",")
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "callback")
+                  (argument-list
+                    "("
+                    (argument
+                      (call-expression
+                        (identifier-expression "wrap")
+                        (argument-list
+                          "("
+                          (argument
+                            (call-expression
+                              (identifier-expression "bind")
+                              (argument-list
+                                "("
+                                (argument
+                                  (lambda-expression
+                                    (lambda-capture-list
+                                      "["
+                                      (lambda-capture
+                                        "id" "="
+                                        (literal-expression "1")
                                       )
-                                      (parameter-list
-                                        "("
-                                        (parameter-declaration
-                                          (declaration-specifiers "int")
-                                          (init-declarator-list
-                                            (init-declarator
-                                              (declarator
-                                                (pointer-operator "*")
-                                                (declarator-name "value")
-                                              )
-                                            )
+                                      "]"
+                                    )
+                                    (parameter-list
+                                      "("
+                                      (parameter-declaration
+                                        (declaration-specifiers "int")
+                                        (init-declarator
+                                          (declarator
+                                            (pointer-operator "*")
+                                            (declarator-name "value")
                                           )
                                         )
-                                        ")"
                                       )
-                                      (lambda-body
-                                        "{"
-                                        (expression-statement
-                                          (call-expression
-                                            (identifier-expression "consume")
-                                            (argument-list
-                                              "("
-                                              (argument
-                                                (identifier-expression "value")
-                                              )
-                                              (list-separator ",")
-                                              (argument
-                                                (identifier-expression "id")
-                                              )
-                                              ")"
+                                      ")"
+                                    )
+                                    (lambda-body
+                                      "{"
+                                      (expression-statement
+                                        (call-expression
+                                          (identifier-expression "consume")
+                                          (argument-list
+                                            "("
+                                            (argument
+                                              (identifier-expression "value")
                                             )
+                                            (list-separator ",")
+                                            (argument
+                                              (identifier-expression "id")
+                                            )
+                                            ")"
                                           )
-                                          ";"
                                         )
-                                        "}"
+                                        ";"
                                       )
+                                      "}"
                                     )
                                   )
-                                  ")"
                                 )
+                                ")"
                               )
                             )
-                            ")"
                           )
+                          ")"
                         )
                       )
-                      ")"
                     )
+                    ")"
                   )
                 )
               )
@@ -322,87 +312,85 @@
   (record-declaration
     "struct" "QualifiedCallback" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "QualifiedCallback")
-            (function-declarator
-              (parameter-list "(" ")")
-              (exception-specification
-                "noexcept" "("
+      (init-declarator
+        (declarator
+          (declarator-name "QualifiedCallback")
+          (function-declarator
+            (parameter-list "(" ")")
+            (exception-specification
+              "noexcept" "("
+              (call-expression
+                (expression "noexcept")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
+                          )
+                          "}"
+                        )
+                      )
+                      (argument-list "(" ")")
+                    )
+                  )
+                  ")"
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
                 (call-expression
-                  (expression "noexcept")
+                  (identifier-expression "first")
                   (argument-list
                     "("
                     (argument
-                      (call-expression
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "1")
-                              ";"
-                            )
-                            "}"
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
                           )
+                          "}"
                         )
-                        (argument-list "(" ")")
                       )
                     )
                     ")"
                   )
                 )
-                ")"
               )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "first")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "1")
-                              ";"
-                            )
-                            "}"
+              (list-separator ",")
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "second")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "2")
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      ")"
                     )
-                  )
-                )
-                (list-separator ",")
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "second")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "2")
-                              ";"
-                            )
-                            "}"
-                          )
-                        )
-                      )
-                      ")"
-                    )
+                    ")"
                   )
                 )
               )
@@ -417,60 +405,58 @@
   (record-declaration
     "struct" "TryCallbacks" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TryCallbacks")
-            (function-declarator
-              (parameter-list "(" ")")
-              "try"
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "first")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "1")
-                              ";"
-                            )
-                            "}"
+      (init-declarator
+        (declarator
+          (declarator-name "TryCallbacks")
+          (function-declarator
+            (parameter-list "(" ")")
+            "try"
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "first")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "1")
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      ")"
                     )
+                    ")"
                   )
                 )
-                (list-separator ",")
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "second")
-                    (argument-list
-                      "("
-                      (argument
-                        (lambda-expression
-                          (lambda-capture-list "[" "]")
-                          (lambda-body
-                            "{"
-                            (return-statement
-                              "return"
-                              (literal-expression "2")
-                              ";"
-                            )
-                            "}"
+              )
+              (list-separator ",")
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "second")
+                  (argument-list
+                    "("
+                    (argument
+                      (lambda-expression
+                        (lambda-capture-list "[" "]")
+                        (lambda-body
+                          "{"
+                          (return-statement
+                            "return"
+                            (literal-expression "2")
+                            ";"
                           )
+                          "}"
                         )
                       )
-                      ")"
                     )
+                    ")"
                   )
                 )
               )
@@ -494,36 +480,32 @@
     "struct" "Controls" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "values")
-            (array-declarator "[" "3" "]")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "values")
+          (array-declarator "[" "3" "]")
         )
       )
       ";"
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (nested-declarator
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "routes")
+            (array-declarator "[" "2" "]")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
               "("
-              (pointer-operator "*")
-              (declarator-name "routes")
-              (array-declarator "[" "2" "]")
-              ")"
-            )
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                )
-                ")"
+              (parameter-declaration
+                (declaration-specifiers "int")
               )
+              ")"
             )
           )
         )
@@ -532,12 +514,10 @@
     )
     (declaration
       (declaration-specifiers "unsigned")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "flags")
-            (bit-field ":" "2")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "flags")
+          (bit-field ":" "2")
         )
       )
       ";"
@@ -547,591 +527,40 @@
   (record-declaration
     "struct" "TemplateBases" "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TemplateBases")
-            (function-declarator
-              (parameter-list "(" ")")
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (type-id
-                      "State"
-                      (template-argument-list
-                        "<"
-                        (template-argument "void")
-                        ">"
-                      )
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "first")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (identifier-expression "second")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (call-expression
-                          (identifier-expression "convert")
-                          (argument-list
-                            "("
-                            (argument
-                              (identifier-expression "value")
-                            )
-                            ")"
-                          )
-                        )
-                      )
-                      ")"
-                    )
-                  )
-                )
-                (list-separator ",")
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "member")
-                    (argument-list
-                      "("
-                      (argument
-                        (literal-expression "1")
-                      )
-                      ")"
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-      (compound-statement "{" "}")
-    )
-    (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TemplateBases")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "tag")
-                      )
-                    )
-                  )
-                )
-                ")"
-              )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (type-id
-                      "State"
-                      (template-argument-list
-                        "<"
-                        (template-argument "7")
-                        ">"
-                      )
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "first")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (identifier-expression "second")
-                      )
-                      ")"
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-      (compound-statement "{" "}")
-    )
-    (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TemplateBases")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "short")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "tag")
-                      )
-                    )
-                  )
-                )
-                ")"
-              )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (type-id
-                      "detail" "::" "State"
-                      (template-argument-list
-                        "<"
-                        (template-argument
-                          "Item"
-                          (template-argument-list
-                            "<"
-                            (template-argument "Key")
-                            (list-separator ",")
-                            (template-argument "Value")
-                            ">>"
-                          )
-                        )
-                      )
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "first")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (identifier-expression "second")
-                      )
-                      ")"
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-      (compound-statement "{" "}")
-    )
-    (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TemplateBases")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "long")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "tag")
-                      )
-                    )
-                  )
-                )
-                ")"
-              )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (type-id
-                      "Envelope"
-                      (template-argument-list
-                        "<"
-                        (template-argument "Key")
-                        (list-separator ",")
-                        (template-argument "Value")
-                        ">"
-                      )
-                      "::" "State"
-                      (template-argument-list
-                        "<"
-                        (template-argument "7")
-                        ">"
-                      )
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "first")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (identifier-expression "second")
-                      )
-                      ")"
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-      (compound-statement "{" "}")
-    )
-    (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TemplateBases")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "char")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "tag")
-                      )
-                    )
-                  )
-                )
-                ")"
-              )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (type-construction-expression
-                    (type-id
-                      "State"
-                      (template-argument-list
-                        "<"
-                        (template-argument "void")
-                        ">"
-                      )
-                    )
-                    (braced-initializer
-                      (initializer-list
-                        "{"
-                        (initializer-element
-                          (identifier-expression "first")
-                        )
-                        (list-separator ",")
-                        (initializer-element
-                          (identifier-expression "second")
-                        )
-                        "}"
-                      )
-                    )
-                  )
-                )
-                (list-separator ",")
-                (constructor-initializer
-                  (type-construction-expression
-                    (identifier-expression "member")
-                    (braced-initializer
-                      (initializer-list
-                        "{"
-                        (initializer-element
-                          (literal-expression "1")
-                        )
-                        "}"
-                      )
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-      (compound-statement "{" "}")
-    )
-    (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "TemplateBases")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "unsigned")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "tag")
-                      )
-                    )
-                  )
-                )
-                ")"
-              )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (type-id
-                      "State"
-                      (template-argument-list
-                        "<"
-                        (template-argument "7")
-                        ">"
-                      )
-                    )
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "first")
-                      )
-                      (list-separator ",")
-                      (argument
-                        (identifier-expression "second")
-                      )
-                      ")"
-                    )
-                  )
-                  "..."
-                )
-              )
-            )
-          )
-        )
-      )
-      (compound-statement "{" "}")
-    )
-    "}" ";"
-  )
-  (function-definition
-    (init-declarator-list
       (init-declarator
         (declarator
-          "Owned" "::"
-          (declarator-name "Owned")
+          (declarator-name "TemplateBases")
           (function-declarator
             (parameter-list "(" ")")
             (constructor-initializer-list
               ":"
               (constructor-initializer
                 (call-expression
-                  (identifier-expression "Value")
+                  (type-id
+                    "State"
+                    (template-argument-list
+                      "<"
+                      (template-argument "void")
+                      ">"
+                    )
+                  )
                   (argument-list
                     "("
                     (argument
-                      (call-expression
-                        (template-id-expression
-                          (identifier-expression "Build")
-                          (template-argument-list
-                            "<"
-                            (template-argument
-                              (type-id "const" "Schema" "::" "Key")
-                            )
-                            ">"
-                          )
-                        )
-                        (argument-list
-                          "("
-                          (argument
-                            (literal-expression "0")
-                          )
-                          (list-separator ",")
-                          (argument
-                            (type-construction-expression
-                              (template-id-expression
-                                (identifier-expression "Set")
-                                (template-argument-list
-                                  "<"
-                                  (template-argument "Text")
-                                  ">"
-                                )
-                              )
-                              (braced-initializer
-                                (initializer-list
-                                  "{"
-                                  (initializer-element
-                                    (literal-expression "\"first\"")
-                                  )
-                                  (list-separator ",")
-                                  (initializer-element
-                                    (literal-expression "\"second\"")
-                                  )
-                                  "}"
-                                )
-                              )
-                            )
-                          )
-                          (list-separator ",")
-                          (argument
-                            (call-expression
-                              (member-expression
-                                (identifier-expression "Helper")
-                                "::"
-                                (template-id-expression
-                                  (identifier-expression "Create")
-                                  (template-argument-list
-                                    "<"
-                                    (template-argument "Owned")
-                                    ">"
-                                  )
-                                )
-                              )
-                              (argument-list "(" ")")
-                            )
-                          )
-                          ")"
-                        )
-                      )
+                      (identifier-expression "first")
                     )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    (compound-statement "{" "}")
-  )
-  (function-definition
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "Owned" "::"
-          (declarator-name "Owned")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "tag")
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
                     )
-                  )
-                )
-              )
-              ")"
-            )
-            (constructor-initializer-list
-              ":"
-              (constructor-initializer
-                (call-expression
-                  (identifier-expression "Value")
-                  (argument-list
-                    "("
+                    (list-separator ",")
                     (argument
                       (call-expression
-                        (unparsed-syntax "Build" "<" "Unknown" ">")
+                        (identifier-expression "convert")
                         (argument-list
                           "("
                           (argument
-                            (type-construction-expression
-                              (template-id-expression
-                                (identifier-expression "Set")
-                                (template-argument-list
-                                  "<"
-                                  (template-argument "Text")
-                                  ">"
-                                )
-                              )
-                              (braced-initializer
-                                (initializer-list
-                                  "{"
-                                  (initializer-element
-                                    (literal-expression "\"first\"")
-                                  )
-                                  "}"
-                                )
-                              )
-                            )
-                          )
-                          (list-separator ",")
-                          (argument
-                            (type-construction-expression
-                              (template-id-expression
-                                (identifier-expression "Set")
-                                (template-argument-list
-                                  "<"
-                                  (template-argument "Text")
-                                  ">"
-                                )
-                              )
-                              (braced-initializer
-                                (initializer-list
-                                  "{"
-                                  (initializer-element
-                                    (literal-expression "\"second\"")
-                                  )
-                                  "}"
-                                )
-                              )
-                            )
-                          )
-                          (list-separator ",")
-                          (argument
-                            (identifier-expression "tag")
-                          )
-                          ")"
-                        )
-                      )
-                    )
-                    ")"
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-    (compound-statement "{" "}")
-  )
-  (function-definition
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "Owned" "::"
-          (declarator-name "Owned")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "char")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "tag")
-                    )
-                  )
-                )
-              )
-              ")"
-            )
-            (constructor-initializer-list
-              ":"
-              (constructor-initializer
-                (call-expression
-                  (identifier-expression "Value")
-                  (argument-list
-                    "("
-                    (argument
-                      (call-expression
-                        (unparsed-syntax "select" "<" "left" ">")
-                        (argument-list
-                          "("
-                          (argument
-                            (identifier-expression "right")
-                          )
-                          (list-separator ",")
-                          (argument
-                            (identifier-expression "other")
+                            (identifier-expression "value")
                           )
                           ")"
                         )
@@ -1144,14 +573,533 @@
               (list-separator ",")
               (constructor-initializer
                 (call-expression
-                  (identifier-expression "Ready")
+                  (identifier-expression "member")
                   (argument-list
                     "("
                     (argument
-                      (literal-expression "true")
+                      (literal-expression "1")
                     )
                     ")"
                   )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator
+        (declarator
+          (declarator-name "TemplateBases")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "tag")
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (type-id
+                    "State"
+                    (template-argument-list
+                      "<"
+                      (template-argument "7")
+                      ">"
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator
+        (declarator
+          (declarator-name "TemplateBases")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "short")
+                (init-declarator
+                  (declarator
+                    (declarator-name "tag")
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (type-id
+                    "detail" "::" "State"
+                    (template-argument-list
+                      "<"
+                      (template-argument
+                        "Item"
+                        (template-argument-list
+                          "<"
+                          (template-argument "Key")
+                          (list-separator ",")
+                          (template-argument "Value")
+                          ">>"
+                        )
+                      )
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator
+        (declarator
+          (declarator-name "TemplateBases")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "long")
+                (init-declarator
+                  (declarator
+                    (declarator-name "tag")
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (type-id
+                    "Envelope"
+                    (template-argument-list
+                      "<"
+                      (template-argument "Key")
+                      (list-separator ",")
+                      (template-argument "Value")
+                      ">"
+                    )
+                    "::" "State"
+                    (template-argument-list
+                      "<"
+                      (template-argument "7")
+                      ">"
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator
+        (declarator
+          (declarator-name "TemplateBases")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "char")
+                (init-declarator
+                  (declarator
+                    (declarator-name "tag")
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (type-construction-expression
+                  (type-id
+                    "State"
+                    (template-argument-list
+                      "<"
+                      (template-argument "void")
+                      ">"
+                    )
+                  )
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (identifier-expression "first")
+                      )
+                      (list-separator ",")
+                      (initializer-element
+                        (identifier-expression "second")
+                      )
+                      "}"
+                    )
+                  )
+                )
+              )
+              (list-separator ",")
+              (constructor-initializer
+                (type-construction-expression
+                  (identifier-expression "member")
+                  (braced-initializer
+                    (initializer-list
+                      "{"
+                      (initializer-element
+                        (literal-expression "1")
+                      )
+                      "}"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    (function-definition
+      (init-declarator
+        (declarator
+          (declarator-name "TemplateBases")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "unsigned")
+                (init-declarator
+                  (declarator
+                    (declarator-name "tag")
+                  )
+                )
+              )
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (type-id
+                    "State"
+                    (template-argument-list
+                      "<"
+                      (template-argument "7")
+                      ">"
+                    )
+                  )
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "first")
+                    )
+                    (list-separator ",")
+                    (argument
+                      (identifier-expression "second")
+                    )
+                    ")"
+                  )
+                )
+                "..."
+              )
+            )
+          )
+        )
+      )
+      (compound-statement "{" "}")
+    )
+    "}" ";"
+  )
+  (function-definition
+    (init-declarator
+      (declarator
+        "Owned" "::"
+        (declarator-name "Owned")
+        (function-declarator
+          (parameter-list "(" ")")
+          (constructor-initializer-list
+            ":"
+            (constructor-initializer
+              (call-expression
+                (identifier-expression "Value")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (template-id-expression
+                        (identifier-expression "Build")
+                        (template-argument-list
+                          "<"
+                          (template-argument
+                            (type-id "const" "Schema" "::" "Key")
+                          )
+                          ">"
+                        )
+                      )
+                      (argument-list
+                        "("
+                        (argument
+                          (literal-expression "0")
+                        )
+                        (list-separator ",")
+                        (argument
+                          (type-construction-expression
+                            (template-id-expression
+                              (identifier-expression "Set")
+                              (template-argument-list
+                                "<"
+                                (template-argument "Text")
+                                ">"
+                              )
+                            )
+                            (braced-initializer
+                              (initializer-list
+                                "{"
+                                (initializer-element
+                                  (literal-expression "\"first\"")
+                                )
+                                (list-separator ",")
+                                (initializer-element
+                                  (literal-expression "\"second\"")
+                                )
+                                "}"
+                              )
+                            )
+                          )
+                        )
+                        (list-separator ",")
+                        (argument
+                          (call-expression
+                            (member-expression
+                              (identifier-expression "Helper")
+                              "::"
+                              (template-id-expression
+                                (identifier-expression "Create")
+                                (template-argument-list
+                                  "<"
+                                  (template-argument "Owned")
+                                  ">"
+                                )
+                              )
+                            )
+                            (argument-list "(" ")")
+                          )
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (init-declarator
+      (declarator
+        "Owned" "::"
+        (declarator-name "Owned")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "tag")
+                )
+              )
+            )
+            ")"
+          )
+          (constructor-initializer-list
+            ":"
+            (constructor-initializer
+              (call-expression
+                (identifier-expression "Value")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (unparsed-syntax "Build" "<" "Unknown" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (type-construction-expression
+                            (template-id-expression
+                              (identifier-expression "Set")
+                              (template-argument-list
+                                "<"
+                                (template-argument "Text")
+                                ">"
+                              )
+                            )
+                            (braced-initializer
+                              (initializer-list
+                                "{"
+                                (initializer-element
+                                  (literal-expression "\"first\"")
+                                )
+                                "}"
+                              )
+                            )
+                          )
+                        )
+                        (list-separator ",")
+                        (argument
+                          (type-construction-expression
+                            (template-id-expression
+                              (identifier-expression "Set")
+                              (template-argument-list
+                                "<"
+                                (template-argument "Text")
+                                ">"
+                              )
+                            )
+                            (braced-initializer
+                              (initializer-list
+                                "{"
+                                (initializer-element
+                                  (literal-expression "\"second\"")
+                                )
+                                "}"
+                              )
+                            )
+                          )
+                        )
+                        (list-separator ",")
+                        (argument
+                          (identifier-expression "tag")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (compound-statement "{" "}")
+  )
+  (function-definition
+    (init-declarator
+      (declarator
+        "Owned" "::"
+        (declarator-name "Owned")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "char")
+              (init-declarator
+                (declarator
+                  (declarator-name "tag")
+                )
+              )
+            )
+            ")"
+          )
+          (constructor-initializer-list
+            ":"
+            (constructor-initializer
+              (call-expression
+                (identifier-expression "Value")
+                (argument-list
+                  "("
+                  (argument
+                    (call-expression
+                      (unparsed-syntax "select" "<" "left" ">")
+                      (argument-list
+                        "("
+                        (argument
+                          (identifier-expression "right")
+                        )
+                        (list-separator ",")
+                        (argument
+                          (identifier-expression "other")
+                        )
+                        ")"
+                      )
+                    )
+                  )
+                  ")"
+                )
+              )
+            )
+            (list-separator ",")
+            (constructor-initializer
+              (call-expression
+                (identifier-expression "Ready")
+                (argument-list
+                  "("
+                  (argument
+                    (literal-expression "true")
+                  )
+                  ")"
                 )
               )
             )
@@ -1163,43 +1111,41 @@
   )
   (function-declaration
     (declaration-specifiers "auto")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "query")
-          (function-declarator
-            (parameter-list "(" ")")
-            (exception-specification
-              "noexcept" "("
-              (call-expression
-                (expression "noexcept")
-                (argument-list
-                  "("
-                  (argument
-                    (call-expression
-                      (identifier-expression "check")
-                      (argument-list
-                        "("
-                        (argument
-                          (conditional-expression
-                            (literal-expression "1")
-                            "?"
-                            (literal-expression "2")
-                            ":"
-                            (literal-expression "3")
-                          )
+    (init-declarator
+      (declarator
+        (declarator-name "query")
+        (function-declarator
+          (parameter-list "(" ")")
+          (exception-specification
+            "noexcept" "("
+            (call-expression
+              (expression "noexcept")
+              (argument-list
+                "("
+                (argument
+                  (call-expression
+                    (identifier-expression "check")
+                    (argument-list
+                      "("
+                      (argument
+                        (conditional-expression
+                          (literal-expression "1")
+                          "?"
+                          (literal-expression "2")
+                          ":"
+                          (literal-expression "3")
                         )
-                        ")"
                       )
+                      ")"
                     )
                   )
-                  ")"
                 )
+                ")"
               )
-              ")"
             )
-            (trailing-return-type "->" "int")
+            ")"
           )
+          (trailing-return-type "->" "int")
         )
       )
     )
@@ -1207,14 +1153,12 @@
   )
   (function-declaration
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "attributed")
-          (function-declarator
-            (parameter-list "(" ")")
-            (attribute-specifier "[" "[" "tag" "]" "]")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "attributed")
+        (function-declarator
+          (parameter-list "(" ")")
+          (attribute-specifier "[" "[" "tag" "]" "]")
         )
       )
     )
@@ -1229,30 +1173,28 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "constrained")
-            (function-declarator
-              (parameter-list "(" ")")
-              (requires-clause
-                "requires"
-                (constraint-expression
-                  (parenthesized-expression
-                    "("
-                    (conditional-expression
-                      (member-expression
-                        (identifier-expression "T")
-                        "::"
-                        (identifier-expression "flag")
-                      )
-                      "?"
-                      (literal-expression "true")
-                      ":"
-                      (literal-expression "false")
+      (init-declarator
+        (declarator
+          (declarator-name "constrained")
+          (function-declarator
+            (parameter-list "(" ")")
+            (requires-clause
+              "requires"
+              (constraint-expression
+                (parenthesized-expression
+                  "("
+                  (conditional-expression
+                    (member-expression
+                      (identifier-expression "T")
+                      "::"
+                      (identifier-expression "flag")
                     )
-                    ")"
+                    "?"
+                    (literal-expression "true")
+                    ":"
+                    (literal-expression "false")
                   )
+                  ")"
                 )
               )
             )

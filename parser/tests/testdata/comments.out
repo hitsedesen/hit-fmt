@@ -6,11 +6,9 @@
       (comment "// leading declaration")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "value")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "value")
       )
     )
     ";"
@@ -21,13 +19,11 @@
   (comment "// trailing declaration")
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "empty")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "empty")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -46,13 +42,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "listComments")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "listComments")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -60,34 +54,32 @@
       "{"
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "result")
-            )
-            (initializer
-              "="
-              (call-expression
-                (identifier-expression "consume")
-                (argument-list
-                  "("
-                  (argument
-                    (identifier-expression "alpha")
-                  )
-                  (list-separator ",")
-                  "/* next argument */"
-                  (argument
-                    (leading-trivia
-                      (comment "/* next argument */")
-                    )
-                    (identifier-expression "beta")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (identifier-expression "gamma")
-                  )
-                  ")"
+        (init-declarator
+          (declarator
+            (declarator-name "result")
+          )
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "consume")
+              (argument-list
+                "("
+                (argument
+                  (identifier-expression "alpha")
                 )
+                (list-separator ",")
+                "/* next argument */"
+                (argument
+                  (leading-trivia
+                    (comment "/* next argument */")
+                  )
+                  (identifier-expression "beta")
+                )
+                (list-separator ",")
+                (argument
+                  (identifier-expression "gamma")
+                )
+                ")"
               )
             )
           )
@@ -254,35 +246,33 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "values")
-            )
-            (initializer
-              "="
-              (braced-initializer
-                (initializer-list
-                  "{"
-                  (initializer-element
-                    (identifier-expression "alpha")
-                  )
-                  (list-separator ",")
-                  "/* next element */"
-                  (initializer-element
-                    (leading-trivia
-                      (comment "/* next element */")
-                    )
-                    (identifier-expression "beta")
-                  )
-                  (list-separator
-                    ","
-                    (trailing-trivia
-                      (comment "/* trailing */")
-                    )
-                  )
-                  "/* trailing */" "}"
+        (init-declarator
+          (declarator
+            (declarator-name "values")
+          )
+          (initializer
+            "="
+            (braced-initializer
+              (initializer-list
+                "{"
+                (initializer-element
+                  (identifier-expression "alpha")
                 )
+                (list-separator ",")
+                "/* next element */"
+                (initializer-element
+                  (leading-trivia
+                    (comment "/* next element */")
+                  )
+                  (identifier-expression "beta")
+                )
+                (list-separator
+                  ","
+                  (trailing-trivia
+                    (comment "/* trailing */")
+                  )
+                )
+                "/* trailing */" "}"
               )
             )
           )

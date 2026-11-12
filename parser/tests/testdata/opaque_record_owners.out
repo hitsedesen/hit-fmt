@@ -4,50 +4,42 @@
     (unparsed-syntax "API" "Parcel")
     "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Parcel")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Item")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "*")
-                        (declarator-name "p")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Parcel")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Item")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "p")
                   )
                 )
-                (list-separator ",")
-                (parameter-declaration
-                  (declaration-specifiers "Item")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "&")
-                        (declarator-name "r")
-                      )
-                    )
-                  )
-                )
-                (list-separator ",")
-                (parameter-declaration
-                  (declaration-specifiers "Item")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "&&")
-                        (declarator-name "v")
-                      )
-                    )
-                  )
-                )
-                ")"
               )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Item")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&")
+                    (declarator-name "r")
+                  )
+                )
+              )
+              (list-separator ",")
+              (parameter-declaration
+                (declaration-specifiers "Item")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&&")
+                    (declarator-name "v")
+                  )
+                )
+              )
+              ")"
             )
           )
         )
@@ -61,39 +53,35 @@
     (unparsed-syntax "api" "[" "[" "nodiscard" "]" "]" "Box")
     "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Box")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "void")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (nested-declarator
-                          "("
-                          (pointer-operator "*")
-                          (declarator-name "callback")
-                          ")"
+      (init-declarator
+        (declarator
+          (declarator-name "Box")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "void")
+                (init-declarator
+                  (declarator
+                    (nested-declarator
+                      "("
+                      (pointer-operator "*")
+                      (declarator-name "callback")
+                      ")"
+                    )
+                    (function-declarator
+                      (parameter-list
+                        "("
+                        (parameter-declaration
+                          (declaration-specifiers "int")
                         )
-                        (function-declarator
-                          (parameter-list
-                            "("
-                            (parameter-declaration
-                              (declaration-specifiers "int")
-                            )
-                            ")"
-                          )
-                        )
+                        ")"
                       )
                     )
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -107,37 +95,33 @@
     (unparsed-syntax "API" "Owner" "<" "int" ">" "::" "Entry" "<" "long" ">")
     "{"
     (function-definition
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Entry")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "p")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Entry")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "p")
                   )
                 )
-                ")"
               )
-              (constructor-initializer-list
-                ":"
-                (constructor-initializer
-                  (call-expression
-                    (identifier-expression "value")
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "p")
-                      )
-                      ")"
+              ")"
+            )
+            (constructor-initializer-list
+              ":"
+              (constructor-initializer
+                (call-expression
+                  (identifier-expression "value")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "p")
                     )
+                    ")"
                   )
                 )
               )
@@ -149,11 +133,9 @@
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
         )
       )
       ";"
@@ -206,23 +188,21 @@
     "{"
     (declaration
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (nested-declarator
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "callback")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
               "("
-              (pointer-operator "*")
-              (declarator-name "callback")
-              ")"
-            )
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                )
-                ")"
+              (parameter-declaration
+                (declaration-specifiers "int")
               )
+              ")"
             )
           )
         )
@@ -231,26 +211,24 @@
     )
     (function-declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (nested-declarator
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (pointer-operator "*")
+            (declarator-name "factory")
+            (function-declarator
+              (parameter-list "(" ")")
+            )
+            ")"
+          )
+          (function-declarator
+            (parameter-list
               "("
-              (pointer-operator "*")
-              (declarator-name "factory")
-              (function-declarator
-                (parameter-list "(" ")")
+              (parameter-declaration
+                (declaration-specifiers "double")
               )
               ")"
-            )
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "double")
-                )
-                ")"
-              )
             )
           )
         )
@@ -259,22 +237,20 @@
     )
     (function-declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (nested-declarator
+      (init-declarator
+        (declarator
+          (nested-declarator
+            "("
+            (declarator-name "ordinary")
+            ")"
+          )
+          (function-declarator
+            (parameter-list
               "("
-              (declarator-name "ordinary")
-              ")"
-            )
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "double")
-                )
-                ")"
+              (parameter-declaration
+                (declaration-specifiers "double")
               )
+              ")"
             )
           )
         )
@@ -286,26 +262,22 @@
         "int"
         (attribute-specifier "[" "[" "nodiscard" "]" "]")
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "explicit_return")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Item")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "*")
-                        (declarator-name "p")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "explicit_return")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Item")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "*")
+                    (declarator-name "p")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -316,13 +288,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "outside")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "outside")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -345,11 +315,9 @@
     "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
         )
       )
       ";"
@@ -363,11 +331,9 @@
     (access-specifier "public" ":")
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
         )
       )
       ";"
@@ -375,13 +341,11 @@
     (access-specifier "protected" ":")
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "update")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "update")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -410,11 +374,9 @@
     (access-specifier "private" ":")
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "hidden")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "hidden")
         )
       )
       ";"
@@ -428,11 +390,9 @@
     (access-specifier "public" ":")
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
         )
       )
       ";"
@@ -445,22 +405,18 @@
     "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
         )
       )
       ";"
     )
     (declaration
       (declaration-specifiers "double")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Fraction")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Fraction")
         )
       )
       ";"
@@ -474,11 +430,9 @@
     (access-specifier "public" ":")
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
         )
       )
       ";"
@@ -497,11 +451,9 @@
     "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "Number")
         )
       )
       ";"
@@ -514,25 +466,21 @@
   (record-declaration "struct" "Result" "{" "}" ";")
   (function-definition
     (declaration-specifiers "struct" "Result")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "make")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "make")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -552,25 +500,21 @@
   )
   (function-definition
     (declaration-specifiers "struct" "External")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "produce")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "produce")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -589,13 +533,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "after")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "after")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

@@ -326,6 +326,25 @@ static_assert(sizeof(Node) == 40);
 
 static_assert(std::is_trivially_destructible_v<Node>);
 
+[[nodiscard]] inline const Node* FirstInitDeclarator(const Node& declaration)
+{
+    for (auto* child = declaration.FirstChild; child; child = child->NextSibling) {
+        if (child->Kind == NodeKind::InitDeclarator) {
+            return child;
+        }
+
+        if (child->Kind == NodeKind::InitDeclaratorList) {
+            for (auto* init = child->FirstChild; init; init = init->NextSibling) {
+                if (init->Kind == NodeKind::InitDeclarator) {
+                    return init;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 namespace detail {
 
 inline constexpr us InitialMemoryResourceSize = 64 * 1024;

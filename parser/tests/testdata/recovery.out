@@ -1,13 +1,11 @@
 (translation-unit
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "function")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "function")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -23,13 +21,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "unfinished")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "unfinished")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

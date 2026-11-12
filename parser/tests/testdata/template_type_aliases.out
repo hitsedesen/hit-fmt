@@ -81,11 +81,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Legacy")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "Legacy")
       )
     )
     ";"
@@ -160,11 +158,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "computed")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "computed")
       )
     )
     ";"
@@ -207,11 +203,9 @@
         ">"
       )
     )
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "callback")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "callback")
       )
     )
     ";"
@@ -259,13 +253,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "nested_first")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "nested_first")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -528,22 +520,20 @@
       )
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "comparison")
-            )
-            (initializer
-              "="
+        (init-declarator
+          (declarator
+            (declarator-name "comparison")
+          )
+          (initializer
+            "="
+            (binary-expression
               (binary-expression
-                (binary-expression
-                  (identifier-expression "left")
-                  "<"
-                  (identifier-expression "right")
-                )
-                ">"
-                (identifier-expression "tail")
+                (identifier-expression "left")
+                "<"
+                (identifier-expression "right")
               )
+              ">"
+              (identifier-expression "tail")
             )
           )
         )
@@ -554,13 +544,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "shadowed")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "shadowed")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -568,15 +556,13 @@
       "{"
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Box")
-            )
-            (initializer
-              "="
-              (literal-expression "1")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "Box")
+          )
+          (initializer
+            "="
+            (literal-expression "1")
           )
         )
         ";"
@@ -646,13 +632,11 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "pack_arguments")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "pack_arguments")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -660,32 +644,30 @@
         "{"
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "plain")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (template-id-expression
-                    (identifier-expression "Ready")
-                    (template-argument-list
-                      "<"
-                      (template-argument "Elements" "...")
-                      ">"
-                    )
+          (init-declarator
+            (declarator
+              (declarator-name "plain")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (template-id-expression
+                  (identifier-expression "Ready")
+                  (template-argument-list
+                    "<"
+                    (template-argument "Elements" "...")
+                    ">"
                   )
-                  "&&"
-                  (template-id-expression
-                    (identifier-expression "Other")
-                    (template-argument-list
-                      "<"
-                      (template-argument "External")
-                      (list-separator ",")
-                      (template-argument "Elements" "...")
-                      ">"
-                    )
+                )
+                "&&"
+                (template-id-expression
+                  (identifier-expression "Other")
+                  (template-argument-list
+                    "<"
+                    (template-argument "External")
+                    (list-separator ",")
+                    (template-argument "Elements" "...")
+                    ">"
                   )
                 )
               )
@@ -695,64 +677,13 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "nested")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (template-id-expression
-                    (identifier-expression "Ready")
-                    (template-argument-list
-                      "<"
-                      (template-argument
-                        "Box"
-                        (template-argument-list
-                          "<"
-                          (template-argument "Elements")
-                          ">"
-                        )
-                        "..."
-                      )
-                      ">"
-                    )
-                  )
-                  "&&"
-                  (template-id-expression
-                    (identifier-expression "Other")
-                    (template-argument-list
-                      "<"
-                      (template-argument "External")
-                      (list-separator ",")
-                      (template-argument
-                        "Box"
-                        (template-argument-list
-                          "<"
-                          (template-argument "Elements")
-                          ">"
-                        )
-                        "..."
-                      )
-                      ">"
-                    )
-                  )
-                )
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "nested")
             )
-          )
-          ";"
-        )
-        (declaration-statement
-          (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "shared")
-              )
-              (initializer
-                "="
+            (initializer
+              "="
+              (binary-expression
                 (template-id-expression
                   (identifier-expression "Ready")
                   (template-argument-list
@@ -761,19 +692,66 @@
                       "Box"
                       (template-argument-list
                         "<"
-                        (template-argument
-                          "Box"
-                          (template-argument-list
-                            "<"
-                            (template-argument "Elements")
-                            ">>"
-                          )
-                        )
+                        (template-argument "Elements")
+                        ">"
                       )
                       "..."
                     )
                     ">"
                   )
+                )
+                "&&"
+                (template-id-expression
+                  (identifier-expression "Other")
+                  (template-argument-list
+                    "<"
+                    (template-argument "External")
+                    (list-separator ",")
+                    (template-argument
+                      "Box"
+                      (template-argument-list
+                        "<"
+                        (template-argument "Elements")
+                        ">"
+                      )
+                      "..."
+                    )
+                    ">"
+                  )
+                )
+              )
+            )
+          )
+          ";"
+        )
+        (declaration-statement
+          (declaration-specifiers "auto")
+          (init-declarator
+            (declarator
+              (declarator-name "shared")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    "Box"
+                    (template-argument-list
+                      "<"
+                      (template-argument
+                        "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "Elements")
+                          ">>"
+                        )
+                      )
+                    )
+                    "..."
+                  )
+                  ">"
                 )
               )
             )
@@ -789,13 +767,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "escaped_pack_name")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "escaped_pack_name")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -803,22 +779,20 @@
       "{"
       (declaration-statement
         (declaration-specifiers "auto")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "comparison")
-            )
-            (initializer
-              "="
+        (init-declarator
+          (declarator
+            (declarator-name "comparison")
+          )
+          (initializer
+            "="
+            (binary-expression
               (binary-expression
-                (binary-expression
-                  (identifier-expression "lower")
-                  "<"
-                  (identifier-expression "Elements")
-                )
-                ">"
-                (identifier-expression "upper")
+                (identifier-expression "lower")
+                "<"
+                (identifier-expression "Elements")
               )
+              ">"
+              (identifier-expression "upper")
             )
           )
         )
@@ -832,15 +806,13 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Hidden")
-        )
-        (initializer
-          "="
-          (literal-expression "1")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "Hidden")
+      )
+      (initializer
+        "="
+        (literal-expression "1")
       )
     )
     ";"
@@ -862,13 +834,11 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "nested_pack_scope")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "nested_pack_scope")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -876,22 +846,20 @@
         "{"
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "comparison")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "comparison")
+            )
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
-                  (binary-expression
-                    (identifier-expression "lower")
-                    "<"
-                    (identifier-expression "Hidden")
-                  )
-                  ">"
-                  (identifier-expression "upper")
+                  (identifier-expression "lower")
+                  "<"
+                  (identifier-expression "Hidden")
                 )
+                ">"
+                (identifier-expression "upper")
               )
             )
           )
@@ -899,24 +867,22 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "specialized")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument
-                      "Factory"
-                      (template-argument-list
-                        "<"
-                        (template-argument "int")
-                        ">>"
-                      )
+          (init-declarator
+            (declarator
+              (declarator-name "specialized")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    "Factory"
+                    (template-argument-list
+                      "<"
+                      (template-argument "int")
+                      ">>"
                     )
                   )
                 )
@@ -941,13 +907,11 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value_packs")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "value_packs")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -955,18 +919,16 @@
         "{"
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "undecided")
-              )
-              (initializer
-                "="
-                (binary-expression
-                  (unparsed-syntax "Check" "<" "Values" "..." ">")
-                  "&&"
-                  (literal-expression "true")
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "undecided")
+            )
+            (initializer
+              "="
+              (binary-expression
+                (unparsed-syntax "Check" "<" "Values" "..." ">")
+                "&&"
+                (literal-expression "true")
               )
             )
           )
@@ -974,30 +936,28 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "comparisons")
-              )
-              (initializer
-                "="
-                (fold-expression
-                  "("
-                  (fold-operand
-                    (parenthesized-expression
-                      "("
-                      (binary-expression
-                        (identifier-expression "lower")
-                        "<"
-                        (identifier-expression "Values")
-                      )
-                      ")"
+          (init-declarator
+            (declarator
+              (declarator-name "comparisons")
+            )
+            (initializer
+              "="
+              (fold-expression
+                "("
+                (fold-operand
+                  (parenthesized-expression
+                    "("
+                    (binary-expression
+                      (identifier-expression "lower")
+                      "<"
+                      (identifier-expression "Values")
                     )
+                    ")"
                   )
-                  (fold-operator "&&")
-                  (fold-ellipsis "...")
-                  ")"
                 )
+                (fold-operator "&&")
+                (fold-ellipsis "...")
+                ")"
               )
             )
           )
@@ -1021,13 +981,11 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "qualified_arguments")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "qualified_arguments")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -1035,22 +993,20 @@
         "{"
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "reference")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument
-                      (type-id "const" "T" "&")
-                    )
-                    ">"
+          (init-declarator
+            (declarator
+              (declarator-name "reference")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    (type-id "const" "T" "&")
                   )
+                  ">"
                 )
               )
             )
@@ -1059,20 +1015,18 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "pointer")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument "T" "*" "const")
-                    ">"
-                  )
+          (init-declarator
+            (declarator
+              (declarator-name "pointer")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument "T" "*" "const")
+                  ">"
                 )
               )
             )
@@ -1081,22 +1035,20 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "rvalue")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument
-                      (type-id "volatile" "T" "&&")
-                    )
-                    ">"
+          (init-declarator
+            (declarator
+              (declarator-name "rvalue")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    (type-id "volatile" "T" "&&")
                   )
+                  ">"
                 )
               )
             )
@@ -1105,24 +1057,22 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "second")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument "0")
-                    (list-separator ",")
-                    (template-argument
-                      (type-id "const" "T" "&")
-                    )
-                    ">"
+          (init-declarator
+            (declarator
+              (declarator-name "second")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument "0")
+                  (list-separator ",")
+                  (template-argument
+                    (type-id "const" "T" "&")
                   )
+                  ">"
                 )
               )
             )
@@ -1131,20 +1081,18 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "pack")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument "Types" "&" "...")
-                    ">"
-                  )
+          (init-declarator
+            (declarator
+              (declarator-name "pack")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument "Types" "&" "...")
+                  ">"
                 )
               )
             )
@@ -1153,30 +1101,28 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "nested")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument
-                      (type-id
-                        "const" "Box"
-                        (template-argument-list
-                          "<"
-                          (template-argument "T")
-                          ">"
-                        )
-                        "&"
+          (init-declarator
+            (declarator
+              (declarator-name "nested")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    (type-id
+                      "const" "Box"
+                      (template-argument-list
+                        "<"
+                        (template-argument "T")
+                        ">"
                       )
+                      "&"
                     )
-                    ">"
                   )
+                  ">"
                 )
               )
             )
@@ -1185,22 +1131,20 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "fundamental")
-              )
-              (initializer
-                "="
-                (template-id-expression
-                  (identifier-expression "Ready")
-                  (template-argument-list
-                    "<"
-                    (template-argument
-                      (type-id "const" "int" "*")
-                    )
-                    ">"
+          (init-declarator
+            (declarator
+              (declarator-name "fundamental")
+            )
+            (initializer
+              "="
+              (template-id-expression
+                (identifier-expression "Ready")
+                (template-argument-list
+                  "<"
+                  (template-argument
+                    (type-id "const" "int" "*")
                   )
+                  ">"
                 )
               )
             )
@@ -1209,25 +1153,23 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "comparison")
-              )
-              (initializer
-                "="
+          (init-declarator
+            (declarator
+              (declarator-name "comparison")
+            )
+            (initializer
+              "="
+              (binary-expression
                 (binary-expression
-                  (binary-expression
-                    (identifier-expression "lower")
-                    "<"
-                    (identifier-expression "value")
-                  )
-                  "&"
-                  (binary-expression
-                    (identifier-expression "mask")
-                    ">"
-                    (identifier-expression "upper")
-                  )
+                  (identifier-expression "lower")
+                  "<"
+                  (identifier-expression "value")
+                )
+                "&"
+                (binary-expression
+                  (identifier-expression "mask")
+                  ">"
+                  (identifier-expression "upper")
                 )
               )
             )
@@ -1236,50 +1178,46 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "shadow")
-              )
-              (initializer
-                "="
-                (lambda-expression
-                  (lambda-capture-list "[" "]")
-                  (parameter-list
-                    "("
-                    (parameter-declaration
-                      (declaration-specifiers "int")
-                      (init-declarator-list
-                        (init-declarator
-                          (declarator
-                            (declarator-name "First")
-                          )
-                        )
+          (init-declarator
+            (declarator
+              (declarator-name "shadow")
+            )
+            (initializer
+              "="
+              (lambda-expression
+                (lambda-capture-list "[" "]")
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                    (init-declarator
+                      (declarator
+                        (declarator-name "First")
                       )
                     )
-                    ")"
                   )
-                  (lambda-body
-                    "{"
-                    (return-statement
-                      "return"
+                  ")"
+                )
+                (lambda-body
+                  "{"
+                  (return-statement
+                    "return"
+                    (binary-expression
                       (binary-expression
-                        (binary-expression
-                          (identifier-expression "lower")
-                          "<"
-                          (identifier-expression "First")
-                        )
-                        "&"
-                        (binary-expression
-                          (identifier-expression "mask")
-                          ">"
-                          (identifier-expression "upper")
-                        )
+                        (identifier-expression "lower")
+                        "<"
+                        (identifier-expression "First")
                       )
-                      ";"
+                      "&"
+                      (binary-expression
+                        (identifier-expression "mask")
+                        ">"
+                        (identifier-expression "upper")
+                      )
                     )
-                    "}"
+                    ";"
                   )
+                  "}"
                 )
               )
             )

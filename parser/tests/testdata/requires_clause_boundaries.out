@@ -15,11 +15,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -86,11 +84,9 @@
       "struct" "Container" "{"
       (declaration
         (declaration-specifiers "T")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "member")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "member")
           )
         )
         ";"
@@ -135,25 +131,21 @@
     )
     (function-definition
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "inspect")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "inspect")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -174,11 +166,9 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "outside")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "outside")
       )
     )
     ";"
@@ -269,13 +259,11 @@
     )
     (function-declaration
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Configure")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Configure")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -299,42 +287,40 @@
     )
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Select")
-            (function-declarator
-              (parameter-list "(" ")")
-              (requires-clause
-                "requires"
-                (constraint-expression
-                  (parenthesized-expression
-                    "("
-                    (binary-expression
-                      (template-id-expression
-                        (identifier-expression "Ready")
-                        (template-argument-list
-                          "<"
-                          (template-argument "Items" "...")
-                          ">"
-                        )
-                      )
-                      "&&"
-                      (template-id-expression
-                        (identifier-expression "Compatible")
-                        (template-argument-list
-                          "<"
-                          (template-argument "External")
-                          (list-separator ",")
-                          (template-argument "Items" "...")
-                          (list-separator ",")
-                          (template-argument "0")
-                          ">"
-                        )
+      (init-declarator
+        (declarator
+          (declarator-name "Select")
+          (function-declarator
+            (parameter-list "(" ")")
+            (requires-clause
+              "requires"
+              (constraint-expression
+                (parenthesized-expression
+                  "("
+                  (binary-expression
+                    (template-id-expression
+                      (identifier-expression "Ready")
+                      (template-argument-list
+                        "<"
+                        (template-argument "Items" "...")
+                        ">"
                       )
                     )
-                    ")"
+                    "&&"
+                    (template-id-expression
+                      (identifier-expression "Compatible")
+                      (template-argument-list
+                        "<"
+                        (template-argument "External")
+                        (list-separator ",")
+                        (template-argument "Items" "...")
+                        (list-separator ",")
+                        (template-argument "0")
+                        ">"
+                      )
+                    )
                   )
+                  ")"
                 )
               )
             )
@@ -424,13 +410,11 @@
     )
     (function-declaration
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Ordered")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Ordered")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -467,25 +451,21 @@
           ">"
         )
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Convert")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Convert")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -542,25 +522,21 @@
     (attribute-specifier "[" "[" "deprecated" "(" "\"use another overload\"" ")" "]" "]")
     (function-declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Inspect")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Inspect")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -587,11 +563,9 @@
             "("
             (parameter-declaration
               (declaration-specifiers "T")
-              (init-declarator-list
-                (init-declarator
-                  (declarator
-                    (declarator-name "value")
-                  )
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
             )
@@ -634,25 +608,21 @@
     (attribute-specifier "[" "[" "nodiscard" "]" "]")
     (function-definition
       (declaration-specifiers "T")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Copy")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Copy")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
