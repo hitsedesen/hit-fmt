@@ -948,6 +948,17 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
     EXPECT_TRUE(annotations.IsStickyChainPair("Append", "Append"));
     EXPECT_FALSE(annotations.IsStickyChainPair("Write", "Choose"));
     EXPECT_FALSE(annotations.IsStickyChainPair("Choose", "Writes"));
+    style.StickyChainCallPairs = {"Item:*", "Item:Value", "registrar:*", "Append:Append"};
+    const auto wildcard = formatter::CompileLibraryAnnotations(style);
+    EXPECT_TRUE(wildcard.IsStickyChainPair("Item", "Value"));
+    EXPECT_TRUE(wildcard.IsStickyChainPair("Item", "BeginMap"));
+    EXPECT_TRUE(wildcard.IsStickyChainPair("Item", "Item"));
+    EXPECT_TRUE(wildcard.IsStickyChainPair("registrar", "Parameter"));
+    EXPECT_TRUE(wildcard.IsStickyChainPair("Append", "Append"));
+    EXPECT_FALSE(wildcard.IsStickyChainPair("Append", "Value"));
+    EXPECT_FALSE(wildcard.IsStickyChainPair("Items", "Value"));
+    EXPECT_FALSE(wildcard.IsStickyChainPair("Value", "Item"));
+    EXPECT_FALSE(wildcard.IsStickyChainPair("Item", ""));
     style.CallLineFirstStringNames.clear();
     style.ChainedCallRootNames.clear();
     style.AlwaysBreakChainRootNames.clear();
@@ -1032,6 +1043,12 @@ TEST(ConfigPolicy, SchemaCompilesAnnotationsAndMetadata)
             "StickyChainCallPairs = [\"Item\"]\n",
             "StickyChainCallPairs = [\"Item:ns::Value\"]\n",
             "StickyChainCallPairs = [\":Value\"]\n",
+            "StickyChainCallPairs = [\"*:Value\"]\n",
+            "StickyChainCallPairs = [\"Item:Val*\"]\n",
+            "StickyChainCallPairs = [\"Item:**\"]\n",
+            "StickyChainCallPairs = [\"Item:*\", \"Item:*\"]\n",
+            "IndentedChainScopePairs = [\"Item:*\"]\n",
+            "IndentedCallScopePairs = [\"Item:*\"]\n",
         })
     {
         SCOPED_TRACE(text);

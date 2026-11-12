@@ -627,8 +627,9 @@ FunctionCvRefQualifierSpacing = NoSpace
 - IndentedChainScopePairs indents inside matched chain calls;
   StickyChainCallPairs keeps fitting consecutive calls together.
   Both obey ChainsLayout/root selection; sticky pairs may name a factory.
-- Pairs use exact First:Second names, not patterns. Scope endpoints must
-  be distinct and unambiguous; sticky pairs may share names.
+- Pairs use exact First:Second names. Sticky pairs also accept First:* to
+  match any following call. Scope endpoints must be distinct and unambiguous;
+  sticky pairs may share names.
 
 ## Message and format arguments
 ```config
@@ -662,7 +663,7 @@ IndentationKind = Spaces
 IndentedCallScopePairs = ["OpenItems:CloseItems"]
 GenerateCallScopeIndentation = true
 IndentedChainScopePairs = ["BeginMap:EndMap", "BeginList:EndList"]
-StickyChainCallPairs = ["Item:Value", "registrar:Parameter"]
+StickyChainCallPairs = ["Item:*", "registrar:Parameter"]
 ```
 
 # Include directives
