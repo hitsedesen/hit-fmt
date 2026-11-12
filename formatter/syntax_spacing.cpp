@@ -588,8 +588,8 @@ public:
         }
 
         if (kind == NK::InitDeclarator) {
-            state.SeparatedDeclarator =
-                parent && parent->Kind == NK::InitDeclaratorList && begin != parent->Tokens.Begin;
+            state.SeparatedDeclarator = parent && parent->Kind == NK::InitDeclaratorList &&
+                begin != parent->Tokens.Begin;
         }
 
         auto list = [&] (C category, const SourceRegion* owner = nullptr) {
@@ -602,11 +602,11 @@ public:
         SyntaxBoundaries(node, parent, state);
         switch (kind) {
             case NK::CallExpression: {
-                state.KeywordOperands =
-                    Tree_.Kind(begin) == TK::Keyword_typeid || Tree_.Kind(begin) == TK::Keyword_noexcept ||
-                        (parent && parent->Kind == NK::UnaryExpression &&
-                            Tree_.Kind(parent->Tokens.Begin) == TK::Keyword_sizeof &&
-                            Tree_.Kind(begin) == TK::Operator_Ellipsis);
+                state.KeywordOperands = Tree_.Kind(begin) == TK::Keyword_typeid ||
+                    Tree_.Kind(begin) == TK::Keyword_noexcept ||
+                    (parent && parent->Kind == NK::UnaryExpression &&
+                        Tree_.Kind(parent->Tokens.Begin) == TK::Keyword_sizeof &&
+                        Tree_.Kind(begin) == TK::Operator_Ellipsis);
                 state.UncertainOperands = false;
                 const auto* callee = Child(node);
 
@@ -1782,9 +1782,9 @@ public:
         // including a destructor's '~', not merely its final identifier.
         const auto first = Tree_.Kind(list.Tokens.Begin);
         // A pack marker or recovered opener is not a type/name policy site.
-        const bool nameStart =
-            first == TK::Identifier || (name->Kind == NK::DestructorName && first == TK::Operator_Complement) ||
-                (name->Kind == NK::OperatorFunctionName && first == TK::Keyword_operator);
+        const bool nameStart = first == TK::Identifier ||
+            (name->Kind == NK::DestructorName && first == TK::Operator_Complement) ||
+            (name->Kind == NK::OperatorFunctionName && first == TK::Keyword_operator);
         Mark(
             list.Tokens.Begin,
             nameStart ? F::DeclarationNameSpacing : F::None,
@@ -2379,8 +2379,8 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
             }
 
             classifier.Enter(node, parentNode, frame.State, node.Status);
-            frame.Complete =
-                node.Status == RegionStatus::Complete && !frame.State.UncertainSyntax && !frame.State.UncertainOperands;
+            frame.Complete = node.Status == RegionStatus::Complete && !frame.State.UncertainSyntax &&
+                !frame.State.UncertainOperands;
             frame.Entered = true;
         }
 
@@ -2433,8 +2433,8 @@ SyntaxSpacing detail::FlatSpanAccess::BuildSpacing(
                 }
 
                 classifier.Enter(child, &node, state, child.Status);
-                const bool complete =
-                    child.Status == RegionStatus::Complete && !state.UncertainSyntax && !state.UncertainOperands;
+                const bool complete = child.Status == RegionStatus::Complete && !state.UncertainSyntax &&
+                    !state.UncertainOperands;
 
                 if (!child.Tokens.Empty()) {
                     classifier.Direct<CollectFlat>(child, state, child.Tokens.Begin, child.Tokens.End, candidate);

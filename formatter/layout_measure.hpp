@@ -104,8 +104,9 @@ inline Measure MeasureFlatGap(GapSpec gap, std::string_view source, u8 tabWidth)
     }
 
     if (gap.FlatSourceBegin != InvalidId) {
-        auto measured =
-            MeasureText(source.substr(gap.FlatSourceBegin, gap.FlatSourceEnd - gap.FlatSourceBegin), tabWidth);
+        auto measured = MeasureText(
+            source.substr(gap.FlatSourceBegin, gap.FlatSourceEnd - gap.FlatSourceBegin),
+            tabWidth);
         measured.CanBreak = gap.Kind == GapKind::Soft;
         return measured;
     }

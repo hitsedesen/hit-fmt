@@ -579,8 +579,12 @@ TEST(StructuralEdits, IncludeDiscoveryNeverWeakensProtectionOrScope)
         auto safety = BuildSourceAnalysis(original.Tree, {.EditScope = selection}, original.Memory, original.Scratch);
         bool whole = scope.End == text.size();
         auto discovered = DiscoverIncludeGroups(original.Tree, safety, original.Memory, original.Scratch);
-        auto scopedPlan =
-            PlanStructuralEdits(original.Tree, safety, {.SortIncludes = true}, original.Memory, original.Scratch);
+        auto scopedPlan = PlanStructuralEdits(
+            original.Tree,
+            safety,
+            {.SortIncludes = true},
+            original.Memory,
+            original.Scratch);
         EXPECT_EQ(discovered.size(), whole ? 1u : 0u);
         EXPECT_EQ(scopedPlan.Operations.size(), whole ? 1u : 0u);
         EXPECT_EQ(scopedPlan.Skipped.size(), whole ? 0u : 1u);
@@ -899,16 +903,28 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
     auto map = MapOutput(file.Tree, file.Tree.Source());
     auto close = plan.Namespaces.front().Close;
     std::array protection{parser::SourceRange{map[close].Output.End, map[close].Output.End + 1}};
-    auto resolved =
-        ResolveNamespaceComments(file.Tree, plan, file.Tree.Source(), map, protection, file.Memory, file.Scratch);
+    auto resolved = ResolveNamespaceComments(
+        file.Tree,
+        plan,
+        file.Tree.Source(),
+        map,
+        protection,
+        file.Memory,
+        file.Scratch);
     EXPECT_TRUE(resolved.Edits.empty());
     map[close].Present = false;
     auto invalid = ResolveNamespaceComments(file.Tree, plan, file.Tree.Source(), map, {}, file.Memory, file.Scratch);
     EXPECT_EQ(invalid.Skipped.back().Reason, StructuralSkip::InvalidMapping);
     map[close].Present = true;
     map[plan.Namespaces.front().Header.Begin + 1].Present = false;
-    auto invalidHeader =
-        ResolveNamespaceComments(file.Tree, plan, file.Tree.Source(), map, {}, file.Memory, file.Scratch);
+    auto invalidHeader = ResolveNamespaceComments(
+        file.Tree,
+        plan,
+        file.Tree.Source(),
+        map,
+        {},
+        file.Memory,
+        file.Scratch);
     EXPECT_EQ(invalidHeader.Skipped.back().Reason, StructuralSkip::InvalidMapping);
     File braces("namespace n {\nvoid inside() {}\n}\n" "void after() {}\nnamespace safe {}\n");
     auto identities = CheckedNamespaceComments(
@@ -959,8 +975,8 @@ TEST(StructuralEdits, NamespaceCannotSwallowFollowingCodeCommentsOrProtection)
         {.Policy = NamespaceCommentPolicy::AddMissing},
         normalized.Memory,
         normalized.Scratch);
-    auto normalization =
-        normalized.Plan({.RemoveNullStatements = true, .RemoveNullDeclarations = true, .SortIncludes = true});
+    auto normalization = normalized
+        .Plan({.RemoveNullStatements = true, .RemoveNullDeclarations = true, .SortIncludes = true});
     auto changed = normalized.Apply(normalization);
     auto comments = ResolveNamespaceComments(
         normalized.Tree,
@@ -1010,13 +1026,22 @@ TEST(StructuralEdits, SplitNamespaceRequiresMappedAdjacentUnprotectedContinuatio
     EXPECT_EQ(stale.Skipped.front().Reason, StructuralSkip::InvalidMapping);
 
     const std::array protection{mapping[continuation].Output};
-    const auto protectedOutput =
-        ResolveNamespaceComments(file.Tree, plan, source, mapping, protection, file.Memory, file.Scratch);
+    const auto protectedOutput = ResolveNamespaceComments(
+        file.Tree,
+        plan,
+        source,
+        mapping,
+        protection,
+        file.Memory,
+        file.Scratch);
     EXPECT_TRUE(protectedOutput.Edits.empty());
     EXPECT_EQ(protectedOutput.Skipped.front().Reason, StructuralSkip::Protected);
 
-    const auto protectedSafety =
-        BuildSourceAnalysis(file.Tree, {.ImmutableRanges = protection}, file.Memory, file.Scratch);
+    const auto protectedSafety = BuildSourceAnalysis(
+        file.Tree,
+        {.ImmutableRanges = protection},
+        file.Memory,
+        file.Scratch);
     const auto protectedPlan = CheckedNamespaceComments(
         file.Tree,
         protectedSafety,
@@ -1029,8 +1054,14 @@ TEST(StructuralEdits, SplitNamespaceRequiresMappedAdjacentUnprotectedContinuatio
     changed = source;
     changed.insert(changed.find('\n'), "\n");
     const auto separated = MapOutput(file.Tree, changed);
-    const auto separatedPlan =
-        ResolveNamespaceComments(file.Tree, plan, changed, separated, {}, file.Memory, file.Scratch);
+    const auto separatedPlan = ResolveNamespaceComments(
+        file.Tree,
+        plan,
+        changed,
+        separated,
+        {},
+        file.Memory,
+        file.Scratch);
     EXPECT_TRUE(separatedPlan.Edits.empty());
     EXPECT_EQ(separatedPlan.Skipped.front().Reason, StructuralSkip::InvalidMapping);
 }

@@ -70,8 +70,8 @@ std::array<DelimiterBlockClassifier, 6> AvailableClassifiers() noexcept
                     }
 #endif
 #if defined(HIT_FMT_DELIMITER_AVX512)
-                    constexpr u32 Avx512Features =
-                        Avx2Features | (1u << 16) | (1u << 17) | (1u << 28) | (1u << 30) | (1u << 31);
+                    constexpr u32 Avx512Features = Avx2Features | (1u << 16) | (1u << 17) | (1u << 28) | (1u << 30) |
+                        (1u << 31);
 
                     if ((state & 0xe6) == 0xe6 && (static_cast<u32>(registers[1]) & Avx512Features) == Avx512Features) {
                         available[static_cast<us>(DelimiterInstructionSet::Avx512)] = ClassifyDelimiterBlockAvx512;

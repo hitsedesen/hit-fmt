@@ -6,8 +6,8 @@ void read() {
     auto nested = ready
         ? (flag ? firstValue : secondValue)
         : fallbackValue;
-    auto longCondition =
-        leftCondition && middleCondition && rightCondition
+    auto longCondition = leftCondition && middleCondition &&
+        rightCondition
         ? firstValue
         : secondValue;
     auto longBranch = flag

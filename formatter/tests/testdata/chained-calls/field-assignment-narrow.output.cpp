@@ -38,11 +38,13 @@ void configure() {
             queueDescription
                 .ProfilingTags,
             registry);
-        channel.Queue =
-            Make<TaskQueue>(one, two);
+        channel.Queue = Make<TaskQueue>(
+            one,
+            two);
         destinationWithAnExceptionallyLongName
-            .Queue =
-            Make<TaskQueue>(one, two);
+            .Queue = Make<TaskQueue>(
+                one,
+                two);
         channel.Queue = source.collect(
             notificationCounter,
             queueDescription.GroupTags,

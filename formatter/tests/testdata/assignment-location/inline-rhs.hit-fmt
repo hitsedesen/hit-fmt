@@ -1,0 +1,5 @@
+Layout = Canonical
+ColumnLimit = 40
+CallsPacking = VerticalWhenBroken
+CallsFirstItem = NextLine
+ChainsPacking = VerticalWhenBroken

@@ -59,8 +59,9 @@ template<class T> void UseArguments(T value) {
             FirstLongTemplateArgument,
             SecondLongTemplateArgument
     >>(value);
-    auto qualified =
-        static_cast<const UnknownType*>(pointer);
+    auto qualified = static_cast<
+        const UnknownType*
+    >(pointer);
     if constexpr (traits::same<
         T,
         types::Box<FirstLongTemplateArgument
@@ -68,8 +69,9 @@ template<class T> void UseArguments(T value) {
         Use(value);
     }
     auto comparison = left < right > ::Result();
-    auto qualifiedComparison =
-        Box<T>::value < right > ::Result();
+    auto qualifiedComparison = Box<
+        T
+    >::value < right > ::Result();
     auto shift = value >> 2;
     VERBATIM(types::Pair< FirstLongTemplateArgument ,  SecondLongTemplateArgument >);
     // hit-fmt off

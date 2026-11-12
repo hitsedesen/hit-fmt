@@ -54,8 +54,8 @@ std::string Converter::render(const Content &Payload) const {
     } else {
       if (Item.Headings.empty())return {};
       auto ConversionResult = tableRow(Item.Headings);
-      ConversionResult +=
-          tableRow(std::vector<std::string>(Item.Headings.size(), "---"));
+      ConversionResult += tableRow(std::vector<std::string>(Item.Headings
+                                                            .size(), "---"));
       for (const auto &Row : Item.Rows)ConversionResult += tableRow(Row);
       return ConversionResult + '\n';
     }
@@ -79,8 +79,8 @@ Result Converter::convert(const Document &SourceDocument,
     if (Settings.IncludePageBreaks &&
         ConversionResult.Markdown.size() !=
             PageStart)
-      ConversionResult.Markdown +=
-          "<!-- page " + std::to_string(SourcePage.Number) + " -->\n\n";
+      ConversionResult.Markdown += "<!-- page " +
+          std::to_string(SourcePage.Number) + " -->\n\n";
   }
   return ConversionResult;
 }

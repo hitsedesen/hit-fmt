@@ -142,8 +142,11 @@ Result<bool, FileFailure> RunParallelFiles(
                             if constexpr (std::is_same_v<Context, std::nullptr_t>) {
                                 entry.Result = process(entry.Path, resolver, &slot->Memory.Resource);
                             } else {
-                                entry.Result =
-                                    process(entry.Path, resolver, entry.ContextValue, &slot->Memory.Resource);
+                                entry.Result = process(
+                                    entry.Path,
+                                    resolver,
+                                    entry.ContextValue,
+                                    &slot->Memory.Resource);
                             }
 
                             bytes += entry.Result.Output.size() + entry.Result.Error.StorageSize();

@@ -97,8 +97,8 @@ void ClassifyHalf(__m256i bytes, __m256i following, AsciiBlock& result) noexcept
         _mm256_broadcastsi128_si256(_mm_setr_epi8(0, 0, 1, 2, 4, 8, 16, 32, 0, 0, 0, 0, 0, 0, 0, 0)),
         highNibbles);
     const auto membership = [=] (const std::array<unsigned char, 16>& table) {
-        const auto lookup =
-            _mm256_broadcastsi128_si256(_mm_loadu_si128(reinterpret_cast<const __m128i*>(table.data())));
+        const auto lookup = _mm256_broadcastsi128_si256(
+            _mm_loadu_si128(reinterpret_cast<const __m128i*>(table.data())));
         // PSHUFB indexes by the low nibble and rejects non-ASCII bytes.
         // The high-nibble bit makes membership exact, including controls.
         const auto bits = _mm256_and_si256(_mm256_shuffle_epi8(lookup, bytes), highBits);

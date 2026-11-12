@@ -16,8 +16,10 @@ void Sample()
         {};
     RecordForTransformation::ValueStorage maximumReservedElementCountForCurrentBatch =
         Make(firstLongArgument, secondLongArgument, thirdLongArgument);
-    RecordForTransformation::ValueStorage shortName =
-        Make(firstLongArgument, secondLongArgument, thirdLongArgument);
+    RecordForTransformation::ValueStorage shortName = Make(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     RecordForTransformation::ValueStorage fitting = Make();
     BufferSize maximumEncodedByteCountForCurrentBuffer = Estimate(
         unencodedByteCountForCurrentBuffer,

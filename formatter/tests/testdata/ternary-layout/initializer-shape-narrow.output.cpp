@@ -23,6 +23,7 @@ void read() {
         : fallbackValue;
     auto call = transform(firstArgument,
         secondArgument, thirdArgument);
-    target =
-        flag ? firstValue : secondValue;
+    target = flag
+        ? firstValue
+        : secondValue;
 }

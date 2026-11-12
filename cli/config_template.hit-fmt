@@ -580,6 +580,9 @@ IndentRequiresClause = true
 
 # Places assignment RHS values, including designated initializer values,
 # below the operator in canonical expressions when set to NextLine.
+# With AssignmentsPacking = Fill, InlineIfFits prefers wrapping expressions,
+# call arguments and chains while keeping the RHS prefix beside the operator,
+# even when this uses more lines. A prefix that cannot fit still moves below.
 # Values: InlineIfFits | NextLine
 AssignmentRhsPlacement = InlineIfFits
 

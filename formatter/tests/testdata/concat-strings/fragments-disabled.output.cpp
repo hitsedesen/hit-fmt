@@ -10,16 +10,16 @@ void f() {
         "second fragment has more text "
         "third fragment has the last text",
         value);
-    const auto message =
-        "first fragment has some text " "second fragment has more text "
-            "third fragment has the last text";
+    const auto message = "first fragment has some text "
+        "second fragment has more text "
+        "third fragment has the last text";
     const auto shortMessage = "short" "pair";
     const auto single = "short";
     consume("short");
     text = "short" "pair";
-    text =
-        "first fragment has some text " "second fragment has more text "
-            "third fragment has the last text";
+    text = "first fragment has some text "
+        "second fragment has more text "
+        "third fragment has the last text";
     text = consume(
         "first fragment has some text ",
         "second fragment has more text ",

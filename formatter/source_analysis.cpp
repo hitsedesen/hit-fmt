@@ -1072,10 +1072,10 @@ SourceAnalysis BuildSourceAnalysis(
                 }
             }
 
-            const bool conditionBoundary =
-                parent != NoRegion && result.Regions_[parent].Kind == parser::NodeKind::Condition &&
-                    result.Regions_[parent].Tokens.End == tokens.End + 1 &&
-                    tree.MatchingDelimiter(result.Regions_[parent].Tokens.Begin) == tokens.End;
+            const bool conditionBoundary = parent != NoRegion &&
+                result.Regions_[parent].Kind == parser::NodeKind::Condition &&
+                result.Regions_[parent].Tokens.End == tokens.End + 1 &&
+                tree.MatchingDelimiter(result.Regions_[parent].Tokens.Begin) == tokens.End;
             const bool statementBoundary = (ambiguous && !hasRecovery && !tokens.Empty() &&
                 (tree.Kind(tokens.End - 1) == TK::Operator_Semicolon || conditionBoundary)) ||
                 result.Regions_[id].StatementBoundary;
@@ -1160,8 +1160,9 @@ SourceAnalysis BuildSourceAnalysis(
             if (before == after && tokens.Begin < result.Gaps_.size()) {
                 result.Gaps_[tokens.Begin].Preserve = true;
                 result.Gaps_[tokens.Begin].IntrinsicPreserve = true;
-                result.Gaps_[tokens.Begin].Reasons =
-                    recovery ? ProtectionReason::Recovery : ProtectionReason::Ambiguous;
+                result.Gaps_[tokens.Begin].Reasons = recovery
+                    ? ProtectionReason::Recovery
+                    : ProtectionReason::Ambiguous;
             }
         }
 
@@ -1175,9 +1176,9 @@ SourceAnalysis BuildSourceAnalysis(
             return;
         }
 
-        const bool statementBody =
-            node.Kind == parser::NodeKind::CompoundStatement || node.Kind == parser::NodeKind::PreprocessingBody ||
-                node.Kind == parser::NodeKind::LambdaBody || node.Kind == parser::NodeKind::RequirementBody;
+        const bool statementBody = node.Kind == parser::NodeKind::CompoundStatement ||
+            node.Kind == parser::NodeKind::PreprocessingBody || node.Kind == parser::NodeKind::LambdaBody ||
+            node.Kind == parser::NodeKind::RequirementBody;
         stack.push_back({
             child,
             id,
@@ -1675,8 +1676,8 @@ struct detail::NormalizationAnalysisReuse
             if constexpr (TokenOnly) {
                 reuse = old != NoToken && (i ? previousOld != NoToken && previousOld + 1 == old : old == 0);
             } else {
-                reuse =
-                    Consume || (old != NoToken && (i ? prior[i - 1] != NoToken && prior[i - 1] + 1 == old : old == 0));
+                reuse = Consume ||
+                    (old != NoToken && (i ? prior[i - 1] != NoToken && prior[i - 1] + 1 == old : old == 0));
             }
 
             previousOld = old;

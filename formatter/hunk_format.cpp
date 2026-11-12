@@ -306,8 +306,14 @@ ChangedFormatResult FormatChanged(
     canonicalRequest.ChangeSummary = false;
     canonicalRequest.DiagnosticLocations = false;
     canonicalRequest.InputProtection = false;
-    const auto canonical =
-        detail::FormatWithAnalysis(tree, prepared, safety, sensitive, canonicalRequest, file, scratch);
+    const auto canonical = detail::FormatWithAnalysis(
+        tree,
+        prepared,
+        safety,
+        sensitive,
+        canonicalRequest,
+        file,
+        scratch);
     safety.RestrictEditScope(scope);
 
     for (const auto& gap : safety.Gaps()) {

@@ -257,8 +257,8 @@ public:
         for (const auto& range : protection) {
             const auto reasons = u16(range.Reasons) & ~u16(ProtectionReason::OutsideEditScope);
             const bool contextual = reasons != 0;
-            const bool opaque =
-                contextual && (reasons != u16(ProtectionReason::Recovery) || HasLine(Tree_.SourceText(range.Source)));
+            const bool opaque = contextual &&
+                (reasons != u16(ProtectionReason::Recovery) || HasLine(Tree_.SourceText(range.Source)));
             opaqueFences.push_back(u8(contextual) | (u8(opaque) << 1));
         }
 
@@ -364,8 +364,8 @@ public:
 
             auto& entry = Syntax_[i];
             const auto& node = Region(entry);
-            entry.UnplannedListIndent =
-                !entry.ItemSequence && node.Parent != None && Syntax_[node.Parent].UnplannedListIndent;
+            entry.UnplannedListIndent = !entry.ItemSequence && node.Parent != None &&
+                Syntax_[node.Parent].UnplannedListIndent;
 
             // Uncertain annotation islands retain their complete topology.
             // Plan their relative indentation once, not nested syntax layouts.
@@ -890,9 +890,9 @@ private:
                 } else if (node.Kind == NodeKind::MacroRecordDeclaration) {
                     const auto first = node.FirstChild;
                     const auto last = LastChild_[i];
-                    entry.ItemSequence =
-                        first != None && last != None && Region(Syntax_[first]).Kind == NodeKind::MacroRecordBegin &&
-                            Region(Syntax_[last]).Kind == NodeKind::MacroRecordEnd;
+                    entry.ItemSequence = first != None && last != None &&
+                        Region(Syntax_[first]).Kind == NodeKind::MacroRecordBegin &&
+                        Region(Syntax_[last]).Kind == NodeKind::MacroRecordEnd;
 
                     if (entry.ItemSequence) {
                         entry.SequenceBody = {Region(Syntax_[first]).Tokens.End, Region(Syntax_[last]).Tokens.Begin};
@@ -1919,8 +1919,9 @@ private:
 
         if (prefixed && policy.Indent.Alignment == ContinuationAlignment::Delimiter) {
             Groups_[group].PrefixGap = begin + 1;
-            Groups_[group].AnchorAfterGap =
-                canonical ? header->Colon == OperatorSide::Leading : !Safety_.Gaps()[begin + 1].HasLineFeed;
+            Groups_[group].AnchorAfterGap = canonical
+                ? header->Colon == OperatorSide::Leading
+                : !Safety_.Gaps()[begin + 1].HasLineFeed;
             Gaps_[begin + 1].MarkDelimiter = group;
         }
 
@@ -2024,8 +2025,8 @@ private:
 
                 if (split < closer) {
                     const bool formatArgument = messageLayout && t >= messageEnd;
-                    const bool messagePrefix =
-                        messageLayout && t < messageEnd && policy.Break != BreakRequirement::Always;
+                    const bool messagePrefix = messageLayout && t < messageEnd &&
+                        policy.Break != BreakRequirement::Always;
 
                     if (formatArgument) {
                         GroupSpecs_[group].ForceBreak = true;
@@ -2250,8 +2251,8 @@ private:
             }
 
             const auto next = NextNonComment(gap);
-            const bool constraint =
-                next < Region(Syntax_[id]).Tokens.End && Tree_.Kind(next) == TokenKind::Keyword_requires;
+            const bool constraint = next < Region(Syntax_[id]).Tokens.End &&
+                Tree_.Kind(next) == TokenKind::Keyword_requires;
 
             if (constraint && Policies_.RequiresClausePosition != RequiresClausePosition::Preserve) {
                 continue;
@@ -2278,21 +2279,24 @@ private:
     {
         const auto& node = Region(Syntax_[id]);
         const auto position = Policies_.RequiresClausePosition;
-        const bool canonical =
-            Policies_.DeclarationHeaders == LayoutMode::Canonical && position != RequiresClausePosition::Preserve;
+        const bool canonical = Policies_.DeclarationHeaders == LayoutMode::Canonical &&
+            position != RequiresClausePosition::Preserve;
 
         if (canonical) {
-            const bool prefix =
-                node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::TemplateDeclaration;
-            const bool ownLine =
-                position == RequiresClausePosition::OwnLine || position == RequiresClausePosition::OwnLineWithBrace ||
-                    position == RequiresClausePosition::WithFollowing;
+            const bool prefix = node.Parent != None &&
+                Region(Syntax_[node.Parent]).Kind == NodeKind::TemplateDeclaration;
+            const bool ownLine = position == RequiresClausePosition::OwnLine ||
+                position == RequiresClausePosition::OwnLineWithBrace ||
+                position == RequiresClausePosition::WithFollowing;
             const auto offset = ownLine
                 ? (Policies_.IndentRequiresClause ? Policies_.IndentWidth : 0)
                 : Policies_.Parameters.Indent.ContinuationOffset;
             const auto begin = node.Tokens.Begin;
-            const auto leading =
-                GroupAt(GapPosition(begin), TokenPosition(begin), layout::GroupMode::Fill, i32(offset));
+            const auto leading = GroupAt(
+                GapPosition(begin),
+                TokenPosition(begin),
+                layout::GroupMode::Fill,
+                i32(offset));
             GroupSpecs_[leading].StructuralBase = true;
             Own(begin, leading, ownLine ? Boundary::Hard : Boundary::Soft);
             Gaps_[begin].SpaceFallback = true;
@@ -2318,8 +2322,10 @@ private:
                         const auto gap = Region(Syntax_[header]).Tokens.End;
 
                         if (Gaps_[gap].Owner == None) {
-                            const auto owner =
-                                GroupAt(GapPosition(gap), TokenPosition(NextNonComment(gap)), layout::GroupMode::Fill);
+                            const auto owner = GroupAt(
+                                GapPosition(gap),
+                                TokenPosition(NextNonComment(gap)),
+                                layout::GroupMode::Fill);
                             GroupSpecs_[owner].StructuralBase = true;
                             Own(gap, owner, Boundary::Soft);
                             Gaps_[gap].SpaceFallback = true;
@@ -2366,8 +2372,10 @@ private:
             }
         }
 
-        const auto group =
-            GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(node.Tokens.End), layout::GroupMode::Fill);
+        const auto group = GroupAt(
+            TokenPosition(node.Tokens.Begin),
+            GapPosition(node.Tokens.End),
+            layout::GroupMode::Fill);
 
         if (canonical) {
             GroupSpecs_[group].BreakPenalty = 2;
@@ -2654,8 +2662,8 @@ private:
         const auto& policy = Policies_.Expressions;
         const auto& indentation = policy.Indent;
         const bool canonical = policy.Layout == LayoutMode::Canonical;
-        const bool threePart =
-            kind == NodeKind::ConditionalExpression && policy.TernaryShape == TernaryLayout::ThreePart;
+        const bool threePart = kind == NodeKind::ConditionalExpression &&
+            policy.TernaryShape == TernaryLayout::ThreePart;
         const auto group = GroupAt(
             kind == NodeKind::Initializer ? GapPosition(node.Tokens.Begin) : TokenPosition(node.Tokens.Begin),
             GapPosition(node.Tokens.End),
@@ -2712,8 +2720,8 @@ private:
                 Tree_.Kind(expressionOperator) == TokenKind::Operator_NotEquals);
         const bool shift = kind == NodeKind::BinaryExpression && expressionOperator != None &&
             Tree_.Role(expressionOperator) == PunctuationRole::ShiftOperator;
-        GroupSpecs_[group].ChildBreaks =
-            (kind != NodeKind::BinaryExpression || comparison || shift) && kind != NodeKind::ConditionalExpression;
+        GroupSpecs_[group].ChildBreaks = (kind != NodeKind::BinaryExpression || comparison || shift) &&
+            kind != NodeKind::ConditionalExpression;
         GroupSpecs_[group].ForceBreak = canonical && policy.Break == BreakRequirement::Always &&
             (assignmentPrefix || kind == NodeKind::BinaryExpression || kind == NodeKind::AssignmentExpression ||
                 kind == NodeKind::ConditionalExpression || Syntax_[id].String);
@@ -2804,9 +2812,9 @@ private:
                     Own(split, group, boundary, layout::GapKind::Hard);
 
                     if (role == PunctuationRole::AssignmentOperator && boundary == Boundary::Soft) {
-                        // Moving an RHS that cannot fit intact adds a parent
-                        // break without avoiding its independent child breaks.
-                        Gaps_[split].FitNextSegmentIfOverflow = true;
+                        // Prefer the RHS's own boundaries, even when moving
+                        // the whole RHS below the assignment uses fewer lines.
+                        Gaps_[split].FitNextSegmentIfFinite = true;
                     }
 
                     if (kind == NodeKind::BinaryExpression && !comparison && boundary == Boundary::Soft &&
@@ -3075,9 +3083,9 @@ private:
         const auto& node = Region(Syntax_[id]);
         const auto initializer = LastChild_[id];
         const auto declaration = InitDeclaratorOwner(id);
-        const bool separated =
-            node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::InitDeclaratorList &&
-                node.Tokens.Begin != Region(Syntax_[node.Parent]).Tokens.Begin;
+        const bool separated = node.Parent != None &&
+            Region(Syntax_[node.Parent]).Kind == NodeKind::InitDeclaratorList &&
+            node.Tokens.Begin != Region(Syntax_[node.Parent]).Tokens.Begin;
 
         // Without a type prefix, the leading gap belongs to the enclosing
         // statement sequence, not a declarator continuation.
@@ -3215,8 +3223,8 @@ private:
                         }
                     }
 
-                    const bool opaqueExceptionOperand =
-                        node.Kind == NodeKind::ExceptionSpecification && t > node.Tokens.Begin + 1;
+                    const bool opaqueExceptionOperand = node.Kind == NodeKind::ExceptionSpecification &&
+                        t > node.Tokens.Begin + 1;
 
                     if (!opaqueExceptionOperand && (t > begin || (declaration && !function && t == begin)) && t < end &&
                         GapMutable(t) && Tree_.Kind(t) != TokenKind::Comment &&
@@ -3226,8 +3234,8 @@ private:
                             (kind == NodeKind::ParameterDeclaration &&
                                 Spacing_.Gaps()[t].Category == SpacingOwner::Parameters)))
                     {
-                        const bool separated =
-                            Spacing_.Gaps()[t].FallbackSpace || Safety_.Gaps()[t].Separation == GapSeparation::Required;
+                        const bool separated = Spacing_.Gaps()[t].FallbackSpace ||
+                            Safety_.Gaps()[t].Separation == GapSeparation::Required;
                         // A qualified name breaks before its complete prefix,
                         // never between the final :: and terminal identifier.
                         const bool qualifiedTerminal = (node.Kind == NodeKind::DeclaratorName ||
@@ -3262,9 +3270,9 @@ private:
                         Own(t, owner, breakable ? Boundary::Soft : Boundary::Flat);
                         Gaps_[t].CanonicalFlat = true;
                         Gaps_[t].FitNextSegment = breakable;
-                        Gaps_[t].KeepFlatSpacing =
-                            kind == NodeKind::FunctionDeclaration || kind == NodeKind::ParameterDeclaration ||
-                                kind == NodeKind::InitDeclarator || node.Kind == NodeKind::FunctionQualifier;
+                        Gaps_[t].KeepFlatSpacing = kind == NodeKind::FunctionDeclaration ||
+                            kind == NodeKind::ParameterDeclaration || kind == NodeKind::InitDeclarator ||
+                            node.Kind == NodeKind::FunctionQualifier;
                     }
                 });
 
@@ -3370,8 +3378,8 @@ private:
         Index compactSeparators = None;
         for (auto child = Region(Syntax_[id]).FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
             const auto& body = Region(Syntax_[child]);
-            const bool suffix =
-                node.Kind == NodeKind::DoWhileStatement && previousBody != None && body.Kind == NodeKind::Condition;
+            const bool suffix = node.Kind == NodeKind::DoWhileStatement && previousBody != None &&
+                body.Kind == NodeKind::Condition;
 
             if ((!ControlledBody(body.Kind) && !suffix) || body.Tokens.Empty()) {
                 continue;
@@ -3479,8 +3487,10 @@ private:
             // A do-while Condition is the real direct suffix, not another arm.
             // Opening brace placement has no authority over this header.
             if (suffix) {
-                const auto header =
-                    GroupAt(TokenPosition(begin), GapPosition(node.Tokens.End), layout::GroupMode::Fill);
+                const auto header = GroupAt(
+                    TokenPosition(begin),
+                    GapPosition(node.Tokens.End),
+                    layout::GroupMode::Fill);
                 GroupSpecs_[header].StructuralBase = true;
 
                 if (canonical) {
@@ -3507,8 +3517,8 @@ private:
             if (braced) {
                 // Opaque header descendants prevent reflow, not placement of
                 // a separately proven, editable body delimiter boundary.
-                const bool canonicalBrace =
-                    Policies_.ControlHeaders.Layout == LayoutMode::Canonical && GapMutable(opening);
+                const bool canonicalBrace = Policies_.ControlHeaders.Layout == LayoutMode::Canonical &&
+                    GapMutable(opening);
                 Own(
                     opening,
                     header,
@@ -3580,8 +3590,8 @@ private:
             // when its leading gap is editable. Its authored level constrains
             // this body too. Expressions containing independently anchored
             // lambdas do not constrain their enclosing statement's level.
-            const bool nestedBody =
-                IsControl(part.Kind) || part.Kind == NodeKind::TryStatement || part.Kind == NodeKind::CompoundStatement;
+            const bool nestedBody = IsControl(part.Kind) || part.Kind == NodeKind::TryStatement ||
+                part.Kind == NodeKind::CompoundStatement;
             const auto reasons = u16(Safety_.Gaps()[part.Tokens.Begin].Reasons);
 
             // An opaque switch run before any explicit label may contain
@@ -3679,8 +3689,10 @@ private:
             if (!node.Tokens.Empty() && Syntax_[id].Safe && Policies_.DeclarationHeaders == LayoutMode::Canonical &&
                 PrefixProtection_[node.Tokens.Begin] == PrefixProtection_[node.Tokens.End])
             {
-                const auto group =
-                    GroupAt(TokenPosition(node.Tokens.Begin), GapPosition(node.Tokens.End), layout::GroupMode::Fill);
+                const auto group = GroupAt(
+                    TokenPosition(node.Tokens.Begin),
+                    GapPosition(node.Tokens.End),
+                    layout::GroupMode::Fill);
                 GroupSpecs_[group].StructuralBase = true;
                 ProjectHeaderGaps(id, node.Tokens.Begin, node.Tokens.End, group);
             }
@@ -3824,10 +3836,15 @@ private:
         // Gap safety still fences directives, disabled and excluded bytes.
         const bool canonical = (safeHeader || macroFunction) &&
             (control ? Policies_.ControlHeaders.Layout : Policies_.DeclarationHeaders) == LayoutMode::Canonical;
-        const auto contentIndent =
-            PreservedBodyIndent(bodyChild == None ? id : bodyChild, opening, Tree_.MatchingDelimiter(opening));
-        const auto bodyWidth =
-            BodyIndentWidth(id, opening, PolicyForBody(id), node.Kind == NodeKind::RecordDeclaration);
+        const auto contentIndent = PreservedBodyIndent(
+            bodyChild == None ? id : bodyChild,
+            opening,
+            Tree_.MatchingDelimiter(opening));
+        const auto bodyWidth = BodyIndentWidth(
+            id,
+            opening,
+            PolicyForBody(id),
+            node.Kind == NodeKind::RecordDeclaration);
         auto fixedBase = contentIndent == None ? None : contentIndent - std::min(contentIndent, Index(bodyWidth));
 
         // Opaque wrappers supply no block group. Extracted macro bodies use
@@ -4025,10 +4042,10 @@ private:
             const auto child = body.FirstChild;
             // A complete direct statement excludes sibling comments, directives
             // and additional statements without counting nested semicolons.
-            const bool single =
-                (body.Kind == NodeKind::CompoundStatement || body.Kind == NodeKind::LambdaBody) && child != None &&
-                    Region(Syntax_[child]).NextSibling == None && Region(Syntax_[child]).Tokens.Begin == opening + 1 &&
-                    Region(Syntax_[child]).Tokens.End == close && SimpleStatement(child);
+            const bool single = (body.Kind == NodeKind::CompoundStatement || body.Kind == NodeKind::LambdaBody) &&
+                child != None && Region(Syntax_[child]).NextSibling == None &&
+                Region(Syntax_[child]).Tokens.Begin == opening + 1 && Region(Syntax_[child]).Tokens.End == close &&
+                SimpleStatement(child);
             shape = single ? BodyShape::CompactIfFits : BodyShape::Expanded;
         }
 
@@ -4061,8 +4078,8 @@ private:
 
         // Inline linkage headers inherit their enclosing structural level
         // when indentation is explicit; own-line headers keep their line base.
-        const bool linkageLineBase =
-            linkage && (!independentIndent || StartsSourceLine(Region(Syntax_[id]).Tokens.Begin));
+        const bool linkageLineBase = linkage &&
+            (!independentIndent || StartsSourceLine(Region(Syntax_[id]).Tokens.Begin));
         GroupSpecs_[group].LineBase = contentIndent == None &&
             (linkageLineBase || Region(Syntax_[id]).Kind == NodeKind::LambdaBody ||
                 Region(Syntax_[id]).Kind == NodeKind::RequirementBody ||
@@ -4071,8 +4088,8 @@ private:
         // its own header. Reuse that starting line, not the brace's line or
         // the enclosing expression's structural base.
         const auto header = Gaps_[opening].Owner;
-        GroupSpecs_[group].ResumedLineBase =
-            GroupSpecs_[group].LineBase && header != None && GroupSpecs_[header].ResumeOpeningLine;
+        GroupSpecs_[group].ResumedLineBase = GroupSpecs_[group].LineBase && header != None &&
+            GroupSpecs_[header].ResumeOpeningLine;
         BlockOf_[id] = group;
         Groups_[group].SyntaxBody = true;
 
@@ -4144,8 +4161,8 @@ private:
                 commentsBeforeCase = IsCaseLabel(next);
             }
 
-            const bool caseComment =
-                part.Kind == NodeKind::Comment && commentsBeforeCase && Safety_.Gaps()[part.Tokens.Begin].HasLineFeed;
+            const bool caseComment = part.Kind == NodeKind::Comment && commentsBeforeCase &&
+                Safety_.Gaps()[part.Tokens.Begin].HasLineFeed;
 
             // Labels delimit direct-child case regions. A sole compound
             // supplies the case's body level; mixed cases share one level
@@ -4556,8 +4573,10 @@ private:
 
             // Exempt these boundaries from the outer chain's forced/vertical
             // breaks, but retain independent width-driven escape hatches.
-            const auto pair =
-                GroupAt(TokenPosition(first.Gap), GapPosition(ChainLinks_[last].End), layout::GroupMode::Fill);
+            const auto pair = GroupAt(
+                TokenPosition(first.Gap),
+                GapPosition(ChainLinks_[last].End),
+                layout::GroupMode::Fill);
             GroupSpecs_[pair].BreakPenalty = 2;
 
             for (auto j = i + 1; j <= last; ++j) {
@@ -5008,8 +5027,9 @@ private:
 
         // Prefer operator/list boundaries over field paths and multi-call
         // chains; control headers also prefer clause and argument breaks.
-        GroupSpecs_[group].BreakPenalty =
-            entry.ControlHeader ? 3 : singleMemberCall || packingCalls == 0 || (links > 1 && packingCalls != 1) ? 2 : 0;
+        GroupSpecs_[group].BreakPenalty = entry.ControlHeader
+            ? 3
+            : singleMemberCall || packingCalls == 0 || (links > 1 && packingCalls != 1) ? 2 : 0;
         // A chain owns continuation independently of pending expression
         // offsets, but retains enclosing list and realized-line indentation.
         GroupSpecs_[group].StructuralBase = true;
@@ -5017,8 +5037,8 @@ private:
         // Always counts suffix calls, not fields or receiver construction.
         // Control headers keep fitting chains inline and prefer other breaks.
         // Explicit conventional roots still require their annotated shape.
-        GroupSpecs_[group].ForceBreak =
-            conventional || (!entry.ControlHeader && policy.Break == BreakRequirement::Always && calls > 1);
+        GroupSpecs_[group].ForceBreak = conventional ||
+            (!entry.ControlHeader && policy.Break == BreakRequirement::Always && calls > 1);
 
         if (PlanAnnotatedChain(id, group, packingCalls)) {
             return;
@@ -6020,8 +6040,9 @@ private:
                         entry.ItemSequence = parent != None && Syntax_[parent].ItemSequence;
 
                         if (entry.ItemSequence) {
-                            entry.SequenceBody.Begin =
-                                std::max(entry.SequenceBody.Begin, Syntax_[parent].SequenceBody.Begin);
+                            entry.SequenceBody.Begin = std::max(
+                                entry.SequenceBody.Begin,
+                                Syntax_[parent].SequenceBody.Begin);
                             entry.SequenceBody.End = std::min(entry.SequenceBody.End, Syntax_[parent].SequenceBody.End);
                         }
                     }
@@ -6102,10 +6123,10 @@ private:
                         // moved to invent declaration adjacency or an
                         // access-content boundary.
                         const auto preceding = access != None ? access : previousAttachment;
-                        const bool trailing =
-                            preceding != None && part.Tokens.End <= Region(Syntax_[preceding]).Attached.End;
-                        const bool leading =
-                            following[p] != None && part.Tokens.Begin >= Region(Syntax_[following[p]]).Attached.Begin;
+                        const bool trailing = preceding != None &&
+                            part.Tokens.End <= Region(Syntax_[preceding]).Attached.End;
+                        const bool leading = following[p] != None &&
+                            part.Tokens.Begin >= Region(Syntax_[following[p]]).Attached.Begin;
 
                         if (!trailing && !leading) {
                             previous = previousAttachment = access = None;
@@ -6152,8 +6173,8 @@ private:
                             ApplyVerticalGap(part.Attached.Begin, policy.BlockBlankLinesAfter);
                         }
 
-                        const bool member =
-                            node.Kind == NodeKind::RecordDeclaration || node.Kind == NodeKind::MacroRecordDeclaration;
+                        const bool member = node.Kind == NodeKind::RecordDeclaration ||
+                            node.Kind == NodeKind::MacroRecordDeclaration;
                         const auto category = entry.Category;
                         const auto previousCategory = Syntax_[previous].Category;
                         Gaps_[part.Attached.Begin].MemberGroup = member &&
@@ -6815,8 +6836,8 @@ private:
         Layout_.AnchorOrder_.resize(remaining);
 
         while (delayed) {
-            Layout_.AnchorOrder_[--remaining] =
-                bases && key(Layout_.AnchorOrder_[bases - 1]) > key(delayedAnchors[delayed - 1])
+            Layout_.AnchorOrder_[--remaining] = bases &&
+                key(Layout_.AnchorOrder_[bases - 1]) > key(delayedAnchors[delayed - 1])
                 ? Layout_.AnchorOrder_[--bases]
                 : delayedAnchors[--delayed];
         }
@@ -6847,7 +6868,7 @@ private:
         if (kind != layout::GapKind::Flat) {
             spec.RequiredWidth = Facts_[i].RequiredWidth;
             spec.FitNextSegment = Gaps_[i].FitNextSegment;
-            spec.FitNextSegmentIfOverflow = Gaps_[i].FitNextSegmentIfOverflow;
+            spec.FitNextSegmentIfFinite = Gaps_[i].FitNextSegmentIfFinite;
             spec.FitFlatTail = Gaps_[i].FitFlatTail;
             spec.NewlineCount = Gaps_[i].NewlineCount;
             const bool relative = Gaps_[i].OverrideIndent && Gaps_[i].RelativeGroup != None;
@@ -7202,8 +7223,8 @@ private:
             return;
         }
 
-        const bool spelling =
-            !plan.RelativeIndent && Policies_.LineEnding != LineEnding::Preserve && Safety_.CanSpellGapNewlines(i);
+        const bool spelling = !plan.RelativeIndent && Policies_.LineEnding != LineEnding::Preserve &&
+            Safety_.CanSpellGapNewlines(i);
         const auto copied = [&] (Index begin, Index end) {
             if (spelling) {
                 EditableGapSlice(i, begin, end);
@@ -7376,8 +7397,9 @@ private:
         auto& group = Groups_[id];
         Index sequence = 0;
         const auto capture = [&] (layout::AnchorSpec spec) {
-            const auto anchor =
-                Layout_.Capture(spec, SourceOrder(group.Begin, 0x40000000u + group.Preorder * 8 + sequence++));
+            const auto anchor = Layout_.Capture(
+                spec,
+                SourceOrder(group.Begin, 0x40000000u + group.Preorder * 8 + sequence++));
             Layout_.AnchorOrder_.push_back(anchor);
             return anchor;
         };
@@ -7476,10 +7498,12 @@ private:
         if (group.PrefixGap != None) {
             const auto fallback = i64(group.Indent.FallbackOffset) - i64(group.Indent.ContinuationOffset);
             const auto offset = group.AnchorAfterGap ? 0 : i32(FlatWidth(group.PrefixGap));
-            group.PrefixOrder =
-                SourceOrder(GapPosition(group.PrefixGap), 0x80000000u + Facts_[group.PrefixGap].PrefixSequence);
-            group.Anchor =
-                Layout_.Capture({layout::AnchorKind::DelimiterColumn, offset, i32(fallback), 0}, group.PrefixOrder);
+            group.PrefixOrder = SourceOrder(
+                GapPosition(group.PrefixGap),
+                0x80000000u + Facts_[group.PrefixGap].PrefixSequence);
+            group.Anchor = Layout_.Capture(
+                {layout::AnchorKind::DelimiterColumn, offset, i32(fallback), 0},
+                group.PrefixOrder);
             delayedAnchors.push_back(group.Anchor);
         }
 

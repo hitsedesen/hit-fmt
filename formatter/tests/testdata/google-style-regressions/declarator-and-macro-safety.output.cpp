@@ -9,36 +9,36 @@ void visit() {
 struct LocalTable {
 };
 void visit_sources(int width, int height, int* scale) {
-  for (Table* source =
-    Acquire(width * height); source != nullptr; source = source->next()) {
+  for (Table* source = Acquire(
+    width * height); source != nullptr; source = source->next()) {
     Consume(source);
   }
-  for (::storage::Row* source =
-    Acquire(width * height); source != nullptr; source = source->next()) {
+  for (::storage::Row* source = Acquire(
+    width * height); source != nullptr; source = source->next()) {
     Consume(source);
   }
-  for (Table** source =
-    Acquire(width * height); source != nullptr; source = Next(source)) {
+  for (Table** source = Acquire(
+    width * height); source != nullptr; source = Next(source)) {
     Consume(source);
   }
-  for (Table const* const source =
-    Acquire(width * height); Ready(source); Advance()) {
+  for (Table const* const source = Acquire(
+    width * height); Ready(source); Advance()) {
     Consume(source);
   }
-  for (ExternalValue& value =
-    Current(width * height); Ready(value); Advance(value)) {
+  for (ExternalValue& value = Current(
+    width * height); Ready(value); Advance(value)) {
     Consume(value);
   }
-  for (ExternalValue&& value =
-    Current(width * height); Ready(value); Advance(value)) {
+  for (ExternalValue&& value = Current(
+    width * height); Ready(value); Advance(value)) {
     Consume(value);
   }
-  for (Opaque *  source =
-    Acquire(width * height); source != nullptr; source = source->next()) {
+  for (Opaque *  source = Acquire(
+    width * height); source != nullptr; source = source->next()) {
     Consume(source);
   }
-  for (LocalTable* source =
-    Acquire(width * height); source != nullptr; source = Next(source)) {
+  for (LocalTable* source = Acquire(
+    width * height); source != nullptr; source = Next(source)) {
     Consume(source);
   }
   for (width * *scale; width * height < 100; width = width * height) {

@@ -15,14 +15,17 @@ void Sample()
     ::external::Distribution<int> globalDistribution(
         static_cast<int>(sampleCount * 0.5),
         static_cast<int>(sampleCount * 1.5));
-    external::Distribution<int> distribution =
-        make(firstLongArgument, secondLongArgument, thirdLongArgument);
+    external::Distribution<int> distribution = make(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     external::Distribution<int> parameters(
         int firstLongParameterName,
         int secondLongParameterName);
 
-    if (external::Range<int> range =
-        make(firstLongArgument, secondLongArgument);
+    if (external::Range<int> range = make(
+        firstLongArgument,
+        secondLongArgument);
         range.ready())
     {
         consume(range);
@@ -34,13 +37,19 @@ void Sample()
     size_t maximumReservedByteCountForCurrentBuffer = Estimate(
         unreservedByteCountForCurrentBuffer,
         estimatedByteCountForCurrentBuffer);
-    ByteCount shortName =
-        Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
+    ByteCount shortName = Estimate(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     ByteCount fitting = Estimate(first, second);
-    [[maybe_unused]] ByteCount annotated =
-        Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
-    ByteCount /* external type */ commented =
-        Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
+    [[maybe_unused]] ByteCount annotated = Estimate(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
+    ByteCount /* external type */ commented = Estimate(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     FILE* buffer = OpenTemporaryBuffer(
         capacity,
         alignment,
@@ -50,27 +59,40 @@ void Sample()
         writeMode,
         timeoutSeconds,
         fallbackMode);
-    ExternalBuffer  *  pointer =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
-    ExternalBuffer& reference =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
-    ExternalBuffer&& movable =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
-    external::Buffer<int, long>* qualified =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
-    ::external::Buffer* const global =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
-    [[maybe_unused]] ExternalBuffer /* type */ * annotatedPointer =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
+    ExternalBuffer  *  pointer = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
+    ExternalBuffer& reference = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
+    ExternalBuffer&& movable = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
+    external::Buffer<int, long>* qualified = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
+    ::external::Buffer* const global = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
+    [[maybe_unused]] ExternalBuffer /* type */ * annotatedPointer = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     ExternalBuffer* nested = Adapt(
         Acquire(firstLongArgument, secondLongArgument, thirdLongArgument),
         fourthLongArgument);
     ExternalBuffer* conditional = ready
         ? Acquire(firstLongArgument, secondLongArgument, thirdLongArgument)
         : fallback;
-    ExternalBuffer* grouped =
-        (Acquire(firstLongArgument, secondLongArgument, thirdLongArgument),
-            fallback);
+    ExternalBuffer* grouped = (Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument), fallback);
     ExternalBuffer* ambiguousOperand = Adapt((ExternalValue) & operand, firstLongArgument, secondLongArgument, thirdLongArgument);
     ExternalBuffer* opaqueArgument = Acquire(
         MACRO(value) SUFFIX(other),
@@ -85,15 +107,21 @@ void Sample()
     ExternalBuffer* compound += Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
     ExternalBuffer* nestedOnly(
         Acquire(target = firstLongArgument, secondLongArgument, thirdLongArgument));
-    multiplier * product =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
+    multiplier * product = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     int knownValue;
-    knownValue * product =
-        Acquire(firstLongArgument, secondLongArgument, thirdLongArgument);
+    knownValue * product = Acquire(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     ByteCount plain;
     ByteCount assigned;
-    assigned =
-        Estimate(firstLongArgument, secondLongArgument, thirdLongArgument);
+    assigned = Estimate(
+        firstLongArgument,
+        secondLongArgument,
+        thirdLongArgument);
     external::Range unresolved(Unknown);
     left < middle > right(1, 2);
     external::left < middle > right(1, 2);

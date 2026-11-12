@@ -91,8 +91,8 @@ std::string TConverter::Render(const TContent& content) const
                     return {};
                 }
 
-                auto image =
-                    "![" + Escape(item.Description) + "](" + Arguments_.AssetDirectory + "/" + item.Asset + ")";
+                auto image = "![" + Escape(item.Description) + "](" + Arguments_.AssetDirectory + "/" + item.Asset +
+                    ")";
                 return (item.Link ? "[" + image + "](" + *item.Link + ")" : image) + "\n\n";
             } else {
                 if (item.Headings.empty()) {

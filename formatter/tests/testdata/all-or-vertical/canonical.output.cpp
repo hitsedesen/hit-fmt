@@ -78,8 +78,9 @@ auto values = {
     third,
     fourth,
 };
-auto compactValues =
-    {first, second};
+auto compactValues = {
+    first, second,
+};
 auto commentedValues = {
     first,
     second, /* trailing */};

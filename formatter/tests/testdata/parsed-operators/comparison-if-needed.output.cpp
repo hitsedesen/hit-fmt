@@ -1,2 +1,2 @@
-void f() { bool v =
-        alpha < beta; }
+void f() { bool v = alpha
+        < beta; }
