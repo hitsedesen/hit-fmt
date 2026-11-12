@@ -307,8 +307,8 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
     style.ChainsBreak = formatter::BreakRequirement::Always;
     style.ChainsPacking = formatter::ListPacking::VerticalWhenBroken;
     const formatter::PreparedFormat preserveIndent(style);
-    const std::string source =
-        "void f() {\n    auto value = engine()\n" "            .Open()\n            .Finish();\n}\n";
+    const std::string source = "void f() {\n    auto value = engine()\n"
+        "            .Open()\n            .Finish();\n}\n";
     const auto begin = parser::SourceOffset(source.find("            .Open"));
     const parser::SourceRange selected[] = {{begin, begin + 12}};
     formatter::FormatRequest request{.EditScope = selected};
@@ -354,8 +354,8 @@ TEST(PublicPipeline, ChainStructuralBaseHonorsGapScopeAndProtection)
 
 TEST(PublicPipeline, StyleCheckpointKeepsIndependentGapPermissions)
 {
-    const std::string source =
-        "void f() {\r\n    auto value = engine()\r\n" "            .Open()\r\n            .Finish(); \t// note\n}\r\n";
+    const std::string source = "void f() {\r\n    auto value = engine()\r\n"
+        "            .Open()\r\n            .Finish(); \t// note\n}\r\n";
     auto style = Canonical();
     style.Layout = formatter::LayoutMode::Preserve;
     style.ExpressionsLayout = formatter::CategoryLayout::Canonical;
@@ -663,8 +663,9 @@ TEST(PublicPipeline, RecoveredFunctionTryHandlersHaveNoEditAuthority)
             EXPECT_TRUE(result.Text.starts_with(candidate));
             EXPECT_NE(result.Text, source);
             EXPECT_EQ(FormatInput(result.Text, prepared).Text, result.Text);
-            const std::array<parser::SourceRange, 1> handlerScope =
-                {{{source.find(functionTry ? "catch" : "return n"), candidate.size()}}};
+            const std::array<parser::SourceRange, 1> handlerScope = {
+                {{source.find(functionTry ? "catch" : "return n"), candidate.size()}},
+            };
             const auto scoped = FormatInput(source, prepared, {.EditScope = handlerScope});
             EXPECT_EQ(scoped.Text, source);
         }
@@ -715,8 +716,8 @@ TEST(PublicPipeline,
                     (functionTry
                         ? " /* first */ catch(int Type) { Type * value; ; }" " /* second */ catch(...) { ; recover(); }"
                         : "");
-                const auto source =
-                    "using Type = int;\nstruct C {\n" + candidate + "\nint member;\n};\n;\nint tail(){ ; return 1; }\n";
+                const auto source = "using Type = int;\nstruct C {\n" + candidate +
+                    "\nint member;\n};\n;\nint tail(){ ; return 1; }\n";
                 SCOPED_TRACE(source);
 
                 const auto result = FormatInput(source, prepared);
@@ -942,8 +943,8 @@ TEST(PublicPipeline, LambdaLineBasesKeepSourceAuthority)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../lambda-captures";
     const auto input = test::golden::ReadFile(directory / "profile.input.cpp");
-    const auto style =
-        formatter::LoadConfigFile(directory / "../../../../cli/examples/ytsaurus.hit-fmt").FormattingStyle;
+    const auto style = formatter::LoadConfigFile(
+        directory / "../../../../cli/examples/ytsaurus.hit-fmt").FormattingStyle;
     const formatter::PreparedFormat prepared(style);
 
     for (const bool crlf : {false, true}) {
@@ -978,8 +979,8 @@ TEST(PublicPipeline, ConditionalFragmentsKeepSourceAuthority)
 {
     const auto directory = std::filesystem::path(FORMATTER_TESTDATA_DIR) / "../preprocessing-fragments";
     const auto source = test::golden::ReadFile(directory / "canonical.input.cpp");
-    const auto style =
-        formatter::LoadConfigFile(directory / "../../../../cli/examples/ytsaurus.hit-fmt").FormattingStyle;
+    const auto style = formatter::LoadConfigFile(
+        directory / "../../../../cli/examples/ytsaurus.hit-fmt").FormattingStyle;
     const formatter::PreparedFormat prepared(style);
     const auto begin = u32(source.find("void Arguments()"));
     const auto end = u32(source.find("void Parameters(", begin));
@@ -1068,8 +1069,8 @@ TEST(PublicPipeline, EnumeratorAssignmentExplicitSpacing)
 
 TEST(PublicPipeline, EnumeratorAssignmentRespectsScopeAndProtection)
 {
-    const auto directory =
-        std::filesystem::path(__FILE__).parent_path() / "testdata/consolidated-pipeline/enumerator-assignment";
+    const auto directory = std::filesystem::path(__FILE__).parent_path() /
+        "testdata/consolidated-pipeline/enumerator-assignment";
     const auto source = test::golden::ReadFile(directory / "input.cpp");
     const formatter::PreparedFormat prepared(formatter::LoadConfigFile(directory / "space.hit-fmt").FormattingStyle);
     const auto second = u32(source.find("Second"));
@@ -1351,8 +1352,10 @@ TEST(PublicPipeline, IncludeRegroupingOwnsBlankLinesAndPreservesMovedIdentities)
             const auto partial = FormatInput(source, prepared, {.EditScope = scope, .InputFilePath = path});
             EXPECT_EQ(partial.Text, source);
             const std::array<parser::SourceRange, 1> immutable{{{blank, blank + 1}}};
-            const auto protectedResult =
-                FormatInput(source, prepared, {.ImmutableRanges = immutable, .InputFilePath = path});
+            const auto protectedResult = FormatInput(
+                source,
+                prepared,
+                {.ImmutableRanges = immutable, .InputFilePath = path});
             EXPECT_EQ(protectedResult.Text, source);
             path.assign(path.size(), '?');
         }
@@ -1524,8 +1527,8 @@ TEST(PublicPipeline, EditScopeCopiedIntersectionsAfterNormalization)
 
 TEST(PublicPipeline, EditScopeInvalidRangesAndProtectionRemainStronger)
 {
-    const std::string source =
-        "// hit-fmt off\nvoid locked(){ if(ok)invoke(a,b); }\n" "// hit-fmt on\nvoid safe(){ if(ok)invoke(x,y); }\n";
+    const std::string source = "// hit-fmt off\nvoid locked(){ if(ok)invoke(a,b); }\n"
+        "// hit-fmt on\nvoid safe(){ if(ok)invoke(x,y); }\n";
     auto style = Canonical();
     style.AddMissingControlBraces = true;
     const formatter::PreparedFormat prepared(style);
@@ -1569,8 +1572,8 @@ TEST(PublicPipeline, RequiresOrdinaryReturnBoundaryRespectsScope)
                 "Envelope<T> Owner::operator()(T value){return {};}",
             })
         {
-            const auto source =
-                "template<class T> requires (requires(T v) { v.touch(); })\n" + std::string(declaration) + "\n";
+            const auto source = "template<class T> requires (requires(T v) { v.touch(); })\n" +
+                std::string(declaration) + "\n";
             SCOPED_TRACE(source);
             const auto function = u32(source.find(declaration));
             const std::array<parser::SourceRange, 1> selected{{{function, u32(source.size())}}};
@@ -1939,8 +1942,9 @@ TEST(PublicPipeline, LineEndingBareCRSurvivesRepeatedSelection)
                 const auto second = FormatInput(first.Text, prepared);
                 EXPECT_EQ(second.Text, first.Text);
                 EXPECT_EQ(FormatInput(second.Text, prepared).Text, second.Text);
-                style.LineEnding =
-                    name == std::string_view("lf") ? formatter::LineEnding::CRLF : formatter::LineEnding::LF;
+                style.LineEnding = name == std::string_view("lf")
+                    ? formatter::LineEnding::CRLF
+                    : formatter::LineEnding::LF;
                 const formatter::PreparedFormat opposite(style);
                 const auto changed = FormatInput(first.Text, opposite);
                 EXPECT_EQ(FormatInput(changed.Text, opposite).Text, changed.Text);
@@ -2102,8 +2106,8 @@ TEST(PublicPipeline, TrailingCommentSpacesNamespaceOwnershipAndLegacyCoupling)
 {
     using formatter::GapPolicy;
     using formatter::NamespaceComments;
-    const std::string source =
-        "int amount;\t// namespace is ordinary prose\n" "namespace N {\nint local;\n}\t// namespace Wrong\n";
+    const std::string source = "int amount;\t// namespace is ordinary prose\n"
+        "namespace N {\nint local;\n}\t// namespace Wrong\n";
 
     for (const auto old :
         {

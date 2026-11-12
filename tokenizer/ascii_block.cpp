@@ -86,8 +86,9 @@ void ClassifyAsciiBlock(const unsigned char* source, AsciiBlock& result) noexcep
         const auto alpha = _mm_and_si128(
             _mm_cmpgt_epi8(letters, _mm_set1_epi8('a' - 1)),
             _mm_cmpgt_epi8(_mm_set1_epi8('z' + 1), letters));
-        const auto digit =
-            _mm_and_si128(_mm_cmpgt_epi8(bytes, _mm_set1_epi8('0' - 1)), _mm_cmpgt_epi8(_mm_set1_epi8('9' + 1), bytes));
+        const auto digit = _mm_and_si128(
+            _mm_cmpgt_epi8(bytes, _mm_set1_epi8('0' - 1)),
+            _mm_cmpgt_epi8(_mm_set1_epi8('9' + 1), bytes));
         const auto digits = mask(digit);
         const auto identifier = mask(_mm_or_si128(alpha, equal('_'))) | digits;
         const auto controls = _mm_and_si128(

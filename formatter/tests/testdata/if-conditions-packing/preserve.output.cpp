@@ -32,8 +32,8 @@ void check_conditions() {
             second_argument_name) && enabled) {
         run();
     }
-    if (auto value =
-        create(left && right); value && ready && enabled) {
+    if (auto value = create(
+        left && right); value && ready && enabled) {
         run();
     }
     if (auto value = left &&

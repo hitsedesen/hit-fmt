@@ -365,8 +365,8 @@ public:
         const auto spelling = Tree_.TokenText(regions[name].Tokens.Begin);
 
         if (VisualNames_.MayContain(spelling)) {
-            Visual_ =
-                Annotations_.FindScopeBegin(spelling) != nullptr || Annotations_.FindScopeEnd(spelling) != nullptr;
+            Visual_ = Annotations_.FindScopeBegin(spelling) != nullptr ||
+                Annotations_.FindScopeEnd(spelling) != nullptr;
         }
     }
 
@@ -639,8 +639,13 @@ public:
                 continue;
             }
 
-            const auto indent =
-                Indentation(Tree_, candidate.Span.Root, Safety_.Regions(), Policies_, TabWidth_, MaximumIndent_);
+            const auto indent = Indentation(
+                Tree_,
+                candidate.Span.Root,
+                Safety_.Regions(),
+                Policies_,
+                TabWidth_,
+                MaximumIndent_);
 
             if (!indent) {
                 continue;
@@ -648,8 +653,8 @@ public:
 
             const auto authored = SourceColumn(Tree_, range.Begin, TabWidth_);
             const auto headerBase = header ? MaximumIndent_[candidate.Body] : 0;
-            const u64 width =
-                std::max({*indent, authored, headerBase}) + u64(sourceEnd - sourceBegin) + (header ? 0 : 2);
+            const u64 width = std::max({*indent, authored, headerBase}) + u64(sourceEnd - sourceBegin) +
+                (header ? 0 : 2);
 
             if (Policies_.ColumnLimit && width > Policies_.ColumnLimit) {
                 continue;

@@ -132,7 +132,7 @@ struct Gap
     bool CanonicalFlat : 1 = false;
     bool ControlSeparator : 1 = false;
     bool FitNextSegment : 1 = false;
-    bool FitNextSegmentIfOverflow : 1 = false;
+    bool FitNextSegmentIfFinite : 1 = false;
     bool FitFlatTail : 1 = false;
     bool KeepFlatSpacing : 1 = false;
     bool SpaceFallback : 1 = false;

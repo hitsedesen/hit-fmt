@@ -78,12 +78,12 @@ Result ExportJob::Run(ExportMode mode) const {
 
 void RevealExportOffset(PreviewObserver& observer, RevealMethod method,
                         const Result& result, std::size_t offset) {
-  const auto next =
-      std::upper_bound(result.source_offsets.begin(),
-                       result.source_offsets.end(), offset,
-                       [](std::size_t position, const auto& entry) {
-                         return position < entry.second;
-                       });
+  const auto next = std::upper_bound(result.source_offsets.begin(),
+                                     result.source_offsets.end(), offset,
+                                     [](std::size_t position,
+                                         const auto& entry) {
+                                       return position < entry.second;
+                                     });
   if (next != result.source_offsets.begin()) {
     std::invoke(method, observer, std::prev(next)->first);
   }

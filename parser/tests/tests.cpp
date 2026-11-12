@@ -301,8 +301,8 @@ TEST_P(FileTest, IncludeReuseMatchesFreshParse)
         const test::golden::Fixture fixture{PARSER_TESTDATA_DIR, GetParam().Name};
         auto body = fixture.InputNamed(".in");
         std::string originalPrefix = "#include \"z/long.h\"\n#include <a.h>\n";
-        std::string rewrittenPrefix =
-            std::string(rulers ? "///\n" : "") + "%:include <a.h>\n\n# include \"z/long.h\"\n\n";
+        std::string rewrittenPrefix = std::string(rulers ? "///\n" : "") +
+            "%:include <a.h>\n\n# include \"z/long.h\"\n\n";
 
         if (mode == 3) {
             // Keep token indices fixed while removing one include's leading
@@ -1507,8 +1507,9 @@ TEST(Parser, TemplateDefaultsDoNotBindNestedNames)
                     ++errors;
                 });
             EXPECT_EQ(errors, 0u);
-            const auto expressions =
-                LambdaOwnershipNodes(tree.Root(), lambda ? ExpressionStatement : AmbiguousStatement);
+            const auto expressions = LambdaOwnershipNodes(
+                tree.Root(),
+                lambda ? ExpressionStatement : AmbiguousStatement);
             ASSERT_EQ(expressions.size(), 1u);
             EXPECT_EQ(tree.SourceText(expressions[0]->Tokens), "Hidden * x;");
         }
@@ -1685,8 +1686,8 @@ TEST(Parser, ExplicitOperatorTemplateNamesPreserveArgumentAndDefaultBoundaries)
 
     for (const auto spelling : {",", "<"}) {
         SCOPED_TRACE(spelling);
-        const std::string call =
-            "make<Box<object.template operator " + std::string(spelling) + " <int>(value), int>, int>()";
+        const std::string call = "make<Box<object.template operator " + std::string(spelling) +
+            " <int>(value), int>, int>()";
         PaddedInput input("APPLY(" + call + ", [] { return 2; });\nint following;");
         auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
         EXPECT_EQ(tree.Root().FirstChild->Kind, ExpressionStatement);
@@ -1764,8 +1765,8 @@ TEST(Parser, NamelessDirectBodyIsBoundedRecoveryWithoutInventedScope)
 
         for (auto i = owner->Tokens.Begin; i < owner->Tokens.End; ++i) {
             const auto kind = tree.Kind(i);
-            const auto role =
-                kind >= tokenizer::TokenKind::Operator_OpenBrace && kind <= tokenizer::TokenKind::Operator_Comma
+            const auto role = kind >= tokenizer::TokenKind::Operator_OpenBrace &&
+                kind <= tokenizer::TokenKind::Operator_Comma
                 ? parser::PunctuationRole::Generic
                 : parser::PunctuationRole::None;
             EXPECT_EQ(tree.Role(i), role);
@@ -1957,14 +1958,14 @@ TEST(Parser, RecoveredConstructorInitializersKeepWholeCandidateOpaque)
             })
         {
             for (const bool functionTry : {false, true}) {
-                const auto candidate =
-                    "NOTE(0) C(int n)" + std::string(suffix) + std::string(functionTry ? " try : " : " : ") +
-                        std::string(initializers) + " { Type * value; use(n); }" +
-                        (functionTry
-                            ? " /* first */ catch(int Type) { Type * value; }" " /* second */ catch(...) { recover(); }"
-                            : "");
-                const auto source =
-                    "using Type = int;\nstruct C {\n" + candidate + "\nint member;\n};\nint tail(){return 1;}\n";
+                const auto candidate = "NOTE(0) C(int n)" + std::string(suffix) +
+                    std::string(functionTry ? " try : " : " : ") + std::string(initializers) +
+                    " { Type * value; use(n); }" +
+                    (functionTry
+                        ? " /* first */ catch(int Type) { Type * value; }" " /* second */ catch(...) { recover(); }"
+                        : "");
+                const auto source = "using Type = int;\nstruct C {\n" + candidate +
+                    "\nint member;\n};\nint tail(){return 1;}\n";
                 SCOPED_TRACE(source);
                 PaddedInput input(source);
                 us errors = 0;
@@ -2144,8 +2145,8 @@ TEST(Parser, UnknownTypedAnnotationRetainsWholeCandidateRecovery)
 {
     // A parameter shadowing an outer type must not acquire editable body
     // authority from a header whose bindings were not established.
-    const std::string source =
-        "using Type = int;\n" "static inline Vec NOTE(\"legacy\") load(int Type) { Type * value; }\n" "int tail;\n";
+    const std::string source = "using Type = int;\n"
+        "static inline Vec NOTE(\"legacy\") load(int Type) { Type * value; }\n" "int tail;\n";
     PaddedInput input(source);
     auto tree = parser::Parse(input.View());
     auto* candidate = tree.Root().FirstChild->NextSibling;
@@ -2175,10 +2176,10 @@ TEST(Parser,
         })
     {
         const bool assigned = suffix.starts_with(" =");
-        const auto candidate =
-            "Vec NOTE(0) load(int Type)" + std::string(suffix) + (assigned ? ";" : " { Type * value; }");
-        const auto source =
-            "using Type = int;\n" + candidate + "\nType * kept;\nint tail(){return 1;}\nbool later = a > b;\n";
+        const auto candidate = "Vec NOTE(0) load(int Type)" + std::string(suffix) +
+            (assigned ? ";" : " { Type * value; }");
+        const auto source = "using Type = int;\n" + candidate +
+            "\nType * kept;\nint tail(){return 1;}\nbool later = a > b;\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
@@ -2212,8 +2213,8 @@ TEST(Parser,
 TEST(Parser, RecoveredRequiresSkipNeedsValidMapDespitePopulatedOuterPairs)
 {
     for (const std::string_view operand : {"requires(int x]) { x; }", "requires(int x) { x]; }"}) {
-        const auto source =
-            "Vec NOTE(0) run() requires Ready<int> && " + std::string(operand) + " { return 0; }\nint tail;\n";
+        const auto source = "Vec NOTE(0) run() requires Ready<int> && " + std::string(operand) +
+            " { return 0; }\nint tail;\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
@@ -2333,8 +2334,8 @@ TEST(Parser, StringLiteralSequencesHaveCompleteRanges)
                 EXPECT_NE(tree.Kind(next), Literal_String);
             }
 
-            foundCommentRange |=
-                tree.SourceText(node->Tokens) == "\"first\" /* join */ \"second\" /* again */ \"third\"";
+            foundCommentRange |= tree.SourceText(node->Tokens) ==
+                "\"first\" /* join */ \"second\" /* again */ \"third\"";
         }
 
         for (auto* child = node->FirstChild; child; child = child->NextSibling) {
@@ -3191,8 +3192,8 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
             const std::string declaration = function
                 ? "int inspect(T value) { return 1; }"
                 : "struct Container { T member; };";
-            const auto source =
-                "template<class T> requires " + std::string(constraintText) + "\n" + declaration + "\nint outside;\n";
+            const auto source = "template<class T> requires " + std::string(constraintText) + "\n" + declaration +
+                "\nint outside;\n";
             SCOPED_TRACE(source);
             PaddedInput input(source);
             std::vector<parser::ParseError> errors;
@@ -3463,12 +3464,12 @@ TEST(Parser, RequiresClauseOwnsOrdinaryTemplateAndQualifiedReturnPrefix)
     };
 
     for (const auto& declaration : declarations) {
-        const auto declarationText =
-            std::string(declaration.Specifiers) + " " + std::string(declaration.Declarator) + " { return {}; }";
+        const auto declarationText = std::string(declaration.Specifiers) + " " + std::string(declaration.Declarator) +
+            " { return {}; }";
 
         for (const auto constraint : constraints) {
-            const auto source =
-                "template<class T> requires " + std::string(constraint) + "\n" + declarationText + "\nint outside;\n";
+            const auto source = "template<class T> requires " + std::string(constraint) + "\n" + declarationText +
+                "\nint outside;\n";
             SCOPED_TRACE(source);
             PaddedInput input(source);
             us errors = 0;
@@ -3523,8 +3524,8 @@ TEST(Parser, RequiresClauseDoesNotSplitQualifiedConstraintOperands)
     };
 
     for (const auto constraint : constraints) {
-        const auto source =
-            "template<class T> requires " + std::string(constraint) + "\nint inspect(T value) { return 1; }\n";
+        const auto source = "template<class T> requires " + std::string(constraint) +
+            "\nint inspect(T value) { return 1; }\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
         us errors = 0;
@@ -3553,8 +3554,8 @@ TEST(Parser, RequiresClauseDoesNotCertifyMalformedTemplateReturnPrefix)
     for (const auto prefix :
         {"Envelope<T>>", "Envelope<T", "library::Envelope<T>>", "Envelope<T> Owner::<T>", "Envelope<T> Owner<U>>"})
     {
-        const auto source =
-            "template<class T> requires Ready<T>\n" + std::string(prefix) + " inspect(T value) { return {}; }\n";
+        const auto source = "template<class T> requires Ready<T>\n" + std::string(prefix) +
+            " inspect(T value) { return {}; }\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
         const auto tree = parser::Parse(input.View(), [] (parser::ParseError) { });
@@ -3589,8 +3590,8 @@ TEST(Parser, RequiresClausePreservesOperatorAndUnknownConstraints)
         {"requires(T v) { v.touch(); } && (unresolved @ tail)", true, true},
     };
     for (const auto& constraint : constraints) {
-        const auto source =
-            "template<class T> requires " + std::string(constraint.Text) + "\nT* inspect(T* value) { return value; }\n";
+        const auto source = "template<class T> requires " + std::string(constraint.Text) +
+            "\nT* inspect(T* value) { return value; }\n";
         SCOPED_TRACE(source);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;
@@ -3896,10 +3897,10 @@ TEST(Parser, ParameterDefaultsKeepDelimitedComparisonBoundaries)
         "Wrap<(1<<2),Wrap<(3>2),int>> value={}",
     };
     for (const auto firstText : firstParameters) {
-        const auto source =
-            "constexpr int values[] = {1,2};\n" "constexpr int select(int left,int right){return left+right;}\n"
-                "struct Value { int first, second; };\n" "template<auto, class> struct Wrap {};\n" "void sink(" +
-                std::string(firstText) + ",int other=0) {}\n" "Value outside;\n";
+        const auto source = "constexpr int values[] = {1,2};\n"
+            "constexpr int select(int left,int right){return left+right;}\n" "struct Value { int first, second; };\n"
+            "template<auto, class> struct Wrap {};\n" "void sink(" + std::string(firstText) +
+            ",int other=0) {}\n" "Value outside;\n";
         SCOPED_TRACE(firstText);
         PaddedInput input(source);
         std::vector<parser::ParseError> errors;

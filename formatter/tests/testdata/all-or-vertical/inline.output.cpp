@@ -59,8 +59,8 @@ auto values = {first,
     second,
     third,
     fourth,};
-auto compactValues =
-    {first, second};
+auto compactValues = {
+    first, second,};
 auto commentedValues = {first,
     second, /* trailing */};
 auto capture = [first,

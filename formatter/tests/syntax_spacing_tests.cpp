@@ -135,8 +135,8 @@ TEST(SyntaxSpacing, GlobalScopeDoesNotOwnSpecifierBoundaries)
 
 TEST(SyntaxSpacing, TemplateClosersRelaxOnlyParsedLexicalSeparation)
 {
-    const std::string_view source =
-        "using Alias = Box<Box<Box<int> > >; " "void Compare(){auto value = left > > right;}";
+    const std::string_view source = "using Alias = Box<Box<Box<int> > >; "
+        "void Compare(){auto value = left > > right;}";
 
     for (const auto policy :
         {

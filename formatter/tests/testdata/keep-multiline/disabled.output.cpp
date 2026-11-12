@@ -13,8 +13,8 @@ void Process(A first, B second) {
     if (ready) { ping(); }
     if (ready) { ping(); }
     while (ready) ping();
-    state->store->entries[Key(PartitionIdentifier)]["name"] =
-        Convert(value);
+    state->store->entries[Key(PartitionIdentifier)]["name"] = Convert(
+        value);
     while (view->jobs.size() != view->partitions.size()
         && Clock::Now() < start + wait) { ping(); }
     auto text = "short" "pair";

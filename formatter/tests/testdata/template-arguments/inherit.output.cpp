@@ -31,18 +31,18 @@ template<class T> void UseArguments(T value) {
     auto result = object
         .template Convert<FirstLongTemplateArgument,
             SecondLongTemplateArgument>(value);
-    auto cast = static_cast<types::Pair<
-        FirstLongTemplateArgument,
-        SecondLongTemplateArgument>>(value);
-    auto qualified =
-        static_cast<const UnknownType*>(pointer);
+    auto cast = static_cast<
+        types::Pair<FirstLongTemplateArgument,
+            SecondLongTemplateArgument>>(value);
+    auto qualified = static_cast<
+        const UnknownType*>(pointer);
     if constexpr (traits::same<T, types::Box<
         FirstLongTemplateArgument>> && MoreChecks()) {
         Use(value);
     }
     auto comparison = left < right > ::Result();
-    auto qualifiedComparison =
-        Box<T>::value < right > ::Result();
+    auto qualifiedComparison = Box<
+        T>::value < right > ::Result();
     auto shift = value >> 2;
     VERBATIM(types::Pair< FirstLongTemplateArgument ,  SecondLongTemplateArgument >);
     // hit-fmt off

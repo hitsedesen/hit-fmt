@@ -20,22 +20,20 @@ Document sampleDocument() {
                     {.Number = 1,
                      .Blocks = {
                                 {.Id = 10, .Geometry = {36, 28, 480, 32},
-                                 .Payload =
-                                     Text{"A quieter reading room",
-                                          TextRole::Heading, 1}},
-                                {.Id = 11, .Geometry = {36, 76, 480,
-                                                        64}, .Payload = Text{
-                                    "Morning light reaches the shared desks "
-                                        "before the shelves."}},
+                                 .Payload = Text{"A quieter reading room",
+                                                 TextRole::Heading, 1}},
+                                {.Id = 11, .Geometry = {36, 76, 480, 64},
+                                 .Payload = Text{
+                                     "Morning light reaches the shared desks "
+                                         "before the shelves."}},
                                 {.Id = 12, .Geometry = {36, 160, 240, 180},
-                                 .Payload =
-                                     Image{"room.png", "Desks beside a window",
-                                           std::nullopt}},
+                                 .Payload = Image{"room.png",
+                                                  "Desks beside a window",
+                                                  std::nullopt}},
                                 {.Id = 13, .Geometry = {36, 360, 480, 90},
-                                 .Payload =
-                                     Table{{"Zone", "Seats"},
-                                           {{"Window", "8"},
-                                             {"Shelves", "12"}}}}}}}};
+                                 .Payload = Table{{"Zone", "Seats"},
+                                                  {{"Window", "8"},
+                                                   {"Shelves", "12"}}}}}}}};
 }
 } // namespace
 
@@ -46,8 +44,8 @@ Session::Session(Desktop &ActiveDesktop, Document SourceDocument,
 
 void Session::refresh() {
   if (!Dirty)return;
-  PreviewResult =
-      Converter{Settings}.convert(SourceDocument, ExportMode::Selection);
+  PreviewResult = Converter{Settings}
+      .convert(SourceDocument, ExportMode::Selection);
   ActiveDesktop.preview().setMarkdown(PreviewResult.Markdown)
       .setSourceMap(PreviewResult.SourceOffsets).preserveScroll();
   ActiveDesktop.status()
@@ -126,8 +124,8 @@ void Session::run() {
 
 Task<void> openPdf(Desktop &ActiveDesktop) {
   try {
-    auto Path =
-        co_await ActiveDesktop.dialogs().openFile("Open PDF", {"*.pdf"});
+    auto Path = co_await ActiveDesktop.dialogs().openFile("Open PDF", {
+        "*.pdf"});
     if (!Path)co_return;
     auto Reader = ActiveDesktop.pdf().reader().readingOrder(
         ReadingOrder::Columns).recoverDamagedPages(true);

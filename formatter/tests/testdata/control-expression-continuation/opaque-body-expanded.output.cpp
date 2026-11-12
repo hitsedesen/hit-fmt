@@ -17,8 +17,9 @@ void Inspect()
     Dispatch(
         {.Name = "nested", .Values = {1, 2}},
         Wrap([] (Options* value) {
-            if (external::Handle  *  pointer =
-                Acquire(first_argument_for_the_shared_assignment, second_argument_for_the_shared_assignment))
+            if (external::Handle  *  pointer = Acquire(
+                first_argument_for_the_shared_assignment,
+                second_argument_for_the_shared_assignment))
             {
                 value->SetCurrent(pointer);
             }

@@ -35,8 +35,8 @@ bool MatchDelimiters(TokenPool& tokens, Arena& scratch, DelimiterBlockClassifier
 
                 // Classifiers select only the consecutive open/close pairs
                 // whose ordering is checked by IsDelimiter.
-                const auto delimiter =
-                    static_cast<u8>(kind) - static_cast<u8>(tokenizer::TokenKind::Operator_OpenBrace);
+                const auto delimiter = static_cast<u8>(kind) -
+                    static_cast<u8>(tokenizer::TokenKind::Operator_OpenBrace);
 
                 if ((delimiter & 1) == 0) {
                     openings.push_back({

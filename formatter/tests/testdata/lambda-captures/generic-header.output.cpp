@@ -1,8 +1,8 @@
 void SelectMember()
 {
-    const auto fillSelectedMember =
-        [&] <class T> (int selected, T Transformation::ValueStorage::* field) {
-        };
+    const auto fillSelectedMember = [&] <class T> (
+        int selected,
+        T Transformation::ValueStorage::* field) { };
     const auto fillValue = [=] <typename Value> (
         Value value,
         VeryLongParameterType additionalArgument) { };

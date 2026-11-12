@@ -200,16 +200,18 @@ void ValidatePolicyStyle(const Style& style)
     }
 
     if (style.MemberGroupMaxEmptyLines) {
-        const auto checkMemberCap =
-            [&] (BlankLineSetting setting, std::string_view key, std::string_view inheritedKey = {}) {
-                if ((setting.Mode == BlankLineMode::Exact || setting.Mode == BlankLineMode::Minimum) &&
-                    setting.EmptyLines > *style.MemberGroupMaxEmptyLines)
-                {
-                    throw PolicyStyleError(
-                        std::string(key) + " exceeds MemberGroupMaxEmptyLines",
-                        {key, "MemberGroupMaxEmptyLines", inheritedKey});
-                }
-            };
+        const auto checkMemberCap = [&] (
+            BlankLineSetting setting,
+            std::string_view key,
+            std::string_view inheritedKey = {}) {
+            if ((setting.Mode == BlankLineMode::Exact || setting.Mode == BlankLineMode::Minimum) &&
+                setting.EmptyLines > *style.MemberGroupMaxEmptyLines)
+            {
+                throw PolicyStyleError(
+                    std::string(key) + " exceeds MemberGroupMaxEmptyLines",
+                    {key, "MemberGroupMaxEmptyLines", inheritedKey});
+            }
+        };
         checkMemberCap(
             ResolveMemberDeclarationBlankLines(style),
             "MemberDeclarationBlankLines",

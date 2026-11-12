@@ -112,8 +112,8 @@ TEST(FileDispatch, FileFailuresDoNotHideLaterResults)
 
             if (failed) {
                 try {
-                    const auto message =
-                        name + ": file processing failed before arena release" + (name == "0" ? spill : "");
+                    const auto message = name + ": file processing failed before arena release" +
+                        (name == "0" ? spill : "");
                     throw std::runtime_error(message);
                 } catch (const std::exception&) {
                     result.Error = cli::ExceptionError();

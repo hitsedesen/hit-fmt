@@ -1508,8 +1508,10 @@ void ApplyComments(
             next.Output = {it->After.Begin + begin - it->Before.Begin, it->After.Begin + end - it->Before.Begin};
 
             if (map.Exact && map.HasOriginal) {
-                next.Original =
-                    {map.Original.Begin + begin - map.Output.Begin, map.Original.Begin + end - map.Output.Begin};
+                next.Original = {
+                    map.Original.Begin + begin - map.Output.Begin,
+                    map.Original.Begin + end - map.Output.Begin,
+                };
             }
 
             // A comment edit may retain token-owned CR while consuming
@@ -1946,8 +1948,11 @@ FormatResult FormatAnalyzedTree(
                 if (tokenView) {
                     // Analysis refusal may consume its arrays. The original AST is
                     // still intact, so retain the established parser/fresh fallback.
-                    normalizedTree =
-                        parser::detail::TryConsumeNormalizedSyntax(original, normalizedSource, pieces, grammarMapping);
+                    normalizedTree = parser::detail::TryConsumeNormalizedSyntax(
+                        original,
+                        normalizedSource,
+                        pieces,
+                        grammarMapping);
 
                     if (!normalizedTree) {
                         normalizedTree.emplace(parser::Parse(
@@ -2066,8 +2071,8 @@ FormatResult FormatAnalyzedTree(
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
     const bool changeMetadata = request.Changes || request.ChangeSummary;
     const bool sourceMap = request.SourceMap || (changeMetadata && prepared.Structural.SortIncludes);
-    const bool needMaps =
-        sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations || needNamespaceAnchors;
+    const bool needMaps = sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations ||
+        needNamespaceAnchors;
     std::optional<SparseNamespaceAnchors> sparseNamespaces;
 
     if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&

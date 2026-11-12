@@ -141,8 +141,13 @@ TEST(FileCheck, DebugExplainsProtectionAndParserRecoveryWithoutChangingResults)
     EXPECT_NE(ordinary.Formatting.Text.find("if (ready) {"), std::string::npos);
 
     for (auto detail : {cli::DiagnosticDetail::Full, cli::DiagnosticDetail::Summary}) {
-        auto checkedResult =
-            cli::FormatAndCheckFile(input.View(), configuration, "sample.cpp", std::nullopt, detail, arguments.Debug);
+        auto checkedResult = cli::FormatAndCheckFile(
+            input.View(),
+            configuration,
+            "sample.cpp",
+            std::nullopt,
+            detail,
+            arguments.Debug);
         ASSERT_FALSE(checkedResult.Error) << checkedResult.Error;
         const auto& checked = checkedResult.Value;
         EXPECT_EQ(checked.Formatting.Text, ordinary.Formatting.Text);
@@ -187,8 +192,13 @@ TEST(FileCheck, DebugExplainsHunkScopeAndUsesOriginalCoordinates)
     auto ordinaryResult = cli::FormatAndCheckFile(input.View(), configuration, {}, scope);
     ASSERT_FALSE(ordinaryResult.Error) << ordinaryResult.Error;
     const auto& ordinary = ordinaryResult.Value;
-    auto checkedResult =
-        cli::FormatAndCheckFile(input.View(), configuration, {}, scope, cli::DiagnosticDetail::Full, true);
+    auto checkedResult = cli::FormatAndCheckFile(
+        input.View(),
+        configuration,
+        {},
+        scope,
+        cli::DiagnosticDetail::Full,
+        true);
     ASSERT_FALSE(checkedResult.Error) << checkedResult.Error;
     const auto& checked = checkedResult.Value;
     EXPECT_EQ(checked.Formatting.Text, ordinary.Formatting.Text);
@@ -200,8 +210,13 @@ TEST(FileCheck, DebugExplainsHunkScopeAndUsesOriginalCoordinates)
     fixture.Expect(output.str(), ".debug.txt");
 
     const Input clean("int value;\n");
-    auto unrestrictedResult =
-        cli::FormatAndCheckFile(clean.View(), configuration, {}, std::nullopt, cli::DiagnosticDetail::Summary, true);
+    auto unrestrictedResult = cli::FormatAndCheckFile(
+        clean.View(),
+        configuration,
+        {},
+        std::nullopt,
+        cli::DiagnosticDetail::Summary,
+        true);
     ASSERT_FALSE(unrestrictedResult.Error) << unrestrictedResult.Error;
     const auto& unrestricted = unrestrictedResult.Value;
     EXPECT_FALSE(unrestricted.HasFailures(false));
@@ -423,8 +438,9 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             style.IncludeMatchingHeader = formatter::IncludeMatchingHeader::First;
             style.IncludeGrouping = formatter::IncludeGrouping::Directory;
             style.IncludeStandardHeaders = formatter::IncludeStandardHeaders::Last;
-            style.IndentPreprocessingDirectives =
-                indent ? formatter::BodyIndentation::Indent : formatter::BodyIndentation::Preserve;
+            style.IndentPreprocessingDirectives = indent
+                ? formatter::BodyIndentation::Indent
+                : formatter::BodyIndentation::Preserve;
 
             if (mixed) {
                 style.SpaceInsideFunctionParameters = formatter::GapPolicy::NoSpace;
@@ -457,8 +473,10 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             EXPECT_FALSE(checked.HasFailures(true));
 
             for (const auto& change : checked.Formatting.Summary->IncludeOrderChanges) {
-                auto before =
-                    input.View().View().substr(change.Original.Begin, change.Original.End - change.Original.Begin);
+                auto before = input
+                    .View()
+                    .View()
+                    .substr(change.Original.Begin, change.Original.End - change.Original.Begin);
                 auto after = std::string_view(
                     checked.Formatting.Text).substr(change.Output.Begin, change.Output.End - change.Output.Begin);
                 EXPECT_TRUE(before.ends_with('\n'));
@@ -683,14 +701,18 @@ TEST(FileCheck, TokenEndpointAndUnicodePositionsMapWithoutReparsingOutput)
     auto preparedResult = cli::PrepareConfiguration(raw);
     ASSERT_FALSE(preparedResult.Error) << preparedResult.Error;
     const auto& prepared = preparedResult.Value;
-    const std::string source =
-        "const char* text=\"é\"; void bad_name(int  , " "void (*)(int)){}\nvoid GoodProto(int);\n";
+    const std::string source = "const char* text=\"é\"; void bad_name(int  , "
+        "void (*)(int)){}\nvoid GoodProto(int);\n";
     const Input input(source);
     auto checkedResult = cli::FormatAndCheckFile(input.View(), prepared);
     ASSERT_FALSE(checkedResult.Error) << checkedResult.Error;
     const auto& checked = checkedResult.Value;
-    auto summaryResult =
-        cli::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, cli::DiagnosticDetail::Summary);
+    auto summaryResult = cli::FormatAndCheckFile(
+        input.View(),
+        prepared,
+        {},
+        std::nullopt,
+        cli::DiagnosticDetail::Summary);
     ASSERT_FALSE(summaryResult.Error) << summaryResult.Error;
     const auto& summary = summaryResult.Value;
     EXPECT_EQ(summary.Semantic.size(), checked.Semantic.size());
@@ -781,8 +803,12 @@ TEST(FileCheck, UnicodeWidthDiagnosticGoldenMapsCodePointsAndTabs)
             checked.Formatting.Diagnostics[i].Original->Column);
     }
 
-    auto summaryResult =
-        cli::FormatAndCheckFile(input.View(), prepared, {}, std::nullopt, cli::DiagnosticDetail::Summary);
+    auto summaryResult = cli::FormatAndCheckFile(
+        input.View(),
+        prepared,
+        {},
+        std::nullopt,
+        cli::DiagnosticDetail::Summary);
     ASSERT_FALSE(summaryResult.Error) << summaryResult.Error;
     const auto& summary = summaryResult.Value;
     ASSERT_EQ(summary.Formatting.Diagnostics.size(), checked.Formatting.Diagnostics.size());
@@ -1070,8 +1096,11 @@ TEST(FileCheck, HunkDiagnosticGoldenUsesOriginalSelectionAndMappedOutput)
     const formatter::Hunk selected[] = {{13, 13}, {11, 11}, {9, 9}, {4, 5}, {1, 1}, {5, 5}};
 
     for (bool spillover : {false, true}) {
-        auto checkedResult =
-            cli::FormatAndCheckFile(input.View(), prepared, "sample.cpp", cli::ChangedFileScope{selected, spillover});
+        auto checkedResult = cli::FormatAndCheckFile(
+            input.View(),
+            prepared,
+            "sample.cpp",
+            cli::ChangedFileScope{selected, spillover});
         ASSERT_FALSE(checkedResult.Error) << checkedResult.Error;
         const auto& checked = checkedResult.Value;
         auto summaryResult = cli::FormatAndCheckFile(
@@ -1297,8 +1326,13 @@ TEST(FileCheck, SharedConditionalBodiesAreCheckedWhenCompatible)
     EXPECT_FALSE(recovered.HasFailures(false));
     EXPECT_FALSE(recovered.HasFailures(true));
     EXPECT_TRUE(recovered.RequiredChanges.empty());
-    auto debuggedResult =
-        cli::FormatAndCheckFile(wrapped.View(), configuration, {}, std::nullopt, cli::DiagnosticDetail::Full, true);
+    auto debuggedResult = cli::FormatAndCheckFile(
+        wrapped.View(),
+        configuration,
+        {},
+        std::nullopt,
+        cli::DiagnosticDetail::Full,
+        true);
     ASSERT_FALSE(debuggedResult.Error) << debuggedResult.Error;
     const auto& debugged = debuggedResult.Value;
     EXPECT_EQ(debugged.Formatting.Text, recovered.Formatting.Text);
@@ -1314,8 +1348,11 @@ TEST(FileCheck, SharedConditionalBodiesAreCheckedWhenCompatible)
     EXPECT_TRUE(cli::FormatAndCheckFile(complete.View(), configuration).Value.RequiredChanges.empty());
     const formatter::Hunk outside[] = {{1, 1}};
     const Input shared("#if FIRST\nvoid First() {\n#else\nvoid Second() {\n#endif\n    Work();\n}\n");
-    auto scopedResult =
-        cli::FormatAndCheckFile(shared.View(), configuration, {}, cli::ChangedFileScope{outside, false});
+    auto scopedResult = cli::FormatAndCheckFile(
+        shared.View(),
+        configuration,
+        {},
+        cli::ChangedFileScope{outside, false});
     ASSERT_FALSE(scopedResult.Error) << scopedResult.Error;
     const auto& scoped = scopedResult.Value;
     EXPECT_TRUE(scoped.RequiredChanges.empty());

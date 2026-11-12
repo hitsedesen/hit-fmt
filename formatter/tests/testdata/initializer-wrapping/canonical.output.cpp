@@ -10,9 +10,9 @@ void Example() {
 void Nearby() {
     Box<Item> flat{"alpha", "bravo",
         "charlie", "delta", "echo"};
-    Box<Item> assigned =
-        {"alpha", "bravo", "charlie",
-            "delta", "echo"};
+    Box<Item> assigned = {"alpha",
+        "bravo", "charlie", "delta",
+        "echo"};
     Box<Item> nested{
         {"alpha", "bravo", "charlie",
             "delta"},

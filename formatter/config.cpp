@@ -549,10 +549,9 @@ void AssignStyle(Configuration& config, std::string_view value, const fs::Path& 
             decltype(config.FormattingStyle.*Member)>,
             std::optional<TrailingCommentSpaceSetting>>)
     {
-        config.FormattingStyle.*Member =
-            TrailingCommentSpaceSetting{
-                value == "Preserve" ? std::nullopt : std::optional<us>{ParseNonnegativeInteger(value, path, line)},
-            };
+        config.FormattingStyle.*Member = TrailingCommentSpaceSetting{
+            value == "Preserve" ? std::nullopt : std::optional<us>{ParseNonnegativeInteger(value, path, line)},
+        };
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, BlankLineSetting>)
     {
@@ -568,18 +567,18 @@ void AssignStyle(Configuration& config, std::string_view value, const fs::Path& 
             }
         } else {
             const bool minimum = value.starts_with("Minimum:");
-            config.FormattingStyle.*Member =
-                {
-                    minimum ? BlankLineMode::Minimum : BlankLineMode::Exact,
-                    ParseNonnegativeInteger(minimum ? Trim(value.substr(8)) : value, path, line),
-                };
+            config.FormattingStyle.*Member = {
+                minimum ? BlankLineMode::Minimum : BlankLineMode::Exact,
+                ParseNonnegativeInteger(minimum ? Trim(value.substr(8)) : value, path, line),
+            };
         }
     } else if constexpr (std::is_same_v<std::remove_cvref_t<
             decltype(config.FormattingStyle.*Member)>, std::optional<us>>)
     {
         if constexpr (Member == &Style::MaxEmptyLines || Member == &Style::MemberGroupMaxEmptyLines) {
-            config.FormattingStyle.*Member =
-                value == "Preserve" ? std::nullopt : std::optional<us>{ParseNonnegativeInteger(value, path, line)};
+            config.FormattingStyle.*Member = value == "Preserve"
+                ? std::nullopt
+                : std::optional<us>{ParseNonnegativeInteger(value, path, line)};
         } else {
             ParseField(config.FormattingStyle.*Member, value, path, line);
         }

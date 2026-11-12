@@ -1,11 +1,14 @@
 auto c = MakeServiceClient()
          .Configure(mode)
          .Start();
-auto expanded =
-    MakeClient()
-        .Configure(firstMode)
-        .Select(secondMode)
-        .Start();
+auto expanded = MakeClient()
+                .Configure(
+                    firstMode
+                )
+                .Select(
+                    secondMode
+                )
+                .Start();
 auto fields =
     MakeServiceClient()
         ->first.second->third;
@@ -84,8 +87,10 @@ auto values = {
                third,
                fourth,
 };
-auto compactValues =
-    {first, second};
+auto compactValues = {
+                      first,
+                      second,
+};
 auto commentedValues = {
                         first,
     second, /* trailing */};

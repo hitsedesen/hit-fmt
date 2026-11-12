@@ -564,8 +564,8 @@ void Includes(
     const auto inputDirectory = Directory(context.InputFilePath);
     const bool inputAbsolute = inputDirectory.starts_with('/');
     const bool nearestHeaders = options.InGroupOrder == IncludeInGroupOrder::NearestFirst;
-    const bool groupFirst =
-        options.SortPriority == IncludeSortPriority::GroupFirst && options.Grouping != IncludeGrouping::Preserve;
+    const bool groupFirst = options.SortPriority == IncludeSortPriority::GroupFirst &&
+        options.Grouping != IncludeGrouping::Preserve;
     const bool needPaths = options.Grouping != IncludeGrouping::Preserve ||
         options.MatchingHeader == IncludeMatchingHeader::First || nearestHeaders;
     auto distance = [&] (std::span<const std::string_view> path, bool absolute) {
@@ -646,8 +646,8 @@ void Includes(
                 const bool local = (!atom.Angled && atom.Path.find('/') == std::string_view::npos) ||
                     ((!atom.Angled || options.Delimiters != IncludeDelimiters::Preserve) &&
                         (atom.Path.starts_with("./") || atom.Path.starts_with("../")));
-                const bool relative =
-                    !atom.Path.starts_with('/') && (local || options.PathBase == IncludePathBase::SourceDirectory);
+                const bool relative = !atom.Path.starts_with('/') &&
+                    (local || options.PathBase == IncludePathBase::SourceDirectory);
                 const bool absolute = relative ? inputAbsolute : atom.Path.starts_with('/');
 
                 if (relative) {
@@ -846,8 +846,9 @@ void Includes(
 
             // Sorted blocks with canonical separators are no-ops, preserving
             // operation identities and avoiding reparsing on repeat runs.
-            auto original =
-                tree.Source().substr(descriptor.Source.Begin, descriptor.Source.End - descriptor.Source.Begin);
+            auto original = tree
+                .Source()
+                .substr(descriptor.Source.Begin, descriptor.Source.End - descriptor.Source.Begin);
             bool unchanged = true;
 
             for (const auto& piece : pieces) {
@@ -1039,8 +1040,8 @@ StructuralPlan PlanStructuralEditsImpl(
             barriers.resize(us(tree.TokenCount()) + 1);
 
             for (TI i = 0; i < tree.TokenCount(); ++i) {
-                barriers[i + 1] =
-                    barriers[i] + (tree.Kind(i) == TK::Comment || tree.Kind(i) == TK::PreprocessingDirective);
+                barriers[i + 1] = barriers[i] +
+                    (tree.Kind(i) == TK::Comment || tree.Kind(i) == TK::PreprocessingDirective);
             }
         }
 
@@ -1111,8 +1112,8 @@ StructuralPlan PlanStructuralEditsImpl(
                 [&] (const auto& child) {
                     attributes |= Attribute(child.Kind);
                     labels |= child.Kind == NK::CaseLabel || child.Kind == NK::LabelStatement;
-                    directives |=
-                        child.Kind == NK::PreprocessingDirective || child.Kind == NK::PreprocessingConditional;
+                    directives |= child.Kind == NK::PreprocessingDirective ||
+                        child.Kind == NK::PreprocessingConditional;
                 });
 
             Children(
@@ -1255,10 +1256,10 @@ StructuralPlan PlanStructuralEditsImpl(
         for (RegionId id = 0; id < regions.size(); ++id) {
             const auto& node = regions[id];
             const bool control = controlEdits && Control(node.Kind);
-            const bool nullStatement =
-                options.RemoveNullStatements && node.Kind == NK::ExpressionStatement && node.Tokens.Size() == 1;
-            const bool nullDeclaration =
-                options.RemoveNullDeclarations && node.Kind == NK::EmptyDeclaration && node.Tokens.Size() == 1;
+            const bool nullStatement = options.RemoveNullStatements && node.Kind == NK::ExpressionStatement &&
+                node.Tokens.Size() == 1;
+            const bool nullDeclaration = options.RemoveNullDeclarations && node.Kind == NK::EmptyDeclaration &&
+                node.Tokens.Size() == 1;
             const bool functionSuffix = options.RemoveNullDeclarations && node.Kind == NK::FunctionDefinition &&
                 !node.Tokens.Empty() && tree.Kind(node.Tokens.End - 1) == TK::Operator_Semicolon;
 
@@ -1776,8 +1777,10 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
             // never permission to invent a namespace identity or
             // inspect its text.
             if (node.Kind == NK::Declaration || node.Kind == NK::UnparsedSyntax) {
-                const auto keyword =
-                    std::lower_bound(namespaceKeywords.begin(), namespaceKeywords.end(), node.Tokens.Begin);
+                const auto keyword = std::lower_bound(
+                    namespaceKeywords.begin(),
+                    namespaceKeywords.end(),
+                    node.Tokens.Begin);
 
                 if (keyword != namespaceKeywords.end() && *keyword < node.Tokens.End) {
                     plan.Skipped
@@ -1871,8 +1874,8 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
             return;
         }
 
-        const bool explanatory =
-            comment != original.TokenCount() && !NamespaceClosingComment(original, header, comment);
+        const bool explanatory = comment != original.TokenCount() &&
+            !NamespaceClosingComment(original, header, comment);
         plan.Namespaces.push_back({node.Tokens, header, open, close, comment, explanatory, continuation});
     };
 

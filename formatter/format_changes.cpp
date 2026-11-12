@@ -442,8 +442,9 @@ void detail::BuildChangeMetadata(
     auto* changes = detailed ? &result.Changes.emplace() : nullptr;
 
     if (changes) {
-        changes->OriginalLines =
-            originalLines.empty() ? SourceLines(source) : SourceLines(originalLines, originalBareCR);
+        changes->OriginalLines = originalLines.empty()
+            ? SourceLines(source)
+            : SourceLines(originalLines, originalBareCR);
         changes->OutputLines = unchanged ? changes->OriginalLines : SourceLines(output);
     }
 

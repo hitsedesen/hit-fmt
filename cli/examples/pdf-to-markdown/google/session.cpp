@@ -18,22 +18,20 @@ Document SampleDocument() {
                     {.number = 1,
                      .blocks = {
                                 {.id = 10, .bounds = {36, 28, 480, 32},
-                                 .content =
-                                     Text{"A quieter reading room",
-                                          TextRole::kHeading, 1}},
-                                {.id = 11, .bounds = {36, 76, 480,
-                                                      64}, .content = Text{
-                                    "Morning light reaches the shared desks "
-                                        "before the shelves."}},
+                                 .content = Text{"A quieter reading room",
+                                                 TextRole::kHeading, 1}},
+                                {.id = 11, .bounds = {36, 76, 480, 64},
+                                 .content = Text{
+                                     "Morning light reaches the shared desks "
+                                         "before the shelves."}},
                                 {.id = 12, .bounds = {36, 160, 240, 180},
-                                 .content =
-                                     Image{"room.png", "Desks beside a window",
-                                           std::nullopt}},
+                                 .content = Image{"room.png",
+                                                  "Desks beside a window",
+                                                  std::nullopt}},
                                 {.id = 13, .bounds = {36, 360, 480, 90},
-                                 .content =
-                                     Table{{"Zone", "Seats"},
-                                           {{"Window", "8"},
-                                             {"Shelves", "12"}}}}}}}};
+                                 .content = Table{{"Zone", "Seats"},
+                                                  {{"Window", "8"},
+                                                   {"Shelves", "12"}}}}}}}};
 }
 } // namespace
 

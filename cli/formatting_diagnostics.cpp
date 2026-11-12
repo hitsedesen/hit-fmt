@@ -388,8 +388,8 @@ Error PrintFormattingDiagnostics(
                 text.remove_suffix(1);
             }
 
-            auto prefix =
-                std::string(width - std::to_string(lineNumber).size(), ' ') + std::to_string(lineNumber) + " | ";
+            auto prefix = std::string(width - std::to_string(lineNumber).size(), ' ') + std::to_string(lineNumber) +
+                " | ";
             Arena scratch;
             auto rendered = RenderLine(text, prefix.size(), &scratch);
             auto printLine = [&] (us column) {

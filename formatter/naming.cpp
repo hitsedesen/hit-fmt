@@ -311,8 +311,9 @@ public:
                 auto& parent = stack.back();
 
                 if (node.Kind == NK::PreprocessingBranch && parent.Node->Kind == NK::PreprocessingConditional) {
-                    parent.BranchAccess =
-                        !parent.BranchAccess || *parent.BranchAccess == access ? access : TK::Identifier;
+                    parent.BranchAccess = !parent.BranchAccess || *parent.BranchAccess == access
+                        ? access
+                        : TK::Identifier;
                     auto directive = Tree.TokenText(node.Tokens.Begin);
                     directive.remove_prefix(directive.starts_with("%:") ? 2 : 1);
                     const auto word = directive.find_first_not_of(" \t");

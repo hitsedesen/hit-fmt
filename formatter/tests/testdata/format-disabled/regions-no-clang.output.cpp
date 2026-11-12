@@ -13,8 +13,8 @@ void f() {
   /* clang-format on */
   int after= 9 + 10;
   const char* text = "// hit-fmt off";
-  int more=
-    11 + 12;  // clang-format off
+  int more= 11 +
+    12;  // clang-format off
   // This active sentence deliberately exceeds the forty-column limit.
   // hit-fmt off
   // clang-format on

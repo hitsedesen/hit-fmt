@@ -13,8 +13,8 @@ void Process()
          ready || CanProceedAfterDelay(); ready = ReadNext()) {
         Use(ready);
     }
-    for (auto x =
-         Make([] { return 1; }); x < ALongMaximumCount(); ++x) {
+    for (auto x = Make([] { return
+            1; }); x < ALongMaximumCount(); ++x) {
         Use(x);
     }
     for (auto item : ItemsWithAnExtremelyLongExpression()) {

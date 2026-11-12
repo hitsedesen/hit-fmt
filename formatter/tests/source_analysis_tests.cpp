@@ -556,8 +556,10 @@ TEST(SourceAnalysis, HeaderNameInternalGapsAreContextSensitive)
     auto scoped = Analyze(tree, memory, {.EditScope = entire});
     EXPECT_TRUE(scoped.CanReplaceGap(opener, "  "));
     EXPECT_FALSE(scoped.CanReplaceGap(Before(tree, "pkg"), " "));
-    auto scopedMixed =
-        Analyze(tree, memory, {.ImmutableRanges = ranges, .InheritedProtection = inherited, .EditScope = entire});
+    auto scopedMixed = Analyze(
+        tree,
+        memory,
+        {.ImmutableRanges = ranges, .InheritedProtection = inherited, .EditScope = entire});
     EXPECT_FALSE(scopedMixed.CanReplaceGap(opener, "  "));
     auto invalid = inherited;
     invalid[0].Source.End = u32(tree.Source().size() + 1);
@@ -1582,8 +1584,8 @@ TEST(SourceAnalysis, NewlineSpellingOwnsFullExistingBytesNotEndInsertions)
         }
     }
 
-    const std::string recoverySource =
-        "template<class T> requires requires(T v) { v.touch(); } @\r\n" "int inspect(T value) { return 1; }\r\n";
+    const std::string recoverySource = "template<class T> requires requires(T v) { v.touch(); } @\r\n"
+        "int inspect(T value) { return 1; }\r\n";
     Input recovery(recoverySource);
     auto recoveryTree = Parse(recovery);
     auto recovered = Analyze(recoveryTree, memory);

@@ -15,8 +15,8 @@ void choose() {
         ? outer(inner(argument))
         : other;
 
-    auto ordinary =
-        outer(inner(argument));
+    auto ordinary = outer(
+        inner(argument));
 
     auto compact = condition
         ? left + right

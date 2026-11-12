@@ -74,8 +74,8 @@ Result Converter::Convert(const Document& document, ExportMode mode) const {
     // Empty pages must not introduce separators into a selected excerpt.
     if (options_.include_page_breaks && result.markdown.size() !=
         page_start)
-      result.markdown +=
-          "<!-- page " + std::to_string(page.number) + " -->\n\n";
+      result.markdown += "<!-- page " + std::to_string(page.number) +
+          " -->\n\n";
   }
   return result;
 }

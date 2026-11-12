@@ -623,8 +623,8 @@ std::vector<FormatCase> FormatCases()
             true,
             {},
         });
-        cases.back().Style =
-            formatter::LoadConfigFile(cases.back().Directory / (cases.back().Config + ".hit-fmt")).FormattingStyle;
+        cases.back().Style = formatter::LoadConfigFile(
+            cases.back().Directory / (cases.back().Config + ".hit-fmt")).FormattingStyle;
         cases.back().Style->LambdaBodiesLayout = CategoryLayout::Preserve;
 
         if (std::string_view(name) == "opaque-body-expanded") {
@@ -1153,8 +1153,9 @@ std::vector<FormatCase> FormatCases()
 
         for (const auto name : {"priorities-foo", "priorities-bar"}) {
             FormatCase value{directory, name, "priorities.input.cpp", "priorities"};
-            value.InputFilePath =
-                std::string_view(name) == "priorities-foo" ? "foo/bar/library/converter.cpp" : "bar/libs/example.h";
+            value.InputFilePath = std::string_view(name) == "priorities-foo"
+                ? "foo/bar/library/converter.cpp"
+                : "bar/libs/example.h";
             cases.push_back(std::move(value));
         }
 
@@ -1265,8 +1266,9 @@ std::vector<FormatCase> FormatCases()
             value.InputFilePath = "project/engine/widget.cpp";
 
             if (std::string_view(profile) != "ytsaurus") {
-                value.Expected =
-                    std::string_view(profile) == "google" ? "matching.output.cpp" : "directory-depth-one.output.cpp";
+                value.Expected = std::string_view(profile) == "google"
+                    ? "matching.output.cpp"
+                    : "directory-depth-one.output.cpp";
             }
 
             cases.push_back(std::move(value));
@@ -1406,8 +1408,8 @@ std::vector<FormatCase> FormatCases()
         auto preserved = cases.back();
         preserved.Name = "template-statements-preserve";
         preserved.Expected = preserved.Input;
-        preserved.Style =
-            formatter::LoadConfigFile(preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
+        preserved.Style = formatter::LoadConfigFile(
+            preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
         preserved.Style->BodiesLayout = CategoryLayout::Preserve;
         cases.push_back(std::move(preserved));
     }
@@ -2664,6 +2666,12 @@ std::vector<FormatCase> FormatCases()
     }
 
     AddCases(cases, data / "assignment-location", {"leading", "trailing"});
+    AddCases(cases, data / "assignment-location", {"inline-expression"}, "inline-expression.input.cpp");
+    AddCases(
+        cases,
+        data / "assignment-location",
+        {"inline-rhs", "inline-rhs-leading", "inline-rhs-next-line", "inline-rhs-preserve"},
+        "inline-rhs.input.cpp");
     AddCases(
         cases,
         data / "assignment-location",
@@ -3280,8 +3288,8 @@ std::vector<FormatCase> FormatCases()
         auto preserved = cases.back();
         preserved.Name = "lambdas-preserve";
         preserved.Expected = "lambdas.output.cpp";
-        preserved.Style =
-            formatter::LoadConfigFile(preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
+        preserved.Style = formatter::LoadConfigFile(
+            preserved.Directory / (preserved.Config + ".hit-fmt")).FormattingStyle;
         preserved.Style->TemplateArgumentsLayout = CategoryLayout::Preserve;
         cases.push_back(std::move(preserved));
     }
@@ -3313,8 +3321,8 @@ std::vector<FormatCase> FormatCases()
         true,
         {},
     });
-    auto forcedTemplates =
-        formatter::LoadConfigFile(data / "template-arguments/break-priority.hit-fmt").FormattingStyle;
+    auto forcedTemplates = formatter::LoadConfigFile(
+        data / "template-arguments/break-priority.hit-fmt").FormattingStyle;
     forcedTemplates.TemplateArgumentsBreak = formatter::BreakRequirement::Always;
     forcedTemplates.TemplateParametersBreak = formatter::BreakRequirement::Always;
     cases.back().Style = std::move(forcedTemplates);
@@ -4651,8 +4659,8 @@ std::vector<FormatCase> FormatCases()
     {
         const auto directory = data / "consolidated-layout";
         {
-            const auto base =
-                formatter::LoadConfigFile(directory / "record-head-space-canonical.hit-fmt").FormattingStyle;
+            const auto base = formatter::LoadConfigFile(
+                directory / "record-head-space-canonical.hit-fmt").FormattingStyle;
             struct Policy
             {
                 const char* Profile;
@@ -4886,8 +4894,8 @@ INSTANTIATE_TEST_SUITE_P(
         }
 
         const auto root = (std::filesystem::path(FORMATTER_TESTDATA_DIR) / "..").lexically_normal();
-        auto name =
-            (info.param.Directory.lexically_normal().lexically_relative(root) / info.param.Name).generic_string();
+        auto name = (info.param.Directory.lexically_normal().lexically_relative(root) / info.param.Name)
+            .generic_string();
         std::ranges::replace(name, '/', '_');
         std::ranges::replace(name, '-', '_');
         return name;
@@ -5238,14 +5246,14 @@ TEST(Formatter, OperatorSpacing_PreservesUnknownCastOrBinaryOperator)
     // Certain expressions remain editable. Test their horizontal policies
     // without requiring canonical Always to retain their original topology.
     style.ExpressionsLayout = formatter::CategoryLayout::Preserve;
-    const std::string certain =
-        "void f(int a, int b) {\n" "    auto certain = (a + b) & b;\n" "    auto knownCast = (int)&a;\n" "}\n";
+    const std::string certain = "void f(int a, int b) {\n" "    auto certain = (a + b) & b;\n"
+        "    auto knownCast = (int)&a;\n" "}\n";
     ExpectUnchanged(certain, style);
-    const auto compact =
-        std::string(certain).replace(certain.find("(a + b) & b"), std::string("(a + b) & b").size(), "(a + b)&b");
+    const auto compact = std::string(
+        certain).replace(certain.find("(a + b) & b"), std::string("(a + b) & b").size(), "(a + b)&b");
     EXPECT_EQ(FormatWithStyle(compact, style), certain);
-    const auto separatedCast =
-        std::string(certain).replace(certain.find("(int)&a"), std::string("(int)&a").size(), "(int) & a");
+    const auto separatedCast = std::string(
+        certain).replace(certain.find("(int)&a"), std::string("(int)&a").size(), "(int) & a");
     EXPECT_EQ(FormatWithStyle(separatedCast, style), certain);
 }
 
@@ -5268,8 +5276,8 @@ TEST_P(NamingTest, Golden)
     const auto dir = std::filesystem::path(NAMING_TESTDATA_DIR);
     const auto name = GetParam();
     const bool exemptions = name.starts_with("exemptions");
-    const bool extended =
-        name == "roles" || name == "fallback" || name == "affixes" || name == "acronyms" || exemptions;
+    const bool extended = name == "roles" || name == "fallback" || name == "affixes" || name == "acronyms" ||
+        exemptions;
     const auto input = ReadFile(dir /
         (exemptions ? "exemptions.cpp" : name == "rules" ? "input.cpp" : extended ? name + ".cpp" : "alternate.cpp"));
     const auto config = formatter::LoadConfigFile(dir / (name + ".hit-fmt"));

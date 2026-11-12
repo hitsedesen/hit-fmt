@@ -2893,9 +2893,9 @@ private:
                 // Nested template lists may share one indivisible >> token.
                 // Include it in the last element so its nested list can own
                 // the complete token; the outer list shares that closer.
-                const auto elementEnd =
-                    (elementKind == NodeKind::TemplateArgument || elementKind == NodeKind::TemplateParameter) &&
-                        i == end && Kind(i) == TK::Operator_RightShift && angleDepth > 0
+                const auto elementEnd = (elementKind == NodeKind::TemplateArgument ||
+                    elementKind == NodeKind::TemplateParameter) && i == end && Kind(i) == TK::Operator_RightShift &&
+                    angleDepth > 0
                     ? i + 1
                     : i;
                 element->Tokens.End = elementEnd;
@@ -3502,8 +3502,8 @@ private:
             }
 
             const auto kind = Kind(next);
-            const bool terminal =
-                kind == TK::Operator_OpenBrace || kind == TK::Operator_Colon || kind == TK::Operator_Semicolon;
+            const bool terminal = kind == TK::Operator_OpenBrace || kind == TK::Operator_Colon ||
+                kind == TK::Operator_Semicolon;
 
             if (macroName && opaquePrefix) {
                 // `struct Type function(args)` can instead be an ordinary
@@ -4724,8 +4724,14 @@ private:
                     auto branchState = incoming;
                     PushScope();
                     ++BranchParseDepth_;
-                    const bool parsed =
-                        AddListFragments(*branch, cursor + 1, branchEnd, kind, branchState, work, depth + 1);
+                    const bool parsed = AddListFragments(
+                        *branch,
+                        cursor + 1,
+                        branchEnd,
+                        kind,
+                        branchState,
+                        work,
+                        depth + 1);
                     --BranchParseDepth_;
                     PopScope();
 
@@ -4875,9 +4881,9 @@ private:
     {
         us work = 4096;
         auto state = constructor ? ListFragmentState::Constructor : ListFragmentState::Empty;
-        const auto valid =
-            AddListFragments(parent, begin, end, kind, state, work) && state != ListFragmentState::Item &&
-                (kind != ListFragmentKind::Initializers || state != ListFragmentState::Empty);
+        const auto valid = AddListFragments(parent, begin, end, kind, state, work) &&
+            state != ListFragmentState::Item &&
+            (kind != ListFragmentKind::Initializers || state != ListFragmentState::Empty);
 
         if (!valid) {
             parent.FirstChild = parent.LastChild = nullptr;
@@ -4913,8 +4919,11 @@ private:
             auto kind = Kind(i);
 
             if (!atEnd && delimiterDepth == 0 && kind == TK::Keyword_template) {
-                const auto nameEnd =
-                    ArgumentExplicitMemberNameEnd(i, segmentBegin, parameters.End - 1, explicitMemberWork);
+                const auto nameEnd = ArgumentExplicitMemberNameEnd(
+                    i,
+                    segmentBegin,
+                    parameters.End - 1,
+                    explicitMemberWork);
 
                 if (nameEnd) {
                     const auto suffix = ArgumentSignificant(*nameEnd, parameters.End - 1);
@@ -5208,8 +5217,8 @@ private:
                 before <= expression->Tokens.Begin && expression->Tokens.Begin <= expression->Tokens.End &&
                 expression->Tokens.End <= argumentEnd && expression->Tokens.End <= argumentCursor;
             const auto recoveryBegin = validExpression ? std::min(expression->Tokens.End, argumentCursor) : before;
-            const bool trailingCommentsOnly =
-                validExpression && ArgumentSignificant(recoveryBegin, argumentEnd) == argumentEnd;
+            const bool trailingCommentsOnly = validExpression &&
+                ArgumentSignificant(recoveryBegin, argumentEnd) == argumentEnd;
             auto* argument = MakeNode(NodeKind::Argument, before);
             argument->Tokens.End = trailingCommentsOnly ? expression->Tokens.End : argumentEnd;
 
@@ -5493,8 +5502,8 @@ private:
                         ? FindBalancedEnd(opening)
                         : std::numeric_limits<TokenIndex>::max();
                     const auto suffix = closingEnd <= i ? NextSignificant(closingEnd) : i;
-                    const bool complete =
-                        suffix >= i || (Kind(suffix) == TK::Operator_Ellipsis && NextSignificant(suffix + 1) >= i);
+                    const bool complete = suffix >= i ||
+                        (Kind(suffix) == TK::Operator_Ellipsis && NextSignificant(suffix + 1) >= i);
 
                     if ((openingKind == TK::Operator_OpenParenthesis || openingKind == TK::Operator_OpenBrace) &&
                         closingEnd <= i && complete)
@@ -6246,8 +6255,8 @@ private:
             }
 
             if (isFunction && nameKind != NodeKind::OperatorFunctionName) {
-                knownHead &=
-                    NextSignificant(nameArgumentsEnd != begin ? nameArgumentsEnd : name + 1) == parameters->Begin;
+                knownHead &= NextSignificant(nameArgumentsEnd != begin ? nameArgumentsEnd : name + 1) ==
+                    parameters->Begin;
             }
 
             if (nameKind == NodeKind::DestructorName) {
@@ -6417,9 +6426,9 @@ private:
         }
 
         auto typeKind = Kind(type);
-        bool explicitType =
-            IsFundamentalTypeKeyword(typeKind) || typeKind == TK::Keyword_typename || typeKind == TK::Keyword_struct ||
-                typeKind == TK::Keyword_class || typeKind == TK::Keyword_union || typeKind == TK::Keyword_enum;
+        bool explicitType = IsFundamentalTypeKeyword(typeKind) || typeKind == TK::Keyword_typename ||
+            typeKind == TK::Keyword_struct || typeKind == TK::Keyword_class || typeKind == TK::Keyword_union ||
+            typeKind == TK::Keyword_enum;
         auto binding = typeKind == TK::Identifier ? LookupName(Text(type)) : std::nullopt;
 
         if (!explicitType && (!binding || *binding != NameKind::Type)) {
@@ -6704,8 +6713,11 @@ private:
                 }
                 if (defaultArgument) {
                     if (proveDirectInitializer && kind == TK::Keyword_template) {
-                        const auto nameEnd =
-                            ArgumentExplicitMemberNameEnd(cursor, defaultExpressionBegin, closing - 1, proofWork);
+                        const auto nameEnd = ArgumentExplicitMemberNameEnd(
+                            cursor,
+                            defaultExpressionBegin,
+                            closing - 1,
+                            proofWork);
 
                         if (!nameEnd) {
                             return uncertain();
@@ -7816,8 +7828,8 @@ private:
                     specifier = NextSignificant(specifier + 1);
                 }
 
-                independentDeclaration =
-                    IsFundamentalTypeKeyword(Kind(specifier)) || IsHintedDeclarationMacro(specifier);
+                independentDeclaration = IsFundamentalTypeKeyword(Kind(specifier)) ||
+                    IsHintedDeclarationMacro(specifier);
             }
 
             if (Cursor_ != start && kind != TK::Comment && Kind(start) == TK::Identifier &&
@@ -7987,8 +7999,8 @@ private:
                             ? following
                             : std::numeric_limits<TokenIndex>::max();
                         recoveredHeader = true;
-                        opaqueHeaderParentheses =
-                            Cursor_ > begin && Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1;
+                        opaqueHeaderParentheses = Cursor_ > begin &&
+                            Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1;
                         opaqueRequiresClause = false;
                         retireParameters();
                         continue;
@@ -8025,8 +8037,8 @@ private:
                         // A bare invocation provides no parameter bindings.
                         // Retain uncertain suffixes with it, not as functions.
                         recoveredHeader = true;
-                        opaqueHeaderParentheses =
-                            Cursor_ > begin && Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1;
+                        opaqueHeaderParentheses = Cursor_ > begin &&
+                            Tree_.Tokens_.MatchingDelimiter(begin) == Cursor_ - 1;
                         opaqueRequiresClause = false;
                         retireParameters();
                         continue;
@@ -8209,9 +8221,9 @@ private:
             if (kind == TK::Operator_Semicolon) {
                 // Complete the reservation only at this visited, in-limit
                 // semicolon, before cursor advancement or syntax-end trimming.
-                const bool terminalConstructorEligible =
-                    terminalEligible && !terminalDenied && !invalidFunctionSuffix &&
-                        (terminalPending == TerminalPending::None || terminalPending == TerminalPending::Semicolon);
+                const bool terminalConstructorEligible = terminalEligible && !terminalDenied &&
+                    !invalidFunctionSuffix &&
+                    (terminalPending == TerminalPending::None || terminalPending == TerminalPending::Semicolon);
                 ++Cursor_;
 
                 if (recoveredHeader) {
@@ -8222,8 +8234,8 @@ private:
                 }
 
                 bool directInitializer = false;
-                const bool directLambda =
-                    sawTopLevelParameters && HasDirectLambdaArgument(parameterBegin, parameterEnd);
+                const bool directLambda = sawTopLevelParameters &&
+                    HasDirectLambdaArgument(parameterBegin, parameterEnd);
 
                 if (sawTopLevelParameters && !sawParenthesizedDeclarator && !constructorInitializer &&
                     !sawAssignmentBeforeParameters && NextSignificant(parameterEnd) == Cursor_ - 1)
@@ -10308,8 +10320,8 @@ private:
             : SkipTemplateArguments(cursor, end);
         auto closingKind = templateEnd > cursor ? Kind(templateEnd - 1) : TK::Invalid;
         auto following = NextSignificant(templateEnd);
-        bool hasClosing =
-            templateEnd <= end && (closingKind == TK::Operator_Greater || closingKind == TK::Operator_RightShift);
+        bool hasClosing = templateEnd <= end &&
+            (closingKind == TK::Operator_Greater || closingKind == TK::Operator_RightShift);
         bool hasTemplateUse = IsUnambiguousTemplateUse(following, end, explicitTemplate, nameBegin, cursor);
 
         if (!hasClosing) {
@@ -10777,8 +10789,10 @@ private:
             }
 
             ++cursor;
-            auto* right =
-                ParseExpressionSyntax(cursor, end, binary.RightAssociative ? binary.Precedence : binary.Precedence + 1);
+            auto* right = ParseExpressionSyntax(
+                cursor,
+                end,
+                binary.RightAssociative ? binary.Precedence : binary.Precedence + 1);
 
             if (!right) {
                 break;

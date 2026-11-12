@@ -61,8 +61,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         previousEnd = range.End;
     }
 
-    const bool mappingRequested =
-        policy.SourceMap || policy.TokenMap || policy.IndexedTokenMap || !policy.TrackSource.empty();
+    const bool mappingRequested = policy.SourceMap || policy.TokenMap || policy.IndexedTokenMap ||
+        !policy.TrackSource.empty();
     const bool indexedMappingsOnly = policy.IndexedTokenMap && !policy.SourceMap && !policy.TokenMap;
     const bool countMappings = mappingRequested && !indexedMappingsOnly;
 
@@ -276,8 +276,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         // Decide eligibility per owner, not for its entire subtree. An
         // outer list can require owned lines while an inner chain keeps
         // its links flat and lets a deeper argument list break.
-        groupEntry.ChildLayoutAllowed =
-            group.Mode == GroupMode::Fill && group.ChildBreaks && !forced && !summary.OwnedConditionalLine;
+        groupEntry.ChildLayoutAllowed = group.Mode == GroupMode::Fill && group.ChildBreaks && !forced &&
+            !summary.OwnedConditionalLine;
         broken = flat.Line || forced ? summary.Broken : flat;
 
         if (forced) {
@@ -308,8 +308,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         summaries.pop_back();
         summary.ProbeEligible &= entry.ProbeEligible;
         summary.HasChild = true;
-        summary.HasConsistentAlternative |=
-            entry.HasConsistentAlternative && !(group.StructuralBase && !group.Continuation);
+        summary.HasConsistentAlternative |= entry.HasConsistentAlternative &&
+            !(group.StructuralBase && !group.Continuation);
         summary.KeptLine = summary.KeptLine || groupEntry.KeptChild || group.KeepMultiline;
         summary.ProbeLayouts |= entry.ProbeLayouts;
         summaryOwner = Groups_[id].Parent;
@@ -406,8 +406,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const bool indentConditional = gap.Conditional && spec.MinLineIndentOffset != InvalidId;
             flat = MeasureFlatGap(flatSpec, Source_, policy.TabWidth);
             const auto expandedFlat = gap.Conditional ? MeasureFlatGap(brokenSpec, Source_, policy.TabWidth) : flat;
-            broken =
-                summaryOwner != InvalidId && brokenSpec.Kind == GapKind::Soft ? Measure{0, true, true} : expandedFlat;
+            broken = summaryOwner != InvalidId && brokenSpec.Kind == GapKind::Soft
+                ? Measure{0, true, true}
+                : expandedFlat;
 
             // An indentation-dependent brace can stay attached in a broken
             // header. Reserve its flat width when fitting preceding children.
@@ -784,8 +785,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const bool mandatory = current->Mandatory != NoOrder && current->Mandatory >= i &&
             current->Mandatory <= Groups_[id].EndOrder && lines == current->StartLine;
         const bool kept = spec.KeepMultiline && !probing;
-        const bool broken =
-            kept || mandatory || (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
+        const bool broken = kept || mandatory ||
+            (!current->Flat && entry.Flat.CanBreak && !fits(AddWidth(entry.Flat.Width(), tail)));
         const bool coupledChain = consistentLayout && spec.ProbeConsistent;
         // Keep the receiver prefix and call openers inline while chains
         // supply the alternative's breaks. Forced list topology still wins.
@@ -797,12 +798,12 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         result.Broken[id] = broken;
         // Ordinary authored owner breaks stay stable when descendants later
         // wrap. Only a newly promoted compact boundary may defer to a kept child.
-        const bool forceOwned =
-            (spec.ForceBreak && groupEntry.OwnedLastBreak != NoOrder) || (!probing && keepsOwnedLine(id));
+        const bool forceOwned = (spec.ForceBreak && groupEntry.OwnedLastBreak != NoOrder) ||
+            (!probing && keepsOwnedLine(id));
         // A mandatory fallback must respect boundary costs too: an operator
         // group should use its own break before a costlier child chain link.
-        const auto lastBreak =
-            !spec.ChildBreaks && groupEntry.OwnedLastBreak != NoOrder && groupEntry.LastBreakPenalty > spec.BreakPenalty
+        const auto lastBreak = !spec.ChildBreaks && groupEntry.OwnedLastBreak != NoOrder &&
+            groupEntry.LastBreakPenalty > spec.BreakPenalty
             ? groupEntry.OwnedLastBreak
             : groupEntry.LastBreak;
         auto base = current->Indent;
@@ -822,8 +823,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         auto indent = spec.Indent;
         const bool shared = sharesContinuation(spec);
-        const bool newLineBase =
-            spec.Continuation && !shared && current->HasContinuation && lines != current->ContinuationStartLine;
+        const bool newLineBase = spec.Continuation && !shared && current->HasContinuation &&
+            lines != current->ContinuationStartLine;
 
         if (newLineBase) {
             // A new starter uses its enclosing line after closed children,
@@ -1027,8 +1028,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 : std::string_view::npos;
             const auto lineBegin = preceding == std::string_view::npos ? 0 : preceding + 1;
             const auto text = Text(origin);
-            const auto originalColumn =
-                SourceColumn(Source_.substr(lineBegin, origin.Begin - lineBegin), policy.TabWidth);
+            const auto originalColumn = SourceColumn(
+                Source_.substr(lineBegin, origin.Begin - lineBegin),
+                policy.TabWidth);
             const auto shift = i64(column) - originalColumn;
             if (shift == 0) {
                 appendSource(text);
@@ -1101,34 +1103,38 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         return bool(result.State) && (!probing || column <= policy.Width);
     };
-    const auto renderFlat =
-        [&] (const GapLayout& gapPlan, u16 spaces, Provenance source, Provenance& emittedOrigin, bool& exact) {
-            if (source.Begin != InvalidId) {
-                auto text = Text(source);
-                appendSource(text);
-                advance(text);
-                emittedOrigin.Begin = source.Begin;
-                emittedOrigin.End = source.End;
-                exact = true;
-            } else {
-                if (!probing) {
-                    if (spaces == 1 && gapPlan.Origin.End - gapPlan.Origin.Begin == 1 &&
-                        Source_[gapPlan.Origin.Begin] == ' ')
-                    {
-                        appendSource(Text(gapPlan.Origin));
-                    } else if (spaces && outputRoom(spaces)) {
-                        flushSource();
-                        result.Text.append(spaces, ' ');
-                    }
-                }
-
-                column = AddWidth(column, spaces);
-
-                if (linePrefix) {
-                    lineIndent = column;
+    const auto renderFlat = [&] (
+        const GapLayout& gapPlan,
+        u16 spaces,
+        Provenance source,
+        Provenance& emittedOrigin,
+        bool& exact) {
+        if (source.Begin != InvalidId) {
+            auto text = Text(source);
+            appendSource(text);
+            advance(text);
+            emittedOrigin.Begin = source.Begin;
+            emittedOrigin.End = source.End;
+            exact = true;
+        } else {
+            if (!probing) {
+                if (spaces == 1 && gapPlan.Origin.End - gapPlan.Origin.Begin == 1 &&
+                    Source_[gapPlan.Origin.Begin] == ' ')
+                {
+                    appendSource(Text(gapPlan.Origin));
+                } else if (spaces && outputRoom(spaces)) {
+                    flushSource();
+                    result.Text.append(spaces, ' ');
                 }
             }
-        };
+
+            column = AddWidth(column, spaces);
+
+            if (linePrefix) {
+                lineIndent = column;
+            }
+        }
+    };
     const auto renderGap = [&] (Index id) {
         const auto& gapPlan = Part(id);
         const auto i = gapPlan.Order;
@@ -1146,8 +1152,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         const bool ownerBroken = activeGroup != InvalidId && result.Broken[activeGroup];
 
         if (gapPlan.Mode == Whitespace::Flat) {
-            const bool continuingIndent =
-                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
+            const bool continuingIndent = current->RealizedContinuationLine &&
+                column == current->RealizedContinuationIndent;
             renderFlat(
                 gapPlan,
                 gapPlan.Spaces,
@@ -1250,8 +1256,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             copy(text.size());
             // Preserve the source geometry used by fixed-prefix summaries;
             // spelling is not a new layout or owned-break decision.
-            const bool continuingIndent =
-                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
+            const bool continuingIndent = current->RealizedContinuationLine &&
+                column == current->RealizedContinuationIndent;
             advance(text, textFlags[id] & TextPlain);
 
             if ((textFlags[id] & TextLine) || continuingIndent) {
@@ -1270,8 +1276,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             outputBegin = static_cast<u32>(outputSize());
             emittedOrigin = {gaps.Flat.IndentSourceBegin, gaps.Flat.IndentSourceEnd, NoIdentity};
             const auto indent = resolveIndent(gaps.Anchor, gaps.Flat.RequiredWidth);
-            const auto original =
-                Source_.substr(gaps.Flat.IndentSourceBegin, gaps.Flat.IndentSourceEnd - gaps.Flat.IndentSourceBegin);
+            const auto original = Source_.substr(
+                gaps.Flat.IndentSourceBegin,
+                gaps.Flat.IndentSourceEnd - gaps.Flat.IndentSourceBegin);
 
             if (gaps.Flat.PreserveIndentSpelling && SourceColumn(original, policy.TabWidth) == indent) {
                 appendSource(original);
@@ -1303,8 +1310,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 return false;
             }
 
-            const bool continuingIndent =
-                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
+            const bool continuingIndent = current->RealizedContinuationLine &&
+                column == current->RealizedContinuationIndent;
             bool line = gap.Kind == GapKind::Hard;
 
             if (gap.Kind == GapKind::Soft && ownerBroken && !current->OwnedFlat) {
@@ -1314,13 +1321,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     line = true;
                 } else {
                     const auto tail = tailWidth(gapEntry.FitTail);
-                    bool segment = gap.FitNextSegment;
-
-                    if (!segment && gap.FitNextSegmentIfOverflow && !probing && !layoutSelected) {
-                        const auto indent = resolveIndent(anchor, gap.RequiredWidth);
-                        segment = indent >= policy.Width || tail > policy.Width - indent;
-                    }
-
+                    const bool segment = gap.FitNextSegment ||
+                        (gap.FitNextSegmentIfFinite && gap.RequiredWidth != Infinity);
                     line = !fits(AddWidth(gapEntry.ExpandedWidth, segment ? gap.RequiredWidth : tail)) ||
                         (current->Mandatory == i &&
                             (current->ForceOwned ? !current->OwnedLine : lines == current->StartLine));
@@ -1400,8 +1402,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             const auto text = gapPlan.Mode == Whitespace::Comma
                 ? (ownerBroken ? std::string_view(",") : std::string_view{})
                 : Text(gapPlan.Origin);
-            const bool continuingIndent =
-                current->RealizedContinuationLine && column == current->RealizedContinuationIndent;
+            const bool continuingIndent = current->RealizedContinuationLine &&
+                column == current->RealizedContinuationIndent;
 
             if (gapPlan.Mode == Whitespace::Comma) {
                 append(text);

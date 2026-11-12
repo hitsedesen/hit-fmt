@@ -105,8 +105,10 @@ public:
             return {false, FileError(path, SystemError(absolute.Error))};
         }
 
-        auto relative =
-            absolute.Value.lexically_normal(&Scratch_).lexically_relative(config.Value->Directory, &Scratch_);
+        auto relative = absolute
+            .Value
+            .lexically_normal(&Scratch_)
+            .lexically_relative(config.Value->Directory, &Scratch_);
         return cli::IsExcluded(relative, settings->Exclusions);
     }
 
@@ -518,8 +520,8 @@ FileResult ProcessFile(
             .Data = sourceStorage.data(),
             .Size = static_cast<u32>(sourceStorage.size() - util::SourcePaddingSize),
         };
-        auto inputFilePath =
-            path.generic_string<char, std::char_traits<char>, std::pmr::polymorphic_allocator<char>>(&scratch);
+        auto inputFilePath = path.generic_string<char, std::char_traits<char>, std::pmr::polymorphic_allocator<char>>(
+            &scratch);
         std::optional<ChangedFileScope> scope;
 
         if (arguments.HunkInput) {

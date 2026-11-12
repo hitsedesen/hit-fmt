@@ -737,8 +737,8 @@ SourceOffset Tokenizer::FindQuotedEnd(SourceOffset offset, bool character) noexc
         LoadBlock(offset);
         const auto within = offset - BlockOffset_;
         const auto delimiters = character ? Block_.Apostrophes : Block_.Quotes;
-        const auto stops =
-            (delimiters | Block_.Backslashes | Block_.Newlines | Block_.NonAscii | Block_.Nulls) >> within;
+        const auto stops = (delimiters | Block_.Backslashes | Block_.Newlines | Block_.NonAscii | Block_.Nulls)
+            >> within;
         if (stops != 0) {
             const auto end = offset + static_cast<SourceOffset>(std::countr_zero(stops));
             return (delimiters & (u64{1} << (end - BlockOffset_))) != 0
@@ -951,8 +951,9 @@ bool Tokenizer::ReadBlock()
                 end = FindQuotedEnd(start + 1, character);
             } else {
                 const auto close = FirstBit(stops);
-                end =
-                    (delimiters & (u64{1} << close)) != 0 ? base + close + 1 : std::numeric_limits<SourceOffset>::max();
+                end = (delimiters & (u64{1} << close)) != 0
+                    ? base + close + 1
+                    : std::numeric_limits<SourceOffset>::max();
             }
             if (end > Input_.Size || (character && end == start + 2) || IsAsciiIdentifierStart(data[end]) ||
                 data[end] >= AsciiLimit)
@@ -2337,8 +2338,9 @@ Token Tokenizer::ParsePreprocessingDirective()
                 while (cur != '\n' && cur != '\0') {
                     const auto* commentBegin = CurrentByteAddress();
                     bool commentNonSpace = false;
-                    const auto* commentCursor =
-                        ScanAscii<AsciiRun::DirectiveComment, true>(commentBegin, &commentNonSpace);
+                    const auto* commentCursor = ScanAscii<AsciiRun::DirectiveComment, true>(
+                        commentBegin,
+                        &commentNonSpace);
                     auto lastByte = *commentCursor;
                     auto commentSize = static_cast<SourceOffset>(
                         commentCursor - commentBegin);

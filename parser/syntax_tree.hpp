@@ -408,8 +408,8 @@ public:
 
         if (!Last_ || Last_->Size == Capacity) {
             if (ChunkCount_ == ChunkCapacity_) {
-                constexpr auto maxChunks =
-                    std::numeric_limits<u32>::max() / Capacity + (std::numeric_limits<u32>::max() % Capacity != 0);
+                constexpr auto maxChunks = std::numeric_limits<u32>::max() / Capacity +
+                    (std::numeric_limits<u32>::max() % Capacity != 0);
                 const auto capacity = ChunkCapacity_ == 0
                     ? u32(4)
                     : ChunkCapacity_ > maxChunks / 2 ? maxChunks : ChunkCapacity_ * 2;
@@ -604,8 +604,8 @@ public:
         chunk->HasComment |= token.Kind == tokenizer::TokenKind::Comment;
         chunk->Tokens[slot.Offset] = {.Text = token.Text, .Line = token.Position.Line, .Column = token.Position.Column};
         chunk->Kinds[slot.Offset] = token.Kind;
-        chunk->Roles[slot.Offset] =
-            token.Kind >= tokenizer::TokenKind::Operator_OpenBrace && token.Kind <= tokenizer::TokenKind::Operator_Comma
+        chunk->Roles[slot.Offset] = token.Kind >= tokenizer::TokenKind::Operator_OpenBrace &&
+            token.Kind <= tokenizer::TokenKind::Operator_Comma
             ? PunctuationRole::Generic
             : PunctuationRole::None;
         chunk->MatchingDelimiters[slot.Offset] = std::numeric_limits<TokenIndex>::max();

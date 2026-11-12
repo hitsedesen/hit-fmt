@@ -412,15 +412,19 @@ Result<CheckedFile> FormatAndCheckFile(
             .TokenMap = tokenMap,
             .Changes = diagnostics == DiagnosticDetail::Full,
             .ChangeSummary = true,
-            .DiagnosticLocations =
-                (locations || changed.has_value()) && configuration.Formatting.Policies.ColumnLimit != 0 &&
+            .DiagnosticLocations = (locations || changed.has_value()) &&
+                configuration.Formatting.Policies.ColumnLimit != 0 &&
                 configuration.Formatting.Policies.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Report,
             .InputProtection = debug,
         };
 
         if (changed) {
-            auto result =
-                formatter::FormatChanged(tree, configuration.Formatting, changed->Hunks, changed->Spillover, request);
+            auto result = formatter::FormatChanged(
+                tree,
+                configuration.Formatting,
+                changed->Hunks,
+                changed->Spillover,
+                request);
             selected = std::move(result.SelectedLines);
             permitted = std::move(result.PermittedLines);
             checked.Incomplete = std::move(result.Incomplete);
