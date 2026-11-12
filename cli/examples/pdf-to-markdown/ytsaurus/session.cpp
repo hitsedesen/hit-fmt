@@ -101,8 +101,7 @@ void TSession::ExportTo(std::string_view path, EExportMode mode)
         return;
     }
 
-    Desktop_
-        .Files()
+    Desktop_.Files()
         .Transaction(
             path,
             [&] (auto& output) {

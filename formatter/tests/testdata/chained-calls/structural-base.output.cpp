@@ -1,34 +1,27 @@
 void f() {
-    engine()
-        .Open()
+    engine().Open()
         .Finish();
-    auto result = engine()
-        .Open()
+    auto result = engine().Open()
         .Finish();
     auto nested = outer(
         inner(
-            engine()
-                .Open()
+            engine().Open()
                 .Finish()));
-    producer()
-        .Transform<FirstType, SecondType>(
-            alpha, beta)
+    producer().Transform<FirstType, SecondType>(
+        alpha, beta)
         .Complete<ThirdType>(
             gamma, delta);
-    result -= producer()
-        .Transform<FirstType, SecondType>(
-            alpha, beta)
+    result -= producer().Transform<FirstType, SecondType>(
+        alpha, beta)
         .Complete<ThirdType>(
             gamma, delta);
-    engine()
-        .Open<int>(
-            alpha, beta)
+    engine().Open<int>(
+        alpha, beta)
         .Finish<int>(
             gamma, delta);
     outer(
-        engine()
-            .Open<Type>(
-                alpha, beta)
+        engine().Open<Type>(
+            alpha, beta)
             .Finish(
                 gamma, delta));
 }
@@ -37,9 +30,8 @@ namespace Outer {
     namespace Inner {
         void nested() {
             outer(
-                builder()
-                    .Configure<Entry>(
-                        argument)
+                builder().Configure<Entry>(
+                    argument)
                     .Finish());
         }
     }

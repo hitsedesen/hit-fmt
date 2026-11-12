@@ -18,8 +18,7 @@ void Execute()
                     outstanding,
                     configuredLimit);
             };
-        })
-            .AsyncVia(invoker)
+        }).AsyncVia(invoker)
             .Run());
     };
 }

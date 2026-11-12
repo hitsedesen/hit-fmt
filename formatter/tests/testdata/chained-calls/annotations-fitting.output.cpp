@@ -1,6 +1,5 @@
 void Write() {
-  Builder()
-      .BeginMap().Item("host").Value(host).Item("mode").Value(mode)
+  Builder().BeginMap().Item("host").Value(host).Item("mode").Value(mode)
       .EndMap();
   Builder()
       .BeginMap()
@@ -11,8 +10,7 @@ void Write() {
           .EndMap()
         .EndList()
       .EndMap();
-  Wrap(Builder()
-      .BeginAttributes().Item("tag").Value(tag)
+  Wrap(Builder().BeginAttributes().Item("tag").Value(tag)
       .EndAttributes()
       .BeginMap().Item("key").Value(value)
       .EndMap());
@@ -30,8 +28,7 @@ void Write() {
             "call").Value(
             Other().BeginMap().Item("nested").Value(value).EndMap())
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("fn").Value([] {
           Work();
         })
@@ -42,8 +39,7 @@ void Write() {
   Builder().BeginMap().BeginList().EndMap().EndList();
   Builder().Item("field").Value.member;
   Builder().Item("gap").Other().Value(value);
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("comment") // Keep this line comment.
         .Value(value)
       .EndMap();

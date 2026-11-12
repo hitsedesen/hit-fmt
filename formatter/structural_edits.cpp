@@ -846,8 +846,7 @@ void Includes(
 
             // Sorted blocks with canonical separators are no-ops, preserving
             // operation identities and avoiding reparsing on repeat runs.
-            auto original = tree
-                .Source()
+            auto original = tree.Source()
                 .substr(descriptor.Source.Begin, descriptor.Source.End - descriptor.Source.Begin);
             bool unchanged = true;
 

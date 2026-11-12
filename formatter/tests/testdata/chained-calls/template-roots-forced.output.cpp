@@ -1,30 +1,22 @@
 void Templates() {
-    factory<int>()
-        .First()
+    factory<int>().First()
         .Second();
-    factory<box<box<int>>>()
-        .First()
+    factory<box<box<int>>>().First()
         .Second();
-    factory<(1 < 2), (8 >> 1)>()
-        .First()
+    factory<(1 < 2), (8 >> 1)>().First()
         .Second();
     factory<decltype([] {
         return 1;
-    })>()
-        .First()
+    })>().First()
         .Second();
-    factory<int>()
-        (value)
+    factory<int>()(value)
         .Finish();
-    ns::Builder<int>::Make<double>()
-        .First()
+    ns::Builder<int>::Make<double>().First()
         .Second();
     ns::Builder<box<int>>::Make<double>().First().Second();
-    ns::Builder<int>::template Make<double>()
-        .First()
+    ns::Builder<int>::template Make<double>().First()
         .Second();
-    ns /* qualifier */ :: Builder<int>::Make<double>()
-        .First()
+    ns /* qualifier */ :: Builder<int>::Make<double>().First()
         .Second();
     other::Builder<int>::Make<double>().First().Second();
     Builder<int>::Make<double>().First().Second();

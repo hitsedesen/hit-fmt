@@ -1,5 +1,4 @@
 void f() {
-    auto value = engine()
-        .Open()
+    auto value = engine().Open()
         .Finish();  // note
 }

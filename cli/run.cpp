@@ -105,8 +105,7 @@ public:
             return {false, FileError(path, SystemError(absolute.Error))};
         }
 
-        auto relative = absolute
-            .Value
+        auto relative = absolute.Value
             .lexically_normal(&Scratch_)
             .lexically_relative(config.Value->Directory, &Scratch_);
         return cli::IsExcluded(relative, settings->Exclusions);

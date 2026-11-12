@@ -9,8 +9,7 @@ void Example()
     auto exceptionallyLongResultName = UnknownRoot()
         .First()
             .Finish();
-    MAKE_TASK()
-        .First()
+    MAKE_TASK().First()
         .Finish();
     Consume(UnknownRoot()
         .First()

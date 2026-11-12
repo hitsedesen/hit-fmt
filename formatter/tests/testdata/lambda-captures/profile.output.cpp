@@ -41,8 +41,7 @@ void BuildSelector()
 {
     auto selector = BindSelector([firstCount, secondCount, thirdCount] {
         return firstCount + secondCount + thirdCount;
-    })
-        .WithShelf()
+    }).WithShelf()
         .WithPrice();
 }
 

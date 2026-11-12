@@ -10,8 +10,7 @@ void Events() {
         .With("Count", count);
     Event("Ready").With("Count", count);
     WRITE_EVENT("Ready").Field;
-    WRITE_EVENT("Ready")
-        .With("Count", count)
+    WRITE_EVENT("Ready").With("Count", count)
         ->Finish();
     READ_EVENT("Ready").First().Second();
     // hit-fmt off

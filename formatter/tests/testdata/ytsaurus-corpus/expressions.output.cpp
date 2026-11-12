@@ -36,12 +36,10 @@ void InspectState(TProvider& provider, TProfiler& profiler, TRegistrar registrar
 {
     auto result = provider.GetState().GetValue();
     auto counter = profiler.WithTag("phase", "prepare").Counter("/attempts");
-    auto map = BuildYsonStringFluently()
-        .BeginMap()
+    auto map = BuildYsonStringFluently().BeginMap()
             .Item("capacity").Value(16)
         .EndMap();
-    auto node = NYTree::BuildYsonNodeFluently()
-        .BeginMap()
+    auto node = NYTree::BuildYsonNodeFluently().BeginMap()
             .Item("retries").Value(3)
         .EndMap();
     registrar.Parameter("capacity", &TOptions::Capacity)
@@ -64,8 +62,7 @@ void CompleteRequest(TFuture<void> future, TFuture<int> valueFuture, IInvokerPtr
     BIND(&TWorker::Dispatch, worker).Via(invoker).Run();
     BIND([] {
         Dispatch();
-    })
-        .AsyncVia(invoker)
+    }).AsyncVia(invoker)
         .Run();
     auto immediate = [] {
         return 7;

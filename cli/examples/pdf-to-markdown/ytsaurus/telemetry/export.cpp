@@ -43,8 +43,7 @@ DEFINE_ENUM(EExportStage,
 auto BuildExportMetadata(const TDocument& document, const TResult& result)
 {
     using NYT::NYTree::BuildYsonStringFluently;
-    return BuildYsonStringFluently()
-        .BeginAttributes()
+    return BuildYsonStringFluently().BeginAttributes()
             .Item("format").Value("markdown")
         .EndAttributes()
         .BeginMap()
@@ -53,8 +52,7 @@ auto BuildExportMetadata(const TDocument& document, const TResult& result)
                 .DoFor(
                     document.Pages,
                     [] (auto fluent, const TPage& page) {
-                        fluent
-                            .Item().BeginMap()
+                        fluent.Item().BeginMap()
                                 .Item("number").Value(page.Number)
                                 .Item("blocks").Value(page.Blocks.size())
                                 .Item("selected_blocks").Value(std::count_if(
@@ -126,8 +124,7 @@ public:
     {
         registrar.Parameter("keep_source_offsets", &TExportPolicy::KeepSourceOffsets)
             .Default(true);
-        registrar.Parameter("asset_copy_concurrency", &TExportPolicy::AssetCopyConcurrency)
-            .Default(2)
+        registrar.Parameter("asset_copy_concurrency", &TExportPolicy::AssetCopyConcurrency).Default(2)
             .GreaterThan(0);
     }
 };
