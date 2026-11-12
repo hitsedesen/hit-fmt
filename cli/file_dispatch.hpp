@@ -48,7 +48,7 @@ Result<bool, FileFailure> RunSerialFiles(
     }
 }
 
-// Each slot transfers exclusively from discovery to worker to ordered printing.
+// Each slot transfers exclusively from discovery to worker to printing and back to discovery.
 // Context must outlive dispatch.
 template <typename Context = std::nullptr_t, typename Discover, typename MakeResolver, typename Process, typename Print>
 Result<bool, FileFailure> RunParallelFiles(
@@ -62,15 +62,6 @@ Result<bool, FileFailure> RunParallelFiles(
     constexpr us BufferedOutputLimit = 16 * 1024 * 1024;
     constexpr us BatchByteLimit = 256 * 1024;
     using Batch = BasicFileBatch<Context>;
-    enum class State
-    {
-        Free,
-        Filling,
-        Pending,
-        Processing,
-        Ready
-    };
-
     struct Slot
         : Batch
     {
@@ -78,7 +69,6 @@ Result<bool, FileFailure> RunParallelFiles(
             : Batch(memory)
         { }
 
-        State Status = State::Free;
         us OutputBytes = 0;
     };
 
@@ -86,12 +76,20 @@ Result<bool, FileFailure> RunParallelFiles(
     auto slotCount = std::max(threadCount, us{32});
     std::pmr::deque<Slot> slots(memory);
 
+    Vector<Slot*> freeSlots(slotCount, nullptr, memory);
+    Vector<Slot*> pendingSlots(slotCount, nullptr, memory);
+    Vector<Slot*> completedSlots(slotCount, nullptr, memory);
+
     for (us i = 0; i < slotCount; ++i) {
         slots.emplace_back(memory);
+        freeSlots[i] = &slots.back();
     }
 
     std::mutex mutex;
     std::condition_variable ready;
+    us freeHead = 0;
+    us freeTail = slotCount;
+    us completed = 0;
     us produced = 0;
     us claimed = 0;
     us printed = 0;
@@ -129,8 +127,8 @@ Result<bool, FileFailure> RunParallelFiles(
                                 return;
                             }
 
-                            slot = &slots[claimed++ % slotCount];
-                            slot->Status = State::Processing;
+                            slot = pendingSlots[claimed++ % slotCount];
+
                             ++processing;
                         }
 
@@ -156,7 +154,8 @@ Result<bool, FileFailure> RunParallelFiles(
                             std::lock_guard lock(mutex);
                             slot->OutputBytes = bytes;
                             bufferedBytes += bytes;
-                            slot->Status = State::Ready;
+
+                            completedSlots[completed++ % slotCount] = slot;
                             --processing;
                         }
 
@@ -191,15 +190,15 @@ Result<bool, FileFailure> RunParallelFiles(
                         ready.wait(
                             lock,
                             [&] {
-                                return stop || slots[produced % slotCount].Status == State::Free;
+                                return stop || freeHead != freeTail;
                             });
 
                         if (stop) {
                             return nullptr;
                         }
 
-                        filling = &slots[produced % slotCount];
-                        filling->Status = State::Filling;
+                        filling = freeSlots[freeHead++ % slotCount];
+
                         return filling;
                     };
                     auto flush = [&] {
@@ -214,8 +213,7 @@ Result<bool, FileFailure> RunParallelFiles(
                                 return false;
                             }
 
-                            filling->Status = State::Pending;
-                            ++produced;
+                            pendingSlots[produced++ % slotCount] = filling;
                             filling = nullptr;
                         }
 
@@ -273,8 +271,8 @@ Result<bool, FileFailure> RunParallelFiles(
                     ready.wait(
                         lock,
                         [&] {
-                            return stop || (printed != produced && slots[printed % slotCount].Status == State::Ready) ||
-                                (discoveryDone && printed == produced) || canLaunch();
+                            return stop || printed != completed || (discoveryDone && printed == produced) ||
+                                canLaunch();
                         });
 
                     if (stop) {
@@ -291,7 +289,7 @@ Result<bool, FileFailure> RunParallelFiles(
                         break;
                     }
 
-                    slot = &slots[printed % slotCount];
+                    slot = completedSlots[printed % slotCount];
                 }
 
                 for (us i = 0; i < slot->Count; ++i) {
@@ -303,7 +301,8 @@ Result<bool, FileFailure> RunParallelFiles(
                     std::lock_guard lock(mutex);
                     bufferedBytes -= slot->OutputBytes;
                     slot->OutputBytes = 0;
-                    slot->Status = State::Free;
+
+                    freeSlots[freeTail++ % slotCount] = slot;
                     ++printed;
                 }
 

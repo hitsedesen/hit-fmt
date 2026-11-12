@@ -356,7 +356,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
         << " --fix [options] <path>...\n\n";
     option("--check / --fix", "Check (default) / apply fixes.");
     option("--quick / --summary / --details", "Files / file:line:column errors / carets.");
-    option("-j [n], --threads <n>", "Threads (default 1; bare -j uses all cores).");
+    option("-j [n], --threads <n>", "Threads (default 1; bare -j uses all cores). Parallel output is unordered.");
     option("--config <file>", "Config (default: nearest .hit-fmt).");
     option("--exclude <regex>", "Skip paths (repeatable POSIX ERE).");
     option("--changed-hunks <file|->", "Original line ranges (--changed-ranges alias).");
