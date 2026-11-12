@@ -1,0 +1,95 @@
+void Write() {
+  Builder()
+      .BeginMap()
+        .Item("host").Value(host)
+        .Item("mode").Value(mode)
+      .EndMap();
+  Builder()
+      .BeginMap()
+        .Item("entries").BeginList()
+          .Item().Value(1)
+          .Item().BeginMap()
+            .Item("ok").Value(true)
+          .EndMap()
+        .EndList()
+      .EndMap();
+  Wrap(Builder()
+      .BeginAttributes()
+        .Item("tag").Value(tag)
+      .EndAttributes()
+      .BeginMap()
+        .Item("key").Value(value)
+      .EndMap());
+  Builder()
+      ->BeginMap()
+        ->Item("key")->Value(value)
+      ->EndMap();
+  Builder()
+      .BeginMap()
+        .Item(
+            "wide").Value(
+            aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
+      .EndMap();
+  Builder()
+      .BeginMap()
+        .Item("abcdefghijk").Value("abcdefghijk")
+      .EndMap();
+  Builder()
+      .BeginMap()
+        .Item("call").Value(Other()
+            .BeginMap()
+              .Item("nested").Value(value)
+            .EndMap())
+      .EndMap();
+  Builder()
+      .BeginMap()
+        .Item("fn").Value([] {
+          Work();
+        })
+      .EndMap();
+  Builder()
+      .BeginMap()
+      .EndMap();
+  Builder()
+      .BeginMap()
+      .Item("open").Value(value);
+  Builder()
+      .Item("close").Value(value)
+      .EndMap();
+  Builder()
+      .BeginMap()
+      .BeginList()
+      .EndMap()
+      .EndList();
+  Builder().Item("field").Value.member;
+  Builder()
+      .Item("gap").Other()
+      .Value(value);
+  Builder()
+      .BeginMap()
+        .Item("comment") // Keep this line comment.
+        .Value(value)
+      .EndMap();
+  Builder()
+      .BeginMap()
+        .Item("block") /* Keep this block comment. */ .Value(value)
+      .EndMap();
+  Other()
+      .BeginMap()
+        .Item("unselected").Value(value)
+      .EndMap();
+  Builder()
+      .Append(1).Append(2).Append(3)
+      .Finish();
+  registrar.Parameter("rate", &TThis::Rate)
+      .Default();
+  Maker().Parameter("limit", &TThis::Limit)
+      .Default();
+  Builder()
+      .BeginMap()
+        .Item("argument").Value(Other().EndMap())
+      .EndMap();
+    // hit-fmt off
+    Builder().BeginMap().Item("protected").Value(value).EndMap();
+    // hit-fmt on
+}

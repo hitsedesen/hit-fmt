@@ -963,7 +963,9 @@ GenerateCallScopeIndentation = false
 # Values: [] or ["Begin:End", ...]
 IndentedChainScopePairs = []
 
-# Values: [] or ["First:Second", ...]
+# Keep fitting consecutive calls together. First:* matches any following call.
+# Example: ["Item:*", "registrar:Parameter"]
+# Values: [] or ["First:Second", "First:*", ...]
 StickyChainCallPairs = []
 
 # Exact, unqualified standalone macros with C++ expression arguments.

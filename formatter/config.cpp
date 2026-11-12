@@ -802,7 +802,8 @@ void ValidateAnnotationNames(
 std::pair<std::string_view, std::string_view> AnnotationScopePair(
     std::string_view pair,
     std::string_view key = "IndentedCallScopePairs",
-    bool distinct = true)
+    bool distinct = true,
+    bool wildcardSecond = false)
 {
     const auto colon = pair.find(':');
 
@@ -813,7 +814,9 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
     const auto begin = pair.substr(0, colon);
     const auto end = pair.substr(colon + 1);
 
-    if (!AnnotationIdentifier(begin) || !AnnotationIdentifier(end) || (distinct && begin == end)) {
+    if (!AnnotationIdentifier(begin) || !(AnnotationIdentifier(end) || (wildcardSecond && end == "*")) ||
+        (distinct && begin == end))
+    {
         throw std::invalid_argument(std::string(key) + " expects valid identifier pairs");
     }
 
@@ -823,13 +826,14 @@ std::pair<std::string_view, std::string_view> AnnotationScopePair(
 std::vector<ChainCallPairAnnotation> CompileChainPairs(
     std::span<const std::string> input,
     std::string_view key,
-    bool distinct)
+    bool distinct,
+    bool wildcardSecond = false)
 {
     std::vector<ChainCallPairAnnotation> result;
     result.reserve(input.size());
 
     for (const auto& pair : input) {
-        const auto [first, second] = AnnotationScopePair(pair, key, distinct);
+        const auto [first, second] = AnnotationScopePair(pair, key, distinct, wildcardSecond);
         result.push_back({std::string(first), std::string(second)});
     }
 
@@ -904,7 +908,7 @@ void ValidateLibraryAnnotationStyle(const Style& style)
     scratch.clear();
 
     for (const auto& pair : style.StickyChainCallPairs) {
-        (void)AnnotationScopePair(pair, "StickyChainCallPairs", false);
+        (void)AnnotationScopePair(pair, "StickyChainCallPairs", false, true);
         scratch.push_back(pair);
     }
 
@@ -1062,7 +1066,7 @@ LibraryAnnotations CompileLibraryAnnotations(const Style& style)
             return result.VisualScopes_[left].End < result.VisualScopes_[right].End;
         });
     result.ChainScopes_ = CompileChainPairs(style.IndentedChainScopePairs, "IndentedChainScopePairs", true);
-    result.StickyChainPairs_ = CompileChainPairs(style.StickyChainCallPairs, "StickyChainCallPairs", false);
+    result.StickyChainPairs_ = CompileChainPairs(style.StickyChainCallPairs, "StickyChainCallPairs", false, true);
     return result;
 }
 
@@ -1078,15 +1082,35 @@ std::span<const ChainCallPairAnnotation> LibraryAnnotations::StickyChainPairs() 
 
 bool LibraryAnnotations::IsStickyChainPair(std::string_view first, std::string_view second) const noexcept
 {
-    const auto key = std::pair{first, second};
+    if (second.empty()) {
+        return false;
+    }
+
     const auto found = std::lower_bound(
         StickyChainPairs_.begin(),
+        StickyChainPairs_.end(),
+        first,
+        [] (const auto& pair, std::string_view value) {
+            return pair.First < value;
+        });
+
+    if (found == StickyChainPairs_.end() || found->First != first) {
+        return false;
+    }
+
+    if (found->Second == "*") {
+        return true;
+    }
+
+    const auto key = std::pair{first, second};
+    const auto exact = std::lower_bound(
+        found,
         StickyChainPairs_.end(),
         key,
         [] (const auto& pair, const auto& value) {
             return std::pair<std::string_view, std::string_view>{pair.First, pair.Second} < value;
         });
-    return found != StickyChainPairs_.end() && found->First == first && found->Second == second;
+    return exact != StickyChainPairs_.end() && exact->First == first && exact->Second == second;
 }
 
 std::span<const MessagePinAnnotation> LibraryAnnotations::MessagePins() const

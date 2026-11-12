@@ -1543,7 +1543,7 @@ std::vector<FormatCase> FormatCases()
             style.ChainsPacking = ListPacking::AllOrVertical;
         } else if (std::string_view(profile) == "call-breaks-scoped-sticky") {
             style.IndentedChainScopePairs = {"Begin:End"};
-            style.StickyChainCallPairs = {"Item:Then", "Then:Value", "builder:Then"};
+            style.StickyChainCallPairs = {"Item:*", "Then:Value", "builder:Then"};
         } else if (std::string_view(profile) == "call-breaks-selected") {
             style.ChainedCallRootNames = {"builder"};
         } else {
@@ -1689,6 +1689,9 @@ std::vector<FormatCase> FormatCases()
             "annotations-delimiter",
         },
         "annotations.input.cpp");
+    cases.push_back({chains, "sticky-wildcard", "annotations.input.cpp"});
+    cases.back().Style = formatter::LoadConfigFile(chains / "scoped-sticky.hit-fmt").FormattingStyle;
+    cases.back().Style->StickyChainCallPairs = {"Item:*", "registrar:*", "Maker:*", "Append:Append"};
     AddCases(cases, data / "separator-length", {"preserve"});
     AddCases(cases, data / "standalone-block-indent", {"preserve", "indent"});
     const auto closings = data / "closing-delimiters";
