@@ -2195,8 +2195,8 @@ NamingAcronyms = []
 
 # Configuration inheritance (optional)
 # Relative paths start here; absolute filesystem paths work too.
-# @/ starts at the nearest ancestor with a .git or .arc marker
-# (file or directory, including worktrees).
+# @/ uses the nearest .git or .arc ancestor of the selected config
+# (file or directory markers, including worktrees).
 # Local settings override the base regardless of include position.
 # Lists replace inherited lists; [] clears them.
 # Validation uses merged settings. Nested includes: 64 files max.

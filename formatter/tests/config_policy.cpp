@@ -179,46 +179,19 @@ TEST(ConfigPolicy, IncludesMergeBeforeLocalSettingsAndValidateFinalValues)
     }
 }
 
-TEST(ConfigPolicy, RepositoryIncludesFindNearestGitOrArcRoot)
+TEST(ConfigPolicy, RepositoryIncludesUseSuppliedRoot)
 {
-    for (const auto marker : {".git", ".arc"}) {
-        for (const bool directory : {false, true}) {
-            TemporaryConfigTree tree;
-            tree.Write(".git", "gitdir: outer\n");
-            tree.Write("base", "IndentWidth = 7\n");
-
-            if (directory) {
-                std::filesystem::create_directories(tree.Path / "repo" / marker);
-            } else {
-                tree.Write(std::filesystem::path("repo") / marker, "repository marker\n");
-            }
-
-            tree.Write("repo/base", "IndentWidth = 2\n");
-            tree.Write("repo/nested/base", "include = \"@/base\"\nColumnLimit = 90\n");
-            tree.Write("repo/nested/deeper/child", "include = \"../base\"\n");
-            fs::Path repositoryRoot;
-            const auto style = formatter::LoadConfigFile(
-                tree.Path / "repo/nested/deeper/child",
-                &repositoryRoot).FormattingStyle;
-            EXPECT_EQ(style.IndentWidth, 2u);
-            EXPECT_EQ(style.ColumnLimit, 90u);
-            EXPECT_EQ(repositoryRoot, tree.Path / "repo");
-        }
-    }
-
     TemporaryConfigTree tree;
-    tree.Write(".git", "gitdir: outer\n");
     tree.Write("settings", "IndentWidth = 7\n");
     tree.Write("configs/nested/.git", "gitdir: nested\n");
     tree.Write("configs/nested/settings", "IndentWidth = 2\n");
     tree.Write("configs/base", "include = \"@/settings\"\n");
     tree.Write("child", "include = \"configs/nested/../base\"\n");
-    fs::Path repositoryRoot;
-    EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "child", &repositoryRoot).FormattingStyle.IndentWidth, 7u);
-    EXPECT_EQ(repositoryRoot, tree.Path);
-    tree.Write("plain", "IndentWidth = 3\n");
-    EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "plain", &repositoryRoot).FormattingStyle.IndentWidth, 3u);
-    EXPECT_TRUE(repositoryRoot.empty());
+    EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "child", tree.Path).FormattingStyle.IndentWidth, 7u);
+    EXPECT_EQ(
+        formatter::LoadConfigFile(tree.Path / "child", tree.Path / "configs/nested").FormattingStyle.IndentWidth,
+        2u);
+    EXPECT_THROW((void)formatter::LoadConfigFile(tree.Path / "child"), std::runtime_error);
 }
 
 TEST(ConfigPolicy, InvalidIncludesReportIncludingFileAndLine)

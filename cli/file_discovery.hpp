@@ -4,8 +4,45 @@
 
 #include <algorithm>
 #include <string_view>
+#include <utility>
 
 namespace cli {
+
+inline fs::Path FindRepositoryRoot(const fs::Path& startDirectory, std::pmr::memory_resource& scratch)
+{
+    auto absolute = fs::Absolute(startDirectory, scratch);
+
+    if (absolute.Error.Code) {
+        return fs::Path(&scratch);
+    }
+
+    auto canonical = fs::Canonical(absolute.Value, false, scratch);
+
+    if (canonical.Error.Code) {
+        return fs::Path(&scratch);
+    }
+
+    auto directory = std::move(canonical.Value);
+
+    for (;;) {
+        for (const auto name : {".git", ".arc"}) {
+            auto marker = directory / fs::Path(name, &scratch);
+            auto status = fs::Status(marker);
+
+            if (!status.Error.Code && (status.Value.Directory || status.Value.Regular)) {
+                return directory;
+            }
+        }
+
+        auto parent = directory.parent_path(&scratch);
+
+        if (parent == directory) {
+            return fs::Path(&scratch);
+        }
+
+        directory = std::move(parent);
+    }
+}
 
 inline bool IsCppSource(const fs::Path& path)
 {

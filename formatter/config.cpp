@@ -1217,7 +1217,7 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(std::string_view n
 
 namespace {
 
-fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line, fs::Path* repositoryRoot)
+fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line, const fs::Path& repositoryRoot)
 {
     if (name.empty() || name.find('\0') != std::string_view::npos) {
         ThrowConfigError(path, line, "include expects a nonempty file path");
@@ -1230,35 +1230,11 @@ fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us li
             ThrowConfigError(path, line, "expected a repository-relative include path");
         }
 
-        auto directory = CheckedPath(fs::Canonical(CheckedPath(fs::Absolute(path)).parent_path()));
-
-        while (true) {
-            std::error_code error;
-
-            for (const auto name : {".git", ".arc"}) {
-                const auto candidate = directory / fs::Path(name);
-                const auto marker = fs::Status(candidate);
-                error = marker.Error.Code;
-
-                if (!error && (marker.Value.Directory || marker.Value.Regular)) {
-                    if (repositoryRoot && repositoryRoot->empty()) {
-                        *repositoryRoot = directory;
-                    }
-
-                    return directory / relative;
-                }
-
-                error.clear();
-            }
-
-            const auto parent = directory.parent_path();
-
-            if (parent == directory) {
-                ThrowConfigError(path, line, "cannot find repository root for include");
-            }
-
-            directory = parent;
+        if (repositoryRoot.empty()) {
+            ThrowConfigError(path, line, "cannot find repository root for include");
         }
+
+        return repositoryRoot / relative;
     }
 
     const fs::Path included(name);
@@ -1270,7 +1246,7 @@ us LoadConfigSettings(
     Configuration& config,
     std::span<SettingLocation> settingLines,
     std::vector<fs::Path>& active,
-    fs::Path* repositoryRoot)
+    const fs::Path& repositoryRoot)
 {
     const auto canonical = CheckedPath(fs::Canonical(path, true));
 
@@ -1392,12 +1368,8 @@ us LoadConfigSettings(
 
 } // namespace
 
-Configuration LoadConfigFile(const fs::Path& path, fs::Path* repositoryRoot)
+Configuration LoadConfigFile(const fs::Path& path, const fs::Path& repositoryRoot)
 {
-    if (repositoryRoot) {
-        repositoryRoot->resize(0);
-    }
-
     Configuration config;
     std::array<SettingLocation, Options.size()> settingLines{};
     std::vector<fs::Path> active;

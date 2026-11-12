@@ -120,9 +120,9 @@ private:
     Result<const cli::PreparedConfiguration*, FileFailure> LoadPreparedConfig(const fs::Path& path)
     {
         formatter::Configuration settings;
-        fs::Path repositoryRoot;
+        auto repositoryRoot = FindRepositoryRoot(path.parent_path(&Scratch_), Scratch_);
         try {
-            settings = formatter::LoadConfigFile(path, &repositoryRoot);
+            settings = formatter::LoadConfigFile(path, repositoryRoot);
         } catch (const std::exception&) {
             return {nullptr, FileError(path, ExceptionError())};
         }
