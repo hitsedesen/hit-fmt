@@ -169,37 +169,35 @@
         (leading-trivia
           (whitespace "\n\n    ")
         )
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Derived")
-              (function-declarator
-                (parameter-list "(" ")")
-                (constructor-initializer-list
-                  ":"
-                  (constructor-initializer
-                    (type-construction-expression
-                      (type-id
-                        "Base"
-                        (template-argument-list
-                          "<"
-                          (template-argument "First")
-                          (list-separator ",")
-                          (template-argument "Second")
-                          ">"
-                        )
+        (init-declarator
+          (declarator
+            (declarator-name "Derived")
+            (function-declarator
+              (parameter-list "(" ")")
+              (constructor-initializer-list
+                ":"
+                (constructor-initializer
+                  (type-construction-expression
+                    (type-id
+                      "Base"
+                      (template-argument-list
+                        "<"
+                        (template-argument "First")
+                        (list-separator ",")
+                        (template-argument "Second")
+                        ">"
                       )
-                      (braced-initializer
-                        (initializer-list "{" "}")
-                      )
+                    )
+                    (braced-initializer
+                      (initializer-list "{" "}")
                     )
                   )
-                  (list-separator ",")
-                  (constructor-initializer
-                    (call-expression
-                      (identifier-expression "Other")
-                      (argument-list "(" ")")
-                    )
+                )
+                (list-separator ",")
+                (constructor-initializer
+                  (call-expression
+                    (identifier-expression "Other")
+                    (argument-list "(" ")")
                   )
                 )
               )
@@ -213,40 +211,34 @@
           (whitespace "\n\n    ")
         )
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "function")
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "int")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (declarator-name "first")
-                        )
-                      )
+        (init-declarator
+          (declarator
+            (declarator-name "function")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator
+                    (declarator
+                      (declarator-name "first")
                     )
                   )
-                  (list-separator ",")
-                  (parameter-declaration
-                    (declaration-specifiers "int")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (declarator-name "second")
-                        )
-                        (initializer
-                          "="
-                          (literal-expression "2")
-                        )
-                      )
-                    )
-                  )
-                  ")"
                 )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator
+                    (declarator
+                      (declarator-name "second")
+                    )
+                    (initializer
+                      "="
+                      (literal-expression "2")
+                    )
+                  )
+                )
+                ")"
               )
             )
           )
@@ -285,29 +277,27 @@
           )
           (declaration-statement
             (declaration-specifiers "int")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "values")
-                  (array-declarator "[" "]")
-                )
-                (initializer
-                  (braced-initializer
-                    (initializer-list
-                      "{"
-                      (initializer-element
-                        (literal-expression "1")
-                      )
-                      (list-separator ",")
-                      (initializer-element
-                        (literal-expression "2")
-                      )
-                      (list-separator ",")
-                      (initializer-element
-                        (literal-expression "3")
-                      )
-                      "}"
+            (init-declarator
+              (declarator
+                (declarator-name "values")
+                (array-declarator "[" "]")
+              )
+              (initializer
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (literal-expression "1")
                     )
+                    (list-separator ",")
+                    (initializer-element
+                      (literal-expression "2")
+                    )
+                    (list-separator ",")
+                    (initializer-element
+                      (literal-expression "3")
+                    )
+                    "}"
                   )
                 )
               )
@@ -316,65 +306,59 @@
           )
           (declaration-statement
             (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (structured-binding
+            (init-declarator
+              (declarator
+                (structured-binding
+                  "["
+                  (declarator-name "left")
+                  (list-separator ",")
+                  (declarator-name "right")
+                  "]"
+                )
+              )
+              (initializer
+                "="
+                (identifier-expression "pair")
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator
+              (declarator
+                (declarator-name "capture")
+              )
+              (initializer
+                "="
+                (lambda-expression
+                  (lambda-capture-list
                     "["
-                    (declarator-name "left")
+                    (lambda-capture "left")
                     (list-separator ",")
-                    (declarator-name "right")
+                    (lambda-capture "&" "right")
                     "]"
                   )
-                )
-                (initializer
-                  "="
-                  (identifier-expression "pair")
-                )
-              )
-            )
-            ";"
-          )
-          (declaration-statement
-            (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "capture")
-                )
-                (initializer
-                  "="
-                  (lambda-expression
-                    (lambda-capture-list
-                      "["
-                      (lambda-capture "left")
-                      (list-separator ",")
-                      (lambda-capture "&" "right")
-                      "]"
-                    )
-                    (parameter-list
-                      "("
-                      (parameter-declaration
-                        (declaration-specifiers "int")
-                        (init-declarator-list
-                          (init-declarator
-                            (declarator
-                              (declarator-name "value")
-                            )
-                          )
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator
+                        (declarator
+                          (declarator-name "value")
                         )
                       )
-                      ")"
                     )
-                    (lambda-body
-                      "{"
-                      (return-statement
-                        "return"
-                        (identifier-expression "value")
-                        ";"
-                      )
-                      "}"
+                    ")"
+                  )
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (identifier-expression "value")
+                      ";"
                     )
+                    "}"
                   )
                 )
               )
@@ -391,85 +375,79 @@
           )
           (declaration-statement
             (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "cast")
-                )
-                (initializer
-                  "="
-                  (cast-expression
-                    "static_cast"
-                    (template-argument-list
-                      "<"
-                      (type-id
-                        "types" "::" "Box"
-                        (template-argument-list
-                          "<"
-                          (template-argument "First")
-                          ">>"
-                        )
-                      )
-                    )
-                    "("
-                    (identifier-expression "value")
-                    ")"
-                  )
-                )
+            (init-declarator
+              (declarator
+                (declarator-name "cast")
               )
-            )
-            ";"
-          )
-          (declaration-statement
-            (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "pointer")
-                )
-                (initializer
-                  "="
-                  (cast-expression
-                    "reinterpret_cast"
-                    (template-argument-list
-                      "<"
-                      (type-id "UnknownType" "*")
-                      ">"
-                    )
-                    "("
-                    (identifier-expression "address")
-                    ")"
-                  )
-                )
-              )
-            )
-            ";"
-          )
-          (declaration-statement
-            (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "typed")
-                )
-                (initializer
-                  "="
-                  (member-expression
-                    (identifier-expression "traits")
-                    "::"
-                    (template-id-expression
-                      (identifier-expression "same")
+              (initializer
+                "="
+                (cast-expression
+                  "static_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id
+                      "types" "::" "Box"
                       (template-argument-list
                         "<"
                         (template-argument "First")
-                        (list-separator ",")
-                        (template-argument
-                          "types" "::" "Box"
-                          (template-argument-list
-                            "<"
-                            (template-argument "Second")
-                            ">>"
-                          )
+                        ">>"
+                      )
+                    )
+                  )
+                  "("
+                  (identifier-expression "value")
+                  ")"
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator
+              (declarator
+                (declarator-name "pointer")
+              )
+              (initializer
+                "="
+                (cast-expression
+                  "reinterpret_cast"
+                  (template-argument-list
+                    "<"
+                    (type-id "UnknownType" "*")
+                    ">"
+                  )
+                  "("
+                  (identifier-expression "address")
+                  ")"
+                )
+              )
+            )
+            ";"
+          )
+          (declaration-statement
+            (declaration-specifiers "auto")
+            (init-declarator
+              (declarator
+                (declarator-name "typed")
+              )
+              (initializer
+                "="
+                (member-expression
+                  (identifier-expression "traits")
+                  "::"
+                  (template-id-expression
+                    (identifier-expression "same")
+                    (template-argument-list
+                      "<"
+                      (template-argument "First")
+                      (list-separator ",")
+                      (template-argument
+                        "types" "::" "Box"
+                        (template-argument-list
+                          "<"
+                          (template-argument "Second")
+                          ">>"
                         )
                       )
                     )

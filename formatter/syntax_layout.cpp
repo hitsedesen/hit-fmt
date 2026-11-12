@@ -2997,6 +2997,14 @@ private:
         }
     }
 
+    Index InitDeclaratorOwner(Index id) const
+    {
+        const auto parent = Region(Syntax_[id]).Parent;
+        return parent != None && Region(Syntax_[parent]).Kind == NodeKind::InitDeclaratorList
+            ? Region(Syntax_[parent]).Parent
+            : parent;
+    }
+
     void PlanInitializerBoundary(Index id)
     {
         const auto& node = Region(Syntax_[id]);
@@ -3008,8 +3016,7 @@ private:
             return;
         }
 
-        const auto list = Region(Syntax_[node.Parent]).Parent;
-        const auto declaration = list == None ? None : Region(Syntax_[list]).Parent;
+        const auto declaration = InitDeclaratorOwner(node.Parent);
 
         if (declaration == None) {
             return;
@@ -3067,13 +3074,15 @@ private:
     {
         const auto& node = Region(Syntax_[id]);
         const auto initializer = LastChild_[id];
-        const auto list = node.Parent;
-        const auto declaration = list == None ? None : Region(Syntax_[list]).Parent;
+        const auto declaration = InitDeclaratorOwner(id);
+        const bool separated =
+            node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::InitDeclaratorList &&
+                node.Tokens.Begin != Region(Syntax_[node.Parent]).Tokens.Begin;
 
         // Without a type prefix, the leading gap belongs to the enclosing
         // statement sequence, not a declarator continuation.
         if (initializer == None || Region(Syntax_[initializer]).Kind != NodeKind::Initializer || declaration == None ||
-            node.Tokens.Begin != Region(Syntax_[list]).Tokens.Begin ||
+            separated ||
             (Region(Syntax_[declaration]).Kind != NodeKind::Declaration &&
                 Region(Syntax_[declaration]).Kind != NodeKind::DeclarationStatement) ||
             node.Tokens.Begin == Region(Syntax_[declaration]).Tokens.Begin ||
@@ -5512,7 +5521,7 @@ private:
                 for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {
                     const auto kind = Region(Syntax_[child]).Kind;
 
-                    if (kind == NodeKind::InitDeclaratorList) {
+                    if (kind == NodeKind::InitDeclaratorList || kind == NodeKind::InitDeclarator) {
                         return Syntax_[child].Category;
                     }
 

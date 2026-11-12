@@ -35,3 +35,4 @@ DECLARE_CHANNEL(TChannel, Channel, .Configure(1).Enable());
 REGISTER_OBJECT(TObject, Object, MakeRegistry().WithScope("scope"));
 void InvalidMemberArgument(.Configure(1));
 void ValidParameters(Item item, Item (*callback)(int), decltype(Make()) value);
+void DefaultParameters(const Item& item, Result (*callback)(int), int count = nested(1, 2));

@@ -10,31 +10,27 @@
       "struct" "Parcel" "{"
       (function-definition
         (declaration-specifiers "explicit")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Parcel")
-              (template-argument-list
-                "<"
-                (template-argument "T")
-                ">"
-              )
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "T")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "*")
-                          (declarator-name "value")
-                        )
-                      )
+        (init-declarator
+          (declarator
+            (declarator-name "Parcel")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "value")
                     )
                   )
-                  ")"
                 )
+                ")"
               )
             )
           )
@@ -57,43 +53,39 @@
     ";"
   )
   (function-definition
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "ParcelAlias" "::"
-          (declarator-name "Parcel")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "const" "ParcelAlias")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "other")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        "ParcelAlias" "::"
+        (declarator-name "Parcel")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "const" "ParcelAlias")
+              (init-declarator
+                (declarator
+                  (pointer-operator "&")
+                  (declarator-name "other")
                 )
               )
-              ")"
             )
-            (constructor-initializer-list
-              ":"
-              (constructor-initializer
-                (call-expression
-                  (identifier-expression "saved")
-                  (argument-list
-                    "("
-                    (argument
-                      (member-expression
-                        (identifier-expression "other")
-                        "."
-                        (identifier-expression "saved")
-                      )
+            ")"
+          )
+          (constructor-initializer-list
+            ":"
+            (constructor-initializer
+              (call-expression
+                (identifier-expression "saved")
+                (argument-list
+                  "("
+                  (argument
+                    (member-expression
+                      (identifier-expression "other")
+                      "."
+                      (identifier-expression "saved")
                     )
-                    ")"
                   )
+                  ")"
                 )
               )
             )
@@ -104,14 +96,12 @@
     (compound-statement "{" "}")
   )
   (function-definition
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "ParcelAlias" "::"
-          (destructor-name "~" "Parcel")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        "ParcelAlias" "::"
+        (destructor-name "~" "Parcel")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -119,26 +109,22 @@
   )
   (function-definition
     (declaration-specifiers "ParcelAlias" "::" "Value")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "makeValue")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "const" "ParcelAlias")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "makeValue")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "const" "ParcelAlias")
+              (init-declarator
+                (declarator
+                  (pointer-operator "&")
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )

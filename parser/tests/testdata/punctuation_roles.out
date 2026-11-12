@@ -27,38 +27,32 @@
           (attribute-specifier "[" "[" "nodiscard" "]" "]")
           "int"
         )
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "transform")
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "int")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "&")
-                          (declarator-name "value")
-                        )
-                      )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "transform")
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "&")
+                      (declarator-name "value")
                     )
                   )
-                  (list-separator ",")
-                  (parameter-declaration
-                    (declaration-specifiers "int")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (declarator-name "shift")
-                        )
-                      )
-                    )
-                  )
-                  ")"
                 )
+                (list-separator ",")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator
+                    (declarator
+                      (declarator-name "shift")
+                    )
+                  )
+                )
+                ")"
               )
             )
           )
@@ -67,54 +61,48 @@
           "{"
           (declaration-statement
             (declaration-specifiers "int")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "bits")
-                  (bit-field ":" "3")
-                )
+            (init-declarator
+              (declarator
+                (declarator-name "bits")
+                (bit-field ":" "3")
               )
             )
             ";"
           )
           (declaration-statement
             (declaration-specifiers "auto")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "lambda")
-                )
-                (initializer
-                  "="
-                  (lambda-expression
-                    (lambda-capture-list
-                      "["
-                      (lambda-capture "&" "value")
-                      "]"
-                    )
-                    (parameter-list
-                      "("
-                      (parameter-declaration
-                        (declaration-specifiers "int")
-                        (init-declarator-list
-                          (init-declarator
-                            (declarator
-                              (declarator-name "item")
-                            )
-                          )
+            (init-declarator
+              (declarator
+                (declarator-name "lambda")
+              )
+              (initializer
+                "="
+                (lambda-expression
+                  (lambda-capture-list
+                    "["
+                    (lambda-capture "&" "value")
+                    "]"
+                  )
+                  (parameter-list
+                    "("
+                    (parameter-declaration
+                      (declaration-specifiers "int")
+                      (init-declarator
+                        (declarator
+                          (declarator-name "item")
                         )
                       )
-                      ")"
                     )
-                    (lambda-body
-                      "{"
-                      (return-statement
-                        "return"
-                        (identifier-expression "item")
-                        ";"
-                      )
-                      "}"
+                    ")"
+                  )
+                  (lambda-body
+                    "{"
+                    (return-statement
+                      "return"
+                      (identifier-expression "item")
+                      ";"
                     )
+                    "}"
                   )
                 )
               )
@@ -198,35 +186,31 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Compare")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers
-                  "const" "::" "google" "::" "protobuf" "::" "Map"
-                  (template-argument-list
-                    "<"
-                    (template-argument "TKey")
-                    (list-separator ",")
-                    (template-argument "TValue")
-                    ">"
-                  )
-                )
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "&")
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "Compare")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers
+                "const" "::" "google" "::" "protobuf" "::" "Map"
+                (template-argument-list
+                  "<"
+                  (template-argument "TKey")
+                  (list-separator ",")
+                  (template-argument "TValue")
+                  ">"
                 )
               )
-              ")"
+              (init-declarator
+                (declarator
+                  (pointer-operator "&")
+                  (declarator-name "value")
+                )
+              )
             )
+            ")"
           )
         )
       )
@@ -238,36 +222,30 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Select")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "row")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "Select")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "row")
                 )
               )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "offset")
-                    )
-                  )
-                )
-              )
-              ")"
             )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "offset")
+                )
+              )
+            )
+            ")"
           )
         )
       )

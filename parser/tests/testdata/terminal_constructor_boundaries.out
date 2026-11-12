@@ -17,17 +17,15 @@
             ">"
           )
         )
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (nested-declarator
-                "("
-                (declarator-name "make")
-                ")"
-              )
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (declarator-name "make")
+              ")"
+            )
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -42,17 +40,15 @@
             ">"
           )
         )
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (nested-declarator
-                "(" "("
-                (declarator-name "create")
-                ")" ")"
-              )
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "(" "("
+              (declarator-name "create")
+              ")" ")"
+            )
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -77,19 +73,17 @@
             ">"
           )
         )
-        (init-declarator-list
-          (init-declarator
-            (abstract-declarator
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "items")
-                  )
-                  ")"
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "items")
                 )
-                (attribute-specifier "[" "[" "]" "(" ")" "{" "return" "4" ";" "}" "(" ")" "]")
+                ")"
               )
+              (attribute-specifier "[" "[" "]" "(" ")" "{" "return" "4" ";" "}" "(" ")" "]")
             )
           )
         )
@@ -104,41 +98,37 @@
             ">"
           )
         )
-        (init-declarator-list
-          (init-declarator
-            (abstract-declarator
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "T")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "*")
-                          (declarator-name "p")
-                        )
-                      )
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "p")
                     )
                   )
-                  ")"
                 )
-                (exception-specification
-                  "noexcept" "("
-                  (call-expression
-                    (identifier-expression "check")
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "p")
-                      )
-                      ")"
-                    )
-                  )
-                  ")"
-                )
-                "(" ")"
+                ")"
               )
+              (exception-specification
+                "noexcept" "("
+                (call-expression
+                  (identifier-expression "check")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "p")
+                    )
+                    ")"
+                  )
+                )
+                ")"
+              )
+              "(" ")"
             )
           )
         )
@@ -153,30 +143,26 @@
             ">"
           )
         )
-        (init-declarator-list
-          (init-declarator
-            (abstract-declarator
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "T")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "*")
-                          (declarator-name "p")
-                        )
-                      )
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "p")
                     )
                   )
-                  ")"
                 )
-                (requires-clause
-                  "requires"
-                  (constraint-expression
-                    (literal-expression "true")
-                  )
+                ")"
+              )
+              (requires-clause
+                "requires"
+                (constraint-expression
+                  (literal-expression "true")
                 )
               )
             )
@@ -193,114 +179,102 @@
             ">"
           )
         )
-        (init-declarator-list
-          (init-declarator
-            (abstract-declarator
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "T")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "*")
-                          (declarator-name "p")
-                        )
-                      )
+        (init-declarator
+          (abstract-declarator
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "p")
                     )
                   )
-                  ")"
                 )
+                ")"
               )
             )
-            (initializer
-              "="
-              (call-expression
-                (identifier-expression "opaque")
-                (argument-list "(" ")")
-              )
+          )
+          (initializer
+            "="
+            (call-expression
+              (identifier-expression "opaque")
+              (argument-list "(" ")")
             )
           )
         )
         ";"
       )
       (function-declaration
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Owner")
-              (template-argument-list
-                "<"
-                (template-argument "T")
-                ">"
-              )
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "T")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "*")
-                          (declarator-name "p")
-                        )
-                      )
+        (init-declarator
+          (declarator
+            (declarator-name "Owner")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "p")
                     )
                   )
-                  ")"
                 )
+                ")"
               )
             )
-            (initializer
-              "="
-              (expression "default")
-            )
+          )
+          (initializer
+            "="
+            (expression "default")
           )
         )
         ";"
       )
       (function-definition
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Owner")
-              (template-argument-list
-                "<"
-                (template-argument "T")
-                ">"
+        (init-declarator
+          (declarator
+            (declarator-name "Owner")
+            (template-argument-list
+              "<"
+              (template-argument "T")
+              ">"
+            )
+            (function-declarator
+              (parameter-list
+                "("
+                (parameter-declaration
+                  (declaration-specifiers "T")
+                  (init-declarator
+                    (declarator
+                      (pointer-operator "*")
+                      (declarator-name "p")
+                    )
+                  )
+                )
+                ")"
               )
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "T")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (pointer-operator "*")
-                          (declarator-name "p")
-                        )
-                      )
+              (exception-specification
+                "noexcept" "("
+                (call-expression
+                  (identifier-expression "check")
+                  (argument-list
+                    "("
+                    (argument
+                      (identifier-expression "p")
                     )
+                    ")"
                   )
-                  ")"
                 )
-                (exception-specification
-                  "noexcept" "("
-                  (call-expression
-                    (identifier-expression "check")
-                    (argument-list
-                      "("
-                      (argument
-                        (identifier-expression "p")
-                      )
-                      ")"
-                    )
-                  )
-                  ")"
-                )
+                ")"
               )
             )
           )

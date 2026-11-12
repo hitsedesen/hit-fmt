@@ -1071,10 +1071,7 @@ TEST(Parser, TypedLambdaDirectInitializersRetainNamedDeclarations)
         EXPECT_EQ(
             tree.SourceText(owner->FirstChild->Tokens),
             std::string_view(candidate).starts_with("const") ? "const Registry" : "Registry");
-        const auto* outerList = owner->FirstChild->NextSibling;
-        ASSERT_NE(outerList, nullptr);
-        ASSERT_EQ(outerList->Kind, InitDeclaratorList);
-        const auto* init = outerList->FirstChild;
+        const auto* init = owner->FirstChild->NextSibling;
         ASSERT_NE(init, nullptr);
         ASSERT_EQ(init->Kind, InitDeclarator);
         const auto* declarator = init->FirstChild;
@@ -3277,7 +3274,7 @@ TEST(Parser, RequiresClauseOwnsNestedExpressionBeforeDeclaration)
                 EXPECT_EQ(following->FirstChild->Kind, parser::NodeKind::DeclarationSpecifiers);
                 EXPECT_EQ(tree.SourceText(following->FirstChild->Tokens), "int");
                 ASSERT_NE(following->FirstChild->NextSibling, nullptr);
-                EXPECT_EQ(following->FirstChild->NextSibling->Kind, parser::NodeKind::InitDeclaratorList);
+                EXPECT_EQ(following->FirstChild->NextSibling->Kind, parser::NodeKind::InitDeclarator);
                 EXPECT_EQ(tree.SourceText(following->FirstChild->NextSibling->Tokens), "inspect(T value)");
                 EXPECT_EQ(following->LastChild->Kind, parser::NodeKind::CompoundStatement);
             }
@@ -3406,7 +3403,7 @@ TEST(Parser, RequiresClauseOwnsDependentFunctionReturnPrefix)
             EXPECT_EQ(tree.SourceText(function->FirstChild->Tokens), declaration.Specifiers);
             const auto* declarator = function->FirstChild->NextSibling;
             ASSERT_NE(declarator, nullptr);
-            EXPECT_EQ(declarator->Kind, parser::NodeKind::InitDeclaratorList);
+            EXPECT_EQ(declarator->Kind, parser::NodeKind::InitDeclarator);
             EXPECT_EQ(tree.SourceText(declarator->Tokens), declaration.Declarator);
             EXPECT_EQ(declarator->Tokens.Begin, function->FirstChild->Tokens.End);
             ASSERT_NE(function->LastChild, nullptr);
@@ -3782,7 +3779,7 @@ TEST(Parser, RequiresClauseKeepsBoundaryCommentsAndTerminalRecovery)
             EXPECT_EQ(tree.SourceText(function->FirstChild->Tokens), declaration.Specifiers);
             const auto* declarator = function->FirstChild->NextSibling;
             ASSERT_NE(declarator, nullptr);
-            EXPECT_EQ(declarator->Kind, parser::NodeKind::InitDeclaratorList);
+            EXPECT_EQ(declarator->Kind, parser::NodeKind::InitDeclarator);
             EXPECT_EQ(tree.SourceText(declarator->Tokens), declaration.Declarator);
             EXPECT_EQ(function->LastChild->Kind, parser::NodeKind::CompoundStatement);
             EXPECT_EQ(tree.SourceText(function->LastChild->Tokens), declaration.Body);
@@ -4021,16 +4018,10 @@ TEST(Parser, QualifiedConstructorHeadsKeepTerminalDeclaratorNames)
 
                 found[i] = true;
                 SCOPED_TRACE(cases[i].first);
-                const Node* list = node->FirstChild;
-
-                while (list && list->Kind != parser::NodeKind::InitDeclaratorList) {
-                    list = list->NextSibling;
-                }
-
-                ASSERT_NE(list, nullptr);
-                ASSERT_NE(list->FirstChild, nullptr);
-                ASSERT_NE(list->FirstChild->FirstChild, nullptr);
-                const Node* name = list->FirstChild->FirstChild->FirstChild;
+                const auto* init = parser::FirstInitDeclarator(*node);
+                ASSERT_NE(init, nullptr);
+                ASSERT_NE(init->FirstChild, nullptr);
+                const Node* name = init->FirstChild->FirstChild;
 
                 while (name && name->Kind == parser::NodeKind::TemplateArgumentList) {
                     name = name->NextSibling;
@@ -4079,15 +4070,9 @@ TEST(Parser, FunctionKindsClassifyOnlyActualFunctionOwners)
         auto expected = parser::FunctionKind::Unknown;
 
         if (node->Kind == parser::NodeKind::FunctionDeclaration || node->Kind == parser::NodeKind::FunctionDefinition) {
-            const Node* list = node->FirstChild;
-
-            while (list && list->Kind != parser::NodeKind::InitDeclaratorList) {
-                list = list->NextSibling;
-            }
-
-            ASSERT_NE(list, nullptr);
-            ASSERT_NE(list->FirstChild, nullptr);
-            const Node* declarator = list->FirstChild->FirstChild;
+            const auto* init = parser::FirstInitDeclarator(*node);
+            ASSERT_NE(init, nullptr);
+            const Node* declarator = init->FirstChild;
             ASSERT_NE(declarator, nullptr);
             const Node* name = declarator->FirstChild;
 
@@ -4278,19 +4263,9 @@ TEST(Parser, FunctionKindsRetainBalancedQualifiedAndExplicitReturnEvidence)
         ASSERT_TRUE(function->Kind == parser::NodeKind::FunctionDeclaration ||
             function->Kind == parser::NodeKind::FunctionDefinition);
         EXPECT_EQ(function->Function, item.Kind);
-        const auto* list = function->FirstChild;
-
-        while (list && list->Kind != parser::NodeKind::InitDeclaratorList) {
-            list = list->NextSibling;
-        }
-
-        ASSERT_NE(list, nullptr);
-        ASSERT_NE(list->FirstChild, nullptr);
-        const auto* init = list->FirstChild;
+        const auto* init = parser::FirstInitDeclarator(*function);
+        ASSERT_NE(init, nullptr);
         EXPECT_EQ(init->Kind, parser::NodeKind::InitDeclarator);
-        EXPECT_EQ(init->NextSibling, nullptr);
-        EXPECT_EQ(init->Tokens.Begin, list->Tokens.Begin);
-        EXPECT_EQ(init->Tokens.End, list->Tokens.End);
         const auto* declarator = init->FirstChild;
         ASSERT_NE(declarator, nullptr);
         EXPECT_EQ(declarator->Kind, parser::NodeKind::Declarator);
@@ -4722,9 +4697,8 @@ TEST(Parser, TerminalConstructorTemplateIdsHaveLocalNamesAndSeparateParameters)
             }
 
             ASSERT_NE(list, nullptr);
-            ASSERT_EQ(list->Kind, parser::NodeKind::InitDeclaratorList);
-            ASSERT_NE(list->FirstChild, nullptr);
-            const auto* declarator = list->FirstChild->FirstChild;
+            ASSERT_EQ(list->Kind, parser::NodeKind::InitDeclarator);
+            const auto* declarator = list->FirstChild;
             ASSERT_NE(declarator, nullptr);
             ASSERT_EQ(declarator->Kind, parser::NodeKind::Declarator);
             const auto* name = declarator->FirstChild;

@@ -5,6 +5,7 @@
 #include "operator_info.hpp"
 
 #include <util/assert.hpp>
+#include <util/defer.hpp>
 #include <util/memory.hpp>
 #include <util/phase_profiler.hpp>
 #include <util/types.hpp>
@@ -4362,6 +4363,13 @@ private:
             (Kind(after) == TK::Operator_ClassMemberAccess || Kind(after) == TK::Operator_IndirectClassMemberAccess);
     }
 
+    struct DeclarationHead
+    {
+        us End;
+        us SpecifiersEnd = 0;
+        FunctionKind Function = FunctionKind::Unknown;
+    };
+
     [[nodiscard]] us FindDeclarationSpecifiersEnd(
         us begin,
         us end,
@@ -4978,10 +4986,15 @@ private:
                 const auto firstKind = Kind(NextSignificant(segmentBegin));
                 // Declarator operators and construction/member expressions
                 // cannot supply a parameter type in an unexpanded macro payload.
-                const bool missingType = firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand ||
+                bool missingType = firstKind == TK::Operator_Star || firstKind == TK::Operator_Ampersand ||
                     firstKind == TK::Operator_And || firstKind == TK::Operator_ClassMemberAccess ||
-                    firstKind == TK::Operator_IndirectClassMemberAccess ||
-                    IsConstructionExpression(FindDeclarationSpecifiersEnd(segmentBegin, i), i);
+                    firstKind == TK::Operator_IndirectClassMemberAccess;
+                DeclarationHead head{.End = i};
+
+                if (!missingType) {
+                    head.SpecifiersEnd = FindDeclarationSpecifiersEnd(segmentBegin, i, false, &head.Function);
+                    missingType = IsConstructionExpression(head.SpecifiersEnd, i);
+                }
 
                 if (conditionalMiddle != 0 || missingType) {
                     AddUnparsedSyntax(*parameter, segmentBegin, i);
@@ -5002,7 +5015,7 @@ private:
                         --TypeSyntaxDepth_;
                         Append(*parameter, *nested);
                     } else {
-                        AddDeclarationSyntax(*parameter, segmentBegin, i);
+                        AddDeclarationSyntax(*parameter, segmentBegin, i, std::nullopt, false, false, &head);
                     }
                 }
 
@@ -5023,15 +5036,30 @@ private:
         return noEmptyParameterSlots;
     }
 
-    [[nodiscard]] bool HasEmptyArgumentSlot(TokenIndex opening, TokenIndex closingEnd) const
+    [[nodiscard]] bool HasEmptyArgumentSlot(
+        TokenIndex opening,
+        TokenIndex closingEnd,
+        Vector<TokenIndex>* argumentEnds = nullptr) const
     {
+        const auto savedEnds = argumentEnds ? argumentEnds->size() : 0;
+        // Reuse the validation scan only where it proves the same boundaries
+        // as ArgumentExpressionEnd, without exhausting that scan's budget.
+        bool simple = argumentEnds && HasDelimiterMap_ && closingEnd <= ParseLimit_ && closingEnd - opening <= 4096;
+        DEFER(if (argumentEnds && !simple) { argumentEnds->resize(savedEnds); });
         bool missingArgument = false;
         bool expectingArgument = true;
         bool sawSeparator = false;
         unsigned conditionalMiddle = 0;
         us explicitMemberWork = 4096;
         for (auto i = NextSignificant(opening + 1); i + 1 < closingEnd; i = NextSignificant(i + 1)) {
-            if (Kind(i) == TK::Keyword_template) {
+            const auto kind = Kind(i);
+
+            if (kind == TK::Operator_Less || kind == TK::PreprocessingDirective) {
+                simple = false;
+            }
+
+            if (kind == TK::Keyword_template) {
+                simple = false;
                 const auto nameEnd = ArgumentExplicitMemberNameEnd(i, opening + 1, closingEnd - 1, explicitMemberWork);
 
                 if (nameEnd) {
@@ -5056,23 +5084,34 @@ private:
                 return true; // Unknown partition requires recovered syntax.
             }
 
-            if (!AdvanceConditionalMiddle(Kind(i), conditionalMiddle)) {
+            if (!AdvanceConditionalMiddle(kind, conditionalMiddle)) {
+                simple = false;
                 return false;
             }
-            if (Kind(i) == TK::Operator_Comma && conditionalMiddle == 0) {
+            if (kind == TK::Operator_Comma && conditionalMiddle == 0) {
+                if (simple) {
+                    argumentEnds->push_back(i);
+                }
+
                 missingArgument |= expectingArgument;
                 expectingArgument = true;
                 sawSeparator = true;
             } else {
                 expectingArgument = false;
-                if (IsOpenDelimiter(Kind(i))) {
+                if (IsOpenDelimiter(kind)) {
                     auto nested = FindBalancedEnd(i);
                     if (nested != std::numeric_limits<TokenIndex>::max() && nested < closingEnd) {
                         i = nested - 1;
+                    } else {
+                        simple = false;
                     }
                 }
             }
         }
+        if (simple) {
+            argumentEnds->push_back(closingEnd - 1);
+        }
+
         return missingArgument || (sawSeparator && expectingArgument);
     }
 
@@ -5111,17 +5150,24 @@ private:
         // Empty arguments are not expressions. A function-like macro can
         // accept them, so keep the entire list as recovered syntax instead
         // of inventing an expression for a bare separator.
-        if (HasEmptyArgumentSlot(opening, closingEnd)) {
+        const auto savedEnds = ArgumentEnds_.size();
+        DEFER(ArgumentEnds_.resize(savedEnds));
+
+        if (HasEmptyArgumentSlot(opening, closingEnd, &ArgumentEnds_)) {
             AddUnparsedSyntax(*arguments, opening + 1, closingEnd - 1);
             AddDirectiveChildrenInGap(*arguments, opening, closingEnd);
             Append(parent, *arguments);
             return;
         }
 
+        const bool cachedEnds = ArgumentEnds_.size() != savedEnds;
+        auto boundaryIndex = savedEnds;
         us boundaryWork = 4096;
         while (argumentCursor + 1 < closingEnd) {
             auto before = argumentCursor;
-            const auto argumentEnd = ArgumentExpressionEnd(before, closingEnd - 1, boundaryWork);
+            const auto argumentEnd = cachedEnds
+                ? ArgumentEnds_[boundaryIndex++]
+                : ArgumentExpressionEnd(before, closingEnd - 1, boundaryWork);
             Node* expression = nullptr;
             if (Kind(before) == TK::Operator_OpenBrace) {
                 auto braceEnd = FindBalancedEnd(before);
@@ -6845,7 +6891,8 @@ private:
         us end,
         std::optional<TokenRange> parameters = std::nullopt,
         bool ungroupedConstructorInitializer = false,
-        bool terminalConstructorEligible = false)
+        bool terminalConstructorEligible = false,
+        const DeclarationHead* head = nullptr)
     {
         while (end > begin && (Kind(end - 1) == TK::Operator_Semicolon || Kind(end - 1) == TK::Operator_OpenBrace)) {
             --end;
@@ -6856,7 +6903,14 @@ private:
             (declaration.Kind == NodeKind::FunctionDeclaration || declaration.Kind == NodeKind::FunctionDefinition)
             ? parameters
             : std::nullopt;
-        auto specifiersEnd = FindDeclarationSpecifiersEnd(begin, end, false, &functionKind, constructorParameters);
+        us specifiersEnd;
+
+        if (head && head->End == end && !constructorParameters) {
+            specifiersEnd = head->SpecifiersEnd;
+            functionKind = head->Function;
+        } else {
+            specifiersEnd = FindDeclarationSpecifiersEnd(begin, end, false, &functionKind, constructorParameters);
+        }
 
         if (ungroupedConstructorInitializer && parameters && !RecordNames_.empty() && RecordNames_.back().empty() &&
             specifiersEnd == parameters->Begin)
@@ -6876,9 +6930,7 @@ private:
             return;
         }
 
-        auto* list = MakeNode(NodeKind::InitDeclaratorList, specifiersEnd);
-        list->Tokens.End = end;
-        Append(declaration, *list);
+        Node* list = nullptr;
 
         us segmentBegin = specifiersEnd;
         int delimiterDepth = 0;
@@ -6906,11 +6958,17 @@ private:
                 continue;
             }
 
+            if (i != end && !list) {
+                list = MakeNode(NodeKind::InitDeclaratorList, specifiersEnd);
+                list->Tokens.End = end;
+                Append(declaration, *list);
+            }
+
             auto segmentEnd = i;
             if (segmentBegin < segmentEnd) {
                 auto* init = MakeNode(NodeKind::InitDeclarator, segmentBegin);
                 init->Tokens.End = segmentEnd;
-                Append(*list, *init);
+                Append(list ? *list : declaration, *init);
                 std::optional<TokenRange> segmentParameters;
 
                 if (parameters && segmentBegin <= parameters->Begin && parameters->End <= segmentEnd) {
@@ -6985,12 +7043,9 @@ private:
             return;
         }
 
-        auto* list = MakeNode(NodeKind::InitDeclaratorList, specifiersEnd);
-        list->Tokens.End = end;
-        Append(declaration, *list);
         auto* init = MakeNode(NodeKind::InitDeclarator, specifiersEnd);
         init->Tokens.End = end;
-        Append(*list, *init);
+        Append(declaration, *init);
         auto kind = AddDeclaratorSyntax(*init, specifiersEnd, end, parameters, false, true, functionKind);
 
         if (declaration.Kind == NodeKind::FunctionDefinition) {
@@ -9708,21 +9763,19 @@ private:
                 continue;
             }
 
-            for (auto* list = parameter->FirstChild; list; list = list->NextSibling) {
-                if (list->Kind != NodeKind::InitDeclaratorList) {
+            for (auto* declarator = FirstInitDeclarator(*parameter); declarator; declarator = declarator->NextSibling) {
+                if (declarator->Kind != NodeKind::InitDeclarator) {
                     continue;
                 }
 
-                for (auto* declarator = list->FirstChild; declarator; declarator = declarator->NextSibling) {
-                    for (auto* part = declarator->FirstChild; part; part = part->NextSibling) {
-                        if (part->Kind != NodeKind::Initializer) {
-                            continue;
-                        }
-
-                        ErrorAt(part->Tokens.Begin, "requires parameters cannot have " "default arguments");
-                        part->FirstChild = part->LastChild = nullptr;
-                        AddUnparsedSyntax(*part, part->Tokens.Begin, part->Tokens.End);
+                for (auto* part = declarator->FirstChild; part; part = part->NextSibling) {
+                    if (part->Kind != NodeKind::Initializer) {
+                        continue;
                     }
+
+                    ErrorAt(part->Tokens.Begin, "requires parameters cannot have " "default arguments");
+                    part->FirstChild = part->LastChild = nullptr;
+                    AddUnparsedSyntax(*part, part->Tokens.Begin, part->Tokens.End);
                 }
             }
         }
@@ -10888,23 +10941,17 @@ private:
 
     void RegisterDeclaredNames(const Node& declaration, NameKind nameKind)
     {
-        for (auto* list = declaration.FirstChild; list; list = list->NextSibling) {
-            if (list->Kind != NodeKind::InitDeclaratorList) {
+        for (auto* init = FirstInitDeclarator(declaration); init; init = init->NextSibling) {
+            if (init->Kind != NodeKind::InitDeclarator) {
                 continue;
             }
 
-            for (auto* init = list->FirstChild; init; init = init->NextSibling) {
-                if (init->Kind != NodeKind::InitDeclarator) {
+            for (auto* declarator = init->FirstChild; declarator; declarator = declarator->NextSibling) {
+                if (declarator->Kind != NodeKind::Declarator) {
                     continue;
                 }
 
-                for (auto* declarator = init->FirstChild; declarator; declarator = declarator->NextSibling) {
-                    if (declarator->Kind != NodeKind::Declarator) {
-                        continue;
-                    }
-
-                    RegisterDeclaratorNames(*declarator, nameKind);
-                }
+                RegisterDeclaratorNames(*declarator, nameKind);
             }
         }
     }
@@ -11770,6 +11817,7 @@ private:
     Vector<std::string_view> EnumMacroNames_{&ScratchMemory_};
     Vector<std::pair<std::string_view, std::string_view>> ClassMacroPairs_{&ScratchMemory_};
     Vector<std::string_view> ClassEndMacroNames_{&ScratchMemory_};
+    Vector<TokenIndex> ArgumentEnds_{&ScratchMemory_};
     us MacroRecordDepth_ = 0;
     NameScope* CurrentScope_ = nullptr;
     Node* NextNode_ = nullptr;

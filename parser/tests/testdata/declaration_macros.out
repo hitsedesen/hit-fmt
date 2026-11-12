@@ -6,11 +6,9 @@
       "struct" "Third" "{"
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
         )
         ";"
@@ -27,11 +25,9 @@
       "class" "Fourth" "{"
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "member")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "member")
           )
         )
         ";"
@@ -48,22 +44,18 @@
       "union" "Fifth" "{"
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "number")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "number")
           )
         )
         ";"
       )
       (declaration
         (declaration-specifiers "float")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "fraction")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "fraction")
           )
         )
         ";"
@@ -115,11 +107,9 @@
       "struct" "Single" "{"
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
         )
         ";"
@@ -131,17 +121,15 @@
         (whitespace "\n\n")
       )
       (declaration-specifiers "Declare")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "First")
-                )
-                ")"
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "First")
               )
+              ")"
             )
           )
         )
@@ -150,17 +138,15 @@
     )
     (function-declaration
       (declaration-specifiers "Declare")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "Second")
-                )
-                ")"
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "Second")
               )
+              ")"
             )
           )
         )
@@ -171,11 +157,9 @@
       "struct" "Terminated" "{"
       (declaration
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
         )
         ";"
@@ -190,11 +174,9 @@
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "variable")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "variable")
         )
       )
       ";"
@@ -223,15 +205,13 @@
     "namespace" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
-          (initializer
-            "="
-            (literal-expression "1")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
+        )
+        (initializer
+          "="
+          (literal-expression "1")
         )
       )
       ";"
@@ -252,13 +232,11 @@
     "namespace" "Detail" "{"
     (function-definition
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Run")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -302,25 +280,21 @@
     (access-specifier "public" ":")
     (function-definition
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Get")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "int")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "Get")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "int")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -338,15 +312,13 @@
     (access-specifier "private" ":")
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "stored")
-          )
-          (initializer
-            "="
-            (literal-expression "2")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "stored")
+        )
+        (initializer
+          "="
+          (literal-expression "2")
         )
       )
       ";"
@@ -363,30 +335,26 @@
     "struct" "Data" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "first")
-          )
-          (initializer
-            "="
-            (literal-expression "1")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "first")
+        )
+        (initializer
+          "="
+          (literal-expression "1")
         )
       )
       ";"
     )
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "second")
-          )
-          (initializer
-            "="
-            (literal-expression "2")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "second")
+        )
+        (initializer
+          "="
+          (literal-expression "2")
         )
       )
       ";"
@@ -398,22 +366,18 @@
     "union" "Payload" "{"
     (declaration
       (declaration-specifiers "int")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "number")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "number")
         )
       )
       ";"
     )
     (declaration
       (declaration-specifiers "float")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "fraction")
-          )
+      (init-declarator
+        (declarator
+          (declarator-name "fraction")
         )
       )
       ";"
@@ -432,11 +396,9 @@
       "class" "Wrapper" "{"
       (declaration
         (declaration-specifiers "T")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "value")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "value")
           )
         )
         ";"
@@ -495,13 +457,11 @@
     (unparsed-syntax "ScopeBegin")
     (function-declaration
       (declaration-specifiers "void")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "Run")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "Run")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -520,13 +480,11 @@
   )
   (function-definition
     (declaration-specifiers "inline" "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "RunInline")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "RunInline")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -555,15 +513,13 @@
   (unparsed-syntax "CloseScope" "ScopeBegin")
   (declaration
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "count")
-        )
-        (initializer
-          "="
-          (literal-expression "1")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "count")
+      )
+      (initializer
+        "="
+        (literal-expression "1")
       )
     )
     ";"
@@ -571,15 +527,13 @@
   (unparsed-syntax "ScopeEnd" "OpenScope")
   (declaration
     (declaration-specifiers "constexpr" "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "limit")
-        )
-        (initializer
-          "="
-          (literal-expression "2")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "limit")
+      )
+      (initializer
+        "="
+        (literal-expression "2")
       )
     )
     ";"
@@ -587,15 +541,13 @@
   (unparsed-syntax "CloseScope" "ScopeBegin")
   (declaration
     (declaration-specifiers "const" "volatile" "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "flags")
-        )
-        (initializer
-          "="
-          (literal-expression "3")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "flags")
+      )
+      (initializer
+        "="
+        (literal-expression "3")
       )
     )
     ";"
@@ -604,11 +556,9 @@
   (typedef-declaration
     "typedef"
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Number")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "Number")
       )
     )
     ";"
@@ -631,13 +581,11 @@
   )
   (function-declaration
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Commented")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Commented")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -645,28 +593,24 @@
   )
   (declaration
     (declaration-specifiers "ScopeEnd")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "EXPORT")
-          "class" "SameLine"
-        )
-        (initializer
-          (unparsed-syntax "{" "int" "member" "=" "3" ";" "}")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "EXPORT")
+        "class" "SameLine"
+      )
+      (initializer
+        (unparsed-syntax "{" "int" "member" "=" "3" ";" "}")
       )
     )
     ";"
   )
   (function-declaration
     (declaration-specifiers "EXPORT" "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "SameLineFunction")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "SameLineFunction")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -674,13 +618,11 @@
   )
   (function-declaration
     (declaration-specifiers "EXPORT" "inline" "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "SameLineInline")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "SameLineInline")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -705,13 +647,11 @@
   )
   (function-declaration
     (declaration-specifiers "Any" "auto")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Constrained")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Constrained")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -719,13 +659,11 @@
   )
   (function-declaration
     (declaration-specifiers "Any" "decltype" "(" "auto" ")")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "ConstrainedReference")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "ConstrainedReference")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -733,14 +671,12 @@
   )
   (function-declaration
     (declaration-specifiers "Aliases" "::" "Value")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "inline"
-          (declarator-name "NamedReturn")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        "inline"
+        (declarator-name "NamedReturn")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -748,25 +684,21 @@
   )
   (declaration
     (declaration-specifiers "Aliases" "::" "Value")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "typedef"
-          (declarator-name "NamedAlias")
-        )
+    (init-declarator
+      (declarator
+        "typedef"
+        (declarator-name "NamedAlias")
       )
     )
     ";"
   )
   (declaration
     (declaration-specifiers "Aliases" "::" "Value")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "const"
-          (pointer-operator "*")
-          (declarator-name "pointerToConst")
-        )
+    (init-declarator
+      (declarator
+        "const"
+        (pointer-operator "*")
+        (declarator-name "pointerToConst")
       )
     )
     ";"
@@ -774,51 +706,43 @@
   (typedef-declaration
     "typedef"
     (declaration-specifiers "struct" "Alias")
-    (init-declarator-list
-      (init-declarator
-        (abstract-declarator)
-        (initializer
-          (unparsed-syntax "{" "int" "member" ";" "}")
-          (unparsed-syntax "Alias")
-        )
+    (init-declarator
+      (abstract-declarator)
+      (initializer
+        (unparsed-syntax "{" "int" "member" ";" "}")
+        (unparsed-syntax "Alias")
       )
     )
     ";"
   )
   (declaration
     (declaration-specifiers "const" "struct" "Data")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (pointer-operator "*")
-          (declarator-name "pointer")
-        )
+    (init-declarator
+      (declarator
+        (pointer-operator "*")
+        (declarator-name "pointer")
       )
     )
     ";"
   )
   (function-declaration
     (declaration-specifiers "Data")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "make")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "class" "Forward")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (pointer-operator "*")
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "make")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "class" "Forward")
+              (init-declarator
+                (declarator
+                  (pointer-operator "*")
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )

@@ -15,31 +15,27 @@
   (unparsed-syntax "DEFINE_ENUM" "(" "EBadComma" "," "(" "(" "First" ")" "(" "0" ")" ")" "," "(" "(" "Second" ")" "(" "1" ")" ")" ")" ";")
   (function-declaration
     (declaration-specifiers "OTHER_ENUM")
-    (init-declarator-list
-      (init-declarator
-        (abstract-declarator
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "EKeep")
-              )
-              (list-separator ",")
-              (parameter-declaration
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (nested-declarator
-                        "(" "("
-                        (declarator-name "Name")
-                        ")" "(" "0" ")" ")"
-                      )
-                    )
+    (init-declarator
+      (abstract-declarator
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "EKeep")
+            )
+            (list-separator ",")
+            (parameter-declaration
+              (init-declarator
+                (declarator
+                  (nested-declarator
+                    "(" "("
+                    (declarator-name "Name")
+                    ")" "(" "0" ")" ")"
                   )
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -58,13 +54,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "Execute")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "Execute")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

@@ -10,39 +10,35 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "nested_parameter")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (nested-declarator
-                        "("
-                        (pointer-operator "*")
-                        (declarator-name "Type")
-                        ")"
+    (init-declarator
+      (declarator
+        (declarator-name "nested_parameter")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (nested-declarator
+                    "("
+                    (pointer-operator "*")
+                    (declarator-name "Type")
+                    ")"
+                  )
+                  (function-declarator
+                    (parameter-list
+                      "("
+                      (parameter-declaration
+                        (declaration-specifiers "int")
                       )
-                      (function-declarator
-                        (parameter-list
-                          "("
-                          (parameter-declaration
-                            (declaration-specifiers "int")
-                          )
-                          ")"
-                        )
-                      )
+                      ")"
                     )
                   )
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -65,13 +61,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "typedef_names")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "typedef_names")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -79,11 +73,9 @@
       "{"
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "x")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "x")
           )
         )
         ";"
@@ -91,30 +83,26 @@
       (typedef-declaration
         "typedef"
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (nested-declarator
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "F")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
                 "("
-                (pointer-operator "*")
-                (declarator-name "F")
-                ")"
-              )
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "int")
-                    (init-declarator-list
-                      (init-declarator
-                        (declarator
-                          (declarator-name "parameter")
-                        )
-                      )
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                  (init-declarator
+                    (declarator
+                      (declarator-name "parameter")
                     )
                   )
-                  ")"
                 )
+                ")"
               )
             )
           )
@@ -145,36 +133,30 @@
       )
       (declaration-statement
         (declaration-specifiers "F")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "function_pointer")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "function_pointer")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "A")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "first_alias")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "first_alias")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "B")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "second_alias")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "second_alias")
           )
         )
         ";"
@@ -187,24 +169,20 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "factor")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "factor")
       )
     )
     ";"
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "global_values")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "global_values")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -275,13 +253,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "classify")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "classify")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -289,86 +265,72 @@
       "{"
       (declaration-statement
         (declaration-specifiers "Type")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "first")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "first")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "::" "Type")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "global_alias")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "global_alias")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "::" "Record")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "global_record")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "global_record")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "::" "Record")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (pointer-operator "*")
-              (declarator-name "global_nested_pointer")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (pointer-operator "*")
+            (declarator-name "global_nested_pointer")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "::" "Record")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "&")
-              (declarator-name "global_reference")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "&")
+            (declarator-name "global_reference")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "::" "Record")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "&&")
-              (declarator-name "global_rvalue")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "&&")
+            (declarator-name "global_rvalue")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "::" "Type")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              "const"
-              (pointer-operator "*")
-              (declarator-name "global_const")
-            )
+        (init-declarator
+          (declarator
+            "const"
+            (pointer-operator "*")
+            (declarator-name "global_const")
           )
         )
         ";"
@@ -383,23 +345,19 @@
           )
           "::" "Record" "/* type */"
         )
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "attributed")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "attributed")
           )
         )
         ";"
       )
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "catalog")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "catalog")
           )
         )
         ";"
@@ -416,12 +374,10 @@
       )
       (declaration-statement
         (declaration-specifiers "Record")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "&")
-              (declarator-name "second")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "&")
+            (declarator-name "second")
           )
         )
         ";"
@@ -432,11 +388,9 @@
       )
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Type")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "Type")
           )
         )
         ";"
@@ -451,12 +405,10 @@
       )
       (declaration-statement
         (declaration-specifiers "::" "Type")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (pointer-operator "*")
-              (declarator-name "shadowed_global_type")
-            )
+        (init-declarator
+          (declarator
+            (pointer-operator "*")
+            (declarator-name "shadowed_global_type")
           )
         )
         ";"
@@ -470,12 +422,10 @@
         )
         (declaration-statement
           (declaration-specifiers "Local")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (pointer-operator "*")
-                (declarator-name "nested")
-              )
+          (init-declarator
+            (declarator
+              (pointer-operator "*")
+              (declarator-name "nested")
             )
           )
           ";"
@@ -503,13 +453,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "construction_statements")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "construction_statements")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -634,12 +582,33 @@
       )
       (declaration-statement
         (declaration-specifiers "Launcher")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (nested-declarator
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (declarator-name "declared")
+              ")"
+            )
+          )
+        )
+        ";"
+      )
+      (declaration-statement
+        (declaration-specifiers "Launcher")
+        (init-declarator
+          (declarator
+            (nested-declarator
+              "("
+              (pointer-operator "*")
+              (declarator-name "callback")
+              ")"
+            )
+            (function-declarator
+              (parameter-list
                 "("
-                (declarator-name "declared")
+                (parameter-declaration
+                  (declaration-specifiers "int")
+                )
                 ")"
               )
             )
@@ -649,44 +618,17 @@
       )
       (declaration-statement
         (declaration-specifiers "Launcher")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (nested-declarator
-                "("
-                (pointer-operator "*")
-                (declarator-name "callback")
-                ")"
-              )
-              (function-declarator
-                (parameter-list
-                  "("
-                  (parameter-declaration
-                    (declaration-specifiers "int")
-                  )
-                  ")"
-                )
-              )
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "object")
           )
-        )
-        ";"
-      )
-      (declaration-statement
-        (declaration-specifiers "Launcher")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "object")
-            )
-            (initializer
-              (argument-list
-                "("
-                (argument
-                  (literal-expression "1")
-                )
-                ")"
+          (initializer
+            (argument-list
+              "("
+              (argument
+                (literal-expression "1")
               )
+              ")"
             )
           )
         )

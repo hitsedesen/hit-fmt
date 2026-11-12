@@ -17,17 +17,15 @@
   (unparsed-syntax
     (declaration
       (declaration-specifiers "auto")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "value")
-          )
-          (initializer
-            "="
-            (call-expression
-              (identifier-expression "ReadValue")
-              (argument-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "value")
+        )
+        (initializer
+          "="
+          (call-expression
+            (identifier-expression "ReadValue")
+            (argument-list "(" ")")
           )
         )
       )
@@ -35,25 +33,21 @@
     )
     (function-declaration
       (declaration-specifiers "EXPECT_EQ")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "value")
-                )
-                (list-separator ",")
-                (parameter-declaration
-                  (init-declarator-list
-                    (init-declarator
-                      (abstract-declarator "1")
-                    )
-                  )
-                )
-                ")"
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "value")
               )
+              (list-separator ",")
+              (parameter-declaration
+                (init-declarator
+                  (abstract-declarator "1")
+                )
+              )
+              ")"
             )
           )
         )
@@ -79,13 +73,11 @@
         )
         (function-definition
           (declaration-specifiers "void")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "First")
-                (function-declarator
-                  (parameter-list "(" ")")
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "First")
+              (function-declarator
+                (parameter-list "(" ")")
               )
             )
           )
@@ -96,13 +88,11 @@
         (preprocessing-directive "#else")
         (function-definition
           (declaration-specifiers "void")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "Second")
-                (function-declarator
-                  (parameter-list "(" ")")
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "Second")
+              (function-declarator
+                (parameter-list "(" ")")
               )
             )
           )
@@ -140,13 +130,11 @@
       (preprocessing-directive "#else")
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Function")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Function")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -161,12 +149,10 @@
   (unparsed-syntax
     (function-declaration
       (declaration-specifiers "Ambiguous")
-      (init-declarator-list
-        (init-declarator
-          (abstract-declarator
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (abstract-declarator
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -187,13 +173,11 @@
       )
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Complete")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Complete")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )
@@ -214,13 +198,11 @@
       (preprocessing-directive "#else")
       (function-definition
         (declaration-specifiers "void")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "Alternative")
-              (function-declarator
-                (parameter-list "(" ")")
-              )
+        (init-declarator
+          (declarator
+            (declarator-name "Alternative")
+            (function-declarator
+              (parameter-list "(" ")")
             )
           )
         )

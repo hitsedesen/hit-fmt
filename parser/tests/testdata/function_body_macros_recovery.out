@@ -1,17 +1,15 @@
 (translation-unit
   (declaration
     (declaration-specifiers "DEFINE_CASE")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          "("
-          (declarator-name "Suite")
-          "," "BadArguments" "[" ")" "{" "int" "value" ";" "}" "DEFINE_CASE" "(" "Suite" "," "BadBody" ")" "{" "if" "(" "ready" "]" ")"
-        )
-        (initializer
-          (unparsed-syntax "{" "Work" "(" ")" ";" "}")
-          (unparsed-syntax "}" "DEFINE_CASE" "(" "Suite" "," "MissingBody" ")" "{" "int" "value")
-        )
+    (init-declarator
+      (declarator
+        "("
+        (declarator-name "Suite")
+        "," "BadArguments" "[" ")" "{" "int" "value" ";" "}" "DEFINE_CASE" "(" "Suite" "," "BadBody" ")" "{" "if" "(" "ready" "]" ")"
+      )
+      (initializer
+        (unparsed-syntax "{" "Work" "(" ")" ";" "}")
+        (unparsed-syntax "}" "DEFINE_CASE" "(" "Suite" "," "MissingBody" ")" "{" "int" "value")
       )
     )
     ";"

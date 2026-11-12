@@ -6,25 +6,21 @@
   )
   (function-declaration
     (declaration-specifiers "Output")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "BUILD")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "BUILD")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -33,25 +29,21 @@
   )
   (function-declaration
     (declaration-specifiers "Output")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "build")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "build")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "value")
                 )
               )
-              ")"
             )
+            ")"
           )
         )
       )
@@ -63,36 +55,30 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "bool")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "inside")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "Position")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "inside")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "Position")
                 )
               )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "limit")
-                    )
-                  )
-                )
-              )
-              ")"
             )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "limit")
+                )
+              )
+            )
+            ")"
           )
         )
       )
@@ -124,47 +110,39 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "bool")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "compare")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "left")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "compare")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "left")
                 )
               )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "middle")
-                    )
-                  )
-                )
-              )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "right")
-                    )
-                  )
-                )
-              )
-              ")"
             )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "middle")
+                )
+              )
+            )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "right")
+                )
+              )
+            )
+            ")"
           )
         )
       )
@@ -193,36 +171,30 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "bool")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "compare_global")
-          (function-declarator
-            (parameter-list
-              "("
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "left")
-                    )
-                  )
+    (init-declarator
+      (declarator
+        (declarator-name "compare_global")
+        (function-declarator
+          (parameter-list
+            "("
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "left")
                 )
               )
-              (list-separator ",")
-              (parameter-declaration
-                (declaration-specifiers "int")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "middle")
-                    )
-                  )
-                )
-              )
-              ")"
             )
+            (list-separator ",")
+            (parameter-declaration
+              (declaration-specifiers "int")
+              (init-declarator
+                (declarator
+                  (declarator-name "middle")
+                )
+              )
+            )
+            ")"
           )
         )
       )
@@ -253,13 +225,11 @@
     )
     (function-definition
       (declaration-specifiers "bool")
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "inspect")
-            (function-declarator
-              (parameter-list "(" ")")
-            )
+      (init-declarator
+        (declarator
+          (declarator-name "inspect")
+          (function-declarator
+            (parameter-list "(" ")")
           )
         )
       )
@@ -267,18 +237,16 @@
         "{"
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "scalar")
-              )
-              (initializer
-                "="
-                (member-expression
-                  (identifier-expression "std")
-                  "::"
-                  (unparsed-syntax "is_same_v" "<" "String" "," "decltype" "(" "value" ")" ">")
-                )
+          (init-declarator
+            (declarator
+              (declarator-name "scalar")
+            )
+            (initializer
+              "="
+              (member-expression
+                (identifier-expression "std")
+                "::"
+                (unparsed-syntax "is_same_v" "<" "String" "," "decltype" "(" "value" ")" ">")
               )
             )
           )
@@ -297,11 +265,9 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "values")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "values")
             )
           )
           ";"
@@ -316,11 +282,9 @@
             )
             "::" "Cursor"
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "position")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "position")
             )
           )
           ";"
@@ -336,11 +300,9 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "buffer")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "buffer")
             )
           )
           ";"
@@ -351,37 +313,33 @@
         )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "plain")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "plain")
             )
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "assigned")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (identifier-expression "Estimate")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "first")
-                    )
-                    (list-separator ",")
-                    (argument
-                      (identifier-expression "second")
-                    )
-                    ")"
+          (init-declarator
+            (declarator
+              (declarator-name "assigned")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Estimate")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "first")
                   )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  ")"
                 )
               )
             )
@@ -390,36 +348,32 @@
         )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "direct")
-              )
-              (ambiguous-declarator-suffix "(" "first" "," "second" ")")
+          (init-declarator
+            (declarator
+              (declarator-name "direct")
             )
+            (ambiguous-declarator-suffix "(" "first" "," "second" ")")
           )
           ";"
         )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "braced")
-              )
-              (initializer
-                (braced-initializer
-                  (initializer-list
-                    "{"
-                    (initializer-element
-                      (identifier-expression "first")
-                    )
-                    (list-separator ",")
-                    (initializer-element
-                      (identifier-expression "second")
-                    )
-                    "}"
+          (init-declarator
+            (declarator
+              (declarator-name "braced")
+            )
+            (initializer
+              (braced-initializer
+                (initializer-list
+                  "{"
+                  (initializer-element
+                    (identifier-expression "first")
                   )
+                  (list-separator ",")
+                  (initializer-element
+                    (identifier-expression "second")
+                  )
+                  "}"
                 )
               )
             )
@@ -431,26 +385,24 @@
             (attribute-specifier "[" "[" "maybe_unused" "]" "]")
             "ExternalCount"
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "annotated")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (identifier-expression "Estimate")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "first")
-                    )
-                    (list-separator ",")
-                    (argument
-                      (identifier-expression "second")
-                    )
-                    ")"
+          (init-declarator
+            (declarator
+              (declarator-name "annotated")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Estimate")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "first")
                   )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  ")"
                 )
               )
             )
@@ -464,26 +416,24 @@
               (comment "/* type */")
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "commented")
-              )
-              (initializer
-                "="
-                (call-expression
-                  (identifier-expression "Estimate")
-                  (argument-list
-                    "("
-                    (argument
-                      (identifier-expression "first")
-                    )
-                    (list-separator ",")
-                    (argument
-                      (identifier-expression "second")
-                    )
-                    ")"
+          (init-declarator
+            (declarator
+              (declarator-name "commented")
+            )
+            (initializer
+              "="
+              (call-expression
+                (identifier-expression "Estimate")
+                (argument-list
+                  "("
+                  (argument
+                    (identifier-expression "first")
                   )
+                  (list-separator ",")
+                  (argument
+                    (identifier-expression "second")
+                  )
+                  ")"
                 )
               )
             )
@@ -748,11 +698,9 @@
         )
         (declaration-statement
           (declaration-specifiers "ExternalCount")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "shadowedType")
-              )
+          (init-declarator
+            (declarator
+              (declarator-name "shadowedType")
             )
           )
           ";"
@@ -767,23 +715,21 @@
         )
         (declaration-statement
           (declaration-specifiers "external" "::" "Range")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "bounds")
-              )
-              (initializer
-                (argument-list
-                  "("
-                  (argument
-                    (literal-expression "1")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (literal-expression "2")
-                  )
-                  ")"
+          (init-declarator
+            (declarator
+              (declarator-name "bounds")
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
                 )
+                (list-separator ",")
+                (argument
+                  (literal-expression "2")
+                )
+                ")"
               )
             )
           )
@@ -798,23 +744,21 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "samples")
-              )
-              (initializer
-                (argument-list
-                  "("
-                  (argument
-                    (literal-expression "1")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (literal-expression "2")
-                  )
-                  ")"
+          (init-declarator
+            (declarator
+              (declarator-name "samples")
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
                 )
+                (list-separator ",")
+                (argument
+                  (literal-expression "2")
+                )
+                ")"
               )
             )
           )
@@ -829,51 +773,49 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "qualified")
-              )
-              (initializer
-                (argument-list
-                  "("
-                  (argument
-                    (cast-expression
-                      "static_cast"
-                      (template-argument-list
-                        "<"
-                        (type-id "int")
-                        ">"
-                      )
-                      "("
-                      (binary-expression
-                        (identifier-expression "extent")
-                        "*"
-                        (expression "0.5")
-                      )
-                      ")"
+          (init-declarator
+            (declarator
+              (declarator-name "qualified")
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (cast-expression
+                    "static_cast"
+                    (template-argument-list
+                      "<"
+                      (type-id "int")
+                      ">"
                     )
-                  )
-                  (list-separator ",")
-                  (argument
-                    (cast-expression
-                      "static_cast"
-                      (template-argument-list
-                        "<"
-                        (type-id "int")
-                        ">"
-                      )
-                      "("
-                      (binary-expression
-                        (identifier-expression "extent")
-                        "*"
-                        (expression "1.5")
-                      )
-                      ")"
+                    "("
+                    (binary-expression
+                      (identifier-expression "extent")
+                      "*"
+                      (expression "0.5")
                     )
+                    ")"
                   )
-                  ")"
                 )
+                (list-separator ",")
+                (argument
+                  (cast-expression
+                    "static_cast"
+                    (template-argument-list
+                      "<"
+                      (type-id "int")
+                      ">"
+                    )
+                    "("
+                    (binary-expression
+                      (identifier-expression "extent")
+                      "*"
+                      (expression "1.5")
+                    )
+                    ")"
+                  )
+                )
+                ")"
               )
             )
           )
@@ -888,23 +830,21 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "global")
-              )
-              (initializer
-                (argument-list
-                  "("
-                  (argument
-                    (literal-expression "1")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (literal-expression "2")
-                  )
-                  ")"
+          (init-declarator
+            (declarator
+              (declarator-name "global")
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
                 )
+                (list-separator ",")
+                (argument
+                  (literal-expression "2")
+                )
+                ")"
               )
             )
           )
@@ -919,23 +859,21 @@
               ">"
             )
           )
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "dependent")
-              )
-              (initializer
-                (argument-list
-                  "("
-                  (argument
-                    (literal-expression "1")
-                  )
-                  (list-separator ",")
-                  (argument
-                    (literal-expression "2")
-                  )
-                  ")"
+          (init-declarator
+            (declarator
+              (declarator-name "dependent")
+            )
+            (initializer
+              (argument-list
+                "("
+                (argument
+                  (literal-expression "1")
                 )
+                (list-separator ",")
+                (argument
+                  (literal-expression "2")
+                )
+                ")"
               )
             )
           )
@@ -974,22 +912,20 @@
         )
         (declaration-statement
           (declaration-specifiers "external" "::" "Range")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "parameters")
-                (function-declarator
-                  (parameter-list
-                    "("
-                    (parameter-declaration
-                      (declaration-specifiers "int")
-                    )
-                    (list-separator ",")
-                    (parameter-declaration
-                      (declaration-specifiers "int")
-                    )
-                    ")"
+          (init-declarator
+            (declarator
+              (declarator-name "parameters")
+              (function-declarator
+                (parameter-list
+                  "("
+                  (parameter-declaration
+                    (declaration-specifiers "int")
                   )
+                  (list-separator ",")
+                  (parameter-declaration
+                    (declaration-specifiers "int")
+                  )
+                  ")"
                 )
               )
             )
@@ -998,13 +934,11 @@
         )
         (declaration-statement
           (declaration-specifiers "external" "::" "Range")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "unresolved")
-              )
-              (ambiguous-declarator-suffix "(" "Unknown" ")")
+          (init-declarator
+            (declarator
+              (declarator-name "unresolved")
             )
+            (ambiguous-declarator-suffix "(" "Unknown" ")")
           )
           ";"
         )
@@ -1087,23 +1021,21 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "constructed")
-              )
-              (initializer
-                "="
-                (type-construction-expression
-                  (identifier-expression "CONSTRUCT")
-                  (braced-initializer
-                    (initializer-list
-                      "{"
-                      (initializer-element
-                        (identifier-expression "item")
-                      )
-                      "}"
+          (init-declarator
+            (declarator
+              (declarator-name "constructed")
+            )
+            (initializer
+              "="
+              (type-construction-expression
+                (identifier-expression "CONSTRUCT")
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (identifier-expression "item")
                     )
+                    "}"
                   )
                 )
               )
@@ -1113,23 +1045,21 @@
         )
         (declaration-statement
           (declaration-specifiers "auto")
-          (init-declarator-list
-            (init-declarator
-              (declarator
-                (declarator-name "lower_constructed")
-              )
-              (initializer
-                "="
-                (type-construction-expression
-                  (identifier-expression "construct")
-                  (braced-initializer
-                    (initializer-list
-                      "{"
-                      (initializer-element
-                        (identifier-expression "item")
-                      )
-                      "}"
+          (init-declarator
+            (declarator
+              (declarator-name "lower_constructed")
+            )
+            (initializer
+              "="
+              (type-construction-expression
+                (identifier-expression "construct")
+                (braced-initializer
+                  (initializer-list
+                    "{"
+                    (initializer-element
+                      (identifier-expression "item")
                     )
+                    "}"
                   )
                 )
               )
@@ -1151,13 +1081,11 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "inspect_conditions")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "inspect_conditions")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -1257,15 +1185,13 @@
           "("
           (declaration-statement
             (declaration-specifiers "int")
-            (init-declarator-list
-              (init-declarator
-                (declarator
-                  (declarator-name "index")
-                )
-                (initializer
-                  "="
-                  (literal-expression "0")
-                )
+            (init-declarator
+              (declarator
+                (declarator-name "index")
+              )
+              (initializer
+                "="
+                (literal-expression "0")
               )
             )
           )
@@ -1452,11 +1378,9 @@
       )
       (declaration-statement
         (declaration-specifiers "int")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (declarator-name "known")
-            )
+        (init-declarator
+          (declarator
+            (declarator-name "known")
           )
         )
         ";"

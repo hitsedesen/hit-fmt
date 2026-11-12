@@ -1,13 +1,11 @@
 (translation-unit
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "f")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "f")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )
@@ -142,13 +140,11 @@
   )
   (function-definition
     (declaration-specifiers "void")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "braced")
-          (function-declarator
-            (parameter-list "(" ")")
-          )
+    (init-declarator
+      (declarator
+        (declarator-name "braced")
+        (function-declarator
+          (parameter-list "(" ")")
         )
       )
     )

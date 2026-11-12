@@ -32,25 +32,21 @@
           ">"
         )
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "inspect")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "inspect")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -118,26 +114,22 @@
           ">"
         )
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            (declarator-name "collect")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "const" "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (pointer-operator "&")
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          (declarator-name "collect")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "const" "T")
+                (init-declarator
+                  (declarator
+                    (pointer-operator "&")
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -175,11 +167,9 @@
               "("
               (parameter-declaration
                 (declaration-specifiers "T")
-                (init-declarator-list
-                  (init-declarator
-                    (declarator
-                      (declarator-name "value")
-                    )
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
               )
@@ -229,26 +219,22 @@
           )
         )
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            "Owner" "::"
-            (declarator-name "inspect")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          "Owner" "::"
+          (declarator-name "inspect")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -316,26 +302,22 @@
           ">"
         )
       )
-      (init-declarator-list
-        (init-declarator
-          (declarator
-            "Owner" "::"
-            (operator-function-name "operator" "(" ")")
-            (function-declarator
-              (parameter-list
-                "("
-                (parameter-declaration
-                  (declaration-specifiers "T")
-                  (init-declarator-list
-                    (init-declarator
-                      (declarator
-                        (declarator-name "value")
-                      )
-                    )
+      (init-declarator
+        (declarator
+          "Owner" "::"
+          (operator-function-name "operator" "(" ")")
+          (function-declarator
+            (parameter-list
+              "("
+              (parameter-declaration
+                (declaration-specifiers "T")
+                (init-declarator
+                  (declarator
+                    (declarator-name "value")
                   )
                 )
-                ")"
               )
+              ")"
             )
           )
         )
@@ -397,15 +379,13 @@
         )
       )
       (function-definition
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (operator-function-name "operator" "T")
-              (function-declarator
-                (parameter-list "(" ")")
-                (function-qualifier "const")
-                (exception-specification "noexcept")
-              )
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "T")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+              (exception-specification "noexcept")
             )
           )
         )
@@ -449,14 +429,12 @@
         )
       )
       (function-declaration
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (operator-function-name "operator" "const" "T" "&")
-              (function-declarator
-                (parameter-list "(" ")")
-                (function-qualifier "const")
-              )
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "const" "T" "&")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
             )
           )
         )
@@ -492,15 +470,13 @@
       )
       (function-definition
         (declaration-specifiers "explicit")
-        (init-declarator-list
-          (init-declarator
-            (declarator
-              (operator-function-name "operator" "T" "*")
-              (function-declarator
-                (parameter-list "(" ")")
-                (function-qualifier "const")
-                (exception-specification "noexcept")
-              )
+        (init-declarator
+          (declarator
+            (operator-function-name "operator" "T" "*")
+            (function-declarator
+              (parameter-list "(" ")")
+              (function-qualifier "const")
+              (exception-specification "noexcept")
             )
           )
         )
@@ -522,11 +498,9 @@
       (whitespace "\n\n")
     )
     (declaration-specifiers "int")
-    (init-declarator-list
-      (init-declarator
-        (declarator
-          (declarator-name "outside")
-        )
+    (init-declarator
+      (declarator
+        (declarator-name "outside")
       )
     )
     ";"
