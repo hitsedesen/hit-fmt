@@ -38,6 +38,8 @@ struct Terminal
     std::string_view Dim;
 };
 
+bool IsTerminal(FILE* stream = stdout);
+
 Terminal GetTerminal(FILE* stream = stdout);
 
 void PrintError(std::ostream& output, const Error& error, const Terminal& terminal);

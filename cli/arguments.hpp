@@ -66,6 +66,7 @@ struct Arguments
 
 Result<Arguments> ParseArguments(
     std::span<const char* const> argv,
-    std::pmr::memory_resource* memory = std::pmr::get_default_resource());
+    std::pmr::memory_resource* memory = std::pmr::get_default_resource(),
+    bool outputIsTerminal = false);
 
 } // namespace cli

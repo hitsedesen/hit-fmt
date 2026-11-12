@@ -125,10 +125,13 @@ std::ostream& operator<<(std::ostream& output, const ArgumentError& error)
     return output;
 }
 
-Result<Arguments> ParseArguments(std::span<const char* const> argv, std::pmr::memory_resource* memory)
+Result<Arguments> ParseArguments(
+    std::span<const char* const> argv,
+    std::pmr::memory_resource* memory,
+    bool outputIsTerminal)
 {
     Arena scratch;
-    Arguments arguments;
+    Arguments arguments{.SummaryOnly = !outputIsTerminal};
     Flags flags;
     Vector<std::string_view> exclusions(&scratch);
     std::optional<std::string_view> hunkInput;
@@ -138,6 +141,7 @@ Result<Arguments> ParseArguments(std::span<const char* const> argv, std::pmr::me
     flags.Bool("--check", nullptr);
 
     flags.Bool("--summary", &arguments.SummaryOnly);
+    flags.Bool("--details", &arguments.SummaryOnly, false);
 
     flags.Bool("-h", &arguments.ShowHelp);
     flags.Bool("--help", &arguments.ShowHelp);

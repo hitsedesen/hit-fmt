@@ -357,7 +357,10 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     option("--fix", "            Fix what can be fixed; check the result.");
     option("--check", "          Check without editing (default; optional).");
     option("--no-spillover", "   Restrict changes to selected hunk lines.");
-    option("--summary", "        Print only file status lines.");
+    option("--summary", "        Print file status lines (default without a TTY).");
+    option("--details", "        Print detailed diagnostics (default on a TTY).");
+    output << "    Details include locations, source excerpts and suggested changes.\n"
+        << "    Defaults follow stdout; the last --summary or --details flag wins.\n";
     option("-j [n]", "         Use n threads, or all cores without n.");
     output << "    -j consumes the next non-flag argument as n; use -j -- <path> for all cores.\n";
     option("--threads <n>", "  Use n threads (default 1).");
@@ -391,6 +394,7 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     for (auto example :
         {
             " source.cpp",
+            " --details source.cpp",
             " --fix source.cpp include/",
             " --summary src/ include/",
             " --fix --exclude '(^|/)generated(/|$)' src/",
@@ -687,7 +691,7 @@ int RunFiles(
 int Run(std::span<const char* const> argv)
 {
     Arena cliMemory(16 * 1024);
-    auto [arguments, error] = ParseArguments(argv, &cliMemory);
+    auto [arguments, error] = ParseArguments(argv, &cliMemory, IsTerminal());
 
     if (error) {
         PrintError(std::cerr, error, GetTerminal(stderr));
