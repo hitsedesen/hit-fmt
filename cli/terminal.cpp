@@ -32,11 +32,8 @@ bool UseColors(FILE* stream)
     if (auto* term = std::getenv("TERM"); term && std::string_view(term) == "dumb") {
         return false;
     }
-#ifdef _WIN32
-    return _isatty(_fileno(stream)) != 0;
-#else
-    return isatty(fileno(stream)) != 0;
-#endif
+
+    return IsTerminal(stream);
 }
 
 us QueryTerminalWidth(FILE* stream)
@@ -70,6 +67,15 @@ us QueryTerminalWidth(FILE* stream)
 }
 
 } // namespace
+
+bool IsTerminal(FILE* stream)
+{
+#ifdef _WIN32
+    return _isatty(_fileno(stream)) != 0;
+#else
+    return isatty(fileno(stream)) != 0;
+#endif
+}
 
 Terminal GetTerminal(FILE* stream)
 {

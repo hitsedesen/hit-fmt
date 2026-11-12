@@ -872,6 +872,31 @@ TEST(FileCheck, ActualProtectedOverflowRemainsFailureInFixMode)
     EXPECT_EQ(checked.Formatting.Diagnostics[1].Position.Line, 2u);
 }
 
+TEST(FileCheck, DiagnosticFlagsUseTerminalDefaultAndLastFlagWins)
+{
+    for (bool terminal : {false, true}) {
+        SCOPED_TRACE(terminal);
+
+        for (const auto& [args, summary] :
+            Vector<std::pair<Vector<const char*>, bool>>{
+                {{"hit-fmt", "sample.cpp"}, !terminal},
+                {{"hit-fmt", "--check", "sample.cpp"}, !terminal},
+                {{"hit-fmt", "--fix", "sample.cpp"}, !terminal},
+                {{"hit-fmt", "--summary", "sample.cpp"}, true},
+                {{"hit-fmt", "--details", "sample.cpp"}, false},
+                {{"hit-fmt", "--details", "--summary", "sample.cpp"}, true},
+                {{"hit-fmt", "--summary", "--details", "sample.cpp"}, false},
+            })
+        {
+            SCOPED_TRACE(::testing::PrintToString(args));
+            auto parsed = cli::ParseArguments(args, std::pmr::get_default_resource(), terminal);
+            ASSERT_FALSE(parsed.Error) << parsed.Error;
+            EXPECT_EQ(parsed.Value.SummaryOnly, summary);
+            EXPECT_EQ(parsed.Value.Paths, std::vector<fs::Path>{"sample.cpp"});
+        }
+    }
+}
+
 TEST(FileCheck, ChangedHunkArgumentsSupportAliasesAndRejectMixedInputs)
 {
     for (auto option : {"--changed-hunks", "--changed-ranges"}) {
@@ -907,6 +932,8 @@ TEST(FileCheck, ChangedHunkArgumentsSupportAliasesAndRejectMixedInputs)
             {"hit-fmt", "--no-spillover", "source.cpp"},
             {"hit-fmt", "--unknown"},
             {"hit-fmt", "--help=1"},
+            {"hit-fmt", "--summary=1"},
+            {"hit-fmt", "--details=1"},
             {"hit-fmt", "--threads"},
             {"hit-fmt", "--threads="},
             {"hit-fmt", "--threads=0"},
