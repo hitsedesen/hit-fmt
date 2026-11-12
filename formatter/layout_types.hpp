@@ -163,6 +163,9 @@ struct GroupSpec
     // disable this when the owner's breaks express a precedence-level choice.
     // Consistent groups always retain their coupled topology.
     bool ChildBreaks = true;
+    // Without a selected layout, fit the next segment at owned soft gaps
+    // and let independently breakable children handle their own width.
+    bool FitPrefixFallback = false;
     // Extra cost per owned newline in bounded layout selection (0..3).
     // Higher-cost groups may defer to a cheaper following group's break.
     u8 BreakPenalty = 0;

@@ -5031,6 +5031,8 @@ private:
                 Region(Syntax_[args]).FirstChild != None;
         }
 
+        GroupSpecs_[group].FitPrefixFallback = singleMemberCall;
+
         // Prefer operator/list boundaries over field paths and multi-call
         // chains; control headers also prefer clause and argument breaks.
         GroupSpecs_[group].BreakPenalty = entry.ControlHeader

@@ -21,8 +21,8 @@ void Write() {
         ->Item("key")->Value(value)
       ->EndMap();
   Builder().BeginMap()
-        .Item("wide")
-        .Value(
+        .Item(
+            "wide").Value(
             aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
       .EndMap();
   Builder().BeginMap()

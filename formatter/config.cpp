@@ -850,23 +850,22 @@ std::vector<ChainCallPairAnnotation> CompileChainPairs(
 void ValidateLibraryAnnotationStyle(const Style& style)
 {
     std::vector<std::string_view> scratch;
-    scratch
-        .reserve(
-            std::max({
-                style.CallLineFirstArgumentNames.size(),
-                style.CallLineFirstStringNames.size(),
-                style.CallLineMessageNames.size(),
-                style.ChainedCallRootNames.size(),
-                style.AlwaysBreakChainRootNames.size(),
-                style.AlwaysBreakChainCallNames.size(),
-                style.IndentedCallScopePairs.size() * 2,
-                style.IndentedChainScopePairs.size() * 2,
-                style.StickyChainCallPairs.size(),
-                style.ClassMacroNames.size() * 2,
-                style.EnumMacroNames.size(),
-                style.CallLikeMacroNames.size(),
-                style.BlankLineMacroNames.size(),
-            }));
+    scratch.reserve(
+        std::max({
+            style.CallLineFirstArgumentNames.size(),
+            style.CallLineFirstStringNames.size(),
+            style.CallLineMessageNames.size(),
+            style.ChainedCallRootNames.size(),
+            style.AlwaysBreakChainRootNames.size(),
+            style.AlwaysBreakChainCallNames.size(),
+            style.IndentedCallScopePairs.size() * 2,
+            style.IndentedChainScopePairs.size() * 2,
+            style.StickyChainCallPairs.size(),
+            style.ClassMacroNames.size() * 2,
+            style.EnumMacroNames.size(),
+            style.CallLikeMacroNames.size(),
+            style.BlankLineMacroNames.size(),
+        }));
     ValidateAnnotationNames(style.CallLineFirstArgumentNames, scratch, "CallLineFirstArgumentNames", false);
     ValidateAnnotationNames(style.CallLikeMacroNames, scratch, "CallLikeMacroNames", false);
     ValidateAnnotationNames(style.EnumMacroNames, scratch, "EnumMacroNames", false);

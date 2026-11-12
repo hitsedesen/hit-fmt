@@ -682,6 +682,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         return indent;
     };
     bool probing = false;
+    u32 probeMaxColumn = 0;
+    u64 probeOverflowLine = NoOrder;
     bool layoutSelected = false;
     bool consistentLayout = false;
     us probeBrokenGroups = 0;
@@ -870,31 +872,30 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
 
         // Materialize the child before growing storage so no parent reference
         // can survive reallocation, including if the depth bound is exceeded.
-        frames
-            .emplace_back(Frame{
-                Offset(base, indent),
-                tail,
-                forceOwned
-                    ? groupEntry.OwnedLastBreak
-                    : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? lastBreak : NoOrder,
-                lines,
-                !broken,
-                !broken || keepOwnedFlat,
-                forceOwned,
-                false,
-                current->ConsistentChain || coupledChain,
-                pending,
-                spec.ExpressionContinuation,
-                spec.StructuralBase,
-                false,
-                reversible,
-                spec.Continuation ? base : current->ContinuationBase,
-                spec.ResumeOpeningLine ? base : continuationLineIndent(),
-                spec.Continuation || (!spec.StructuralBase && current->HasContinuation),
-                (shared || (!spec.Continuation && !spec.StructuralBase)) && current->RealizedContinuationLine,
-                current->RealizedContinuationIndent,
-                spec.Continuation && !shared ? lines : current->ContinuationStartLine,
-            });
+        frames.emplace_back(Frame{
+            Offset(base, indent),
+            tail,
+            forceOwned
+                ? groupEntry.OwnedLastBreak
+                : broken && !keepOwnedFlat && !groupEntry.GuaranteedLine ? lastBreak : NoOrder,
+            lines,
+            !broken,
+            !broken || keepOwnedFlat,
+            forceOwned,
+            false,
+            current->ConsistentChain || coupledChain,
+            pending,
+            spec.ExpressionContinuation,
+            spec.StructuralBase,
+            false,
+            reversible,
+            spec.Continuation ? base : current->ContinuationBase,
+            spec.ResumeOpeningLine ? base : continuationLineIndent(),
+            spec.Continuation || (!spec.StructuralBase && current->HasContinuation),
+            (shared || (!spec.Continuation && !spec.StructuralBase)) && current->RealizedContinuationLine,
+            current->RealizedContinuationIndent,
+            spec.Continuation && !shared ? lines : current->ContinuationStartLine,
+        });
         current = &frames.back();
         activeGroup = id;
         return true;
@@ -1019,6 +1020,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     };
     const auto renderToken = [&] (Index id) {
         const auto& token = Tokens_[id];
+        const bool startsLine = linePrefix;
+        const auto tokenColumn = column;
         const auto origin = TokenOrigin(id);
         const auto outputBegin = u32(outputSize());
         bool exact = true;
@@ -1101,7 +1104,17 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             }
         }
 
-        return bool(result.State) && (!probing || column <= policy.Width);
+        if (probing) {
+            probeMaxColumn = std::max(probeMaxColumn, column);
+
+            // A token wider than the limit cannot fit even without indentation.
+            // Allow its attached suffix, but still reject overflowing prefixes.
+            if (startsLine && !token.Line && column - tokenColumn > policy.Width) {
+                probeOverflowLine = lines;
+            }
+        }
+
+        return bool(result.State) && (!probing || column <= policy.Width || probeOverflowLine == lines);
     };
     const auto renderFlat = [&] (
         const GapLayout& gapPlan,
@@ -1143,7 +1156,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         if (gapPlan.Mode == Whitespace::Flat && !gapPlan.FlatSource && gapPlan.Spaces == 0 &&
             !gapPlan.RealizeExpression && !policy.SourceMap)
         {
-            return bool(result.State) && (!probing || column <= policy.Width);
+            return bool(result.State) && (!probing || column <= policy.Width || probeOverflowLine == lines);
         }
 
         auto outputBegin = u32(outputSize());
@@ -1322,6 +1335,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 } else {
                     const auto tail = tailWidth(gapEntry.FitTail);
                     const bool segment = gap.FitNextSegment ||
+                        (GroupSpecs_[activeGroup].FitPrefixFallback && !probing && !layoutSelected) ||
                         (gap.FitNextSegmentIfFinite && gap.RequiredWidth != Infinity);
                     line = !fits(AddWidth(gapEntry.ExpandedWidth, segment ? gap.RequiredWidth : tail)) ||
                         (current->Mandatory == i &&
@@ -1436,7 +1450,11 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             recordMapping({outputBegin, u32(outputSize()), emittedOrigin, exact, gapPlan.Mode == Whitespace::Preserve});
         }
 
-        return bool(result.State) && (!probing || column <= policy.Width);
+        if (probing) {
+            probeMaxColumn = std::max(probeMaxColumn, column);
+        }
+
+        return bool(result.State) && (!probing || column <= policy.Width || probeOverflowLine == lines);
     };
     Cursor cursor;
     const auto selectLayout = [&] (Index id) {
@@ -1475,19 +1493,22 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 const auto tail = groupTail(spec, groupEntry);
                 childLayoutBase = savedDepth;
                 childLayoutEnd = Groups_[id].EndOrder;
-                std::array<u64, 4> bestCost{};
+                std::array<u64, 5> bestCost{};
                 us bestDepth = 0;
                 bool bestConsistent = false;
-                const auto cost = [&] () -> std::array<u64, 4> {
+                const auto cost = [&] () -> std::array<u64, 5> {
                     const auto count = lines - savedLines;
+                    const auto overflow = probeMaxColumn > policy.Width ? probeMaxColumn - policy.Width : 0;
 
+                    // Indivisible tokens can overflow every alternative. Prefer
+                    // the least overflow before comparing layout preferences.
                     // Compare complete chain layouts by line count and depth
                     // before applying local boundary preferences.
                     if (groupEntry.HasConsistentAlternative) {
-                        return {count, probeMaxIndent, count + probeBreakPenalty, probeBrokenGroups};
+                        return {overflow, count, probeMaxIndent, count + probeBreakPenalty, probeBrokenGroups};
                     }
 
-                    return {count + probeBreakPenalty, 0, count, probeBrokenGroups};
+                    return {overflow, count + probeBreakPenalty, 0, count, probeBrokenGroups};
                 };
                 const auto withinCost = [&] {
                     return !layoutSelected || cost() <= bestCost;
@@ -1513,6 +1534,8 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     probeBrokenGroups = 0;
                     probeBreakPenalty = 0;
                     probeMaxIndent = 0;
+                    probeMaxColumn = savedColumn;
+                    probeOverflowLine = NoOrder;
                     probing = true;
                     bool fitsCandidate = true;
 
@@ -1530,7 +1553,9 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                         renderToken,
                         renderGap);
 
-                    fitsCandidate = fitsCandidate && fits(tail);
+                    probeMaxColumn = std::max(probeMaxColumn, AddWidth(column, tail));
+                    fitsCandidate = fitsCandidate && probeMaxColumn != Infinity &&
+                        (fits(tail) || probeOverflowLine == lines);
                     const auto candidateCost = cost();
 
                     if (fitsCandidate && (!layoutSelected || candidateCost < bestCost)) {
