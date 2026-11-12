@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config_template.hpp"
+#include "diagnostic_detail.hpp"
 #include "path_rules.hpp"
 
 #include <util/types.hpp>
@@ -45,7 +46,7 @@ struct Arguments
 {
     bool Fix = false;
 
-    bool SummaryOnly = false;
+    DiagnosticDetail Diagnostics = DiagnosticDetail::Quick;
 
     bool ShowHelp = false;
     bool ShowVersion = false;

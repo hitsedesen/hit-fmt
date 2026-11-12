@@ -1,0 +1,2 @@
+sample.cpp: violations found
+hint: rerun with --fix to apply automatic fixes, --summary for locations and reasons, or --details for source excerpts and carets.

@@ -12,6 +12,7 @@ void BuildChangeMetadata(
     bool detailed,
     std::pmr::memory_resource& scratch,
     std::span<const parser::SourceOffset> originalLines = {},
-    bool originalBareCR = false);
+    bool originalBareCR = false,
+    bool collectOutputLines = true);
 
 } // namespace formatter::detail

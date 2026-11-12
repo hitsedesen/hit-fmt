@@ -1,0 +1,5 @@
+sample.cpp: reformatted
+sample.cpp:3:6: error: function name 'bad_name' has invalid case; expected PascalCase
+sample.cpp:3:18: error: parameter #1 in function definition 'bad_name': expected a name
+sample.cpp:4:8: error: parameter #2 in function definition 'bad_name': expected a name
+sample.cpp:9:21: error: cannot format this line automatically within ColumnLimit 20

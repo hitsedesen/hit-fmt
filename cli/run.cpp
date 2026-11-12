@@ -6,7 +6,6 @@
 #include "file_check.hpp"
 #include "file_discovery.hpp"
 #include "file_dispatch.hpp"
-#include "formatting_diagnostics.hpp"
 #include "terminal.hpp"
 #include "version.hpp"
 #include "worker_memory.hpp"
@@ -347,65 +346,22 @@ void PrintHelp(std::ostream& output, std::string_view executable, const Terminal
     auto option = [&] (std::string_view name, std::string_view description) {
         output << "  ";
         highlight(name, terminal.BoldYellow);
-        output << description << '\n';
+        constexpr std::string_view padding = "                                ";
+        output << padding.substr(std::min(name.size(), padding.size() - 1)) << description << '\n';
     };
     highlight("Usage:", terminal.BoldCyan);
     output << "\n  " << executable << " [options] <path>...\n" << "  " << executable
         << " --fix [options] <path>...\n\n";
-    highlight("Arguments:", terminal.BoldCyan);
-    output << '\n';
-    option("--fix", "            Fix what can be fixed; check the result.");
-    option("--check", "          Check without editing (default; optional).");
-    option("--no-spillover", "   Restrict changes to selected hunk lines.");
-    option("--summary", "        Print file status lines (default without a TTY).");
-    option("--details", "        Print detailed diagnostics (default on a TTY).");
-    output << "    Details include locations, source excerpts and suggested changes.\n"
-        << "    Defaults follow stdout; the last --summary or --details flag wins.\n";
-    option("-j [n]", "         Use n threads, or all cores without n.");
-    output << "    -j consumes the next non-flag argument as n; use -j -- <path> for all cores.\n";
-    option("--threads <n>", "  Use n threads (default 1).");
-    option("--config <file>", "  Use one configuration file for every input.");
-    option("--changed-hunks <file|->", "  Read changed file/line records (alias --changed-ranges).");
-    option("--exclude <regex>", " Skip matching files or directories (repeatable).");
-    option("-h, --help", "       Show this help.");
-    option("-V, --version", "    Show the build version.");
-    option("--help-config", "    Show configuration options and examples.");
-    option("--generate-config [preset]", " Print a config to stdout.");
-    output << "    Presets: ytsaurus, google, llvm; omit for a preserving config.\n"
-        << "    Both --generate-config google and --generate-config=google work.\n";
-    output << "\n"
-        << "Without --config, each source file uses the "
-            "nearest .hit-fmt file in its directory or a parent directory.\n"
-        << "Input paths may be files or directories.\n"
-        << "Directories are searched recursively for C and C++ source " "files.\n"
-        << "--exclude patterns search paths relative to each input directory; "
-            ".hit-fmt Exclude patterns search paths relative to the " "config file.\n"
-        << "Both use POSIX extended regex without backreferences; matching directories are skipped.\n"
-        << "Files larger than 4 MiB are skipped with a warning.\n"
-        << "Hunk lines are one-based and inclusive in the original source.\n"
-        << "Hunk paths are relative to the working directory. Safe enclosing "
-            "lists and include groups may spill up to 200 lines.\n"
-        << "Configure CallLikeMacroNames for call-shaped macros; see --help-config.\n"
-        << "Configure ClassMacroNames with Begin:End pairs for " "class-generating macros; see --help-config.\n"
-        << "Output is colorized when written to a terminal; set " "NO_COLOR to disable it.\n\n";
-    highlight("Examples:", terminal.BoldCyan);
-    output << '\n';
-
-    for (auto example :
-        {
-            " source.cpp",
-            " --details source.cpp",
-            " --fix source.cpp include/",
-            " --summary src/ include/",
-            " --fix --exclude '(^|/)generated(/|$)' src/",
-            " --fix --changed-hunks - < hunks.txt",
-            " --generate-config ytsaurus > .hit-fmt",
-        })
-    {
-        output << "  ";
-        highlight(executable, terminal.BoldGreen);
-        output << example << '\n';
-    }
+    option("--check / --fix", "Check (default) / apply fixes.");
+    option("--quick / --summary / --details", "Files / file:line:column errors / carets.");
+    option("-j [n], --threads <n>", "Threads (default 1; bare -j uses all cores).");
+    option("--config <file>", "Config (default: nearest .hit-fmt).");
+    option("--exclude <regex>", "Skip paths (repeatable POSIX ERE).");
+    option("--changed-hunks <file|->", "Original line ranges (--changed-ranges alias).");
+    option("--no-spillover", "Restrict fixes to selected hunk lines.");
+    option("--generate-config [preset]", "Print config: ytsaurus, google, llvm; default preserving.");
+    option("--help-config", "Configuration help.");
+    option("-h, --help / -V, --version", "Help / version.");
 }
 
 Result<formatter::ChangedHunkFiles, FileFailure> ReadChangedHunks(std::string_view path)
@@ -445,44 +401,6 @@ Result<formatter::ChangedHunkFiles, FileFailure> ReadChangedHunks(std::string_vi
     } catch (const std::exception&) {
         return {{}, ExceptionError()};
     }
-}
-
-Error PrintCheckResult(
-    std::ostream& output,
-    std::string_view path,
-    std::string_view source,
-    const CheckedFile& checked,
-    const Arguments& arguments,
-    const Terminal& terminal)
-{
-    if (arguments.Debug) {
-        PrintFileDebug(output, path, checked);
-    }
-
-    if (arguments.SummaryOnly) {
-        if (arguments.Fix && checked.FormattingMismatch) {
-            output << terminal.BoldGreen << path << ": fixed formatting" << terminal.Reset << '\n';
-        }
-
-        if (checked.HasFailures(arguments.Fix)) {
-            output << terminal.BoldRed << path << ": ";
-            PrintFileSummaryIssues(output, checked, arguments.Fix);
-            output << terminal.Reset << '\n';
-        }
-
-        return {};
-    }
-
-    if (checked.FormattingMismatch) {
-        if (auto error = PrintFormattingDiagnostics(output, path, source, checked.Formatting, terminal, arguments.Fix);
-            error)
-        {
-            return error;
-        }
-    }
-
-    PrintFileIssues(output, path, source, checked, arguments.Fix, terminal);
-    return {};
 }
 
 FileResult ProcessFile(
@@ -552,9 +470,10 @@ FileResult ProcessFile(
             config,
             inputFilePath,
             scope,
-            arguments.SummaryOnly ? DiagnosticDetail::Summary : DiagnosticDetail::Full,
+            arguments.Diagnostics,
             arguments.Debug,
-            &memory);
+            &memory,
+            arguments.Fix);
 
         if (checked.Error) {
             result.Error = FileError(path, std::move(checked.Error));
@@ -573,7 +492,17 @@ FileResult ProcessFile(
             }
         }
 
-        if (auto error = PrintCheckResult(output, filePath, source.View(), checked.Value, arguments, terminal); error) {
+        if (auto error = PrintCheckResult(
+            output,
+            filePath,
+            source.View(),
+            checked.Value,
+            arguments.Diagnostics,
+            arguments.Fix,
+            terminal,
+            arguments.Debug);
+            error)
+        {
             result.Error = FileError(path, std::move(error));
             result.Failed = true;
             return result;
@@ -672,6 +601,10 @@ int RunFiles(
     };
 
     auto dispatched = DispatchFiles(arguments, changed, terminal, print, memory);
+
+    if (mismatchCount != 0 && arguments.Diagnostics == DiagnosticDetail::Quick) {
+        PrintQuickHint(std::cout, arguments.Fix);
+    }
 
     if (dispatched.Error) {
         std::cerr << dispatched.Error << '\n';

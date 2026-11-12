@@ -23,4 +23,7 @@ struct NameDiagnostic
 // Never rewrites an identifier: references may be outside the current file.
 [[nodiscard]] std::vector<NameDiagnostic> CheckNames(const parser::SyntaxTree& tree, const Configuration& config);
 
+// Stops after a confirmed violation without collecting diagnostic metadata.
+[[nodiscard]] bool HasNamingViolation(const parser::SyntaxTree& tree, const Configuration& config);
+
 } // namespace formatter

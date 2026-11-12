@@ -105,10 +105,17 @@ struct FormatRequest
     // Collect actual replacements and owning line indexes for final Text.
     // Includes the summary; full maps require SourceMap.
     bool Changes = false;
+    // Detailed fixes need both line indexes; checks need only original lines.
+    bool OutputLineIndex = true;
     // Collect include blocks and whether other formatting changes remain.
     bool ChangeSummary = false;
     // Resolve width diagnostics to original token locations.
     bool DiagnosticLocations = false;
+    // Collect written-file width coordinates without mapping them to input.
+    bool EmittedDiagnosticLocations = false;
+    // For checking: omit width reports when Text already differs, otherwise
+    // retain only the first width violation. Formatting itself is complete.
+    bool FirstDiagnosticOnly = false;
     // Retain protection reasons in original-input byte coordinates for debugging.
     bool InputProtection = false;
 };

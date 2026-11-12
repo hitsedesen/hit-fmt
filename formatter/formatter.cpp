@@ -1535,7 +1535,7 @@ void ApplyComments(
 }
 
 template <bool locations>
-void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, u8 tabWidth)
+void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, u8 tabWidth, bool firstOnly)
 {
     if (policies.ColumnLimit == 0 || policies.WidthDiagnostics != WidthDiagnosticPolicy::Report) {
         return;
@@ -1548,6 +1548,11 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, u8
     u32 caretColumn = 1;
     auto report = [&] {
         if (width > policies.ColumnLimit) {
+            if (firstOnly && !locations) {
+                result.Diagnostics.emplace_back();
+                return;
+            }
+
             result.Diagnostics.push_back({
                 {line, u32(policies.ColumnLimit + 1)},
                 std::format("emitted line width {} exceeds ColumnLimit {}", width, policies.ColumnLimit),
@@ -1584,7 +1589,15 @@ void WidthDiagnostics(FormatResult& result, const CompiledPolicies& policies, u8
 
         if (c == '\n' || c == '\r') {
             report();
-            ++line;
+
+            if (firstOnly && !result.Diagnostics.empty()) {
+                return;
+            }
+
+            if (!firstOnly || locations) {
+                ++line;
+            }
+
             width = 0;
 
             if constexpr (locations) {
@@ -2054,9 +2067,10 @@ FormatResult FormatAnalyzedTree(
     options.ReassembledGaps = {};
     scratch.release();
 
-    if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&
-        !request.DiagnosticLocations)
-    {
+    const bool textOnly = (!widthDiagnostics || request.FirstDiagnosticOnly) && !request.SourceMap &&
+        !request.TokenMap && !request.Changes && !request.ChangeSummary && !request.DiagnosticLocations;
+
+    if (textOnly) {
         PruneTextOnlyNamespaceNoOps(
             namespacePlan,
             original,
@@ -2070,14 +2084,17 @@ FormatResult FormatAnalyzedTree(
 
     const bool needNamespaceAnchors = !namespacePlan.Namespaces.empty();
     const bool changeMetadata = request.Changes || request.ChangeSummary;
-    const bool sourceMap = request.SourceMap || (changeMetadata && prepared.Structural.SortIncludes);
+    const bool sourceMap = request.SourceMap ||
+        (changeMetadata && std::ranges::any_of(
+            plan.Operations,
+            [] (const auto& operation) {
+                return operation.Kind == StructuralAction::IncludeOrder;
+            }));
     const bool needMaps = sourceMap || request.TokenMap || request.Changes || request.DiagnosticLocations ||
         needNamespaceAnchors;
     std::optional<SparseNamespaceAnchors> sparseNamespaces;
 
-    if (!widthDiagnostics && !request.SourceMap && !request.TokenMap && !request.Changes && !request.ChangeSummary &&
-        !request.DiagnosticLocations && needNamespaceAnchors)
-    {
+    if (textOnly && needNamespaceAnchors) {
         if (normalized && consuming && !copiedCertified) {
             detail::MaterializeOriginalTokenOffsets(original, *normalized, copied);
         }
@@ -2275,15 +2292,15 @@ FormatResult FormatAnalyzedTree(
     if (prepared.Policies.LineEnding != LineEnding::Preserve) {
         (void)CheckedSourceAnalysisSize(result.Text.size());
     }
-    if (widthDiagnostics) {
-        if (request.SourceMap || request.DiagnosticLocations) {
-            WidthDiagnostics<true>(result, prepared.Policies, options.TabWidth);
+    if (widthDiagnostics && (!request.FirstDiagnosticOnly || result.Text == original.Source())) {
+        if (request.SourceMap || request.DiagnosticLocations || request.EmittedDiagnosticLocations) {
+            WidthDiagnostics<true>(result, prepared.Policies, options.TabWidth, request.FirstDiagnosticOnly);
         } else {
-            WidthDiagnostics<false>(result, prepared.Policies, options.TabWidth);
+            WidthDiagnostics<false>(result, prepared.Policies, options.TabWidth, request.FirstDiagnosticOnly);
         }
     }
     if (changeMetadata) {
-        detail::BuildChangeMetadata(original, result, request.Changes, scratch);
+        detail::BuildChangeMetadata(original, result, request.Changes, scratch, {}, false, request.OutputLineIndex);
         scratch.release();
     }
 
@@ -2361,13 +2378,13 @@ FormatResult PreserveInput(
     }
 
     if (request.Changes || request.ChangeSummary) {
-        detail::BuildChangeMetadata(tree, result, request.Changes, scratch);
+        detail::BuildChangeMetadata(tree, result, request.Changes, scratch, {}, false, request.OutputLineIndex);
     }
     if (widthDiagnostics) {
-        if (request.SourceMap || request.DiagnosticLocations) {
-            WidthDiagnostics<true>(result, prepared.Policies, 8);
+        if (request.SourceMap || request.DiagnosticLocations || request.EmittedDiagnosticLocations) {
+            WidthDiagnostics<true>(result, prepared.Policies, 8, request.FirstDiagnosticOnly);
         } else {
-            WidthDiagnostics<false>(result, prepared.Policies, 8);
+            WidthDiagnostics<false>(result, prepared.Policies, 8, request.FirstDiagnosticOnly);
         }
     }
     if (request.DiagnosticLocations) {
