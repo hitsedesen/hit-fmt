@@ -303,6 +303,22 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, packing, {"canonical", "inline", "delimiter", "always", "preserve", "unlimited"});
     AddCases(cases, packing, {"annotations"}, "../chained-calls/annotations.input.cpp");
     AddCases(cases, packing, {"chain"}, "chain.input.cpp");
+
+    for (const bool annotated : {false, true}) {
+        cases.push_back({
+            packing,
+            annotated ? "chain-first-annotated" : "chain-first",
+            "chain-first.input.cpp",
+            "chain",
+        });
+        cases.back().Style = formatter::LoadConfigFile(packing / "chain.hit-fmt").FormattingStyle;
+        cases.back().Style->ChainsPacking = ListPacking::VerticalWhenBroken;
+
+        if (annotated) {
+            cases.back().Style->StickyChainCallPairs = {"Configure:Select"};
+        }
+    }
+
     AddCases(cases, packing, {"conditions"}, "../if-conditions-packing/input.cpp");
     ShareExpected(cases, packing, "conditions.output.cpp", "../if-conditions-packing/leading.output.cpp");
     AddCases(cases, packing, {"expressions"}, "../assignment-location/packing.input.cpp");

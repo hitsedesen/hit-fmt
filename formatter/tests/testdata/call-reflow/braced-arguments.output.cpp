@@ -1,8 +1,7 @@
 void SaveBatch()
 {
     Schedule(
-        queue
-            .Connect()
+        queue.Connect()
             .Drain(),
         [&] (int sequence) {
             WriteRecord(

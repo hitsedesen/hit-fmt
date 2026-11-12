@@ -2,17 +2,14 @@ void Chains()
 {
     builder
         .Then();
-    builder
-        .Start()
+    builder.Start()
         .Then()
         .Value()
         .Finish();
-    pointer
-        ->Start()
+    pointer->Start()
         ->Then()
         ->Value();
-    factory()
-        .Start()
+    factory().Start()
         ->Then()
         .Value();
     builder
@@ -21,24 +18,20 @@ void Chains()
     pointer
         ->template Then<Box<int>>()
         .Value();
-    builder
-        .Item()
+    builder.Item()
         .Then()
         .Value();
-    builder
-        .Begin()
+    builder.Begin()
         .Item()
         .Then()
         .Value()
         .End()
         .Finish();
     builder.Start() /* next stage */ .Then().Value();
-    builder
-        .Start()
+    builder.Start()
         .Then(/* argument */ value)
         .Value();
-    builder
-        .Start()
+    builder.Start()
         // next stage
         .Then()
         .Value();
@@ -47,9 +40,8 @@ void Chains()
         .Ready()) {
         work();
     }
-    builder
-        .With(other
-            .Then())
+    builder.With(other
+        .Then())
         .Value();
     builder.Then;
     builder.Then.Other();

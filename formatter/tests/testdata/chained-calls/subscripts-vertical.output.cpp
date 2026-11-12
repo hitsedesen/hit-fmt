@@ -2,8 +2,7 @@ void Controls(Value& data) {
     data["short"]["path"] = 42;
     data["configuration"]["primary_group"]["additional_configuration"]["calculation_results"]["metadata"]
         ["user_settings"]["displayed_price"] = 42;
-    data
-        .Load()
+    data.Load()
         ["configuration"]
         ["primary_group"]
         .Get()

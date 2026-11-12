@@ -53,8 +53,7 @@ void inspect()
         accept();
     }
 
-    if (event
-        .WithDetails()
+    if (event.WithDetails()
         .IsValid())
     {
         accept();
@@ -85,23 +84,20 @@ void inspect()
     } while (!scanner.GetCurrentDocument().GetTail().empty() &&
         canContinueProcessing());
 
-    if (scanner
-        .GetTailForTheCurrentDocumentAndItsCompleteProcessingContext()
+    if (scanner.GetTailForTheCurrentDocumentAndItsCompleteProcessingContext()
         .IsEmptyForTheCurrentInputAndItsOutstandingRequests())
     {
         accept();
     }
 
     if (validate([] {
-        return builder
-            .WithInput()
+        return builder.WithInput()
             .Finish();
     }))
     {
         accept();
     }
 
-    builder
-        .WithInput()
+    builder.WithInput()
         .Finish();
 }

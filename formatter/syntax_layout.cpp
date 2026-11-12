@@ -4587,8 +4587,9 @@ private:
             i = last;
         }
 
+        Index first = None;
+
         if (Policies_.Chains.Packing == ListPacking::AllOrVertical) {
-            Index first = None;
             Index tail = group;
 
             for (auto& link : ChainLinks_) {
@@ -4612,10 +4613,15 @@ private:
                 continue;
             }
 
+            if (first == None && !link.Sticky && link.Owner == group) {
+                first = link.Gap;
+            }
+
             OwnContinuationBoundary(
                 link.Gap,
                 link.Owner,
-                Policies_.Chains.Packing == ListPacking::VerticalWhenBroken && calls > 1 && !link.Sticky
+                Policies_.Chains.Packing == ListPacking::VerticalWhenBroken && calls > 1 && !link.Sticky &&
+                    link.Gap != first
                 ? layout::GapKind::Hard
                 : layout::GapKind::Soft,
                 Annotations_.AlwaysBreakChainCall(link.Name));
@@ -5067,7 +5073,7 @@ private:
                 OwnContinuationBoundary(
                     t,
                     t == firstLink ? group : tail,
-                    policy.Packing == ListPacking::VerticalWhenBroken && packingCalls > 1
+                    policy.Packing == ListPacking::VerticalWhenBroken && packingCalls > 1 && t != firstLink
                     ? layout::GapKind::Hard
                     : layout::GapKind::Soft);
             }

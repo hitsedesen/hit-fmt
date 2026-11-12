@@ -473,8 +473,7 @@ TEST(FileCheck, IncludeOrderDiagnosticGoldenIsOneErrorForTheFile)
             EXPECT_FALSE(checked.HasFailures(true));
 
             for (const auto& change : checked.Formatting.Summary->IncludeOrderChanges) {
-                auto before = input
-                    .View()
+                auto before = input.View()
                     .View()
                     .substr(change.Original.Begin, change.Original.End - change.Original.Begin);
                 auto after = std::string_view(

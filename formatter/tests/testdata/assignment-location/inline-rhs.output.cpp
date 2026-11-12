@@ -3,12 +3,10 @@ void F() {
         longVarName,
         longVarName2);
     x = Max(longVarName, longVarName2);
-    auto resultWithLongName = foo
-        .bar()
+    auto resultWithLongName = foo.bar()
         .baz()
         .daz();
-    resultWithLongName = foo
-        .bar()
+    resultWithLongName = foo.bar()
         .baz()
         .daz();
     auto small = Max(a, b);

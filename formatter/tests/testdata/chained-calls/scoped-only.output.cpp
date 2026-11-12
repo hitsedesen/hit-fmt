@@ -1,13 +1,11 @@
 void Write() {
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("host")
         .Value(host)
         .Item("mode")
         .Value(mode)
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("entries")
         .BeginList()
           .Item()
@@ -19,8 +17,7 @@ void Write() {
           .EndMap()
         .EndList()
       .EndMap();
-  Wrap(Builder()
-      .BeginAttributes()
+  Wrap(Builder().BeginAttributes()
         .Item("tag")
         .Value(tag)
       .EndAttributes()
@@ -28,85 +25,67 @@ void Write() {
         .Item("key")
         .Value(value)
       .EndMap());
-  Builder()
-      ->BeginMap()
+  Builder()->BeginMap()
         ->Item("key")
         ->Value(value)
       ->EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("wide")
         .Value(aVeryLongDescriptiveValueNameThatExceedsTheAvailableWidth)
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("abcdefghijk")
         .Value("abcdefghijk")
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("call")
-        .Value(Other()
-            .BeginMap()
+        .Value(Other().BeginMap()
               .Item("nested")
               .Value(value)
             .EndMap())
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("fn")
         .Value([] {
           Work();
         })
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
       .Item("open")
       .Value(value);
-  Builder()
-      .Item("close")
+  Builder().Item("close")
       .Value(value)
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
       .BeginList()
       .EndMap()
       .EndList();
   Builder().Item("field").Value.member;
-  Builder()
-      .Item("gap")
+  Builder().Item("gap")
       .Other()
       .Value(value);
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("comment") // Keep this line comment.
         .Value(value)
       .EndMap();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("block") /* Keep this block comment. */ .Value(value)
       .EndMap();
-  Other()
-      .BeginMap()
+  Other().BeginMap()
         .Item("unselected")
         .Value(value)
       .EndMap();
-  Builder()
-      .Append(1)
+  Builder().Append(1)
       .Append(2)
       .Append(3)
       .Finish();
-  registrar
-      .Parameter("rate", &TThis::Rate)
+  registrar.Parameter("rate", &TThis::Rate)
       .Default();
-  Maker()
-      .Parameter("limit", &TThis::Limit)
+  Maker().Parameter("limit", &TThis::Limit)
       .Default();
-  Builder()
-      .BeginMap()
+  Builder().BeginMap()
         .Item("argument")
         .Value(Other().EndMap())
       .EndMap();

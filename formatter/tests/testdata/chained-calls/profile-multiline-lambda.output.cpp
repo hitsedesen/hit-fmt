@@ -1,7 +1,6 @@
 void EmitRecords()
 {
-    BuildYsonFluently(consumer)
-        .BeginMap()
+    BuildYsonFluently(consumer).BeginMap()
             .Item("routes").DoMapFor(
                 routesWithMetrics,
                 [] (auto fluent, const auto& routeWithMetrics) {
@@ -14,8 +13,7 @@ void EmitRecords()
 
 void WriteAttributes()
 {
-    Wrap(Builder()
-        .BeginMap()
+    Wrap(Builder().BeginMap()
             .Item("host").Value(host)
             .Item("mode").Value(mode)
         .EndMap());
@@ -23,16 +21,13 @@ void WriteAttributes()
         .Default();
     registrar.Parameter("already_split", &TThis::Rate)
         .Default();
-    registrar.Parameter("limit", &TThis::Limit)
-        .Default(10)
+    registrar.Parameter("limit", &TThis::Limit).Default(10)
         .GreaterThan(0);
     registrar->Parameter("mode", &TThis::Mode)
         ->Default();
-    otherRegistrar
-        .Parameter("rate", &TThis::Rate)
+    otherRegistrar.Parameter("rate", &TThis::Rate)
         .Default();
-    registrar
-        .Other("rate")
+    registrar.Other("rate")
         .Default();
     registrar.Parameter("aLongDescriptiveSettingName", &TThis::AnotherLongDescriptiveMemberName)
         .Default();
@@ -55,8 +50,7 @@ void Connect()
             /* This explains the continuation. */
             .Via(invoker));
         future.Subscribe(Bind(callback) /* Inline comment. */.Via(invoker));
-        auto value = Builder()
-            .BeginMap()
+        auto value = Builder().BeginMap()
                 // A nested fluent item.
                 .Item("key").Value(value)
             .EndMap();
@@ -94,80 +88,61 @@ void Finalize()
 
 void Run()
 {
-    state
-        .DeferredCallbacks
+    state.DeferredCallbacks
         ->front()
         ();
-    state
-        .DeferredCallbacks
+    state.DeferredCallbacks
         ->front()
         (argument);
-    Receiver()
-        .Open()
+    Receiver().Open()
         ->Close();
-    Receiver()
-        ->Open()
+    Receiver()->Open()
         .Close();
-    Receiver()
-        .Open()
+    Receiver().Open()
         ();
-    Receiver()
-        ->Open()
+    Receiver()->Open()
         ();
-    receiver
-        .Open()
+    receiver.Open()
         .Close();
-    receiver
-        ->Open()
+    receiver->Open()
         ->Close();
-    Factory()
-        (1)
+    Factory()(1)
         (2);
     receiver.Field.Child.Open();
     receiver->Field->Child->Open();
     receiver.Field->Child.Value;
-    receiver
-        .First()
+    receiver.First()
         .Second()
         ->Third();
-    receiver
-        ->First()
+    receiver->First()
         ->Second()
         .Third();
-    receiver
-        .First()
+    receiver.First()
         ->Second()
         .Third()
         ->Fourth();
-    return Factory()
-        .Open()
+    return Factory().Open()
         ->Close()
         .Finish();
-    receiver
-        .First()
+    receiver.First()
         .Field
         .Second();
-    receiver
-        .First()
+    receiver.First()
         .Second()
         (argument);
-    Receiver()
-        .First()
+    Receiver().First()
         // This does not change the link kind.
         .Second();
-    namespace_name /* Keep this qualifier comment. */::Factory()
-        .First()
+    namespace_name /* Keep this qualifier comment. */::Factory().First()
         .Second();
-    state
-        .aVeryLongDescriptiveFieldNameWithCallbacks
+    state.aVeryLongDescriptiveFieldNameWithCallbacks
         ->front()
         (aVeryLongDescriptiveArgumentName);
 }
 
 void Receive()
 {
-    transfer
-        ->Run(std::move(chunks))
+    transfer->Run(std::move(chunks))
         .AsUnique()
         .Subscribe(Bind(
             [sink = std::move(sink), prefix = std::move(prefix), channel = std::move(channel), requestId] (
@@ -197,8 +172,7 @@ void Schedule()
 {
     return BIND([=, this, self = Hold(this), task = std::forward<Task>(task), ... items = std::move(items)] {
         return Dispatch(std::move(task), std::forward<Items>(items)...);
-    })
-        .AsyncVia(executor)
+    }).AsyncVia(executor)
         .Run();
 }
 
@@ -206,26 +180,21 @@ void RecoveredArguments()
 {
     Wrap([] {
         Dispatch(items...);
-    })
-        .First()
+    }).First()
         .Second();
     Wrap([] {
         Dispatch(items...);
-    })
-        ->First()
+    })->First()
         .Second();
     Wrap([] {
         Dispatch(items...);
-    })
-        .First()
+    }).First()
         (value);
-    Receiver(items...)
-        .First()
+    Receiver(items...).First()
         .Second();
     Receiver(items...).Only();
     Receiver(items...).Field.Child;
-    std::forward<Items>(items)
-        .First()
+    std::forward<Items>(items).First()
         .Second();
 }
 
