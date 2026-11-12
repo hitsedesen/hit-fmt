@@ -1,0 +1,2 @@
+unicode.cpp:2:13: error: line exceeds ColumnLimit 12
+unicode.cpp:4:12: error: line exceeds ColumnLimit 12

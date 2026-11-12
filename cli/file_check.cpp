@@ -1,5 +1,6 @@
 #include "file_check.hpp"
 
+#include "formatting_diagnostics.hpp"
 #include "source_excerpt.hpp"
 
 #include <util/memory.hpp>
@@ -354,7 +355,7 @@ Result<PreparedConfiguration> PrepareConfiguration(formatter::Configuration conf
 
 bool CheckedFile::HasFailures(bool fix) const
 {
-    return (!fix && FormattingMismatch) || !Semantic.empty() || !RequiredChanges.empty() ||
+    return QuickFailure || (!fix && FormattingMismatch) || !Semantic.empty() || !RequiredChanges.empty() ||
         !Formatting.Diagnostics.empty();
 }
 
@@ -365,7 +366,8 @@ Result<CheckedFile> FormatAndCheckFile(
     std::optional<ChangedFileScope> changed,
     DiagnosticDetail diagnostics,
     bool debug,
-    std::pmr::memory_resource* memory)
+    std::pmr::memory_resource* memory,
+    bool fix)
 {
     try {
         CheckedFile checked;
@@ -379,42 +381,58 @@ Result<CheckedFile> FormatAndCheckFile(
                 }
             },
             parseOptions);
-        bool locations = diagnostics != DiagnosticDetail::Summary;
+        const bool quick = diagnostics == DiagnosticDetail::Quick && !fix && !changed && !debug;
+        bool locations = diagnostics == DiagnosticDetail::Summary || diagnostics == DiagnosticDetail::Detailed;
         checked.ColumnLimit = configuration.Formatting.Policies.ColumnLimit;
 
-        for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings)) {
-            checked.Semantic.push_back({
-                diagnostic.Position,
-                {},
-                diagnostic.Message + "; " + diagnostic.Expected,
-                diagnostic.Anchor,
-            });
-        }
+        if (quick) {
+            if (formatter::HasNamingViolation(tree, configuration.Settings) ||
+                formatter::HasParameterNameViolation(tree, configuration.Settings))
+            {
+                checked.QuickFailure = true;
+                return {std::move(checked), {}};
+            }
+        } else {
+            for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings)) {
+                checked.Semantic.push_back({
+                    diagnostic.Position,
+                    {},
+                    diagnostic.Message + "; " + diagnostic.Expected,
+                    diagnostic.Anchor,
+                });
 
-        for (const auto& diagnostic : formatter::CheckParameterNames(tree, configuration.Settings)) {
-            auto message = "parameter #" + std::to_string(diagnostic.ParameterNumber) + " in " + diagnostic.Function +
-                ": expected a name";
-
-            if (diagnostic.AllowCommentedName) {
-                message += " or /*name*/ comment";
             }
 
-            checked.Semantic.push_back({diagnostic.Position, {}, std::move(message), diagnostic.Anchor});
+            for (const auto& diagnostic : formatter::CheckParameterNames(tree, configuration.Settings)) {
+                auto message = "parameter #" + std::to_string(diagnostic.ParameterNumber) + " in " +
+                    diagnostic.Function + ": expected a name";
+
+                if (diagnostic.AllowCommentedName) {
+                    message += " or /*name*/ comment";
+                }
+
+                checked.Semantic.push_back({diagnostic.Position, {}, std::move(message), diagnostic.Anchor});
+
+            }
+
         }
 
         auto namespacePolicy = configuration.Formatting.NamespaceComments.Policy;
         bool namespaceDiagnostics = namespacePolicy == formatter::NamespaceCommentPolicy::Fix ||
             namespacePolicy == formatter::NamespaceCommentPolicy::AddMissing;
-        bool tokenMap = locations && (changed.has_value() || !checked.Semantic.empty() || namespaceDiagnostics);
+        bool tokenMap = locations && fix && (!checked.Semantic.empty() || namespaceDiagnostics || changed.has_value());
         std::vector<formatter::Hunk> selected, permitted;
         const formatter::FormatRequest request{
             .InputFilePath = inputFilePath,
             .TokenMap = tokenMap,
-            .Changes = diagnostics == DiagnosticDetail::Full,
-            .ChangeSummary = true,
-            .DiagnosticLocations = (locations || changed.has_value()) &&
-                configuration.Formatting.Policies.ColumnLimit != 0 &&
+            .Changes = diagnostics == DiagnosticDetail::Detailed || (locations && !fix),
+            .OutputLineIndex = diagnostics == DiagnosticDetail::Detailed && fix,
+            .ChangeSummary = false,
+            .DiagnosticLocations = ((locations && (!fix || diagnostics == DiagnosticDetail::Detailed)) ||
+                changed.has_value()) && configuration.Formatting.Policies.ColumnLimit != 0 &&
                 configuration.Formatting.Policies.WidthDiagnostics == formatter::WidthDiagnosticPolicy::Report,
+            .EmittedDiagnosticLocations = locations && fix,
+            .FirstDiagnosticOnly = quick,
             .InputProtection = debug,
         };
 
@@ -455,6 +473,15 @@ Result<CheckedFile> FormatAndCheckFile(
             checked.Formatting = formatter::Format(tree, configuration.Formatting, request);
         }
 
+        checked.FormattingMismatch = checked.Formatting.Text != source.View();
+
+        if (quick) {
+
+            if (checked.FormattingMismatch || !checked.Formatting.Diagnostics.empty()) {
+                return {std::move(checked), {}};
+            }
+        }
+
         if (debug) {
             if (auto error = CollectFormattingDebug(tree, checked); error) {
                 return {{}, std::move(error)};
@@ -481,6 +508,10 @@ Result<CheckedFile> FormatAndCheckFile(
                 "namespace closing comment is missing; existing explanatory comment is preserved",
                 {token, tree.Token(token).Text.Begin},
             });
+
+            if (quick) {
+                return {std::move(checked), {}};
+            }
         }
 
         if (changed) {
@@ -491,9 +522,6 @@ Result<CheckedFile> FormatAndCheckFile(
                 });
         }
 
-        const auto& summary = *checked.Formatting.Summary;
-        checked.FormattingMismatch = summary.OtherChanges || !summary.IncludeOrderChanges.empty();
-
         for (auto* items : {&checked.Semantic, &checked.RequiredChanges}) {
             std::sort(
                 items->begin(),
@@ -503,7 +531,7 @@ Result<CheckedFile> FormatAndCheckFile(
                 });
         }
 
-        if (locations) {
+        if (locations && fix) {
             if (auto error = MapSemanticPositions(tree, checked.Formatting, checked.Semantic, checked.RequiredChanges);
                 error)
             {
@@ -561,7 +589,7 @@ void PrintFileIssues(
     bool fix,
     const Terminal& terminal)
 {
-    if (!fix && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
+    if (!fix && checked.Formatting.Summary && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
         auto position = checked.Formatting.Summary->IncludeOrderChanges.front().Position;
         output << "fail: includes are not sorted\n  --> " << path << ':' << position.Line << ':' << position.Column
             << " [original source]\n";
@@ -646,11 +674,13 @@ void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bo
         separated = true;
     };
 
-    if (!fix && checked.Formatting.Summary->OtherChanges) {
+    if (!fix && checked.FormattingMismatch &&
+        (!checked.Formatting.Summary || checked.Formatting.Summary->OtherChanges))
+    {
         issue("formatting mismatch");
     }
 
-    if (!fix && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
+    if (!fix && checked.Formatting.Summary && !checked.Formatting.Summary->IncludeOrderChanges.empty()) {
         issue("includes are not sorted", true);
     }
 
@@ -669,6 +699,97 @@ void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bo
     if (!checked.Formatting.Diagnostics.empty()) {
         issue(fix ? "fail: cannot format automatically within column limit" : "fail: column-limit violation");
     }
+}
+
+Error PrintCheckResult(
+    std::ostream& output,
+    std::string_view path,
+    std::string_view source,
+    const CheckedFile& checked,
+    DiagnosticDetail diagnostics,
+    bool fix,
+    const Terminal& terminal,
+    bool debug)
+{
+    if (debug) {
+        PrintFileDebug(output, path, checked);
+    }
+
+    if (diagnostics == DiagnosticDetail::Quick) {
+        if (fix && checked.FormattingMismatch) {
+            output << path << ": reformatted\n";
+        }
+
+        if (checked.HasFailures(fix)) {
+            output << path << ": violations found\n";
+        }
+
+        return {};
+    }
+
+    if (diagnostics == DiagnosticDetail::Summary) {
+        if (fix && checked.FormattingMismatch) {
+            output << path << ": reformatted\n";
+        }
+
+        auto issue = [&] (util::Position position, std::string_view message) {
+            output << path << ':' << position.Line << ':' << position.Column << ": error: " << message << '\n';
+        };
+
+        if (!fix && checked.FormattingMismatch) {
+            if (auto error = PrintFormattingLocations(output, path, source, checked.Formatting); error) {
+                return error;
+            }
+
+            for (const auto& change : checked.Formatting.Summary->IncludeOrderChanges) {
+                issue(change.Position, "includes are not sorted");
+            }
+        }
+
+        for (const auto& diagnostic : checked.Semantic) {
+            issue(fix ? diagnostic.Emitted : diagnostic.Original, diagnostic.Message);
+        }
+
+        for (const auto& diagnostic : checked.RequiredChanges) {
+            auto position = fix ? diagnostic.Emitted : diagnostic.Original;
+            output << path << ':' << position.Line << ':' << position.Column << ": error: " << diagnostic.Message;
+
+            if (fix && diagnostic.BlockedByHunks) {
+                output << BlockedHunkFix;
+            }
+
+            output << '\n';
+        }
+
+        for (const auto& diagnostic : checked.Formatting.Diagnostics) {
+            output << path << ':' << (fix ? diagnostic.Position.Line : diagnostic.Original->Line) << ':'
+                << (fix ? diagnostic.CodePointColumn : diagnostic.Original->Column) << ": error: "
+                << (fix ? "cannot format this line automatically within ColumnLimit " : "line exceeds ColumnLimit ")
+                << checked.ColumnLimit << '\n';
+        }
+
+        return {};
+    }
+
+    if (checked.FormattingMismatch) {
+        if (auto error = PrintFormattingDiagnostics(output, path, source, checked.Formatting, terminal, fix); error) {
+            return error;
+        }
+    }
+
+    PrintFileIssues(output, path, source, checked, fix, terminal);
+    return {};
+}
+
+void PrintQuickHint(std::ostream& output, bool fix)
+{
+    output << "hint: rerun with ";
+
+    if (!fix) {
+        output << "--fix to apply automatic fixes, ";
+    }
+
+    output << "--summary for locations and reasons, or --details for source excerpts and carets.\n";
 }
 
 } // namespace cli

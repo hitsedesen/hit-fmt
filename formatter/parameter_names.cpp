@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace formatter {
@@ -177,11 +178,23 @@ bool IsCommentedName(std::string_view text)
     return true;
 }
 
+struct FunctionDiagnosticContext
+{
+    std::string Function;
+    parser::SourceRange Signature;
+    u32 BeginLine;
+    u32 EndLine;
+};
+
+template <bool CollectDiagnostics>
+using ParameterResult = std::conditional_t<CollectDiagnostics, std::vector<ParameterNameDiagnostic>, bool>;
+
+template <bool CollectDiagnostics>
 void CheckFunction(
     const parser::SyntaxTree& tree,
     const Node& function,
     FunctionDefinitionParameterNames definitionPolicy,
-    std::vector<ParameterNameDiagnostic>& diagnostics)
+    ParameterResult<CollectDiagnostics>& diagnostics)
 {
     for (auto* init = parser::FirstInitDeclarator(function); init; init = init->NextSibling) {
         if (init->Kind != NK::InitDeclarator) {
@@ -207,19 +220,28 @@ void CheckFunction(
             continue;
         }
 
-        std::string functionName = function.Kind == NK::FunctionDefinition
-            ? "function definition"
-            : "function declaration";
+        const auto context = [&] {
+            if constexpr (CollectDiagnostics) {
+                std::string functionName = function.Kind == NK::FunctionDefinition
+                    ? "function definition"
+                    : "function declaration";
 
-        if (auto* name = FunctionName(*declarator)) {
-            functionName += " '" + std::string(tree.SourceText(name->Tokens)) + "'";
-        }
+                if (auto* name = FunctionName(*declarator)) {
+                    functionName += " '" + std::string(tree.SourceText(name->Tokens)) + "'";
+                }
 
-        const auto first = tree.Token(function.Tokens.Begin);
-        const auto last = tree.Token(signature->Tokens.End - 1);
-        const parser::SourceRange signatureRange{first.Text.Begin, last.Text.End};
-        const auto beginLine = tree.TokenPosition(function.Tokens.Begin).Line;
-        const auto endLine = tree.TokenPosition(signature->Tokens.End - 1).Line;
+                const auto first = tree.Token(function.Tokens.Begin);
+                const auto last = tree.Token(signature->Tokens.End - 1);
+                return FunctionDiagnosticContext{
+                    std::move(functionName),
+                    {first.Text.Begin, last.Text.End},
+                    tree.TokenPosition(function.Tokens.Begin).Line,
+                    tree.TokenPosition(signature->Tokens.End - 1).Line,
+                };
+            } else {
+                return false;
+            }
+        }();
         us number = 0;
 
         for (auto* parameter = parameters->FirstChild; parameter; parameter = parameter->NextSibling) {
@@ -291,26 +313,29 @@ void CheckFunction(
                 }
             }
 
-            const auto anchor = NameAnchor(tree, *parameter, *specifiers);
-            diagnostics.push_back({
-                .Position = detail::OriginalPosition(tree, anchor),
-                .Signature = signatureRange,
-                .SignatureBeginLine = beginLine,
-                .SignatureEndLine = endLine,
-                .Function = functionName,
-                .ParameterNumber = number,
-                .AllowCommentedName = function.Kind == NK::FunctionDefinition &&
-                    definitionPolicy == FunctionDefinitionParameterNames::
-                        NameOrCommentedNameRequired,
-                .Anchor = anchor,
-            });
+            if constexpr (!CollectDiagnostics) {
+                diagnostics = true;
+                return;
+            } else {
+                const auto anchor = NameAnchor(tree, *parameter, *specifiers);
+                diagnostics.push_back({
+                    .Position = detail::OriginalPosition(tree, anchor),
+                    .Signature = context.Signature,
+                    .SignatureBeginLine = context.BeginLine,
+                    .SignatureEndLine = context.EndLine,
+                    .Function = context.Function,
+                    .ParameterNumber = number,
+                    .AllowCommentedName = function.Kind == NK::FunctionDefinition &&
+                        definitionPolicy == FunctionDefinitionParameterNames::NameOrCommentedNameRequired,
+                    .Anchor = anchor,
+                });
+            }
         }
     }
 }
 
-} // namespace
-
-std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTree& tree, const Configuration& config)
+template <bool CollectDiagnostics>
+ParameterResult<CollectDiagnostics> CheckParameterNamesImpl(const parser::SyntaxTree& tree, const Configuration& config)
 {
     if (config.FunctionDeclarationParameterNames == FunctionDeclarationParameterNames::Unchecked &&
         config.FunctionDefinitionParameterNames == FunctionDefinitionParameterNames::Unchecked)
@@ -318,7 +343,7 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTre
         return {};
     }
 
-    std::vector<ParameterNameDiagnostic> diagnostics;
+    ParameterResult<CollectDiagnostics> diagnostics{};
     std::vector<const Node*> stack{&tree.Root()};
 
     while (!stack.empty()) {
@@ -330,7 +355,13 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTre
             (node->Kind == NK::FunctionDefinition &&
                 config.FunctionDefinitionParameterNames != FunctionDefinitionParameterNames::Unchecked))
         {
-            CheckFunction(tree, *node, config.FunctionDefinitionParameterNames, diagnostics);
+            CheckFunction<CollectDiagnostics>(tree, *node, config.FunctionDefinitionParameterNames, diagnostics);
+
+            if constexpr (!CollectDiagnostics) {
+                if (diagnostics) {
+                    return true;
+                }
+            }
         }
 
         for (auto* child = node->FirstChild; child; child = child->NextSibling) {
@@ -338,13 +369,28 @@ std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTre
         }
     }
 
-    std::ranges::sort(
-        diagnostics,
-        [] (const auto& a, const auto& b) {
-            return a.Position.Line < b.Position.Line ||
-                (a.Position.Line == b.Position.Line && a.Position.Column < b.Position.Column);
-        });
+    if constexpr (CollectDiagnostics) {
+        std::ranges::sort(
+            diagnostics,
+            [] (const auto& a, const auto& b) {
+                return a.Position.Line < b.Position.Line ||
+                    (a.Position.Line == b.Position.Line && a.Position.Column < b.Position.Column);
+            });
+    }
+
     return diagnostics;
+}
+
+} // namespace
+
+std::vector<ParameterNameDiagnostic> CheckParameterNames(const parser::SyntaxTree& tree, const Configuration& config)
+{
+    return CheckParameterNamesImpl<true>(tree, config);
+}
+
+bool HasParameterNameViolation(const parser::SyntaxTree& tree, const Configuration& config)
+{
+    return CheckParameterNamesImpl<false>(tree, config);
 }
 
 } // namespace formatter

@@ -72,6 +72,31 @@ parser::SourceRange SourceLines::Cover(parser::SourceRange range) const
     return {Range(first).Begin, Range(last).End};
 }
 
+parser::SourceRange SourceLines::Cover(std::string_view text, parser::SourceRange range)
+{
+    const auto size = CheckedSourceAnalysisSize(text.size());
+
+    if (range.Begin > range.End || range.End > size) {
+        throw std::out_of_range("invalid physical source line range");
+    }
+
+    if (text.empty()) {
+        return {};
+    }
+
+    const auto physicalPoint = [&] (parser::SourceOffset offset) {
+        return offset == size && text.back() == '\n' ? offset - 1 : offset;
+    };
+    const auto first = physicalPoint(range.Begin);
+    const auto last = physicalPoint(range.Empty() ? range.End : range.End - 1);
+    const auto before = first == 0 ? std::string_view::npos : text.rfind('\n', first - 1);
+    const auto after = text.find('\n', last);
+    return {
+        before == std::string_view::npos ? 0 : static_cast<parser::SourceOffset>(before + 1),
+        after == std::string_view::npos ? size : static_cast<parser::SourceOffset>(after + 1),
+    };
+}
+
 std::string_view SourceLines::Text(std::string_view text, us line) const
 {
     const auto range = Range(line);
@@ -238,7 +263,7 @@ Vector<FormatChange> IncludeBlocks(
     const parser::SyntaxTree& tree,
     const FormatResult& result,
     const SourceLines& originalLines,
-    const SourceLines& outputLines,
+    const SourceLines* outputLines,
     std::pmr::memory_resource& scratch)
 {
     Vector<FormatChange> blocks(&scratch);
@@ -289,7 +314,7 @@ Vector<FormatChange> IncludeBlocks(
         }
 
         block.Original = originalLines.Cover(block.Original);
-        block.Output = outputLines.Cover(block.Output);
+        block.Output = outputLines ? outputLines->Cover(block.Output) : SourceLines::Cover(result.Text, block.Output);
     }
 
     std::sort(
@@ -433,7 +458,8 @@ void detail::BuildChangeMetadata(
     bool detailed,
     std::pmr::memory_resource& scratch,
     std::span<const parser::SourceOffset> originalLines,
-    bool originalBareCR)
+    bool originalBareCR,
+    bool collectOutputLines)
 {
     auto& summary = result.Summary.emplace();
     const auto source = tree.Source();
@@ -445,7 +471,10 @@ void detail::BuildChangeMetadata(
         changes->OriginalLines = originalLines.empty()
             ? SourceLines(source)
             : SourceLines(originalLines, originalBareCR);
-        changes->OutputLines = unchanged ? changes->OriginalLines : SourceLines(output);
+
+        if (collectOutputLines) {
+            changes->OutputLines = unchanged ? changes->OriginalLines : SourceLines(output);
+        }
     }
 
     if (unchanged) {
@@ -467,14 +496,18 @@ void detail::BuildChangeMetadata(
 
     if (includes && !changes) {
         sourceLines = originalLines.empty() ? SourceLines(source) : SourceLines(originalLines, originalBareCR);
-        outputLines = SourceLines(output);
+
+        if (collectOutputLines) {
+            outputLines = SourceLines(output);
+        }
     }
 
     Vector<FormatChange> blocks(&scratch);
 
     if (includes) {
         const auto& original = changes ? changes->OriginalLines : sourceLines;
-        blocks = IncludeBlocks(tree, result, original, changes ? changes->OutputLines : outputLines, scratch);
+        const auto* emittedLines = collectOutputLines ? (changes ? &changes->OutputLines : &outputLines) : nullptr;
+        blocks = IncludeBlocks(tree, result, original, emittedLines, scratch);
         summary.IncludeOrderChanges.reserve(blocks.size());
 
         for (const auto& block : blocks) {

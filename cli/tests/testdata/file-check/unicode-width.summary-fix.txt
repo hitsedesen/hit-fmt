@@ -1,0 +1,2 @@
+unicode.cpp:2:13: error: cannot format this line automatically within ColumnLimit 12
+unicode.cpp:4:12: error: cannot format this line automatically within ColumnLimit 12

@@ -32,4 +32,7 @@ struct ParameterNameDiagnostic
     const parser::SyntaxTree& tree,
     const Configuration& config);
 
+// Stops after a confirmed violation without collecting diagnostic metadata.
+[[nodiscard]] bool HasParameterNameViolation(const parser::SyntaxTree& tree, const Configuration& config);
+
 } // namespace formatter

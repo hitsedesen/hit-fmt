@@ -384,6 +384,27 @@ TEST(FileDispatch, RecognizesSourceExtensionsWithoutCopyingPathText)
     }
 }
 
+TEST(FileDiscovery, FindsNearestRepositoryRoot)
+{
+    for (const auto marker : {".git", ".arc"}) {
+        for (bool directory : {false, true}) {
+            const FileInputs files(0);
+            const auto root = files.Directory / "repository";
+            std::filesystem::create_directories(root / "nested/source");
+            util::WriteEntireFile((files.Directory / ".git").string(), "gitdir: outer\n");
+
+            if (directory) {
+                std::filesystem::create_directory(root / marker);
+            } else {
+                util::WriteEntireFile((root / marker).string(), "marker\n");
+            }
+
+            Arena scratch;
+            EXPECT_EQ(cli::FindRepositoryRoot(root / "nested/source/..", scratch), root);
+        }
+    }
+}
+
 TEST(FileBatch, RecyclesStorageAndReleasesSpillAfterResultsAreConsumed)
 {
     CountingMemory upstream;

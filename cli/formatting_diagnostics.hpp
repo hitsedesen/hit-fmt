@@ -11,6 +11,12 @@
 
 namespace cli {
 
+Error PrintFormattingLocations(
+    std::ostream& output,
+    std::string_view path,
+    std::string_view source,
+    const formatter::FormatResult& result);
+
 // Requires final change metadata collected with FormatRequest::Changes.
 // Borrows the original source only for the duration of printing.
 Error PrintFormattingDiagnostics(

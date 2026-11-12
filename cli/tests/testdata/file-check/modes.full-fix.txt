@@ -1,0 +1,36 @@
+fixed: 6 violations
+  --> sample.cpp:1:18 [original source; before formatting]
+  |
+1 | const char* Text="é";
+  |                  ^ insert a line break before '"' and indent by 4 spaces
+2 | void bad_name(int,int){invoke(left,right);}
+  |                   ^ insert a line break before 'int' and indent by 4 spaces
+2 | void bad_name(int,int){invoke(left,right);}
+  |                       ^ expected one space before '{', found no whitespace
+2 | void bad_name(int,int){invoke(left,right);}
+  |                        ^
+  |   insert a line break before 'invoke' and indent by 4 spaces
+2 | void bad_name(int,int){invoke(left,right);}
+  |                                    ^
+  |   insert a line break before 'right' and indent by 8 spaces
+2 | void bad_name(int,int){invoke(left,right);}
+  |                                           ^ insert a line break before '}'
+  applied formatting:
+  + const char* Text=
+  +     "é";
+  + void bad_name(int,
+  +     int) {
+  +     invoke(left,
+  +         right);
+  + }
+fail: function name 'bad_name' has invalid case; expected PascalCase
+  --> sample.cpp:3:6 [written output]
+fail: parameter #1 in function definition 'bad_name': expected a name
+  --> sample.cpp:3:18 [written output]
+fail: parameter #2 in function definition 'bad_name': expected a name
+  --> sample.cpp:4:8 [written output]
+fail: cannot format this line automatically within ColumnLimit 20
+  --> sample.cpp:9:21 [written output]
+  |
+9 | int unavoidable_long_name;
+  |                     ^

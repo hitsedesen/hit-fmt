@@ -7,8 +7,8 @@ Use --generate-config google (or ytsaurus/llvm) for a preset.
 
 Inheritance
 include = "base.hit-fmt" loads a base config.
-- Paths start beside this config; @/ starts at the nearest ancestor
-  with a .git or .arc marker. Absolute paths work too.
+- Paths start beside each config. @/ uses the nearest .git or .arc root
+  of the selected configuration file. Absolute paths work too.
 - Local settings win. Lists replace inherited lists; [] clears them.
 - Validate after merging. Include depth: 64 files maximum.
   Cycles, missing files and duplicate includes are errors.

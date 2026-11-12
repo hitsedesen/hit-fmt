@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace formatter {
@@ -205,9 +206,12 @@ struct Context
     TK Access = TK::Keyword_public;
 };
 
+template <bool CollectDiagnostics>
 class Checker
 {
 public:
+    using Result = std::conditional_t<CollectDiagnostics, std::vector<NameDiagnostic>, bool>;
+
     Checker(const parser::SyntaxTree& tree, const Configuration& config)
         : Tree(tree)
         , Style(config.Naming)
@@ -217,7 +221,7 @@ public:
         , Acronyms(config.NamingAcronyms)
     { }
 
-    std::vector<NameDiagnostic> Run()
+    Result Run()
     {
         struct Frame
         {
@@ -267,6 +271,13 @@ public:
                 }
 
                 Visit(node, namespaceNames, frame.NamingContext);
+
+                if constexpr (!CollectDiagnostics) {
+                    if (Results) {
+                        return true;
+                    }
+                }
+
                 auto& context = frame.NamingContext;
 
                 if (node.Kind == NK::RecordDeclaration && !IsAnonymousUnion(node)) {
@@ -324,13 +335,17 @@ public:
             }
         }
 
-        std::ranges::sort(
-            Results,
-            [] (const auto& a, const auto& b) {
-                return a.Position.Line < b.Position.Line ||
-                    (a.Position.Line == b.Position.Line && a.Position.Column < b.Position.Column);
-            });
-        return std::move(Results);
+        if constexpr (CollectDiagnostics) {
+            std::ranges::sort(
+                Results,
+                [] (const auto& a, const auto& b) {
+                    return a.Position.Line < b.Position.Line ||
+                        (a.Position.Line == b.Position.Line && a.Position.Column < b.Position.Column);
+                });
+            return std::move(Results);
+        } else {
+            return false;
+        }
     }
 
     void Check(Index index, const NameRule& rule, std::string_view category)
@@ -413,46 +428,59 @@ public:
             return;
         }
 
-        std::string issue;
-        const auto addIssue = [&] (std::string_view part) {
-            if (!issue.empty()) {
-                issue += " and ";
+        if constexpr (!CollectDiagnostics) {
+            Results = true;
+        } else {
+            std::string issue;
+            const auto addIssue = [&] (std::string_view part) {
+                if (!issue.empty()) {
+                    issue += " and ";
+                }
+
+                issue += part;
+            };
+
+            if (!prefixOK) {
+                addIssue("prefix");
             }
 
-            issue += part;
-        };
+            if (!suffixOK) {
+                addIssue("suffix");
+            }
 
-        if (!prefixOK) {
-            addIssue("prefix");
+            if (!caseOK) {
+                addIssue("case");
+            }
+
+            if (!acronymOK) {
+                addIssue("acronym capitalization");
+            }
+
+            std::string message(category);
+            message += " name '";
+            message += name;
+            message += "' has invalid ";
+            message += issue;
+            Results.push_back({
+                Tree.TokenPosition(index),
+                std::move(message),
+                issue,
+                ExpectedName(rule, prefixOK, suffixOK, caseOK, acronymOK),
+                {index, Tree.Token(index).Text.Begin},
+            });
         }
-
-        if (!suffixOK) {
-            addIssue("suffix");
-        }
-
-        if (!caseOK) {
-            addIssue("case");
-        }
-
-        if (!acronymOK) {
-            addIssue("acronym capitalization");
-        }
-
-        std::string message(category);
-        message += " name '";
-        message += name;
-        message += "' has invalid ";
-        message += issue;
-        Results.push_back({
-            Tree.TokenPosition(index),
-            std::move(message),
-            issue,
-            ExpectedName(rule, prefixOK, suffixOK, caseOK, acronymOK),
-            {index, Tree.Token(index).Text.Begin},
-        });
     }
 
 private:
+    bool Done() const
+    {
+        if constexpr (CollectDiagnostics) {
+            return false;
+        } else {
+            return Results;
+        }
+    }
+
     bool IsAnonymousUnion(const parser::Node& node) const
     {
         if (Tree.Kind(node.Tokens.Begin) != TK::Keyword_union) {
@@ -635,7 +663,7 @@ private:
 
         const auto& variableRule = VariableRule(node, context);
 
-        for (auto* init = parser::FirstInitDeclarator(node); init; init = init->NextSibling) {
+        for (auto* init = parser::FirstInitDeclarator(node); init && !Done(); init = init->NextSibling) {
             if (init->Kind != NK::InitDeclarator) {
                 continue;
             }
@@ -651,6 +679,10 @@ private:
                     for (auto* name = binding->FirstChild; name; name = name->NextSibling) {
                         if (name->Kind == NK::DeclaratorName) {
                             Check(name->Tokens.Begin, variableRule, "variable");
+
+                            if (Done()) {
+                                return;
+                            }
                         }
                     }
 
@@ -860,6 +892,10 @@ private:
             case NK::NamespaceDeclaration:
                 for (auto name : namespaceNames) {
                     Check(name, Style.Namespace, "namespace");
+
+                    if (Done()) {
+                        return;
+                    }
                 }
 
                 break;
@@ -889,13 +925,11 @@ private:
     const std::vector<std::string>& ExemptNames;
     bool ExemptStandardLibrary;
     const std::vector<std::string>& Acronyms;
-    std::vector<NameDiagnostic> Results;
+    Result Results{};
     std::string Scope;
 };
 
-} // namespace
-
-std::vector<NameDiagnostic> CheckNames(const parser::SyntaxTree& tree, const Configuration& config)
+bool NamingEnabled(const Configuration& config)
 {
     bool enabled = false;
 #define NAMING_ENABLED(category) \
@@ -903,10 +937,23 @@ std::vector<NameDiagnostic> CheckNames(const parser::SyntaxTree& tree, const Con
         config.Naming.category.Prefixes.has_value() || config.Naming.category.Suffixes.has_value();
     FORMATTER_NAMING_CATEGORIES(NAMING_ENABLED)
 #undef NAMING_ENABLED
-    if (!enabled) {
+    return enabled;
+}
+
+} // namespace
+
+std::vector<NameDiagnostic> CheckNames(const parser::SyntaxTree& tree, const Configuration& config)
+{
+    if (!NamingEnabled(config)) {
         return {};
     }
-    return Checker(tree, config).Run();
+
+    return Checker<true>(tree, config).Run();
+}
+
+bool HasNamingViolation(const parser::SyntaxTree& tree, const Configuration& config)
+{
+    return NamingEnabled(config) && Checker<false>(tree, config).Run();
 }
 
 } // namespace formatter

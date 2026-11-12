@@ -1,0 +1,2 @@
+sample.cpp:1:37: error: expected one space before 'second_value', found no whitespace
+sample.cpp:1:50: error: expected one space before 'third_argument', found no whitespace

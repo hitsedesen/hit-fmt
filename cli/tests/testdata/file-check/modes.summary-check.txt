@@ -1,0 +1,10 @@
+sample.cpp:1:18: error: insert a line break before '"' and indent by 4 spaces
+sample.cpp:2:19: error: insert a line break before 'int' and indent by 4 spaces
+sample.cpp:2:23: error: expected one space before '{', found no whitespace
+sample.cpp:2:24: error: insert a line break before 'invoke' and indent by 4 spaces
+sample.cpp:2:36: error: insert a line break before 'right' and indent by 8 spaces
+sample.cpp:2:43: error: insert a line break before '}'
+sample.cpp:2:6: error: function name 'bad_name' has invalid case; expected PascalCase
+sample.cpp:2:18: error: parameter #1 in function definition 'bad_name': expected a name
+sample.cpp:2:22: error: parameter #2 in function definition 'bad_name': expected a name
+sample.cpp:4:21: error: line exceeds ColumnLimit 20

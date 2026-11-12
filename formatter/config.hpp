@@ -47,7 +47,7 @@ struct Configuration
 // Loads an optional include, then overrides it with this file's settings.
 // Relative paths start at this file; @/ starts at a .git/.arc root.
 // Unknown keys and malformed values are rejected with a descriptive error.
-[[nodiscard]] Configuration LoadConfigFile(const fs::Path& path);
+[[nodiscard]] Configuration LoadConfigFile(const fs::Path& path, const fs::Path& repositoryRoot = {});
 
 // Finds the nearest fileName in startDirectory or one of its parents.
 // Reports filesystem errors through onError; missing candidates are ignored.

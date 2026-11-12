@@ -1217,7 +1217,7 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(std::string_view n
 
 namespace {
 
-fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line)
+fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line, const fs::Path& repositoryRoot)
 {
     if (name.empty() || name.find('\0') != std::string_view::npos) {
         ThrowConfigError(path, line, "include expects a nonempty file path");
@@ -1230,31 +1230,11 @@ fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us li
             ThrowConfigError(path, line, "expected a repository-relative include path");
         }
 
-        auto directory = CheckedPath(fs::Canonical(CheckedPath(fs::Absolute(path)).parent_path()));
-
-        while (true) {
-            std::error_code error;
-
-            for (const auto name : {".git", ".arc"}) {
-                const auto candidate = directory / fs::Path(name);
-                const auto marker = fs::Status(candidate);
-                error = marker.Error.Code;
-
-                if (!error && (marker.Value.Directory || marker.Value.Regular)) {
-                    return directory / relative;
-                }
-
-                error.clear();
-            }
-
-            const auto parent = directory.parent_path();
-
-            if (parent == directory) {
-                ThrowConfigError(path, line, "cannot find repository root for include");
-            }
-
-            directory = parent;
+        if (repositoryRoot.empty()) {
+            ThrowConfigError(path, line, "cannot find repository root for include");
         }
+
+        return repositoryRoot / relative;
     }
 
     const fs::Path included(name);
@@ -1265,7 +1245,8 @@ us LoadConfigSettings(
     const fs::Path& path,
     Configuration& config,
     std::span<SettingLocation> settingLines,
-    std::vector<fs::Path>& active)
+    std::vector<fs::Path>& active,
+    const fs::Path& repositoryRoot)
 {
     const auto canonical = CheckedPath(fs::Canonical(path, true));
 
@@ -1369,9 +1350,9 @@ us LoadConfigSettings(
     input.close();
 
     if (include) {
-        const auto included = ResolveConfigInclude(include->Value, path, include->Line);
+        const auto included = ResolveConfigInclude(include->Value, path, include->Line, repositoryRoot);
         try {
-            (void)LoadConfigSettings(included, config, settingLines, active);
+            (void)LoadConfigSettings(included, config, settingLines, active, repositoryRoot);
         } catch (const std::runtime_error& error) {
             ThrowConfigError(path, include->Line, error.what());
         }
@@ -1387,12 +1368,12 @@ us LoadConfigSettings(
 
 } // namespace
 
-Configuration LoadConfigFile(const fs::Path& path)
+Configuration LoadConfigFile(const fs::Path& path, const fs::Path& repositoryRoot)
 {
     Configuration config;
     std::array<SettingLocation, Options.size()> settingLines{};
     std::vector<fs::Path> active;
-    const auto lineNumber = LoadConfigSettings(path, config, settingLines, active);
+    const auto lineNumber = LoadConfigSettings(path, config, settingLines, active, repositoryRoot);
     ValidateStyleLimits(config.FormattingStyle, path, lineNumber, settingLines);
     try {
         ValidateLibraryAnnotationStyle(config.FormattingStyle);

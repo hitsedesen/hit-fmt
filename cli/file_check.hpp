@@ -1,5 +1,6 @@
 #pragma once
 
+#include "diagnostic_detail.hpp"
 #include "path_rules.hpp"
 #include "terminal.hpp"
 
@@ -24,6 +25,7 @@ struct PreparedConfiguration
     formatter::Configuration Settings;
     formatter::PreparedFormat Formatting{Settings.FormattingStyle};
     std::optional<PathRegex> Exclusions;
+    fs::Path RepositoryRoot;
 };
 
 Result<PreparedConfiguration> PrepareConfiguration(formatter::Configuration configuration);
@@ -56,6 +58,7 @@ struct CheckedFile
     std::vector<DebugDiagnostic> Debug;
     u16 ColumnLimit = 0;
     bool FormattingMismatch = false;
+    bool QuickFailure = false;
 
     // Only confirmed style violations fail; fix mode ignores applied formatting.
     bool HasFailures(bool fix) const;
@@ -69,24 +72,19 @@ struct ChangedFileScope
     bool Spillover = true;
 };
 
-enum class DiagnosticDetail
-{
-    // Keep failure categories; hunk filtering still needs original locations.
-    Summary,
-    Locations,
-    Full,
-};
-
 // Absent scope covers the whole file; an empty scope selects nothing.
-// Full includes formatting replacements for diagnostic rendering.
+// Summary and Detailed include formatting replacements for diagnostic rendering.
+// Quick checks may return before formatting after a confirmed failure.
+// Fix requests always format completely and collect written-file locations.
 Result<CheckedFile> FormatAndCheckFile(
     util::PaddedSourceView source,
     const PreparedConfiguration& configuration,
     std::string_view inputFilePath = {},
     std::optional<ChangedFileScope> changed = std::nullopt,
-    DiagnosticDetail diagnostics = DiagnosticDetail::Locations,
+    DiagnosticDetail diagnostics = DiagnosticDetail::Summary,
     bool debug = false,
-    std::pmr::memory_resource* memory = nullptr);
+    std::pmr::memory_resource* memory = nullptr,
+    bool fix = false);
 
 void PrintFileDebug(std::ostream& output, std::string_view path, const CheckedFile& checked);
 
@@ -100,5 +98,17 @@ void PrintFileIssues(
     const Terminal& terminal = Terminal{});
 
 void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bool fix);
+
+Error PrintCheckResult(
+    std::ostream& output,
+    std::string_view path,
+    std::string_view source,
+    const CheckedFile& checked,
+    DiagnosticDetail diagnostics,
+    bool fix,
+    const Terminal& terminal = Terminal{},
+    bool debug = false);
+
+void PrintQuickHint(std::ostream& output, bool fix);
 
 } // namespace cli

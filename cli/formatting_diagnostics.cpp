@@ -284,10 +284,10 @@ std::string ChangeMessage(
     return "expected " + wanted + " before '" + token + "', found " + found;
 }
 
-std::vector<Chunk> DiagnosticChunks(std::string_view source, const formatter::FormatResult& result)
+template <typename Callback>
+void ForEachFormattingChange(std::string_view source, const formatter::FormatResult& result, Callback&& visit)
 {
     const auto& changes = *result.Changes;
-    std::vector<Chunk> chunks;
     us positionLine = 0;
     us cursor = 0;
     u32 column = 1;
@@ -312,32 +312,67 @@ std::vector<Chunk> DiagnosticChunks(std::string_view source, const formatter::Fo
 
         return util::Position{static_cast<u32>(line), column};
     };
+
     for (us i = 0; i < changes.Edits.size(); ++i) {
         const auto& change = changes.Edits[i];
         auto offset = change.Kind == formatter::FormatChangeKind::Whitespace
             ? change.Original.End
             : change.Original.Begin;
-        auto position = positionAt(offset);
-        auto begin = changes.OriginalLines.LineAt(change.Original.Begin);
-        auto end = std::max<us>(
-            position.Line,
-            changes.OriginalLines.LineAt(change.Original.Empty() ? change.Original.End : change.Original.End - 1)) + 1;
-
-        if (chunks.empty() || begin > chunks.back().End) {
-            chunks.push_back({begin, end, i, i, {}});
-        } else {
-            chunks.back().End = std::max(chunks.back().End, end);
-            chunks.back().LastChange = i;
-        }
-
-        if (change.Kind != formatter::FormatChangeKind::IncludeOrder) {
-            chunks.back().Violations.push_back({position, ChangeMessage(source, result, change)});
-        }
+        visit(change, i, positionAt(offset));
     }
+}
+
+std::vector<Chunk> DiagnosticChunks(std::string_view source, const formatter::FormatResult& result)
+{
+    const auto& changes = *result.Changes;
+    std::vector<Chunk> chunks;
+    ForEachFormattingChange(
+        source,
+        result,
+        [&] (const auto& change, us i, util::Position position) {
+            auto begin = changes.OriginalLines.LineAt(change.Original.Begin);
+            auto end = std::max<us>(
+                position.Line,
+                changes.OriginalLines.LineAt(change.Original.Empty() ? change.Original.End : change.Original.End - 1)) +
+                1;
+
+            if (chunks.empty() || begin > chunks.back().End) {
+                chunks.push_back({begin, end, i, i, {}});
+            } else {
+                chunks.back().End = std::max(chunks.back().End, end);
+                chunks.back().LastChange = i;
+            }
+
+            if (change.Kind != formatter::FormatChangeKind::IncludeOrder) {
+                chunks.back().Violations.push_back({position, ChangeMessage(source, result, change)});
+            }
+        });
     return chunks;
 }
 
 } // namespace
+
+Error PrintFormattingLocations(
+    std::ostream& output,
+    std::string_view path,
+    std::string_view source,
+    const formatter::FormatResult& result)
+{
+    if (!result.Changes) {
+        return MakeError("formatting diagnostics require FormatRequest::Changes");
+    }
+
+    ForEachFormattingChange(
+        source,
+        result,
+        [&] (const auto& change, us, util::Position position) {
+            if (change.Kind != formatter::FormatChangeKind::IncludeOrder) {
+                output << path << ':' << position.Line << ':' << position.Column << ": error: "
+                    << ChangeMessage(source, result, change) << '\n';
+            }
+        });
+    return {};
+}
 
 Error PrintFormattingDiagnostics(
     std::ostream& output,
@@ -446,16 +481,19 @@ Error PrintFormattingDiagnostics(
             continue;
         }
 
-        auto firstLine = changes.OutputLines.LineAt(begin);
-        auto lastLine = changes.OutputLines.LineAt(end - 1);
+        const auto context = formatter::SourceLines::Cover(result.Text, {begin, end});
+        auto suggested = std::string_view(result.Text).substr(context.Begin, context.End - context.Begin);
 
-        for (auto line = firstLine; line <= lastLine; ++line) {
-            PrintSuggestedLine(output, changes.OutputLines.Text(result.Text, line), gutter.size(), terminal);
-            auto range = changes.OutputLines.Range(line);
+        while (!suggested.empty()) {
+            const auto newline = suggested.find('\n');
+            PrintSuggestedLine(output, suggested.substr(0, newline), gutter.size(), terminal);
 
-            if (range.End && result.Text[range.End - 1] != '\n') {
+            if (newline == std::string_view::npos) {
                 output << std::string(gutter.size(), ' ') << "\\ No newline at end of file\n";
+                break;
             }
+
+            suggested.remove_prefix(newline + 1);
         }
     }
 

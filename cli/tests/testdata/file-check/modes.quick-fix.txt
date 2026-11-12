@@ -1,0 +1,3 @@
+sample.cpp: reformatted
+sample.cpp: violations found
+hint: rerun with --summary for locations and reasons, or --details for source excerpts and carets.

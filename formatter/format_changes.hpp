@@ -28,6 +28,8 @@ public:
     [[nodiscard]] us LineAt(parser::SourceOffset offset) const;
     [[nodiscard]] parser::SourceRange Range(us line) const;
     [[nodiscard]] parser::SourceRange Cover(parser::SourceRange range) const;
+    // Expand to physical LF-delimited lines without constructing an index.
+    [[nodiscard]] static parser::SourceRange Cover(std::string_view text, parser::SourceRange range);
     [[nodiscard]] std::string_view Text(std::string_view text, us line) const;
     [[nodiscard]] util::Position Position(std::string_view text, parser::SourceOffset offset) const;
     [[nodiscard]] std::span<const parser::SourceOffset> Boundaries() const;
@@ -72,6 +74,7 @@ struct FormatChange
 struct FormatChanges
 {
     SourceLines OriginalLines;
+    // May be omitted when diagnostics only use original-source coordinates.
     SourceLines OutputLines;
     // Ordered, nonoverlapping replacements. Applying Output slices from the
     // final Text to Original ranges reconstructs that Text exactly. Empty

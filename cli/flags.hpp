@@ -16,6 +16,19 @@ public:
     void Bool(std::string_view name, bool* target, bool value = true);
 
     template <typename T>
+    void Constant(std::string_view name, T* target, T value)
+    {
+        auto apply = [target, value] (std::optional<std::string_view>) {
+            if (target) {
+                *target = value;
+            }
+
+            return ArgumentError{};
+        };
+        Registered_.push_back({name, ValueMode::None, {}, apply});
+    }
+
+    template <typename T>
     void Required(
         std::string_view name,
         T* target,

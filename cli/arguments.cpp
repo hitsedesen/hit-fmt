@@ -131,7 +131,8 @@ Result<Arguments> ParseArguments(
     bool outputIsTerminal)
 {
     Arena scratch;
-    Arguments arguments{.SummaryOnly = !outputIsTerminal};
+    Arguments arguments;
+    std::optional<DiagnosticDetail> diagnostics;
     Flags flags;
     Vector<std::string_view> exclusions(&scratch);
     std::optional<std::string_view> hunkInput;
@@ -140,8 +141,9 @@ Result<Arguments> ParseArguments(
     flags.Bool("--fix", &arguments.Fix);
     flags.Bool("--check", nullptr);
 
-    flags.Bool("--summary", &arguments.SummaryOnly);
-    flags.Bool("--details", &arguments.SummaryOnly, false);
+    flags.Constant("--quick", &diagnostics, std::optional{DiagnosticDetail::Quick});
+    flags.Constant("--summary", &diagnostics, std::optional{DiagnosticDetail::Summary});
+    flags.Constant("--details", &diagnostics, std::optional{DiagnosticDetail::Detailed});
 
     flags.Bool("-h", &arguments.ShowHelp);
     flags.Bool("--help", &arguments.ShowHelp);
@@ -170,6 +172,10 @@ Result<Arguments> ParseArguments(
     if (auto error = flags.Parse(argv); error) {
         return {{}, std::move(error)};
     }
+
+    arguments.Diagnostics = diagnostics.value_or(outputIsTerminal
+        ? DiagnosticDetail::Detailed
+        : arguments.Fix ? DiagnosticDetail::Summary : DiagnosticDetail::Quick);
 
     if (configPath) {
         arguments.ConfigPath.emplace(*configPath, memory ? memory : std::pmr::get_default_resource());

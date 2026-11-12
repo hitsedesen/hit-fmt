@@ -30,14 +30,7 @@ bool Flags::Flag::Matches(std::string_view argument) const
 
 void Flags::Bool(std::string_view name, bool* target, bool value)
 {
-    auto apply = [target, value] (std::optional<std::string_view>) {
-        if (target) {
-            *target = value;
-        }
-
-        return ArgumentError{};
-    };
-    Registered_.push_back({name, ValueMode::None, {}, apply});
+    Constant(name, target, value);
 }
 
 void Flags::Positionals(std::function<void(std::string_view)> apply)
