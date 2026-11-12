@@ -25,6 +25,7 @@ struct PreparedConfiguration
     formatter::Configuration Settings;
     formatter::PreparedFormat Formatting{Settings.FormattingStyle};
     std::optional<PathRegex> Exclusions;
+    fs::Path RepositoryRoot;
 };
 
 Result<PreparedConfiguration> PrepareConfiguration(formatter::Configuration configuration);

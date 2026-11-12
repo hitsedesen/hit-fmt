@@ -196,9 +196,13 @@ TEST(ConfigPolicy, RepositoryIncludesFindNearestGitOrArcRoot)
             tree.Write("repo/base", "IndentWidth = 2\n");
             tree.Write("repo/nested/base", "include = \"@/base\"\nColumnLimit = 90\n");
             tree.Write("repo/nested/deeper/child", "include = \"../base\"\n");
-            const auto style = formatter::LoadConfigFile(tree.Path / "repo/nested/deeper/child").FormattingStyle;
+            fs::Path repositoryRoot;
+            const auto style = formatter::LoadConfigFile(
+                tree.Path / "repo/nested/deeper/child",
+                &repositoryRoot).FormattingStyle;
             EXPECT_EQ(style.IndentWidth, 2u);
             EXPECT_EQ(style.ColumnLimit, 90u);
+            EXPECT_EQ(repositoryRoot, tree.Path / "repo");
         }
     }
 
@@ -209,7 +213,12 @@ TEST(ConfigPolicy, RepositoryIncludesFindNearestGitOrArcRoot)
     tree.Write("configs/nested/settings", "IndentWidth = 2\n");
     tree.Write("configs/base", "include = \"@/settings\"\n");
     tree.Write("child", "include = \"configs/nested/../base\"\n");
-    EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "child").FormattingStyle.IndentWidth, 7u);
+    fs::Path repositoryRoot;
+    EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "child", &repositoryRoot).FormattingStyle.IndentWidth, 7u);
+    EXPECT_EQ(repositoryRoot, tree.Path);
+    tree.Write("plain", "IndentWidth = 3\n");
+    EXPECT_EQ(formatter::LoadConfigFile(tree.Path / "plain", &repositoryRoot).FormattingStyle.IndentWidth, 3u);
+    EXPECT_TRUE(repositoryRoot.empty());
 }
 
 TEST(ConfigPolicy, InvalidIncludesReportIncludingFileAndLine)

@@ -1217,7 +1217,7 @@ const VisualScopeAnnotation* LibraryAnnotations::FindScopeEnd(std::string_view n
 
 namespace {
 
-fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line)
+fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us line, fs::Path* repositoryRoot)
 {
     if (name.empty() || name.find('\0') != std::string_view::npos) {
         ThrowConfigError(path, line, "include expects a nonempty file path");
@@ -1241,6 +1241,10 @@ fs::Path ResolveConfigInclude(std::string_view name, const fs::Path& path, us li
                 error = marker.Error.Code;
 
                 if (!error && (marker.Value.Directory || marker.Value.Regular)) {
+                    if (repositoryRoot && repositoryRoot->empty()) {
+                        *repositoryRoot = directory;
+                    }
+
                     return directory / relative;
                 }
 
@@ -1265,7 +1269,8 @@ us LoadConfigSettings(
     const fs::Path& path,
     Configuration& config,
     std::span<SettingLocation> settingLines,
-    std::vector<fs::Path>& active)
+    std::vector<fs::Path>& active,
+    fs::Path* repositoryRoot)
 {
     const auto canonical = CheckedPath(fs::Canonical(path, true));
 
@@ -1369,9 +1374,9 @@ us LoadConfigSettings(
     input.close();
 
     if (include) {
-        const auto included = ResolveConfigInclude(include->Value, path, include->Line);
+        const auto included = ResolveConfigInclude(include->Value, path, include->Line, repositoryRoot);
         try {
-            (void)LoadConfigSettings(included, config, settingLines, active);
+            (void)LoadConfigSettings(included, config, settingLines, active, repositoryRoot);
         } catch (const std::runtime_error& error) {
             ThrowConfigError(path, include->Line, error.what());
         }
@@ -1387,12 +1392,16 @@ us LoadConfigSettings(
 
 } // namespace
 
-Configuration LoadConfigFile(const fs::Path& path)
+Configuration LoadConfigFile(const fs::Path& path, fs::Path* repositoryRoot)
 {
+    if (repositoryRoot) {
+        repositoryRoot->resize(0);
+    }
+
     Configuration config;
     std::array<SettingLocation, Options.size()> settingLines{};
     std::vector<fs::Path> active;
-    const auto lineNumber = LoadConfigSettings(path, config, settingLines, active);
+    const auto lineNumber = LoadConfigSettings(path, config, settingLines, active, repositoryRoot);
     ValidateStyleLimits(config.FormattingStyle, path, lineNumber, settingLines);
     try {
         ValidateLibraryAnnotationStyle(config.FormattingStyle);

@@ -120,8 +120,9 @@ private:
     Result<const cli::PreparedConfiguration*, FileFailure> LoadPreparedConfig(const fs::Path& path)
     {
         formatter::Configuration settings;
+        fs::Path repositoryRoot;
         try {
-            settings = formatter::LoadConfigFile(path);
+            settings = formatter::LoadConfigFile(path, &repositoryRoot);
         } catch (const std::exception&) {
             return {nullptr, FileError(path, ExceptionError())};
         }
@@ -132,6 +133,7 @@ private:
             return {nullptr, FileError(path, std::move(prepared.Error))};
         }
 
+        prepared.Value.RepositoryRoot = std::move(repositoryRoot);
         PreparedConfigs_.push_back(std::move(prepared.Value));
         return {&PreparedConfigs_.back(), {}};
     }
@@ -420,16 +422,32 @@ FileResult ProcessFile(
     std::basic_ostringstream<char, std::char_traits<char>, std::pmr::polymorphic_allocator<char>> output{
         std::pmr::string{&scratch},
     };
-    auto filePath = path.string<char, std::char_traits<char>, std::pmr::polymorphic_allocator<char>>(&scratch);
+    fs::Path displayPath(path, &scratch);
+
+    if (!config.RepositoryRoot.empty()) {
+        auto absolute = fs::Absolute(path, scratch);
+
+        if (!absolute.Error.Code) {
+            auto relative = absolute.Value
+                .lexically_normal(&scratch)
+                .lexically_relative(config.RepositoryRoot, &scratch);
+
+            if (!relative.empty()) {
+                displayPath = std::move(relative);
+            }
+        }
+    }
+
+    auto filePath = displayPath.string<char, std::char_traits<char>, std::pmr::polymorphic_allocator<char>>(&scratch);
     // File errors are recoverable: later inputs must still be processed.
     try {
         auto read = fs::ReadFile(path, MaxSourceFileSize, util::SourcePaddingSize, memory);
 
         if (read.Error.Code) {
             if (read.Error.Code == std::errc::file_too_large) {
-                result.Error = FileError(path, Warning{"file is too large; skipping"});
+                result.Error = FileError(displayPath, Warning{"file is too large; skipping"});
             } else {
-                result.Error = FileError(path, SystemError(read.Error));
+                result.Error = FileError(displayPath, SystemError(read.Error));
                 result.Failed = true;
             }
 
@@ -449,7 +467,7 @@ FileResult ProcessFile(
             auto absolute = fs::Absolute(path, scratch);
 
             if (absolute.Error.Code) {
-                result.Error = FileError(path, SystemError(absolute.Error));
+                result.Error = FileError(displayPath, SystemError(absolute.Error));
                 result.Failed = true;
                 return result;
             }
@@ -457,7 +475,7 @@ FileResult ProcessFile(
             auto hunks = changed.Hunks.find(absolute.Value.lexically_normal(&scratch).string());
 
             if (hunks == changed.Hunks.end()) {
-                result.Error = FileError(path, MakeError("missing changed ranges for input file"));
+                result.Error = FileError(displayPath, MakeError("missing changed ranges for input file"));
                 result.Failed = true;
                 return result;
             }
@@ -476,7 +494,7 @@ FileResult ProcessFile(
             arguments.Fix);
 
         if (checked.Error) {
-            result.Error = FileError(path, std::move(checked.Error));
+            result.Error = FileError(displayPath, std::move(checked.Error));
             result.Failed = true;
             return result;
         }
@@ -486,7 +504,7 @@ FileResult ProcessFile(
 
             if (written.Error.Code) {
                 const auto& error = written.Error;
-                result.Error = FileError(path, SystemError(error));
+                result.Error = FileError(displayPath, SystemError(error));
                 result.Failed = true;
                 return result;
             }
@@ -503,7 +521,7 @@ FileResult ProcessFile(
             arguments.Debug);
             error)
         {
-            result.Error = FileError(path, std::move(error));
+            result.Error = FileError(displayPath, std::move(error));
             result.Failed = true;
             return result;
         }
@@ -511,7 +529,7 @@ FileResult ProcessFile(
         result.Mismatches = checked.Value.HasFailures(arguments.Fix);
     }
     catch (const std::exception&) {
-        result.Error = FileError(path, ExceptionError());
+        result.Error = FileError(displayPath, ExceptionError());
         result.Failed = true;
     }
     result.Output = output.view();
