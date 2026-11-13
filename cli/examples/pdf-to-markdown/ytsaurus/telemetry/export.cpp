@@ -124,7 +124,8 @@ public:
     {
         registrar.Parameter("keep_source_offsets", &TExportPolicy::KeepSourceOffsets)
             .Default(true);
-        registrar.Parameter("asset_copy_concurrency", &TExportPolicy::AssetCopyConcurrency).Default(2)
+        registrar.Parameter("asset_copy_concurrency", &TExportPolicy::AssetCopyConcurrency)
+            .Default(2)
             .GreaterThan(0);
     }
 };

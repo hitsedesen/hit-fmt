@@ -4610,6 +4610,11 @@ private:
 
         for (const auto& link : ChainLinks_) {
             if (link.RootReceiver) {
+                // The sticky receiver prefix already uses the first inline link.
+                if (Policies_.Chains.Packing == ListPacking::VerticalWhenBroken) {
+                    first = link.Gap;
+                }
+
                 continue;
             }
 

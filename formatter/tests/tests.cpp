@@ -1610,6 +1610,7 @@ std::vector<FormatCase> FormatCases()
     AddCases(cases, chains, {"moved-root", "moved-root-preserve", "moved-root-tabs"}, "moved-root.input.cpp");
     cases.push_back({chains, "child-fitting", "child-fitting.input.cpp"});
     cases.push_back({chains, "nested-arguments", "nested-arguments.input.cpp"});
+    cases.push_back({chains, "sticky-receiver-tail", "sticky-receiver-tail.input.cpp"});
 
     for (const auto& [name, columns] : {std::pair{"field-assignment", 120}, {"field-assignment-narrow", 40}}) {
         cases.push_back({chains, name, "field-assignment.input.cpp", "child-fitting", {}, true, {}});
