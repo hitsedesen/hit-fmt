@@ -21,7 +21,8 @@ void WriteAttributes()
         .Default();
     registrar.Parameter("already_split", &TThis::Rate)
         .Default();
-    registrar.Parameter("limit", &TThis::Limit).Default(10)
+    registrar.Parameter("limit", &TThis::Limit)
+        .Default(10)
         .GreaterThan(0);
     registrar->Parameter("mode", &TThis::Mode)
         ->Default();

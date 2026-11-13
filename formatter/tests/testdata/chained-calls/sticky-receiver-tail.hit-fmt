@@ -1,0 +1,4 @@
+ChainsLayout = Canonical
+ChainsPacking = VerticalWhenBroken
+AlwaysBreakChainRootNames = ["registrar"]
+StickyChainCallPairs = ["registrar:Parameter"]
