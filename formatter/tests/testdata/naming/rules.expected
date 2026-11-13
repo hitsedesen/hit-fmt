@@ -18,3 +18,8 @@
 58:28: variable name 'badParameter' has invalid prefix and case
 61:9: function name 'BadMethod' has invalid prefix and case
 62:20: function name 'BadFactory' has invalid prefix and case
+69:19: namespace name 'third_party_extra' has invalid prefix and case
+70:11: variable name 'BadTable' has invalid prefix and case
+71:6: variable name 'BadFactory' has invalid prefix and case
+71:26: variable name 'BadParameter' has invalid prefix and case
+71:46: variable name 'BadLocal' has invalid prefix and case

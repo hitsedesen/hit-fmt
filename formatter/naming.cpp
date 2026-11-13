@@ -264,7 +264,8 @@ public:
                     Scope += Tree.TokenText(name);
                 }
 
-                if (IsExempt()) {
+                // Only entering a namespace can change an already checked scope.
+                if ((stack.size() == 1 || !namespaceNames.empty()) && IsExempt()) {
                     Scope.resize(frame.ScopeLength);
                     stack.pop_back();
                     continue;

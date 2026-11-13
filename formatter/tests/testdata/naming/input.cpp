@@ -61,3 +61,12 @@ public:
     int BadMethod() { return 0; }
     static CReader BadFactory() { return CReader(); }
 };
+
+namespace n_core::third_party {
+const int BadTable[][2] = {{1, 2}, {3, 4}};
+auto BadFactory = [](int BadParameter) { int BadLocal = BadParameter; return BadLocal; };
+}
+namespace n_core::third_party_extra {
+const int BadTable[][2] = {{1, 2}, {3, 4}};
+auto BadFactory = [](int BadParameter) { int BadLocal = BadParameter; return BadLocal; };
+}
