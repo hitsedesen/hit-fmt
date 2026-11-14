@@ -5,7 +5,8 @@ void Dispatch(bool ready)
 
     Prepare();
 
-    YT_TLOG_DEBUG("Prepared").With("Count", Count())
+    YT_TLOG_DEBUG("Prepared")
+        .With("Count", Count())
         .With("State", State());
 
     Deliver();

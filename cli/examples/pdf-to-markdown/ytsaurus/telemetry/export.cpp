@@ -43,7 +43,8 @@ DEFINE_ENUM(EExportStage,
 auto BuildExportMetadata(const TDocument& document, const TResult& result)
 {
     using NYT::NYTree::BuildYsonStringFluently;
-    return BuildYsonStringFluently().BeginAttributes()
+    return BuildYsonStringFluently()
+        .BeginAttributes()
             .Item("format").Value("markdown")
         .EndAttributes()
         .BeginMap()

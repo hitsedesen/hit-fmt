@@ -54,7 +54,8 @@ void inspect()
         accept();
     }
 
-    if (event.WithDetails()
+    if (event
+        .WithDetails()
         .IsValid())
     {
         accept();

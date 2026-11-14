@@ -1,5 +1,7 @@
 void Events() {
     WRITE_EVENT("Ready").With("Count", count);
+    WRITE_EVENT("Ready").With("Id", 1).With(2);
+    logging::Event("Ready").With("Id", 1).With(2);
     WRITE_EVENT("Ready");
     READ_EVENT("Ready").With("Count", count);
     WRITE_EVENT_IF("Ready").With("Count", count);
