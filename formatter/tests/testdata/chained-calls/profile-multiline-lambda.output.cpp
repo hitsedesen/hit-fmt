@@ -1,6 +1,7 @@
 void EmitRecords()
 {
-    BuildYsonFluently(consumer).BeginMap()
+    BuildYsonFluently(consumer)
+        .BeginMap()
             .Item("routes").DoMapFor(
                 routesWithMetrics,
                 [] (auto fluent, const auto& routeWithMetrics) {
@@ -28,7 +29,8 @@ void WriteAttributes()
         ->Default();
     otherRegistrar.Parameter("rate", &TThis::Rate)
         .Default();
-    registrar.Other("rate")
+    registrar
+        .Other("rate")
         .Default();
     registrar.Parameter("aLongDescriptiveSettingName", &TThis::AnotherLongDescriptiveMemberName)
         .Default();

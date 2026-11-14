@@ -1695,6 +1695,31 @@ std::vector<FormatCase> FormatCases()
         chains,
         {"conventional", "conventional-preserve", "conventional-selected"},
         "conventional.input.cpp");
+
+    for (const auto& [name, packing] :
+        {
+            std::pair{"fill", ListPacking::Fill},
+            std::pair{"vertical", ListPacking::VerticalWhenBroken},
+            std::pair{"all-or-vertical", ListPacking::AllOrVertical},
+        })
+    {
+        for (const bool annotated : {false, true}) {
+            cases.push_back({
+                chains,
+                std::string("conventional-") + name + (annotated ? "-annotated" : ""),
+                "conventional.input.cpp",
+            });
+            cases.back().Style = formatter::LoadConfigFile(chains / "conventional.hit-fmt").FormattingStyle;
+            cases.back().Style->ChainsPacking = packing;
+
+            if (annotated) {
+                cases.back().Style->StickyChainCallPairs = {"Unrelated:Pair"};
+            }
+
+            cases.back().Expected = "conventional.output.cpp";
+        }
+    }
+
     AddCases(
         cases,
         chains,

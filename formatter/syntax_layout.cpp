@@ -4443,7 +4443,7 @@ private:
         return Tree_.TokenText(Region(Syntax_[name]).Tokens.Begin);
     }
 
-    bool PlanAnnotatedChain(Index id, Index group, Index calls)
+    bool PlanAnnotatedChain(Index id, Index group, Index calls, bool forceBreak)
     {
         if (ChainScopeNames_.empty() && Annotations_.StickyChainPairs().empty() &&
             Annotations_.AlwaysBreakChainCalls().empty())
@@ -4624,7 +4624,7 @@ private:
                     link.Gap != first
                 ? layout::GapKind::Hard
                 : layout::GapKind::Soft,
-                Annotations_.AlwaysBreakChainCall(link.Name));
+                (forceBreak && !link.Sticky) || Annotations_.AlwaysBreakChainCall(link.Name));
         }
 
         return true;
@@ -5048,7 +5048,7 @@ private:
         GroupSpecs_[group].ForceBreak = conventional ||
             (!entry.ControlHeader && policy.Break == BreakRequirement::Always && calls > 1);
 
-        if (PlanAnnotatedChain(id, group, packingCalls)) {
+        if (PlanAnnotatedChain(id, group, packingCalls, conventional)) {
             return;
         }
 
@@ -5077,7 +5077,8 @@ private:
                     t == firstLink ? group : tail,
                     policy.Packing == ListPacking::VerticalWhenBroken && packingCalls > 1 && t != firstLink
                     ? layout::GapKind::Hard
-                    : layout::GapKind::Soft);
+                    : layout::GapKind::Soft,
+                    conventional);
             }
 
             spine = callee;
