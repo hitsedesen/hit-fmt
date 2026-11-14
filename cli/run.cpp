@@ -603,7 +603,7 @@ void PrintSummary(us mismatchCount, bool changedHunks, const Terminal& terminal)
             << terminal.Reset << '\n';
     } else {
         std::cout << terminal.BoldRed << mismatchCount << " file" << (mismatchCount == 1 ? "" : "s")
-            << " require formatting, naming or parameter names." << terminal.Reset << '\n';
+            << " have style violations." << terminal.Reset << '\n';
     }
 }
 

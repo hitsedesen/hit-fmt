@@ -16,4 +16,4 @@ fail: cannot format this line automatically within ColumnLimit 24
   |
 9 | }       // namespace test
   |                         ^
-summary: fail: naming or parameter-name violation; fail: cannot format automatically within column limit
+summary: fail: naming, parameter-name or comment violation; fail: cannot format automatically within column limit

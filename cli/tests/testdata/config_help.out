@@ -863,6 +863,16 @@ Explanatory comments stay intact. With Fix or AddMissing, a missing closing
 label is still reported when an explanatory comment prevents a safe fix.
 ShortNamespaceLines exemptions apply to missing labels.
 
+Comment character checks
+    CommentsASCIIOnly = true
+Defaults to false. Report the first non-ASCII character in each line or
+block comment token. --fix reports these violations without translating
+comments. ASCII-only prose in other languages passes; Unicode punctuation,
+accented letters and symbols fail. This is a character check, not language
+detection. String and character literals are unaffected. Preprocessing
+directives are opaque tokens, so comments inside them are not checked.
+Comments in formatting-disabled regions are checked.
+
 Naming checks and excluded paths
     FunctionDeclarationParameterNames = Required
     FunctionDefinitionParameterNames = NameOrCommentedNameRequired

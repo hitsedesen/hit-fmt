@@ -16,4 +16,4 @@ fail: line exceeds ColumnLimit 24
   |
 2 | namespace test { void bad_name(int){if(ok)invoke(a,b);} }
   |                                                         ^
-summary: formatting mismatch; fail: naming or parameter-name violation; fail: column-limit violation
+summary: formatting mismatch; fail: naming, parameter-name or comment violation; fail: column-limit violation

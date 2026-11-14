@@ -13,4 +13,4 @@ fail: cannot format this line automatically within ColumnLimit 40
    |
 10 |         "unavoidable_selected_literal_over_the_limit",
    |                                         ^
-summary: fail: naming or parameter-name violation; fail: control body requires braces; cannot automatically fix within selected hunks or allowed spillover; fail: cannot format automatically within column limit
+summary: fail: naming, parameter-name or comment violation; fail: control body requires braces; cannot automatically fix within selected hunks or allowed spillover; fail: cannot format automatically within column limit

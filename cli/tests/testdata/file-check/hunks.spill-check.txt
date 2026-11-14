@@ -18,4 +18,4 @@ fail: line exceeds ColumnLimit 40
    |
 11 |   invoke("unavoidable_selected_literal_over_the_limit",right);
    |                                          ^
-summary: formatting mismatch; fail: includes are not sorted; fail: naming or parameter-name violation; fail: column-limit violation
+summary: formatting mismatch; fail: includes are not sorted; fail: naming, parameter-name or comment violation; fail: column-limit violation
