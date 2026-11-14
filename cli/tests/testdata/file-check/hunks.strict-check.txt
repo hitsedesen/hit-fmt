@@ -13,4 +13,4 @@ fail: line exceeds ColumnLimit 40
    |
 11 |   invoke("unavoidable_selected_literal_over_the_limit",right);
    |                                          ^
-summary: formatting mismatch; fail: naming or parameter-name violation; fail: control body requires braces; fail: column-limit violation
+summary: formatting mismatch; fail: naming, parameter-name or comment violation; fail: control body requires braces; fail: column-limit violation

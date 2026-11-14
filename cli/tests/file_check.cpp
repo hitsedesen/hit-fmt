@@ -76,6 +76,70 @@ TEST(FileCheck, OneResultServesCheckAndFixWithoutCountingAppliedFormatting)
     }
 }
 
+TEST(FileCheck, ASCIICommentsGolden)
+{
+    const test::golden::Fixture fixture{
+        std::filesystem::path(__FILE__).parent_path() / "testdata/file-check",
+        "ascii-comments",
+    };
+    const Input input(fixture.InputNamed(".input.cpp"));
+    auto raw = Configuration();
+    auto disabled = cli::PrepareConfiguration(raw);
+    ASSERT_FALSE(disabled.Error) << disabled.Error;
+    auto unchecked = cli::FormatAndCheckFile(input.View(), disabled.Value);
+    ASSERT_FALSE(unchecked.Error) << unchecked.Error;
+    EXPECT_TRUE(unchecked.Value.Semantic.empty());
+    raw.CommentsASCIIOnly = true;
+    auto prepared = cli::PrepareConfiguration(raw);
+    ASSERT_FALSE(prepared.Error) << prepared.Error;
+
+    for (bool fix : {false, true}) {
+        for (auto detail :
+            {cli::DiagnosticDetail::Quick, cli::DiagnosticDetail::Summary, cli::DiagnosticDetail::Detailed})
+        {
+            auto result = cli::FormatAndCheckFile(
+                input.View(),
+                prepared.Value,
+                {},
+                std::nullopt,
+                detail,
+                false,
+                nullptr,
+                fix);
+            ASSERT_FALSE(result.Error) << result.Error;
+            EXPECT_TRUE(result.Value.HasFailures(fix));
+
+            if (detail == cli::DiagnosticDetail::Quick && !fix) {
+                EXPECT_TRUE(result.Value.QuickFailure);
+                continue;
+            }
+
+            ASSERT_EQ(result.Value.Semantic.size(), 3u);
+            std::ostringstream output;
+
+            if (detail == cli::DiagnosticDetail::Quick) {
+                cli::PrintFileSummaryIssues(output, result.Value, fix);
+                fixture.Expect(output.str(), ".summary.txt");
+                continue;
+            }
+
+            cli::PrintFileIssues(output, "sample.cpp", input.View().View(), result.Value, fix);
+            fixture.Expect(output.str(), fix ? ".fix.txt" : ".check.txt");
+        }
+    }
+
+    const std::array hunks{formatter::Hunk{5, 5}};
+    auto scoped = cli::FormatAndCheckFile(input.View(), prepared.Value, {}, cli::ChangedFileScope{hunks});
+    ASSERT_FALSE(scoped.Error) << scoped.Error;
+    ASSERT_EQ(scoped.Value.Semantic.size(), 1u);
+    EXPECT_EQ(scoped.Value.Semantic.front().Original.Line, 5u);
+
+    const Input ascii("// English, identifiers_123, symbols: <=> and bonjour.\n" "const char* text = \"// 日本語\";\n");
+    auto clean = cli::FormatAndCheckFile(ascii.View(), prepared.Value);
+    ASSERT_FALSE(clean.Error) << clean.Error;
+    EXPECT_TRUE(clean.Value.Semantic.empty());
+}
+
 TEST(FileCheck, DiagnosticModesGolden)
 {
     using D = cli::DiagnosticDetail;

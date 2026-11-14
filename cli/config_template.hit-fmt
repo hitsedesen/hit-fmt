@@ -2206,6 +2206,13 @@ NamingAcronyms = []
 
 # Other configuration options
 
+# Require ASCII characters in line and block comment tokens.
+# Reports only; --fix does not translate comments. Not language detection:
+# ASCII prose in other languages passes; Unicode punctuation fails.
+# Comments inside preprocessing directives are not separate comment tokens.
+# Values: false | true
+CommentsASCIIOnly = false
+
 # Values: [] or ["qualified::name", ...]
 NamingNamespaceExemptions = ["std"]
 

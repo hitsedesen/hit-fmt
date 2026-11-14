@@ -16,4 +16,4 @@ fail: cannot format this line automatically within ColumnLimit 40
    |
 11 |         "unavoidable_selected_literal_over_the_limit",
    |                                         ^
-summary: fail: naming or parameter-name violation; fail: cannot format automatically within column limit
+summary: fail: naming, parameter-name or comment violation; fail: cannot format automatically within column limit

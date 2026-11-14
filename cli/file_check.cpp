@@ -88,6 +88,52 @@ private:
     util::Position Current_{1, 1};
 };
 
+bool CheckCommentCharacters(const parser::SyntaxTree& tree, bool enabled, std::vector<SemanticDiagnostic>* diagnostics)
+{
+    if (!enabled) {
+        return false;
+    }
+
+    bool violation = false;
+
+    for (parser::TokenIndex i = 0; i < tree.TokenCount(); ++i) {
+        if (tree.Kind(i) != tokenizer::TokenKind::Comment) {
+            continue;
+        }
+
+        const auto text = tree.TokenText(i);
+        auto position = tree.TokenPosition(i);
+
+        for (us offset = 0; offset < text.size(); ++offset) {
+            const auto byte = static_cast<u8>(text[offset]);
+
+            if (byte >= 0x80) {
+                if (!diagnostics) {
+                    return true;
+                }
+
+                diagnostics->push_back({
+                    position,
+                    {},
+                    "comment contains non-ASCII characters (CommentsASCIIOnly)",
+                    {i, tree.Token(i).Text.Begin + static_cast<parser::SourceOffset>(offset)},
+                });
+                violation = true;
+                break;
+            }
+
+            if (byte == '\n') {
+                ++position.Line;
+                position.Column = 1;
+            } else {
+                ++position.Column;
+            }
+        }
+    }
+
+    return violation;
+}
+
 bool InLines(us line, std::span<const formatter::Hunk> hunks)
 {
     auto it = std::lower_bound(
@@ -387,12 +433,15 @@ Result<CheckedFile> FormatAndCheckFile(
 
         if (quick) {
             if (formatter::HasNamingViolation(tree, configuration.Settings) ||
-                formatter::HasParameterNameViolation(tree, configuration.Settings))
+                formatter::HasParameterNameViolation(tree, configuration.Settings) ||
+                CheckCommentCharacters(tree, configuration.Settings.CommentsASCIIOnly, nullptr))
             {
                 checked.QuickFailure = true;
                 return {std::move(checked), {}};
             }
         } else {
+            CheckCommentCharacters(tree, configuration.Settings.CommentsASCIIOnly, &checked.Semantic);
+
             for (auto& diagnostic : formatter::CheckNames(tree, configuration.Settings)) {
                 checked.Semantic.push_back({
                     diagnostic.Position,
@@ -685,7 +734,7 @@ void PrintFileSummaryIssues(std::ostream& output, const CheckedFile& checked, bo
     }
 
     if (!checked.Semantic.empty()) {
-        issue("fail: naming or parameter-name violation");
+        issue("fail: naming, parameter-name or comment violation");
     }
 
     for (const auto& diagnostic : checked.RequiredChanges) {

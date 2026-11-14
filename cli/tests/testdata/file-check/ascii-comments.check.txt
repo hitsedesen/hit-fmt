@@ -1,0 +1,6 @@
+fail: comment contains non-ASCII characters (CommentsASCIIOnly)
+  --> sample.cpp:3:22 [original source]
+fail: comment contains non-ASCII characters (CommentsASCIIOnly)
+  --> sample.cpp:5:4 [original source]
+fail: comment contains non-ASCII characters (CommentsASCIIOnly)
+  --> sample.cpp:7:4 [original source]
