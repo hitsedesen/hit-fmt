@@ -1,8 +1,7 @@
 #pragma once
 
-// Build with -DHIT_FMT_PROFILE_PHASES=1 and set HIT_FMT_PROFILE_PHASES=1
-// to print phase measurements at process exit.
-#if defined(HIT_FMT_PROFILE_PHASES) && HIT_FMT_PROFILE_PHASES
+// Build with -DHIT_FMT_PROFILE=1 to print phase measurements at process exit.
+#if defined(HIT_FMT_PROFILE) && HIT_FMT_PROFILE
 
 #include "types.hpp"
 
@@ -11,9 +10,10 @@
 #include <atomic>
 #include <chrono>
 #include <cstdlib>
-#include <iomanip>
+#include <format>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <string_view>
 #include <thread>
 #include <utility>
@@ -79,12 +79,6 @@ private:
 #endif
     }
 };
-
-inline bool Enabled()
-{
-    static const bool enabled = std::getenv("HIT_FMT_PROFILE_PHASES") != nullptr;
-    return enabled;
-}
 
 struct Measurement
 {
@@ -168,7 +162,45 @@ public:
                 return left.Name < right.Name;
             });
 
-        std::cerr << std::fixed << std::setprecision(6) << "profiled_thread_seconds=" << Clock::Seconds(total) << '\n';
+        const auto formatDuration = [] (double seconds) {
+            if (seconds >= 1) {
+                return std::format("{:.2f} s", seconds);
+            }
+
+            if (seconds >= 0.001) {
+                return std::format("{:.2f} ms", seconds * 1000);
+            }
+
+            return std::format("{:.2f} µs", seconds * 1000000);
+        };
+        const auto formatTime = [&] (u64 ticks) {
+            auto duration = formatDuration(Clock::Seconds(ticks));
+            return total ? std::format("{} ({:.1f}%)", duration, 100.0 * ticks / total) : duration;
+        };
+        const auto formatSize = [] (double bytes, std::string_view suffix = {}) {
+            constexpr std::array<std::string_view, 3> units{"KiB", "MiB", "GiB"};
+            auto value = bytes / 1024;
+            us unit = 0;
+
+            while (value >= 1024 && unit + 1 < units.size()) {
+                value /= 1024;
+                ++unit;
+            }
+
+            return std::format("{:.{}f} {}{}", value, value < 1 ? 3 : 2, units[unit], suffix);
+        };
+
+        us phaseWidth = std::string_view("Phase").size();
+
+        for (us i = 1; i < end; ++i) {
+            if (Phases_[i].Stats.Hits) {
+                phaseWidth = std::max(phaseWidth, Phases_[i].Name.size());
+            }
+        }
+
+        constexpr auto row = "{:<{}}  {:>8}  {:>20}  {:>20}  {:>14}  {:>16}\n";
+        std::cerr << "Profiled thread time: " << formatDuration(Clock::Seconds(total)) << "\n\n"
+            << std::format(row, "Phase", phaseWidth, "Calls", "Self", "Total", "Input", "Throughput");
 
         for (us i = 1; i < end; ++i) {
             const auto& [name, phase] = Phases_[i];
@@ -177,24 +209,17 @@ public:
                 continue;
             }
 
-            const double seconds = Clock::Seconds(phase.TotalTicks);
-            std::cerr << "phase=" << name << " calls=" << phase.Hits << " inclusive=" << seconds << " exclusive="
-                << Clock::Seconds(phase.OwnTicks);
-
-            if (total) {
-                std::cerr << " inclusive_pct=" << 100.0 * phase.TotalTicks / total << " exclusive_pct="
-                    << 100.0 * phase.OwnTicks / total;
-            }
-
-            if (phase.BytesProcessed) {
-                std::cerr << " bytes=" << phase.BytesProcessed;
-
-                if (seconds > 0) {
-                    std::cerr << " mib_per_second=" << phase.BytesProcessed / (seconds * 1024 * 1024);
-                }
-            }
-
-            std::cerr << '\n';
+            const auto seconds = Clock::Seconds(phase.TotalTicks);
+            const auto bytes = static_cast<double>(phase.BytesProcessed);
+            std::cerr << std::format(
+                row,
+                name,
+                phaseWidth,
+                phase.Hits,
+                formatTime(phase.OwnTicks),
+                formatTime(phase.TotalTicks),
+                bytes > 0 ? formatSize(bytes) : std::string("—"),
+                bytes > 0 && seconds > 0 ? formatSize(bytes / seconds, "/s") : std::string("—"));
         }
     }
 
@@ -215,18 +240,16 @@ inline constinit Profiler ProcessProfiler;
 template <class Name>
 inline const us PhaseSlot = [] {
     constexpr std::string_view name = Name{}();
-    return Enabled() ? ProcessProfiler.Acquire(name) : 0;
+    return ProcessProfiler.Acquire(name);
 }();
 
 struct ThreadMeasurements
 {
-    ThreadResult* Result = nullptr;
+    ThreadResult* Result;
 
     ~ThreadMeasurements()
     {
-        if (Result) {
-            ProcessProfiler.Publish(Result);
-        }
+        ProcessProfiler.Publish(Result);
     }
 };
 
@@ -235,18 +258,20 @@ class Timer
 public:
     explicit Timer(us slot, u64 bytesProcessed = 0)
     {
-        if (slot) {
-            if (!Local_.Result) {
-                Local_.Result = new ThreadResult;
-            }
+        auto* local = Local_;
 
-            Phase_ = &Local_.Result->Phases[slot];
-            PreviousTotalTicks_ = Phase_->TotalTicks;
-            Phase_->BytesProcessed += bytesProcessed;
-            Parent_ = Active_;
-            Active_ = this;
-            StartTicks_ = Clock::Now();
+        if (!local) {
+            // Register the exit callback only on this thread's first use.
+            static thread_local const ThreadMeasurements owner{new ThreadResult};
+            local = Local_ = owner.Result;
         }
+
+        Phase_ = &local->Phases[slot];
+        PreviousTotalTicks_ = Phase_->TotalTicks;
+        Phase_->BytesProcessed += bytesProcessed;
+        Parent_ = Active_;
+        Active_ = this;
+        StartTicks_ = Clock::Now();
     }
 
     Timer(const Timer& other) = delete;
@@ -254,10 +279,6 @@ public:
 
     ~Timer()
     {
-        if (!Phase_) {
-            return;
-        }
-
         const auto elapsed = Clock::Now() - StartTicks_;
         ++Phase_->Hits;
         Phase_->OwnTicks += elapsed - ChildrenTicks_;
@@ -267,7 +288,7 @@ public:
         if (Parent_) {
             Parent_->ChildrenTicks_ += elapsed;
         } else {
-            auto& total = Local_.Result->Phases[0];
+            auto& total = Local_->Phases[0];
             ++total.Hits;
             total.TotalTicks += elapsed;
         }
@@ -275,11 +296,11 @@ public:
 
 private:
     inline static thread_local Timer* Active_ = nullptr;
-    inline static thread_local ThreadMeasurements Local_;
-    Measurement* Phase_ = nullptr;
-    Timer* Parent_ = nullptr;
-    u64 PreviousTotalTicks_ = 0;
-    u64 StartTicks_ = 0;
+    inline static constinit thread_local ThreadResult* Local_ = nullptr;
+    Measurement* Phase_;
+    Timer* Parent_;
+    u64 PreviousTotalTicks_;
+    u64 StartTicks_;
     u64 ChildrenTicks_ = 0;
 };
 

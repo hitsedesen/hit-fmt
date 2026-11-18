@@ -3,6 +3,7 @@
 #include "source_analysis_internal.hpp"
 
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <algorithm>
@@ -599,6 +600,7 @@ SourceAnalysis BuildSourceAnalysis(
     std::pmr::memory_resource& scratchMemory)
 {
     const auto source = tree.Source();
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.source_analysis", source.size());
     const auto size = CheckedSourceAnalysisSize(source.size());
     SourceAnalysis result(fileMemory);
     result.Source_ = source;

@@ -2,6 +2,7 @@
 #include "layout_plan.hpp"
 
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <array>
@@ -28,6 +29,7 @@ void LayoutPlan::SourceWhitespace(Index begin, Index end, Newline ending)
 #endif
 Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) const
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.render", Source_.size());
     auto* resource = &memory;
     Result result(resource);
 

@@ -5,6 +5,7 @@
 #include "text_policies.hpp"
 
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <fs/fs.hpp>
@@ -1029,6 +1030,9 @@ StructuralPlan PlanStructuralEditsImpl(
     std::pmr::memory_resource& scratchMemory,
     IncludeSortContext includes)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH(
+        Certified ? "formatter.plan_structural_edits_certified" : "formatter.plan_structural_edits",
+        tree.Source().size());
     StructuralPlan plan(fileMemory);
     const bool controlEdits = options.AddMissingControlBraces || options.EmptyControlBody;
     Vector<u32> barriers(&scratchMemory);
@@ -1430,6 +1434,7 @@ StructuralMaterialization MaterializeStructuralEditsImpl(
     std::pmr::memory_resource& scratchMemory,
     Vector<detail::CopiedTokenRun>* copied)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.materialize_structural_edits", tree.Source().size());
     auto size = Validate(tree.Source(), plan);
     auto boundary = [&] (parser::SourceOffset offset) {
         auto next = FirstBeginningAt(tree, offset);
@@ -1751,6 +1756,9 @@ NamespaceCommentPlan PlanNamespaceCommentsImpl(
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH(
+        Certified ? "formatter.plan_namespace_comments_certified" : "formatter.plan_namespace_comments",
+        original.Source().size());
     NamespaceCommentPlan plan(fileMemory);
     plan.Options = options;
 
@@ -2324,6 +2332,7 @@ StructuralPlan ResolveNamespaceComments(
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.resolve_namespace_comments", output.size());
     return ResolveNamespaceCommentsImpl(
         original,
         plan,
@@ -2344,6 +2353,7 @@ StructuralPlan detail::ResolveNamespaceCommentsCertified(
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.resolve_namespace_comments_certified", output.size());
     return ResolveNamespaceCommentsImpl(
         original,
         plan,
@@ -2360,6 +2370,7 @@ std::pmr::string MaterializeNamespaceComments(
     const StructuralPlan& resolved,
     std::pmr::memory_resource& fileMemory)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.materialize_namespace_comments", output.size());
     std::pmr::string result(&fileMemory);
     result.reserve(Validate(output, resolved));
     parser::SourceOffset cursor = 0;

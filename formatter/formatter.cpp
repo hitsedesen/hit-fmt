@@ -14,6 +14,7 @@
 
 #include <util/ascii.hpp>
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <unicode/utf8.hpp>
@@ -1695,6 +1696,10 @@ FormatResult FormatTree(
     bool recover = true,
     std::span<const Range> preserved = {})
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH(
+        std::is_rvalue_reference_v<Tree&&> ? "formatter.total_consuming" : "formatter.total",
+        original.Source().size());
+
     // Bound the initial input-local backing block. Consolidating the common
     // case avoids repeated heap growth/trim during arena teardown; larger
     // inputs still grow through the normal upstream resource.
