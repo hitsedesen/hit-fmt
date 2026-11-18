@@ -18,8 +18,7 @@ inline constexpr us SourcePaddingSize = 64;
 
 inline constexpr us MaxSourceSize = static_cast<us>(std::numeric_limits<SourceOffset>::max()) - SourcePaddingSize;
 
-// A non-owning source buffer with safe lookahead. Data points to Size source
-// bytes followed by SourcePaddingSize zero bytes.
+// A non-owning source buffer with SourcePaddingSize padding zero bytes.
 struct PaddedSourceView
 {
     const char* Data;

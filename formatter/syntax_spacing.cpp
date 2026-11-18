@@ -3,6 +3,7 @@
 #include "flat_span_internal.hpp"
 
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <unicode/utf8.hpp>
@@ -2553,6 +2554,7 @@ SyntaxSpacing BuildSyntaxSpacing(
     std::pmr::memory_resource& scratchMemory,
     std::optional<TrailingCommentSpaceSetting> trailingCommentSpaces)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.syntax_spacing", tree.Source().size());
     return detail::FlatSpanAccess::BuildSpacing<false>(
         tree,
         safety,
@@ -2573,6 +2575,7 @@ SyntaxSpacing detail::BuildFlatSyntaxSpacing(
     std::pmr::memory_resource& fileMemory,
     std::pmr::memory_resource& scratchMemory)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.flat_syntax_spacing", tree.Source().size());
     FlatSpanCollector flat(tree, safety, policies, annotations, tabWidth, scratchMemory);
     if (flat.Enabled())
         return FlatSpanAccess::BuildSpacing<true>(

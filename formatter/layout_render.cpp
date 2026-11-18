@@ -2,6 +2,7 @@
 #include "layout_plan.hpp"
 
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <array>
@@ -28,6 +29,7 @@ void LayoutPlan::SourceWhitespace(Index begin, Index end, Newline ending)
 #endif
 Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) const
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.render", Source_.size());
     auto* resource = &memory;
     Result result(resource);
 
@@ -688,6 +690,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
     bool consistentLayout = false;
     us probeBrokenGroups = 0;
     us probeBreakPenalty = 0;
+    us probePrefixBreaks = 0;
     u32 probeMaxIndent = 0;
     us childLayoutEnd = 0;
     us childLayoutBase = 0;
@@ -1346,6 +1349,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
             if (line) {
                 if (probing && activeGroup != InvalidId) {
                     probeBreakPenalty += us(gap.NewlineCount) * GroupSpecs_[activeGroup].BreakPenalty;
+                    probePrefixBreaks += GroupSpecs_[activeGroup].PreferChildBreaks;
                 }
 
                 const bool lf = gap.LineEnding == GapNewline::LF ||
@@ -1493,22 +1497,29 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                 const auto tail = groupTail(spec, groupEntry);
                 childLayoutBase = savedDepth;
                 childLayoutEnd = Groups_[id].EndOrder;
-                std::array<u64, 5> bestCost{};
+                std::array<u64, 6> bestCost{};
                 us bestDepth = 0;
                 bool bestConsistent = false;
-                const auto cost = [&] () -> std::array<u64, 5> {
+                const auto cost = [&] () -> std::array<u64, 6> {
                     const auto count = lines - savedLines;
                     const auto overflow = probeMaxColumn > policy.Width ? probeMaxColumn - policy.Width : 0;
 
                     // Indivisible tokens can overflow every alternative. Prefer
                     // the least overflow before comparing layout preferences.
                     // Compare complete chain layouts by line count and depth
-                    // before applying local boundary preferences.
+                    // after accounting for preferred child breaks.
                     if (groupEntry.HasConsistentAlternative) {
-                        return {overflow, count, probeMaxIndent, count + probeBreakPenalty, probeBrokenGroups};
+                        return {
+                            overflow,
+                            probePrefixBreaks,
+                            count,
+                            probeMaxIndent,
+                            count + probeBreakPenalty,
+                            probeBrokenGroups,
+                        };
                     }
 
-                    return {overflow, count + probeBreakPenalty, 0, count, probeBrokenGroups};
+                    return {overflow, probePrefixBreaks, count + probeBreakPenalty, 0, count, probeBrokenGroups};
                 };
                 const auto withinCost = [&] {
                     return !layoutSelected || cost() <= bestCost;
@@ -1533,6 +1544,7 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
                     childLayoutDepth = depth;
                     probeBrokenGroups = 0;
                     probeBreakPenalty = 0;
+                    probePrefixBreaks = 0;
                     probeMaxIndent = 0;
                     probeMaxColumn = savedColumn;
                     probeOverflowLine = NoOrder;

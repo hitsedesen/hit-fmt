@@ -289,7 +289,7 @@ public:
     void Build()
     {
         {
-            HIT_FMT_PROFILE_PHASE("parser.tokenize_and_delimiters");
+            HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.tokenize_and_delimiters", Tree_.Input_.size());
             Tokenize();
             Tree_.Tokens_.Seal();
         }
@@ -300,18 +300,18 @@ public:
         auto* root = MakeNode(NodeKind::TranslationUnit, 0);
         Tree_.Root_ = root;
         {
-            HIT_FMT_PROFILE_PHASE("parser.syntax");
+            HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.syntax", Tree_.Input_.size());
             ParseDeclarationSequence(*root, TK::EndOfFile);
             root->Tokens.End = Cursor_;
         }
 
         {
-            HIT_FMT_PROFILE_PHASE("parser.comments");
+            HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.comments", Tree_.Input_.size());
             AssociateComments(*root);
         }
 
         {
-            HIT_FMT_PROFILE_PHASE("parser.blank_lines");
+            HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.blank_lines", Tree_.Input_.size());
             AssociateBlankLines(*root);
             Tree_.Trivia_.Seal();
         }
@@ -1403,7 +1403,7 @@ private:
         }
 
         {
-            HIT_FMT_PROFILE_PHASE("parser.delimiters");
+            HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.delimiters", Tree_.Input_.size());
             HasDelimiterMap_ = detail::MatchDelimiters(Tree_.Tokens_, ScratchMemory_);
         }
     }
@@ -11860,7 +11860,7 @@ SyntaxTree ParseContext::Run(util::PaddedSourceView input, ErrorHandler errorHan
 
 SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler, const ParseOptions& options)
 {
-    HIT_FMT_PROFILE_PHASE("parser.total");
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.total", input.Size);
     return ParseContext::Run(input, std::move(errorHandler), options);
 }
 
@@ -11928,6 +11928,7 @@ std::optional<SyntaxTree> detail::TryBuildNormalizedTokenView(
     Vector<TokenIndex>& originalToNormalized,
     Vector<NormalizedCommentInsertion>& insertions)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.normalize_token_view", input.Size);
     return ParseContext::NormalizeTokens(original, input, pieces, topology, originalToNormalized, insertions);
 }
 
@@ -11961,18 +11962,19 @@ std::optional<SyntaxTree> detail::TryConsumeNormalizedSyntax(
     std::span<const NormalizedPiece> pieces,
     Vector<TokenIndex>& originalToNormalized)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.consume_normalized", input.Size);
     return ParseContext::ConsumeNormalized(original, input, pieces, originalToNormalized);
 }
 
 std::optional<SyntaxTree> TryReparseIncludes(const SyntaxTree& original, util::PaddedSourceView input)
 {
-    HIT_FMT_PROFILE_PHASE("parser.reuse_includes");
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.reuse_includes", input.Size);
     return ParseContext::ReparseIncludes(original, input);
 }
 
 std::optional<SyntaxTree> TryReparseCommentsAndIncludes(const SyntaxTree& original, util::PaddedSourceView input)
 {
-    HIT_FMT_PROFILE_PHASE("parser.reuse_rulers");
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.reuse_rulers", input.Size);
     return ParseContext::ReparseIncludes(original, input, true);
 }
 

@@ -4,6 +4,7 @@
 #include "hunks.hpp"
 
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <algorithm>
@@ -196,6 +197,7 @@ ChangedFormatResult FormatChanged(
     bool spillover,
     const FormatRequest& request)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.changed_hunks", tree.Source().size());
     Arena file(tree.MemoryResource());
     Arena scratch;
     const detail::OriginalHunkLines lines(tree.Source(), file);

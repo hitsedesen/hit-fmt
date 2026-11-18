@@ -14,6 +14,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(HIT_FMT_TEST "Build tests" OFF)
 option(HIT_FMT_BENCHMARK "Build corpus benchmark" OFF)
+option(HIT_FMT_PROFILE "Report phase timings and throughput at exit" OFF)
+
+if(HIT_FMT_PROFILE)
+    add_compile_definitions(HIT_FMT_PROFILE=1)
+endif()
 
 find_package(Threads REQUIRED)
 

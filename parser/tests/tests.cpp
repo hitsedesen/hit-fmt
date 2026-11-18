@@ -345,11 +345,11 @@ TEST_P(FileTest, IncludeReuseMatchesFreshParse)
         }
 
         ASSERT_TRUE(reused);
-        EXPECT_EQ(Serialize(*reused), Serialize(fresh));
         ASSERT_EQ(reused->TokenCount(), fresh.TokenCount());
 
         for (parser::TokenIndex i = 0; i < fresh.TokenCount(); ++i) {
             EXPECT_EQ(reused->Kind(i), fresh.Kind(i)) << i;
+            EXPECT_EQ(reused->TokenText(i), fresh.TokenText(i)) << i;
             EXPECT_EQ(reused->Role(i), fresh.Role(i)) << i;
             EXPECT_EQ(reused->MatchingDelimiter(i), fresh.MatchingDelimiter(i)) << i;
             EXPECT_EQ(reused->Token(i).Text.Begin, fresh.Token(i).Text.Begin) << i;

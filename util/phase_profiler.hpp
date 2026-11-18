@@ -1,29 +1,22 @@
 #pragma once
 
-// Compile-time opt-in diagnostics for corpus profiling.
-// Build with -DHIT_FMT_PROFILE_PHASES=1 and set HIT_FMT_PROFILE_PHASES=1
-// to print inclusive and exclusive phase times at process exit.
-#ifdef HIT_FMT_PROFILE_PHASES
+// Build with -DHIT_FMT_PROFILE=1 to print phase measurements at process exit.
+#if defined(HIT_FMT_PROFILE) && HIT_FMT_PROFILE
 
 #include "types.hpp"
 
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <chrono>
-#include <cstddef>
-#include <cstdint>
 #include <cstdlib>
-#include <iomanip>
+#include <format>
 #include <iostream>
 #include <limits>
-#include <map>
-#include <mutex>
-#include <source_location>
-#include <span>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <utility>
-#include <vector>
 
 #if defined(_M_X64) || defined(_M_IX86)
 #include <intrin.h>
@@ -39,7 +32,6 @@ public:
     static u64 Now()
     {
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
-        // Requires RDTSCP and a synchronized, invariant TSC.
         unsigned int auxiliary;
         return __rdtscp(&auxiliary);
 #else
@@ -57,13 +49,11 @@ private:
     static double Frequency()
     {
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
-        // Calibrate only when elapsed seconds are requested, outside profiled work.
         static const double frequency = [] {
             auto sample = [] {
                 std::pair<std::chrono::steady_clock::time_point, u64> best;
                 auto bestSpan = std::numeric_limits<u64>::max();
 
-                // Use the tightest bracket to limit error from preemption.
                 for (int attempt = 0; attempt < 5; ++attempt) {
                     auto first = Now();
                     auto time = std::chrono::steady_clock::now();
@@ -90,295 +80,242 @@ private:
     }
 };
 
-inline bool Enabled()
+struct Measurement
 {
-    static const bool enabled = std::getenv("HIT_FMT_PROFILE_PHASES") != nullptr;
-    return enabled;
-}
-
-struct Summary
-{
-    u64 Calls = 0;
-    u64 InclusiveTicks = 0;
-    u64 ExclusiveTicks = 0;
+    u64 Hits = 0;
+    u64 TotalTicks = 0;
+    u64 OwnTicks = 0;
+    u64 BytesProcessed = 0;
 };
 
-using Key = std::pair<std::string_view, u32>;
-using PhaseId = us;
+inline constexpr us MaxSlots = 256;
+using Measurements = std::array<Measurement, MaxSlots>;
 
-inline constexpr PhaseId InvalidPhaseId = std::numeric_limits<PhaseId>::max();
-
-struct PhaseKeyLess
+struct ThreadResult
 {
-    using is_transparent = void;
-
-    bool operator()(const auto& left, const auto& right) const
-    {
-        auto order = std::string_view(left.first).compare(std::string_view(right.first));
-        return order < 0 || (order == 0 && left.second < right.second);
-    }
+    Measurements Phases{};
+    ThreadResult* Next = nullptr;
 };
 
-class Results
+// Slot zero accumulates the outermost scopes across all threads.
+class Profiler
 {
 public:
-    ~Results()
+    us Acquire(std::string_view name)
     {
-        std::vector<std::pair<Key, Summary>> phases;
-        phases.reserve(Phases_.size());
+        const auto slot = Next_.fetch_add(1, std::memory_order_relaxed);
 
-        for (const auto& [key, phase] : PhaseIds_) {
-            const auto& value = Phases_[phase];
-
-            if (value.Calls) {
-                phases.push_back({{key.first, key.second}, value});
-            }
+        if (slot >= MaxSlots) {
+            std::abort();
         }
 
-        if (phases.empty()) {
+        Phases_[slot].Name = name;
+        return slot;
+    }
+
+    void Publish(ThreadResult* result)
+    {
+        result->Next = Completed_.load(std::memory_order_relaxed);
+
+        while (!Completed_.compare_exchange_weak(
+            result->Next,
+            result,
+            std::memory_order_release,
+            std::memory_order_relaxed))
+        { }
+    }
+
+    ~Profiler()
+    {
+        // The exit report owns completed snapshots after the workers have joined.
+        const auto end = Next_.load(std::memory_order_relaxed);
+
+        for (auto* result = Completed_.load(std::memory_order_acquire); result;) {
+            for (us i = 0; i < end; ++i) {
+                const auto& source = result->Phases[i];
+                auto& target = Phases_[i].Stats;
+                target.Hits += source.Hits;
+                target.TotalTicks += source.TotalTicks;
+                target.OwnTicks += source.OwnTicks;
+                target.BytesProcessed += source.BytesProcessed;
+            }
+
+            auto* next = result->Next;
+            delete result;
+            result = next;
+        }
+
+        const auto total = Phases_[0].Stats.TotalTicks;
+
+        if (!Phases_[0].Stats.Hits) {
             return;
         }
 
-        std::ranges::sort(
-            phases,
-            [] (const auto& left, const auto& right) {
-                if (left.second.ExclusiveTicks != right.second.ExclusiveTicks) {
-                    return left.second.ExclusiveTicks > right.second.ExclusiveTicks;
+        std::sort(
+            Phases_.begin() + 1,
+            Phases_.begin() + end,
+            [] (const Phase& left, const Phase& right) {
+                if (left.Stats.OwnTicks != right.Stats.OwnTicks) {
+                    return left.Stats.OwnTicks > right.Stats.OwnTicks;
                 }
 
-                return left.first < right.first;
+                return left.Name < right.Name;
             });
-        std::cerr << std::fixed << std::setprecision(6);
 
-        for (const auto& [key, value] : phases) {
-            std::cerr << "phase=" << key.first;
-
-            if (key.second) {
-                std::cerr << ':' << key.second;
+        const auto formatDuration = [] (double seconds) {
+            if (seconds >= 1) {
+                return std::format("{:.2f} s", seconds);
             }
 
-            std::cerr << " calls=" << value.Calls << " inclusive=" << Clock::Seconds(value.InclusiveTicks)
-                << " exclusive=" << Clock::Seconds(value.ExclusiveTicks) << '\n';
+            if (seconds >= 0.001) {
+                return std::format("{:.2f} ms", seconds * 1000);
+            }
+
+            return std::format("{:.2f} µs", seconds * 1000000);
+        };
+        const auto formatTime = [&] (u64 ticks) {
+            auto duration = formatDuration(Clock::Seconds(ticks));
+            return total ? std::format("{} ({:.1f}%)", duration, 100.0 * ticks / total) : duration;
+        };
+        const auto formatSize = [] (double bytes, std::string_view suffix = {}) {
+            constexpr std::array<std::string_view, 3> units{"KiB", "MiB", "GiB"};
+            auto value = bytes / 1024;
+            us unit = 0;
+
+            while (value >= 1024 && unit + 1 < units.size()) {
+                value /= 1024;
+                ++unit;
+            }
+
+            return std::format("{:.{}f} {}{}", value, value < 1 ? 3 : 2, units[unit], suffix);
+        };
+
+        us phaseWidth = std::string_view("Phase").size();
+
+        for (us i = 1; i < end; ++i) {
+            if (Phases_[i].Stats.Hits) {
+                phaseWidth = std::max(phaseWidth, Phases_[i].Name.size());
+            }
         }
-    }
 
-    PhaseId Register(std::string_view name, u32 line)
-    {
-        std::lock_guard lock(Mutex_);
-        auto found = PhaseIds_.find(Key{name, line});
+        constexpr auto row = "{:<{}}  {:>8}  {:>20}  {:>20}  {:>14}  {:>16}\n";
+        std::cerr << "Profiled thread time: " << formatDuration(Clock::Seconds(total)) << "\n\n"
+            << std::format(row, "Phase", phaseWidth, "Calls", "Self", "Total", "Input", "Throughput");
 
-        if (found != PhaseIds_.end()) {
-            return found->second;
-        }
+        for (us i = 1; i < end; ++i) {
+            const auto& [name, phase] = Phases_[i];
 
-        // Reserve before inserting the owning key so publishing the ID cannot
-        // leave a registry entry without a corresponding summary on allocation failure.
-        if (Phases_.size() == Phases_.capacity()) {
-            Phases_.reserve(std::max<us>(8, Phases_.size() * 2));
-        }
+            if (!phase.Hits) {
+                continue;
+            }
 
-        auto phase = Phases_.size();
-        PhaseIds_.emplace(std::pair{std::string(name), line}, phase);
-        Phases_.emplace_back();
-        return phase;
-    }
-
-    void Merge(std::span<const Summary> phases)
-    {
-        std::lock_guard lock(Mutex_);
-
-        for (us phase = 0; phase < phases.size(); ++phase) {
-            const auto& source = phases[phase];
-            auto& target = Phases_[phase];
-            target.Calls += source.Calls;
-            target.InclusiveTicks += source.InclusiveTicks;
-            target.ExclusiveTicks += source.ExclusiveTicks;
+            const auto seconds = Clock::Seconds(phase.TotalTicks);
+            const auto bytes = static_cast<double>(phase.BytesProcessed);
+            std::cerr << std::format(
+                row,
+                name,
+                phaseWidth,
+                phase.Hits,
+                formatTime(phase.OwnTicks),
+                formatTime(phase.TotalTicks),
+                bytes > 0 ? formatSize(bytes) : std::string("—"),
+                bytes > 0 && seconds > 0 ? formatSize(bytes / seconds, "/s") : std::string("—"));
         }
     }
 
 private:
-    std::mutex Mutex_;
-    // Names are owned here and only consulted during registration and reporting.
-    std::map<std::pair<std::string, u32>, PhaseId, PhaseKeyLess> PhaseIds_;
-    std::vector<Summary> Phases_;
+    struct Phase
+    {
+        std::string_view Name;
+        Measurement Stats;
+    };
+
+    std::array<Phase, MaxSlots> Phases_{};
+    std::atomic<us> Next_{1};
+    std::atomic<ThreadResult*> Completed_{nullptr};
 };
 
-inline Results& GetResults()
-{
-    static Results results;
-    return results;
-}
+inline constinit Profiler ProcessProfiler;
 
-inline PhaseId RegisterPhase(std::string_view name, u32 line = 0)
-{
-    return Enabled() ? GetResults().Register(name, line) : InvalidPhaseId;
-}
+template <class Name>
+inline const us PhaseSlot = [] {
+    constexpr std::string_view name = Name{}();
+    return ProcessProfiler.Acquire(name);
+}();
 
-struct PassSite
+struct ThreadMeasurements
 {
-    PhaseId Pass = InvalidPhaseId;
-    PhaseId Changed = InvalidPhaseId;
-    u32 Line = 0;
+    ThreadResult* Result;
+
+    ~ThreadMeasurements()
+    {
+        ProcessProfiler.Publish(Result);
+    }
 };
 
-inline PassSite RegisterPassSite(std::source_location location = std::source_location::current())
-{
-    auto line = location.line();
-    return {RegisterPhase("formatter.pass", line), RegisterPhase("formatter.changed", line), line};
-}
-
-class LocalResults
+class Timer
 {
 public:
-    LocalResults()
+    explicit Timer(us slot, u64 bytesProcessed = 0)
     {
-        // Construct the process summary first, so the main thread merges
-        // its local data before the process summary is destroyed.
-        (void)GetResults();
-    }
+        auto* local = Local_;
 
-    ~LocalResults()
-    {
-        if (!Phases_.empty()) {
-            GetResults().Merge(Phases_);
-        }
-    }
-
-    LocalResults(const LocalResults& other) = delete;
-    LocalResults& operator=(const LocalResults& other) = delete;
-
-    void Count(PhaseId phase)
-    {
-        if (phase != InvalidPhaseId) {
-            ++GetSummary(phase).Calls;
-        }
-    }
-
-    void Record(PhaseId phase, u64 inclusive, u64 exclusive)
-    {
-        if (phase == InvalidPhaseId) {
-            return;
+        if (!local) {
+            // Register the exit callback only on this thread's first use.
+            static thread_local const ThreadMeasurements owner{new ThreadResult};
+            local = Local_ = owner.Result;
         }
 
-        auto& value = GetSummary(phase);
-        ++value.Calls;
-        value.InclusiveTicks += inclusive;
-        value.ExclusiveTicks += exclusive;
+        Phase_ = &local->Phases[slot];
+        PreviousTotalTicks_ = Phase_->TotalTicks;
+        Phase_->BytesProcessed += bytesProcessed;
+        Parent_ = Active_;
+        Active_ = this;
+        StartTicks_ = Clock::Now();
     }
 
-private:
-    Summary& GetSummary(PhaseId phase)
+    Timer(const Timer& other) = delete;
+    Timer& operator=(const Timer& other) = delete;
+
+    ~Timer()
     {
-        if (phase >= Phases_.size()) {
-            Grow(phase);
-        }
-
-        return Phases_[phase];
-    }
-
-    void Grow(PhaseId phase)
-    {
-        if (phase >= Phases_.capacity()) {
-            Phases_.reserve(std::max({us{8}, phase + 1, Phases_.capacity() * 2}));
-        }
-
-        Phases_.resize(phase + 1);
-    }
-
-    std::vector<Summary> Phases_;
-};
-
-inline LocalResults& GetLocalResults()
-{
-    thread_local LocalResults local;
-    return local;
-}
-
-class Scope
-{
-public:
-    explicit Scope(PhaseId phase)
-        : Phase_(phase)
-    {
-        if (Phase_ == InvalidPhaseId) {
-            return;
-        }
-
-        Parent_ = Current_;
-        Current_ = this;
-        Start_ = Clock::Now();
-    }
-
-    ~Scope()
-    {
-        if (Phase_ == InvalidPhaseId) {
-            return;
-        }
-
-        auto elapsed = Clock::Now() - Start_;
-        Current_ = Parent_;
+        const auto elapsed = Clock::Now() - StartTicks_;
+        ++Phase_->Hits;
+        Phase_->OwnTicks += elapsed - ChildrenTicks_;
+        Phase_->TotalTicks = PreviousTotalTicks_ + elapsed;
+        Active_ = Parent_;
 
         if (Parent_) {
-            Parent_->Children_ += elapsed;
+            Parent_->ChildrenTicks_ += elapsed;
+        } else {
+            auto& total = Local_->Phases[0];
+            ++total.Hits;
+            total.TotalTicks += elapsed;
         }
-
-        GetLocalResults().Record(Phase_, elapsed, elapsed - Children_);
     }
 
-    Scope(const Scope& other) = delete;
-    Scope& operator=(const Scope& other) = delete;
-
 private:
-    inline static thread_local Scope* Current_ = nullptr;
-    PhaseId Phase_;
-    Scope* Parent_ = nullptr;
-    u64 Start_ = 0;
-    u64 Children_ = 0;
+    inline static thread_local Timer* Active_ = nullptr;
+    inline static constinit thread_local ThreadResult* Local_ = nullptr;
+    Measurement* Phase_;
+    Timer* Parent_;
+    u64 PreviousTotalTicks_;
+    u64 StartTicks_;
+    u64 ChildrenTicks_ = 0;
 };
 
 } // namespace util::profile
 
 #define HIT_FMT_PROFILE_JOIN_(a, b) a##b
 #define HIT_FMT_PROFILE_JOIN(a, b) HIT_FMT_PROFILE_JOIN_(a, b)
-// Named macros retain one fixed phase per call site. Dynamic phases register
-// once with RegisterPhase and pass the retained ID directly to Scope or Count.
-#define HIT_FMT_PROFILE_ID_(name) \
-    [] (::std::string_view phaseName) { \
-        static const auto phase = ::util::profile::RegisterPhase(phaseName); \
-        return phase; \
-    }(name)
-#define HIT_FMT_PROFILE_PHASE(name) \
-    ::util::profile::Scope HIT_FMT_PROFILE_JOIN(phaseScope_, __LINE__){HIT_FMT_PROFILE_ID_(name)}
-// Callers append HIT_FMT_PROFILE_PASS_SITE() to retain caller-specific IDs.
-#define HIT_FMT_PROFILE_PASS_ARG \
-    , const ::util::profile::PassSite& phaseLocation
-#define HIT_FMT_PROFILE_PASS_SITE() \
-    , [] () -> const ::util::profile::PassSite& { \
-        static const auto site = ::util::profile::RegisterPassSite(); \
-        return site; \
-    }()
-#define HIT_FMT_PROFILE_PASS() \
-    ::util::profile::Scope phasePassScope{phaseLocation.Pass}
-#define HIT_FMT_PROFILE_EVENT(name) \
-    do { \
-        if (::util::profile::Enabled()) { \
-            ::util::profile::GetLocalResults().Count(HIT_FMT_PROFILE_ID_(name)); \
-        } \
-    } while (false)
-#define HIT_FMT_PROFILE_EDIT(lastLine) \
-    do { \
-        lastLine = phaseLocation.Line; \
-        if (::util::profile::Enabled()) \
-            ::util::profile::GetLocalResults().Count(phaseLocation.Changed); \
-    } while (false)
+#define HIT_FMT_PROFILE_PHASE_BANDWIDTH(name, bytesProcessed) \
+    ::util::profile::Timer HIT_FMT_PROFILE_JOIN(phaseTimer_, __LINE__){ \
+        ::util::profile::PhaseSlot<decltype([] { return name; })>, (bytesProcessed)}
+#define HIT_FMT_PROFILE_PHASE(name) HIT_FMT_PROFILE_PHASE_BANDWIDTH(name, 0)
 
 #else
 
 #define HIT_FMT_PROFILE_PHASE(name) ((void)0)
-#define HIT_FMT_PROFILE_PASS_ARG
-#define HIT_FMT_PROFILE_PASS_SITE()
-#define HIT_FMT_PROFILE_PASS() ((void)0)
-#define HIT_FMT_PROFILE_EVENT(name) ((void)0)
-#define HIT_FMT_PROFILE_EDIT(lastLine) ((void)0)
+#define HIT_FMT_PROFILE_PHASE_BANDWIDTH(name, bytesProcessed) ((void)0)
 
 #endif

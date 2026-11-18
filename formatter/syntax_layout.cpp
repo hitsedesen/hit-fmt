@@ -7,6 +7,7 @@
 
 #include <util/ascii.hpp>
 #include <util/memory.hpp>
+#include <util/phase_profiler.hpp>
 #include <util/types.hpp>
 
 #include <parser/operator_info.hpp>
@@ -5032,6 +5033,7 @@ private:
         }
 
         GroupSpecs_[group].FitPrefixFallback = singleMemberCall;
+        GroupSpecs_[group].PreferChildBreaks = singleMemberCall && entry.ControlHeader;
 
         // Prefer operator/list boundaries over field paths and multi-call
         // chains; control headers also prefer clause and argument breaks.
@@ -7533,6 +7535,8 @@ SyntaxLayoutStatus BuildSyntaxLayout(
     std::pmr::memory_resource& scratch,
     const SyntaxLayoutOptions& options)
 {
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("formatter.syntax_layout", tree.Source().size());
+
     if (tree.TokenCount() > (detail::None - 2) / 2) {
         return {SyntaxLayoutError::CoreFailure, detail::None, {layout::Error::TooLarge}};
     }

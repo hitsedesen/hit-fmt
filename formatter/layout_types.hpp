@@ -147,6 +147,8 @@ struct GroupSpec
     bool ResumedLineBase : 1 = false;
     // Compare coupled owned breaks with Fill during bounded layout selection.
     bool ProbeConsistent : 1 = false;
+    // Prefer a fitting child layout over a break in this group's prefix.
+    bool PreferChildBreaks : 1 = false;
     // Prospective visual continuation, realized only by this group's line gaps.
     // Contributors require nonnegative Indent and cannot be structural
     // consumers.

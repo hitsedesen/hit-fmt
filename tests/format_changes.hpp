@@ -13,7 +13,6 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
     ASSERT_TRUE(result.Changes);
     ASSERT_TRUE(result.Summary);
     const auto& changes = *result.Changes;
-    std::string reconstructed;
     us original = 0, output = 0;
     us includes = 0;
     bool other = false;
@@ -41,15 +40,11 @@ inline void ExpectFormatChanges(std::string_view source, const formatter::Format
 
         const auto unchanged = source.substr(original, edit.Original.Begin - original);
         EXPECT_EQ(unchanged, std::string_view(result.Text).substr(output, edit.Output.Begin - output));
-        reconstructed += unchanged;
-        reconstructed.append(result.Text, edit.Output.Begin, edit.Output.End - edit.Output.Begin);
         original = edit.Original.End;
         output = edit.Output.End;
     }
 
     EXPECT_EQ(source.substr(original), std::string_view(result.Text).substr(output));
-    reconstructed += source.substr(original);
-    EXPECT_EQ(reconstructed, result.Text);
     EXPECT_EQ(changes.Edits.empty(), source == result.Text);
     EXPECT_EQ(includes, result.Summary->IncludeOrderChanges.size());
     EXPECT_EQ(other, result.Summary->OtherChanges);
