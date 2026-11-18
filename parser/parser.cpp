@@ -11860,7 +11860,7 @@ SyntaxTree ParseContext::Run(util::PaddedSourceView input, ErrorHandler errorHan
 
 SyntaxTree Parse(util::PaddedSourceView input, ErrorHandler errorHandler, const ParseOptions& options)
 {
-    HIT_FMT_PROFILE_PHASE("parser.total");
+    HIT_FMT_PROFILE_PHASE_BANDWIDTH("parser.total", input.Size);
     return ParseContext::Run(input, std::move(errorHandler), options);
 }
 

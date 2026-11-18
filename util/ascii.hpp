@@ -8,9 +8,6 @@
 
 namespace util {
 
-// Conservatively count an ASCII text prefix without controls. Tabs,
-// line boundaries, other controls and Unicode are left to the caller's scalar
-// path. Reads stay within the view and require neither alignment nor padding.
 inline us PlainAsciiPrefix(std::string_view text)
 {
     constexpr u64 low = 0x2020202020202020;

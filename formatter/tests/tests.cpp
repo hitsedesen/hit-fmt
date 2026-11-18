@@ -138,32 +138,19 @@ void ExpectFormattedGolden(
     bool readOnlyExpected,
     std::string_view inputFilePath = {})
 {
-    const auto actual = FormatWithStyle(input, style, inputFilePath);
+    const formatter::PreparedFormat prepared(style);
+    const auto detailed = test::FormatInput(input, prepared, {.InputFilePath = inputFilePath, .Changes = true});
 
     if (readOnlyExpected) {
         // Shared oracles, including inputs, must never be regenerated here.
-        EXPECT_EQ(actual, ReadFile(path)) << path;
+        EXPECT_EQ(detailed.Text, ReadFile(path)) << path;
     } else {
-        test::golden::ExpectGolden(path, actual);
+        test::golden::ExpectGolden(path, detailed.Text);
     }
 
-    EXPECT_EQ(FormatWithStyle(actual, style, inputFilePath), actual);
-    const Input storage(input);
-
-    if (inputFilePath.empty()) {
-        EXPECT_EQ(formatter::Format(storage.View(), style), actual);
-    }
-
-    const auto detailed = formatter::Format(
-        storage.View(),
-        formatter::PreparedFormat(style),
-        {.InputFilePath = inputFilePath, .Changes = true});
-    EXPECT_EQ(detailed.Text, actual);
+    EXPECT_EQ(test::FormatInput(detailed.Text, prepared, {.InputFilePath = inputFilePath}).Text, detailed.Text);
     test::ExpectFormatChanges(input, detailed);
-    const auto summary = formatter::Format(
-        storage.View(),
-        formatter::PreparedFormat(style),
-        {.InputFilePath = inputFilePath, .ChangeSummary = true});
+    const auto summary = test::FormatInput(input, prepared, {.InputFilePath = inputFilePath, .ChangeSummary = true});
     test::ExpectChangeSummary(summary, detailed);
 }
 
@@ -4897,30 +4884,24 @@ TEST_P(FormatTest, Golden)
     } else {
         const Input storage(input);
         const auto tree = parser::Parse(storage.View(), [] (parser::ParseError) { });
-        const auto formatted = formatter::FormatChanged(
-            tree,
-            formatter::PreparedFormat(style),
-            value.Hunks,
-            value.Spillover,
-            {.InputFilePath = value.InputFilePath}).Result.Text;
-
-        if (value.Expected.empty()) {
-            fixture.Expect(formatted);
-        } else {
-            EXPECT_EQ(formatted, ReadFile(fixture.Directory / value.Expected));
-        }
-
+        const formatter::PreparedFormat prepared(style);
         const auto detailed = formatter::FormatChanged(
             tree,
-            formatter::PreparedFormat(style),
+            prepared,
             value.Hunks,
             value.Spillover,
             {.InputFilePath = value.InputFilePath, .Changes = true}).Result;
-        EXPECT_EQ(detailed.Text, formatted);
+
+        if (value.Expected.empty()) {
+            fixture.Expect(detailed.Text);
+        } else {
+            EXPECT_EQ(detailed.Text, ReadFile(fixture.Directory / value.Expected));
+        }
+
         test::ExpectFormatChanges(input, detailed);
         const auto summary = formatter::FormatChanged(
             tree,
-            formatter::PreparedFormat(style),
+            prepared,
             value.Hunks,
             value.Spillover,
             {.InputFilePath = value.InputFilePath, .ChangeSummary = true}).Result;

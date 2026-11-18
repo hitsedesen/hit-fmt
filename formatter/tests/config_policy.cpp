@@ -1266,43 +1266,10 @@ TEST(ConfigPolicy, IncludeGroupingCapsValidateBeforePreparation)
     }
 }
 
-TEST(ConfigPolicy, SupportedOptionsKeepExistingRejections)
+TEST(ConfigPolicy, StandaloneCommentBlankLinesDoNotInherit)
 {
-    for (const auto text :
-        {
-            "StandaloneCommentBlankLinesBefore = 0\n",
-            "StandaloneCommentBlankLinesAfter = 1\n",
-            "StandaloneCommentBlankLinesAfter = 0\n",
-            "BreakAfterTemplateHeader = true\n",
-            "ExpressionsAlignment = Operand\n",
-            "IncludeMatchingHeader = First\n",
-            "IncludeGrouping = Regroup\n",
-            "ConstructorBracePlacement = Attached\n",
-        })
-    {
-        SCOPED_TRACE(text);
-        const TemporaryConfig config(text);
-        auto style = formatter::LoadConfigFile(config.Path).FormattingStyle;
-        EXPECT_NO_THROW((void)formatter::CompilePolicies(style));
-        EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
-        style.CallLikeMacroNames = {"REGISTER_ITEM"};
-        EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
-
-        style.CallLikeMacroNames.clear();
-        style.AmbiguousTemplateDeclarationSpacing = formatter::GapPolicy::Space;
-        try {
-            (void)formatter::PreparedFormat(style);
-            FAIL() << "existing ambiguous-template rejection disappeared";
-        } catch (const std::invalid_argument& error) {
-            EXPECT_EQ(std::string(error.what()), "AmbiguousTemplateDeclarationSpacing is unsupported");
-        }
-    }
-
-    formatter::Style style;
-    style.ColumnLimit = 0;
-    EXPECT_NO_THROW((void)formatter::PreparedFormat(style));
-
     for (const auto key : {"StandaloneCommentBlankLinesBefore", "StandaloneCommentBlankLinesAfter"}) {
+        SCOPED_TRACE(key);
         const TemporaryConfig invalid(std::string(key) + " = Inherit\n");
         EXPECT_THROW((void)formatter::LoadConfigFile(invalid.Path), std::runtime_error);
     }

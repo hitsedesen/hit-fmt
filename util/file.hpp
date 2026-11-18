@@ -16,8 +16,7 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-// Reads at most maxSize bytes, then appends padding zero bytes. The returned
-// size includes the padding.
+// Reads at most maxSize bytes, then appends padding zero bytes.
 [[nodiscard]] std::string ReadEntireFile(const std::string& filePath, us maxSize, us padding = 0);
 
 // Replaces filePath with contents, preserving bytes exactly.
