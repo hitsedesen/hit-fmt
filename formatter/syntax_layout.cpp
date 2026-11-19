@@ -1793,8 +1793,7 @@ private:
                 : layout::GapKind::Soft;
 
             if (soleLambdaInline) {
-                // Fit the lambda's first segment at the call opener. A break
-                // inside its header or body can keep that boundary attached.
+                // Keep the attachment optional when width forces a break.
                 firstKind = layout::GapKind::Soft;
                 GroupSpecs_[group].ForceBreak = false;
             } else if (pin && pin->Overflow == AttachedStringOverflow::KeepInline &&
@@ -1818,7 +1817,24 @@ private:
 
             Own(begin + 1, group, Boundary::Conditional, firstKind);
             Gaps_[begin + 1].Attached = soleLambdaInline || inlineMessage;
-            Gaps_[begin + 1].FitNextSegment = soleLambdaInline;
+            // A call can break after its opener before the formatter splits
+            // the callee's template arguments. Fit its first argument segment
+            // independently of any breaks later in the argument.
+            bool fitCallPrefix = Gaps_[begin + 1].Attached && !pin;
+
+            if (!fitCallPrefix && node.Kind == NodeKind::ArgumentList && firstKind == layout::GapKind::Soft && !pin &&
+                node.Parent != None && Region(Syntax_[node.Parent]).Kind == NodeKind::CallExpression)
+            {
+                auto callee = Region(Syntax_[node.Parent]).FirstChild;
+
+                if (callee != None && Region(Syntax_[callee]).Kind == NodeKind::MemberExpression) {
+                    callee = LastChild_[callee];
+                }
+
+                fitCallPrefix = callee != None && Region(Syntax_[callee]).Kind == NodeKind::TemplateIdExpression;
+            }
+
+            Gaps_[begin + 1].FitNextSegment = fitCallPrefix;
 
             if (messageHeader != group && !inlineMessage && Policies_.ColumnLimit != 0) {
                 // Fit the prefix and first literal fragment beside the opener.
@@ -1841,7 +1857,7 @@ private:
                 Gaps_[begin + 1].FitThrough = Region(Syntax_[first]).Tokens.End;
             }
 
-            if (node.Kind == NodeKind::ArgumentList && firstKind == layout::GapKind::Soft && !soleLambdaInline &&
+            if (node.Kind == NodeKind::ArgumentList && firstKind == layout::GapKind::Soft && !fitCallPrefix &&
                 !(pin && pin->Overflow == AttachedStringOverflow::BreakBefore))
             {
                 for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {

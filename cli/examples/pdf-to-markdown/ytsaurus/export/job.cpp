@@ -155,10 +155,11 @@ unsigned ProgressBucket(unsigned percent) noexcept
 template <class TDispatcher>
 void RegisterPageProgress(TDispatcher& dispatcher)
 {
-    dispatcher.template Subscribe<EProgressKind::Page>(
-        [] (const TProgressEvent& progressEvent, TProgressContext& progressContext) {
-            progressContext.LastPage = progressEvent.Value.Page;
-        });
+    dispatcher.template Subscribe<EProgressKind::Page>([] (
+        const TProgressEvent& progressEvent,
+        TProgressContext& progressContext) {
+        progressContext.LastPage = progressEvent.Value.Page;
+    });
 }
 
 std::string_view ExportModeLabel(EExportMode mode) noexcept
