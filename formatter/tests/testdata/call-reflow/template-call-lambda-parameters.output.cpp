@@ -14,4 +14,7 @@ void RegisterHandlers(T* router) {
             int secondValue) {
             return firstValue + secondValue;
         });
+    router->template ReinstallHandler<int>(
+        Task<FirstType, SecondType>{
+            firstValue, secondValue});
 }
