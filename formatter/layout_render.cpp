@@ -197,13 +197,13 @@ Result LayoutPlan::Render(Policy policy, std::pmr::memory_resource& memory) cons
         // merely the first break or the globally cheapest one. An expensive
         // intervening list must not hide a cheaper suffix; a nearer medium-
         // cost break may still be needed when that suffix is too far away.
+        // An eligible child can break before a guaranteed line.
         for (us penalty = 1; penalty <= summary.BreakPrefixes.size(); ++penalty) {
             auto& prefix = summary.BreakPrefixes[penalty - 1];
-            prefix = flat.Line
+            const auto nextBreak = flat.Line
                 ? flat.Prefix
-                : std::min(
-                    childBreakPrefixes[penalty - 1],
-                    flexible.Line && firstBreakPenalty < penalty ? flexible.Prefix : AddWidth(flat.Prefix, prefix));
+                : flexible.Line && firstBreakPenalty < penalty ? flexible.Prefix : AddWidth(flat.Prefix, prefix);
+            prefix = std::min(childBreakPrefixes[penalty - 1], nextBreak);
         }
 
         Prepend(summary.Flat, flat);

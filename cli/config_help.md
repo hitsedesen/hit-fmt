@@ -62,11 +62,12 @@ BaseListsLayout = Preserve
 - CallsSoleArgumentFirstItem overrides CallsFirstItem for a sole argument.
   With StringLiteralFragmentsAsArguments, fragmented strings instead use
   CallsFirstItem.
-- CallsSoleLambdaArgumentInline = true attaches a direct sole lambda to
-  the call opener and closer: Call([] { ... });. Overrides CallsBreak,
-  CallsFirstItem, CallsSoleArgumentFirstItem and CallsCloser in canonical
-  calls. Lambda header/body rules and protected comments still apply.
-  KeepMultiline does not split these attached call boundaries.
+- CallsSoleLambdaArgumentInline = true keeps a direct sole lambda beside
+  the call opener when its first segment fits and attaches the closer
+  to the lambda. Overrides CallsBreak, CallsFirstItem,
+  CallsSoleArgumentFirstItem and CallsCloser in canonical calls.
+  Lambda header/body rules and protected comments still apply.
+  KeepMultiline alone does not split these call boundaries.
   Default false uses ordinary call rules.
 - IfConditionsPacking = VerticalWhenBroken splits top-level &&/|| in
   wrapped if headers. Requires canonical header/expression layout;
