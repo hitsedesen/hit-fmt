@@ -1793,9 +1793,9 @@ private:
                 : layout::GapKind::Soft;
 
             if (soleLambdaInline) {
-                // Only the call boundaries attach. The lambda header and body
-                // retain their independent layout and width decisions.
-                firstKind = layout::GapKind::Flat;
+                // Fit the lambda's first segment at the call opener. A break
+                // inside its header or body can keep that boundary attached.
+                firstKind = layout::GapKind::Soft;
                 GroupSpecs_[group].ForceBreak = false;
             } else if (pin && pin->Overflow == AttachedStringOverflow::KeepInline &&
                 policy.Break != BreakRequirement::Always)
@@ -1818,6 +1818,7 @@ private:
 
             Own(begin + 1, group, Boundary::Conditional, firstKind);
             Gaps_[begin + 1].Attached = soleLambdaInline || inlineMessage;
+            Gaps_[begin + 1].FitNextSegment = soleLambdaInline;
 
             if (messageHeader != group && !inlineMessage && Policies_.ColumnLimit != 0) {
                 // Fit the prefix and first literal fragment beside the opener.
@@ -1840,7 +1841,7 @@ private:
                 Gaps_[begin + 1].FitThrough = Region(Syntax_[first]).Tokens.End;
             }
 
-            if (node.Kind == NodeKind::ArgumentList && firstKind == layout::GapKind::Soft &&
+            if (node.Kind == NodeKind::ArgumentList && firstKind == layout::GapKind::Soft && !soleLambdaInline &&
                 !(pin && pin->Overflow == AttachedStringOverflow::BreakBefore))
             {
                 for (auto child = node.FirstChild; child != None; child = Region(Syntax_[child]).NextSibling) {

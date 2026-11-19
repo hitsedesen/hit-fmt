@@ -4105,6 +4105,7 @@ std::vector<FormatCase> FormatCases()
             "nested-candidate",
             "opaque-macro",
             "packed",
+            "template-call-lambda-parameters",
         })
     {
         cases.push_back({callReflow, name, std::string(name) + ".input.cpp"});

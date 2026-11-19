@@ -152,6 +152,15 @@ unsigned ProgressBucket(unsigned percent) noexcept
     return ProgressThresholds[index - 1];
 }
 
+template <class TDispatcher>
+void RegisterPageProgress(TDispatcher& dispatcher)
+{
+    dispatcher.template Subscribe<EProgressKind::Page>(
+        [] (const TProgressEvent& progressEvent, TProgressContext& progressContext) {
+            progressContext.LastPage = progressEvent.Value.Page;
+        });
+}
+
 std::string_view ExportModeLabel(EExportMode mode) noexcept
 {
     return ExportLabels[mode == EExportMode::Selection ? 0 : 1][1];
